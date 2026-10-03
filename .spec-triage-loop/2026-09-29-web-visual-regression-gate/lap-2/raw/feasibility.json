@@ -1,0 +1,98 @@
+{
+  "reviewer": "feasibility",
+  "findings": [
+    {
+      "title": "Stale client/ baseline count in Task 3's verification step",
+      "severity": "P2",
+      "section": "Task 3: One shared container invocation, and a guard on its image tag",
+      "why_it_matters": "An implementer running Task 3's behaviour-preserving check counts 842 committed `*-chromium-linux.png` files under `client/`, not 698, and has to stop and decide whether 144 baselines went missing or the plan is stale — on the one step whose whole purpose is proving the helper refactor changed nothing. Verified by running `git ls-files 'client/**/*-chromium-linux.png' | wc -l` in this checkout: 842, all tracked, with zero untracked and zero darwin strays. The count has simply grown twice since it was written (the change log records 612 at an earlier date), so correcting it to 842 restores the step's value as a pass/fail signal.",
+      "finding_type": "error",
+      "autofix_class": "safe_auto",
+      "suggested_fix": "Change `698 committed baselines` to `842 committed baselines` in Task 3 Step 5.",
+      "confidence": 100,
+      "evidence": [
+        "This is the real test of the helper: `client/` has 698 committed baselines that must still match."
+      ]
+    },
+    {
+      "title": "web/ behaviour-test count is 92, not 91",
+      "severity": "P3",
+      "section": "Task 9 (Step 10), Task 1 (Step 6), Task 7 (Step 6)",
+      "why_it_matters": "Task 9's final CI verification asks the implementer to confirm \"91 existing web/ behaviour tests\" where Playwright reports 92, so the only step that can be checked against the real CI run opens on a mismatch the implementer must resolve before trusting the rest of that six-item list. Verified by running `pnpm --filter @notation-hero/web exec playwright test --config=playwright.e2e.config.ts --list`, which prints \"Total: 92 tests in 3 files\" (a11y.e2e.ts, player.e2e.ts, toast-occlusion.e2e.ts). Task 1 Step 6 and Task 7 Step 6 hedge with `~91` and `~100`, but Task 9 Step 10 states 91 flatly and the flake-remedy paragraph repeats it, so all four places should read 92 / 101.",
+      "finding_type": "error",
+      "autofix_class": "safe_auto",
+      "suggested_fix": "Replace `~91` with `~92` in Task 1 Step 6, `~100` with `~101` in Task 7 Step 6, and `91` with `92` in Task 9 Step 10 item 6 and in the `fullyParallel: false` remedy paragraph.",
+      "confidence": 100,
+      "evidence": [
+        "Expected: the same ~91 tests pass, every line prefixed `[e2e]`.",
+        "6. The 91 existing `web/` behaviour tests still pass in the container. Their timing changing is the",
+        "Expected: ~100 tests pass, each line prefixed `[e2e]` or `[chromium]`. The nine `[chromium]` lines"
+      ]
+    },
+    {
+      "title": "Task 2's measurement print cannot produce the sample's rendered height",
+      "severity": "P2",
+      "section": "Task 2: Share the navigation between the two browser lanes",
+      "why_it_matters": "Following Task 2 Step 3 yields only two distinct numbers where the rewritten comment needs three, so the implementer either stalls or writes the notation box's height into the slot that should hold the sample's own rendered height. `scrollHeight` is by definition never below `clientHeight`, and this plan states elsewhere that \"the bundled beat measures scrollHeight === clientHeight\" — so for the bundled beat the prescribed print returns `box` and `score` as the same value, and the comment's first figure (185 px in today's a11y.e2e.ts text) is unreachable from it. Reading the notation SVG's own height for the two score figures while keeping `clientHeight` for the box is what makes all three measurable, and it has to run on both sides of the file pick because one invocation only ever sees one score.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "Replace Task 2 Step 3's temporary print with one that reads the rendered SVG's height for the score figures, and place it on both sides of the file pick — before `setInputFiles` for the bundled beat and after it for `Punk.gp`: `console.log(await surface.evaluate((el) => ({ box: el.clientHeight, score: el.querySelector('svg')?.getBoundingClientRect().height })));` — and say in the step that `scrollHeight` is clamped to `clientHeight`, which is why it cannot give the sample's figure.",
+      "confidence": 75,
+      "evidence": [
+        "    score: el.scrollHeight,",
+        "Run the one case, read the values for both the bundled beat and `Punk.gp`, then delete the print and",
+        "// The sample renders <N> px tall and never scrolls; Punk.gp's two drum tracks render <N> px at this",
+        "the bundled beat measures scrollHeight === clientHeight"
+      ]
+    },
+    {
+      "title": "Prove-it-bites steps can pass against a stale reused server",
+      "severity": "P2",
+      "section": "Task 5 (Step 5), Task 6 (Step 4), Task 7 (Step 4)",
+      "why_it_matters": "The three steps that prove the surface assertions can actually fail may report the expected result for the wrong reason, leaving the implementer with a recorded verification that never ran. Each edits app or design-system source and re-runs the native `test:vr`, but the config this plan writes keeps `reuseExistingServer: !process.env.CI`, which is `true` on a developer machine — so a `next start` left on :4174 by an interrupted run serves the pre-edit build and the change is never compiled in. The plan itself calls these the decisive checks (\"an assertion that cannot fail is worse than none\"), and this repo has already been bitten by the same `reuseExistingServer` trap with a stale Storybook on :6006 while regenerating baselines, so an explicit kill-the-server precondition is the cheap guard.",
+      "finding_type": "omission",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "Add a precondition line to Task 5 Step 5 and cross-reference it from Task 6 Step 4 and Task 7 Step 4: run `lsof -ti:4174 | xargs -r kill` before each source-edit re-run, because `reuseExistingServer: !process.env.CI` is true locally and a leftover `next start` on :4174 serves the pre-edit build, which makes the expected PASS/FAIL meaningless.",
+      "confidence": 75,
+      "evidence": [
+        "    reuseExistingServer: !process.env.CI,",
+        "Do this before generating baselines — an assertion that cannot fail is worse than none.",
+        "Temporarily change the `<aside>`'s `bg-rail` to `bg-background` in `PlayerShell.tsx`, then:",
+        "Temporarily change the ghost variant's `hover:bg-elevate` to `hover:bg-muted` in"
+      ]
+    },
+    {
+      "title": "NH-197 spec's Playwright bump list left stale in a file Task 10 edits",
+      "severity": "P3",
+      "section": "Task 10: The documentation the move invalidates",
+      "why_it_matters": "Whoever bumps Playwright next and follows `docs/specs/2026-06-26-nh-197-e2e-traces.md` will miss two of the pins this plan creates: that file states the version is load-bearing in three spots — the root dep, the `vr` job's container tag, and the `e2e` job's Chromium install — while this plan adds `tooling/docker-playwright.sh`'s `IMAGE=` line and the `web` job's `container:` line, and removes web's Chromium install from `e2e` altogether. Task 10 already opens that file for the artifact rename and declares that every file it touches describes a mechanism still in force and so gets corrected, which makes the bump-list sentence part of the same pass. Task 3's new guard does fail CI on the two enforced homes, but the prose is what a person reads before editing, and the tag also lives unenforced in `client/README.md` and the VR runbook.",
+      "finding_type": "omission",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "Add a fourth edit to Task 10 Step 1's list for `docs/specs/2026-06-26-nh-197-e2e-traces.md`: rewrite its \"load-bearing in three spots\" sentence to name the per-package `@playwright/test` devDependency, `tooling/docker-playwright.sh`'s `IMAGE=` line, and both the `vr` and `web` jobs' `container:` lines, and state that `tooling/workflow-guards.test.mjs` now anchors the last three to the installed version.",
+      "confidence": 75,
+      "evidence": [
+        "Every file here describes a mechanism that is still in force, so each is corrected rather than left",
+        "| `docs/specs/2026-06-26-nh-197-e2e-traces.md` (three places)           | `playwright-e2e-report` | `playwright-client-e2e-report` |",
+        "- **The container tag drifting from `@playwright/test`** across its three homes after this lands"
+      ]
+    }
+  ],
+  "residual_risks": [
+    "Verified by running it: shellcheck 0.11.0 reports nothing on the proposed `tooling/docker-playwright.sh` (exit 0), so the plan's \"shellcheck-clean\" claim for the `bash -c '…' _ \"$1\" \"$2\"` form holds. There is no .shellcheckrc, and `lint:shell` is `git ls-files -z '*.sh' | xargs -0 -r shellcheck`, so Task 3 Step 6's stage-before-lint instruction is both necessary and correct.",
+    "Verified against the installed playwright@1.61.1 type definitions: `TestProject` declares `timeout`, `workers`, `dependencies`, `fullyParallel`, `retries`, `snapshotDir` and `snapshotPathTemplate`, so Task 1's per-project `timeout: 120_000` and all three of Task 9's fallback remedies are valid config, and `fullPage` is a real `toHaveScreenshot` option.",
+    "Verified by running it: `pnpm --filter @notation-hero/web run typecheck -g zzz` forwarded `-g zzz` into the script (`tsc --noEmit -g zzz`) rather than having pnpm consume it as `--global`, so every `run test:vr -g \"…\"` step works as written under pnpm 11.5.2.",
+    "Verified by grep: none of the ten `REQUIRED_SELECTORS` utilities in `web/scripts/assert-design-system-css.mjs` appears anywhere under `web/e2e/`, and each reaches the bundle through `client/src`. `web/.next/static` currently holds exactly one CSS file, so Task 4 Step 2's expected \"all 10 selectors present in 1 stylesheet(s).\" matches the script's real message format — though that count is computed at runtime and would read differently if a build ever emitted two.",
+    "Verified in source: `client/src/styles.css` gives `body` `@apply bg-background text-foreground`, and the rail's parent really is `<section className=\"nh-drop-zone relative flex min-h-0 flex-1\">` while the footer's is `<div className=\"shrink-0\" data-testid=\"player-status\">` — exactly as Task 5's helper comment states, so `surfaceDiffersFromPageBackground` compares against an opaque surface and can genuinely fail.",
+    "Verified in source: `playRef.current?.focus()` at `web/app/play/PlayerShell.tsx:923` sits on the file-open success path only, and the comment above it says nothing is focused at page load for the bundled score. So only the long-score shot can carry a focus-opened tooltip, and `openTooltip(page)` in the two hover shots cannot hit a strict-mode violation from a second open tooltip.",
+    "Verified: the stale-line-number table is accurate on every row checked (`PlayerShell.tsx:1104` rail, `:1030` header `z-10`, `TransportRow.tsx:118`, `OpenFileControl.tsx:125`, `player.e2e.ts:1321` open-tooltip, `a11y.e2e.ts:265-268` stale figures); the six `⏳ pending` marks sit in the two NH-320 change-log entries with exactly four unrelated ones elsewhere; `decision-registry.md` carries no NH-320 text; the two existing docker scripts really are 395 and 402 characters; `tooling/workflow-guards.test.mjs`'s cited lines (:40, :44, :47, :48, :51, :65-73) all match; `test:tooling` runs in the `quality` job at ci.yml:105 and pre-push never reaches it; and no `eslint-plugin-playwright` exists anywhere, so the claim that nothing catches `.skip`/`.fixme` holds.",
+    "Task 9 Step 6 says to \"drop the now-false clause\" from `web/playwright.e2e.config.ts`'s header, but Task 1's rewritten header already carries no \"no VR or axe job covers it\" claim — so the step is a no-op verification while Task 9's Files list presents it as an edit and Step 9 stages the file. Harmless, but the Files list overstates what changes there.",
+    "Bumping `@playwright/test` also un-matches the three version-exact `minimumReleaseAgeExclude` pins in `pnpm-workspace.yaml` (`playwright@1.61.1`, `playwright-core@1.61.1`, `@playwright/test@1.61.1`). Nothing is left unguarded — `pnpm run check:supply-chain-pins` covers those and Task 3's new guard covers the container tag — but the Global Constraints' \"pinned in lockstep with @playwright/test\" reads as if the image tag were the only coupled value.",
+    "Task 5's `awaitPlayerReady` doc comment says \"Three of the nine shots deliberately never finish loading\", while Task 7 is titled \"The two states that never finish loading\" and Task 5's own Interfaces block says \"deliberately **not** by Task 7's two\". The landing shot also skips the helper but is not a never-finishes-loading state.",
+    "The container-build premise behind Task 9 is already measured in the spec (7 s cold and warm inside `mcr.microsoft.com/playwright:v1.61.1-noble`), and `web/` imports no `next/image` while sharp 0.35.4 resolves through prebuilt `@img/sharp-*` platform packages — so the `--ignore-scripts` install in the new container job shows no evident build risk and nothing was filed on it."
+  ],
+  "deferred_questions": [
+    "The container tag also lives in prose that nothing enforces — `client/README.md:163` and `docs/runbooks/vr-a11y-testing.md:37`, the latter still naming only the `vr` job as pinning it. Should those be folded into Task 3's guard remit (or at least Task 10's edit list), or is unenforced prose drift there acceptable?",
+    "The new `web` job carries no `timeout-minutes`, and no job in `ci.yml` does today. Worth a cap for the one job that now runs a `next build` plus ~101 browser tests with `retries: 2`?",
+    "Task 9's Files list says \"rewrite two assertions, add two\" (:1594) while Step 7's heading says \"and add three\" (:1737) and the replacement block defines three `test()` blocks. Which count is authoritative is a planning detail rather than an implementation blocker, but it should be settled before the step is worked."
+  ]
+}

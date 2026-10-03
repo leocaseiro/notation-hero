@@ -1,0 +1,16 @@
+{
+  "reviewer": "coherence-reviewer (persona)",
+  "findings": [],
+  "residual_risks": [
+    "Task 8's guard checks for presence of test-ID strings in .vr.ts source code, not whether the elements actually bear those IDs in the HTML. Both 'open-file-button' and 'engine-error' are pre-existing in the codebase, so this is safe, but a future maintainer adding a new assertion hook should ensure the element carries the test ID.",
+    "Task 7 Step 6 runs both lanes unscoped for the first time end-to-end locally, but line numbers in stack traces may differ from what a developer expects if their local files are different from master.",
+    "Task 9 Step 10 emphasizes watching the real CI run because local green does not prove CI green when binary versions differ. The Playwright image tag is pinned, but a developer's local `@playwright/test` could drift from the container image.",
+    "Task 2's refactoring of a passing test (a11y.e2e.ts) introduces change risk: if the refactored calls diverge from the original navigation in subtle ways (timing, element selection), the a11y lane could fail in new ways not caught by reviewing the test code alone.",
+    "The nine baseline PNGs are all committed to git. Any unintended visual change that passes the comparator (at threshold 0.2) will be committed as 'correct'. The spec acknowledges this in Risks section: a tenth shot proposed to guard a surface step should be scored against the 1408.6 cutoff before being written."
+  ],
+  "deferred_questions": [
+    "Task 2 Step 3 asks the implementer to measure stale figures and rewrite a comment with those measurements. The spec gives expected values, but the plan says 'if yours differ, yours are right'. This means the comment will differ from the spec's expected text. Is this a documented intentional divergence, or should the spec's expected comment be treated as a template the implementer must match?",
+    "Task 8 Step 2 line 1473-1478 checks that the four hook names appear in the .vr.ts source. The check is on the STRING, not the HTML attribute. A future developer could add the string 'player-rail' in a comment and satisfy the guard without ensuring the shot actually asserts it. Should the guard also parse the code to ensure the hooks appear in actual assertion contexts (getByTestId calls or evaluate expressions)?",
+    "Task 9 Step 10 lists six checks for the real CI run, ending with 'The 91 existing web/ behaviour tests still pass in the container.' No explicit success criterion is stated for what 'pass' means in terms of counts or timing. Should the plan specify an expected range of test execution time or a minimum pass count?"
+  ]
+}

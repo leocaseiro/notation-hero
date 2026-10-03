@@ -247,10 +247,17 @@ export function NotationSurface({
           first renderFinished: AlphaTab holds that event until its own font checker sees the
           `alphaTab` face load (there is no font wait in loadAlphaTabEngine). Dismissing
           it earlier leaves the notation area blank for exactly the window it exists to cover. */}
+      {/* `z-10` is load-bearing. The scroll box below carries `isolate`, which makes it a stacking
+          context, and a non-positioned stacking context paints LATER in tree order — so without a
+          z-index this absolutely-positioned Skeleton rendered UNDER an opaque `bg-white` sibling and
+          the first-visit loading state was an all-white box. Measured on the committed baseline
+          before the fix: 884,448 pure-white pixels in the notation region, zero non-white. The
+          engine-error banner above also uses z-10; the two are mutually exclusive, since the
+          Skeleton is gated on `!failure`. */}
       {!failure && !rendered ? (
         <Skeleton
           data-testid="notation-skeleton"
-          className="absolute inset-0 h-full w-full"
+          className="absolute inset-0 z-10 h-full w-full"
           aria-label="Loading notation"
           role="status"
         />

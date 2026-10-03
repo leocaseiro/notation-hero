@@ -1,0 +1,29 @@
+{
+  "reviewer": "scope-guardian",
+  "findings": [
+    {
+      "title": "Task 4 cites a nonexistent 'Flagged' section for hazard evidence",
+      "severity": "P2",
+      "section": "Task 4, Step 1 (cross-referenced against the plan's closing section)",
+      "why_it_matters": "An implementer following Task 4 Step 1 who searches this document for a section named 'Flagged' will not find one — verified by grepping the full plan, the string appears exactly once, at this one reference, and no heading anywhere carries that name. The actual reproduction steps and evidence for the plan's one declared out-of-footprint file (web/app/globals.css) live under the differently-titled closing section 'The one hazard outside the spec's footprint — measured, and fixed in Task 4'. Since that section is the sole evidentiary backing for the plan's single approved scope exception, a broken pointer to it weakens the audit trail a PR reviewer would use to confirm the exception is justified rather than smuggled in. The practical harm is bounded — the phrase 'at the end of this plan' remains accurate and the content is reachable by scrolling — but a literal search for the cited label fails.",
+      "finding_type": "error",
+      "autofix_class": "safe_auto",
+      "confidence": 75,
+      "evidence": [
+        "\"Flagged\" at the end of this plan for the reproduction.",
+        "## The one hazard outside the spec's footprint — measured, and fixed in Task 4"
+      ],
+      "suggested_fix": "In Task 4 Step 1, replace the phrase '\"Flagged\" at the end of this plan for the reproduction' with a reference matching the real heading, e.g. '\"The one hazard outside the spec's footprint\" at the end of this plan for the reproduction'."
+    }
+  ],
+  "residual_risks": [
+    "The spec-to-plan footprint match (verified here file-by-file: every entry in the spec's 'Process changes this carries' list maps to a task, and the plan's own File Structure list matches exactly what the ten tasks touch) has no mechanical enforcement — a future edit to either document could silently drift out of sync without a CI-enforced footprint diff, relying on manual PR review instead.",
+    "Seven of the nine shots (all but bundled-beat and long-score) have no dedicated parallel-execution determinism data; the spec's 60-run study ran at --workers=1, and the three-rung flakiness fallback (fullyParallel:false, then dependencies:['e2e'], then a separate web-vr job) is documented but deliberately left unapplied until the first real CI run shows a need, so schedule risk exists if an early rung is required on the first attempt.",
+    "This review verified the one broken cross-reference it happened to notice ('Flagged', Task 4 Step 1); it did not exhaustively audit every other internal cross-reference across the plan's 2051 lines, so additional similar slips are possible but sit outside this scope-focused pass (coherence-reviewer territory)."
+  ],
+  "deferred_questions": [
+    "The execution method (subagent-driven-development vs. sequential native execution) is explicitly left undecided by the user's own 'Skip — decide later' response; the plan's ten tasks and per-task commit points are written to work under either, but this has not been confirmed in practice.",
+    "No decision-changelog entry yet records the 2026-09-28 deferral of the two Plan C popover shots (nine shots landing now vs. the eleven decided earlier); the plan defers writing one to the maintainer rather than doing it itself, so this stays open outside the implementing PR.",
+    "Whether the nine shots hold up once run in CI's parallel, multi-worker environment (an untested condition per the spec's own --workers=1 caveat) is an open empirical question the plan defers to the first real CI run in Task 9 Step 10, with a fallback plan on standby rather than pre-applied."
+  ]
+}

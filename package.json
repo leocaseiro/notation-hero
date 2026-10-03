@@ -35,10 +35,12 @@
     "pulumi:up": "pnpm run build:deploy && pnpm --filter @notation-hero/infra run pulumi:up",
     "syncpack": "syncpack lint",
     "test": "pnpm -r --if-present run test",
+    "test:client:docker": "bash tooling/docker-playwright.sh @notation-hero/client test:vr",
+    "test:client:docker:update": "bash tooling/docker-playwright.sh @notation-hero/client test:vr:update",
     "test:tooling": "node --test tooling/*.test.mjs && pnpm run test:tooling:sh",
     "test:tooling:sh": "for t in tooling/*.test.sh; do [ -e \"$t\" ] || continue; echo \"# $t\"; bash \"$t\" || exit 1; done",
-    "test:vr:docker": "docker run --rm -v \"$PWD\":/work -v /work/node_modules -v /work/client/node_modules -v /work/server/node_modules -v /work/shared/node_modules -v /work/infra/node_modules -v /work/web/node_modules -v /work/.pnpm-store -w /work mcr.microsoft.com/playwright:v1.61.1-noble bash -c \"corepack enable && pnpm install --frozen-lockfile --ignore-scripts && pnpm --filter @notation-hero/client run test:vr\"",
-    "test:vr:docker:update": "docker run --rm -v \"$PWD\":/work -v /work/node_modules -v /work/client/node_modules -v /work/server/node_modules -v /work/shared/node_modules -v /work/infra/node_modules -v /work/web/node_modules -v /work/.pnpm-store -w /work mcr.microsoft.com/playwright:v1.61.1-noble bash -c \"corepack enable && pnpm install --frozen-lockfile --ignore-scripts && pnpm --filter @notation-hero/client run test:vr:update\"",
+    "test:web:docker": "bash tooling/docker-playwright.sh @notation-hero/web test:vr",
+    "test:web:docker:update": "bash tooling/docker-playwright.sh @notation-hero/web test:vr:update",
     "typecheck": "pnpm -r --if-present run typecheck"
   },
   "devDependencies": {
@@ -56,7 +58,7 @@
     "eslint-plugin-unicorn": "^63.0.0",
     "knip": "^6.35.0",
     "lefthook": "^2.1.9",
-    "markdownlint-cli2": "^0.23.2",
+    "markdownlint-cli2": "^0.23.3",
     "prettier": "^3.8.1",
     "sort-package-json": "^4.0.0",
     "stylelint": "^17.15.0",

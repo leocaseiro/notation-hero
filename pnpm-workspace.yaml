@@ -51,7 +51,10 @@ overrides:
   tmp: 0.2.7 # GHSA-7c78-jf6q-g5cm
   multer: ^2.4.0 # GHSA-72gw-mp4g-v24j + GHSA-3p4h-7m6x-2hcm + GHSA-535w-7cp7-47q4 + GHSA-qfvm-cv95-jqjf + GHSA-wc9g-mqfw-jrwm + GHSA-qvfw-j98x-7q72 + GHSA-3pph-fpjx-jg34 — via @nestjs/platform-express
   file-type: ^21.3.4 # GHSA-5v7r-6r5c-r473 + GHSA-j47w-4g3g-c36v — dev-only via @nestjs/cli
-  markdown-it: ^14.2.0 # GHSA-6v5v-wf23-fmfq — dev-only via markdownlint-cli2 (NH-243)
+  # markdown-it: the old '^14.2.0' override is dropped rather than raised past GHSA-253c-mchw-3w2r.
+  # Its only carrier is markdownlint-cli2, which pinned markdown-it EXACTLY (14.3.0 at 0.23.2) —
+  # and 0.23.3 moves that pin to a patched 15.0.1, so the carrier now supplies the fix itself.
+  # Keeping a '^14' override would have forced the linter back onto the vulnerable major.
   'esbuild@<0.25.0': 0.25.12 # GHSA-67mh-4wv8-2f99 — drizzle-kit build transitive via deprecated @esbuild-kit; remove once drizzle-orm#5689 ships (Tracked: NH-252)
   postcss: ^8.5.23 # GHSA-qx2v-qp2m-jg93 + GHSA-r28c-9q8g-f849 + GHSA-fxqj-rqcc-2cmp — next pins postcss internally; 8.5.x is a compatible minor (NH-275). Also floats nanoid past GHSA-28wg-ghj8-5hjv + GHSA-2v37-7h3g-55p8.
   # js-yaml: the v3 line left the tree completely with @pulumi/pulumi 3.261.0, so the old
@@ -61,12 +64,12 @@ overrides:
   # NH-231: each parent below resolves its copy under the patched version, and pnpm reuses the
   # parent's existing snapshot, so `pnpm update` alone cannot float them — the override is the only
   # lever. Every entry stays inside the SAME major the parent declares, so no API surface changes.
-  'brace-expansion@1': ^1.1.18 # GHSA-3jxr-9vmj-r5cp + GHSA-mh99-v99m-4gvg + GHSA-rgw5-rvv9-x895 — via minimatch@3
-  'brace-expansion@2': ^2.1.4 # the same three — via minimatch@9
-  'brace-expansion@5': ^5.0.9 # the same three — via minimatch@10
-  'fast-uri@3': ^3.1.6 # GHSA-4c8g-83qw-93j6 + GHSA-v2hh-gcrm-f6hx + GHSA-7p8r-x3mc-p8w7 + GHSA-f65p-4m7j-42xc + GHSA-fph4-wmhf-6fwf + GHSA-jqff-g426-hqxp — via ajv@8
+  'brace-expansion@1': ^1.1.21 # GHSA-3jxr-9vmj-r5cp + GHSA-mh99-v99m-4gvg + GHSA-rgw5-rvv9-x895 + GHSA-6j4f-fj2g-mc7p + GHSA-qhr7-859c-m2p7 + GHSA-q2hr-2g5m-vwhr — via minimatch@3
+  'brace-expansion@2': ^2.1.7 # the same six — via minimatch@9
+  'brace-expansion@5': ^5.0.12 # the same six — via minimatch@10
+  'fast-uri@3': ^3.1.8 # GHSA-4c8g-83qw-93j6 + GHSA-v2hh-gcrm-f6hx + GHSA-7p8r-x3mc-p8w7 + GHSA-f65p-4m7j-42xc + GHSA-fph4-wmhf-6fwf + GHSA-jqff-g426-hqxp + GHSA-hrr3-gc8f-f4qj — via ajv@8
   'qs@6': ^6.16.0 # GHSA-4mjr-xmp4-gh2g + GHSA-x5fp-wj9c-mxmx — via express@5 and body-parser@2
-  smol-toml: ^1.7.1 # GHSA-7w5x-hrqm-74c2 — markdownlint-cli2 0.23.2 still pins smol-toml 1.7.0 exactly
+  smol-toml: ^1.7.1 # GHSA-7w5x-hrqm-74c2 — a floor guard: markdownlint-cli2 pinned smol-toml 1.7.0 exactly up to 0.23.2 (0.23.3 pins a patched 1.8.0)
 
 
   # No undici override: jsdom@29 (client tests) needs undici 7.x; master's 6.27.0 pin

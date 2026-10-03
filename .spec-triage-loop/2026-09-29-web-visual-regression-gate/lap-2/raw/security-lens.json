@@ -1,0 +1,52 @@
+{
+  "reviewer": "security-lens",
+  "findings": [
+    {
+      "title": "Playwright bump coupling omits pnpm-workspace.yaml's version-exact pins",
+      "severity": "P2",
+      "section": "Task 3: One shared container invocation, and a guard on its image tag",
+      "why_it_matters": "The next person bumping Playwright - including anyone fast-tracking a security patch - follows this plan, satisfies its new all-or-nothing guard, and still lands a red `lint` job with no breadcrumb back here. The plan counts three homes for the version (`tooling/docker-playwright.sh` and the two `container:` lines), but `pnpm-workspace.yaml` carries three more, version-exact: `minimumReleaseAgeExclude` lists `playwright-core@1.61.1`, `playwright@1.61.1` and `'@playwright/test@1.61.1'`, and `tooling/check-supply-chain-pins.mjs` fails when any of them stops resolving in `pnpm-lock.yaml`. So a bump is six strings in three files, enforced by two different CI jobs - `test:tooling` in `quality` for the container half, `check:supply-chain-pins` in `lint` for the pnpm half - and the plan names only one half. Those excludes are the repo's documented CVE fast-track (the only way to install a Playwright patch published inside the 7-day `minimumReleaseAge` window), so the missing half is exactly the half a security patch needs.",
+      "finding_type": "omission",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "Replace the \"three homes\" framing with four files, in both the Global Constraints \"Image tag\" bullet and Task 3's guard comment: `tooling/docker-playwright.sh`, the `vr` job's `container:`, the `web` job's `container:`, and `pnpm-workspace.yaml`'s `minimumReleaseAgeExclude` (three version-exact entries - `playwright-core@1.61.1`, `playwright@1.61.1`, `'@playwright/test@1.61.1'`). State that a Playwright bump re-syncs all six strings plus both packages' baselines, that the pnpm-workspace half is enforced by `pnpm run check:supply-chain-pins` in the `lint` job while the container half is enforced by `pnpm run test:tooling` in `quality`, and that a patch published inside the 7-day `minimumReleaseAge` window needs its exact `name@version` added to that exclude list before it will install at all.",
+      "confidence": 75,
+      "evidence": [
+        "The container tag has three homes after NH-320: tooling/docker-playwright.sh and the `container:`",
+        "Keep this tag in lockstep with @playwright/test AND with the `container:` lines of the `vr` and",
+        "three to the installed @playwright/test, so a bump is all-or-nothing.",
+        "`@playwright/test` (v1.61.1 today). Baselines are regenerated on the bump."
+      ]
+    },
+    {
+      "title": "web job guard omits the install step's lockfile and script flags",
+      "severity": "P2",
+      "section": "Task 9: Move `web/`'s whole browser lane into the container",
+      "why_it_matters": "A later edit that drops `--frozen-lockfile` or `--ignore-scripts` from the new job's install line leaves CI green, which is the exact shape the guard's own contract says it covers: everything pinned there is something whose loss would be silent. Without `--frozen-lockfile` the container resolves fresh registry versions for the caret ranges, so the installed half of the renderer can move with no repo change while the pinned image half stays put - the guard pins the image for precisely that reason and leaves its twin unpinned. Without `--ignore-scripts` dependency lifecycle scripts execute in CI. One extra anchored assertion, in the same `run:`-anchored idiom the surrounding assertions already use, closes both. Filed as advisory rather than a hole: the lockfile plus `pnpm-workspace.yaml`'s `minimumReleaseAge`, `trustPolicy: no-downgrade` and `blockExoticSubdeps` are the primary mitigations, and the existing `vr` job runs the same unguarded line today.",
+      "finding_type": "omission",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "Add one assertion to the `web` job guard in Task 9 Step 7, beside the existing container-pin check: `assert.match(webJob, /^\\s+run: corepack enable && pnpm install --frozen-lockfile --ignore-scripts$/m, 'the web job must install from the lockfile with lifecycle scripts off - dropping either flag lets the container resolve fresh registry versions or run dependency scripts, with CI still green');`",
+      "confidence": 50,
+      "evidence": [
+        "The `web` job is the gate over the product's own UI. Everything pinned here is something whose",
+        "loss would be SILENT: a run line that no longer runs the lane, a missing container (so baselines",
+        "run: corepack enable && pnpm install --frozen-lockfile --ignore-scripts"
+      ]
+    }
+  ],
+  "residual_risks": [
+    "The container is pinned by a MUTABLE tag, not a digest: `mcr.microsoft.com/playwright:v1.61.1-noble`. An MCR rebuild of the `noble` base can change the font stack under an unchanged tag, which drifts every baseline and reads as a real visual regression, and the plan's tag guard compares strings so it cannot see it. Not filed - the `vr` job and the existing root `test:vr:docker` scripts already depend on this tag, so the exposure is pre-existing; the plan extends it to a second CI job and a new developer helper.",
+    "Verified by reading the guard code in Task 3 Step 3: it derives the expected tag from the caret FLOOR in `web/package.json` (`^1.61.1` -> `1.61.1`), not from the resolved version in `pnpm-lock.yaml`, so its own prose ('agree with the installed version', repeated in the Task 10 runbook text) overstates what it checks. Not filed as a hole because `tooling/check-supply-chain-pins.mjs` reads the lockfile and fails loudly on exactly that drift - `minimumReleaseAgeExclude` carries `'@playwright/test@1.61.1'` version-exact. Today floor and lock agree: `pnpm-lock.yaml` records specifier `^1.61.1`, version `1.61.1`.",
+    "Verified: no job in `.github/workflows/ci.yml` sets `timeout-minutes` (0 occurrences). The new `web` job runs `next build` plus ~100 tests under `retries: 2` and a 120 s per-test budget, so a hung run can hold the run-level concurrency group for hours. Not filed: Actions minutes are free on this public repo and the omission matches every existing job.",
+    "Verified: the plan's new `web` job declares no `permissions:` block, so it inherits the workflow's top-level `contents: read` - least privilege, and no secrets reach it. `playwright-web-report` is never consumed by the privileged `vr-report` job (`contents: write` + `pull-requests: write`), so the plan opens no new path from PR-authored code to the gh-pages write token.",
+    "Verified against `.github/workflows/ci.yml`: both SHA pins in the plan's new job match the ones already in use - `actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1` and `actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a`. No unpinned or drifted action is introduced.",
+    "Verified: `tooling/docker-playwright.sh` passes its two arguments positionally (bash -c '...' _ \"$1\" \"$2\") instead of interpolating them into the container command string, so the new helper adds no command-injection surface. It does still bind-mount the whole worktree read-write and run as root inside the container, which is what the existing inlined `test:vr:docker` scripts already do.",
+    "Verified by grep across the repo: no workflow other than `.github/workflows/ci.yml` reads `playwright-vr-report` or `playwright-e2e-report`, and every live reference outside it is in a doc Task 10's rename table already covers (`client/README.md` x2, `docs/runbooks/vr-a11y-testing.md`, `docs/specs/2026-06-26-nh-197-e2e-traces.md` x3, `docs/specs/2026-07-08-vr-report-gh-pages-on-failure.md` x2). The rename has no missed consumer.",
+    "Verified against the `changes` job's `code` filter: every change class that can move a `web/` pixel - `web/**`, `client/**`, `tooling/**`, root `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `.github/workflows/ci.yml` - is inside it, so the new `web` job carries no paths-filter blind spot of the NH-322 / NH-331 shape, and the guards that protect it (in `quality` via `test:tooling`) see every PR that could trip them.",
+    "Verified: the AGENTS.md NH-315 exposure I went looking for is already closed in the current text. Task 10 Step 2 carries 'Also widen `AGENTS.md`'s Tailwind-scan sentence in this same step' with a Before/After, so the second `@source not '../e2e/**'` line Task 4 adds ships with the same standing 'do not remove' protection as `../scripts/**`.",
+    "Verified: the `vr-report-resolve` job's green comment going stale on a red `web` lane is already named and reasoned about in Task 9 Step 4 ('a comment contradicting its own run, not a hole in the gate'), with merge still blocked through `ci-green`. Not re-filed."
+  ],
+  "deferred_questions": [
+    "Should the Playwright container be pinned by image digest (`mcr.microsoft.com/playwright@sha256:...`) rather than the mutable `v1.61.1-noble` tag, now that pixel baselines for both `client/` (698 shots) and `web/` (9 shots) depend on that image's font rendering? It touches the `vr` job and the root docker scripts too, so it belongs in its own ticket rather than NH-320.",
+    "Should `playwright-web-report` eventually get the hosted diff page that `playwright-client-vr-report` has? Doing so routes a second PR-authored artifact through the privileged `vr-report` job that holds the gh-pages write token, so it needs its own trust review rather than being folded into this plan."
+  ]
+}

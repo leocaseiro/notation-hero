@@ -1,0 +1,108 @@
+{
+  "reviewer": "adversarial",
+  "findings": [
+    {
+      "title": "Probe-based surface assertions pass when their token is gone",
+      "severity": "P1",
+      "section": "Task 6 Step 1 / Task 7 Step 2",
+      "why_it_matters": "Rename or delete --elevate in client/src/styles.css and the ghost-hover shot still reads green: the probe's var(--elevate) and the button's hover:bg-elevate both become invalid at computed-value time and both resolve to rgba(0, 0, 0, 0), so the equality holds while the hover surface paints nothing — and at 80 against the 1408.6 cutoff the picture cannot see it either. The engine-error tint has the identical shape, yet its comment claims equality 'subsumes the transparent case', which only holds while --destructive exists. Task 5's surfaceDiffersFromPageBackground already carries the guard (own !== 'rgba(0, 0, 0, 0)'); the two probe assertions need the same clause applied to the probe's own resolved value.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "In Task 6's ghost-hover shot add `expect(elevate).not.toBe('rgba(0, 0, 0, 0)');` immediately after the --elevate probe, in Task 7's engine-error shot add `expect(expectedTint).not.toBe('rgba(0, 0, 0, 0)');` immediately after the tint probe, and correct the engine-error comment's claim that equality with the resolved tint subsumes the transparent case — it does not when the token itself is missing.",
+      "confidence": 75,
+      "evidence": [
+        "probe.style.backgroundColor = 'var(--elevate)';",
+        ".toBe(elevate);",
+        "Equality with the resolved tint subsumes the transparent case too, so this one"
+      ]
+    },
+    {
+      "title": "Nothing pins the `e2e` project once CI runs unscoped",
+      "severity": "P1",
+      "section": "Task 8 Step 2 / Task 9",
+      "why_it_matters": "Delete the `e2e` project from web/playwright.e2e.config.ts, or mistype its testMatch, and CI goes green over zero behaviour and zero accessibility tests — by the plan's own measured fact an unscoped run whose other project is empty exits 0. Task 9 removes both `web` steps from the `e2e` job, so web's `--project=e2e` script is no longer invoked anywhere in CI and the old guard that pinned that run line is replaced; Task 8's guard then pins only `chromium`. The same two assertions Task 8 already writes for `chromium` close it, and the exposure is created by this plan: before it, the config had no projects array to delete.",
+      "finding_type": "omission",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "In Task 8's guard, add the `e2e` counterparts beside the two `chromium` config assertions — `assert.match(config, /name:\\s*'e2e'/, \"the e2e project is gone — web's behaviour and axe tests never run\");` and `assert.match(config, /testMatch:\\s*'\\*\\*\\/\\*\\.e2e\\.ts'/, 'e2e no longer matches *.e2e.ts');` — and add a seventh arm to Task 8 Step 4's bite-proof list that deletes the `name: 'e2e'` line.",
+      "confidence": 75,
+      "evidence": [
+        "assert.match(config, /name:\\s*'chromium'/, 'the chromium project is gone — the shots never run');",
+        "run: pnpm --filter @notation-hero/web exec playwright test --config=playwright.e2e.config.ts",
+        "the `chromium` project is what makes them RUN, so deleting it or mistyping its"
+      ]
+    },
+    {
+      "title": "Shot/baseline set equality counts commented-out toHaveScreenshot calls",
+      "severity": "P2",
+      "section": "Task 8 Step 2",
+      "why_it_matters": "A shot parked by commenting it out leaves the merge-blocking gate green over eight pixels: shot names are derived by text-matching across the raw file, so a `//`-prefixed or block-commented toHaveScreenshot call still counts and still pairs with its on-disk baseline, while test.skip and test.fixme — the only disable routes the guard checks — are absent. Step 4's bite-proof only ever deletes a call outright, so the hole is never exercised. Stripping comments before the content matches closes it and simultaneously hardens the other arms, whose own comments already worry about matching prose and commented-out lines.",
+      "finding_type": "omission",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "In Task 8's guard add `const code = (source) => source.replace(/\\/\\*[\\s\\S]*?\\*\\//g, '').replace(/^\\s*\\/\\/.*$/gm, '');` and run the test.skip/test.fixme, failOnUnexpectedPageErrors, toHaveScreenshot and four surface-anchor patterns over `code(source)` rather than the raw source, then add an arm to Step 4 that comments out one shot and expects the pairing assertion to fail.",
+      "confidence": 75,
+      "evidence": [
+        "source.matchAll(/toHaveScreenshot",
+        "the shots and the committed -chromium-linux baselines no longer pair up",
+        "assertion matches any prose occurrence, a snapshot filename, or a commented-out line."
+      ]
+    },
+    {
+      "title": "The \"stale figures\" premise is contradicted by the plan's own measurement",
+      "severity": "P2",
+      "section": "Task 2 Step 3",
+      "why_it_matters": "The implementer is sent to instrument two passing accessibility tests — including a sibling case this task otherwise leaves alone — to re-measure a comment that already holds the right numbers. web/e2e/a11y.e2e.ts reads 185 px / 1,026 px / 420 px today, and the plan's own probe reproduces exactly that geometry while explaining the spec's contradicting 576/852/576 as an artifact of the clamped scrollHeight read. Only Punk.gp's 1,026 px is genuinely unverified, so scoping the step to that one figure keeps the real check and stops a temporary print going into a green test the plan is otherwise careful not to disturb.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "Rewrite Task 2 Step 3 to state that this plan's own probe confirms the comment's 185 px score and 420 px box, and that only Punk.gp's 1,026 px needs re-measuring: keep the single temporary print in the `long enough to scroll` case, drop the second print from the `the score it opens with` case, and drop the \"three measurements that no longer hold\" framing.",
+      "confidence": 75,
+      "evidence": [
+        "The comment above the `long enough to scroll` case states three measurements that no longer hold.",
+        "The spec records 576 px, 852 px and 576 px, but those were taken with the clamped read",
+        "Measured in Chromium 1.61.1 on that geometry: a 185 px score"
+      ]
+    },
+    {
+      "title": "Image-tag bite-proof names a message that edit cannot produce",
+      "severity": "P2",
+      "section": "Task 3 Step 4",
+      "why_it_matters": "Following Step 4 produces a different failure than the one written down, so the implementer cannot tell whether the guard bit for the right reason — the exact discipline this plan insists on elsewhere (\"always read WHICH assertion failed, never just the exit code\"). Changing IMAGE to v1.60.0-noble still matches the /^IMAGE=…:\\S+$/gm pattern, so assert.ok(images, …) passes and the loop's assert.equal fires instead, printing \"IMAGE=…v1.60.0-noble disagrees with …v1.61.1-noble\". The quoted \"must pin\" message can only appear when the IMAGE= line is removed altogether.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "In Task 3 Step 4, change the expected failure to `IMAGE=mcr.microsoft.com/playwright:v1.60.0-noble disagrees with mcr.microsoft.com/playwright:v1.61.1-noble`, and add one clause saying the `must pin` message covers the separate case where the IMAGE= line is deleted outright.",
+      "confidence": 75,
+      "evidence": [
+        "`tooling/docker-playwright.sh must pin mcr.microsoft.com/playwright:v1.61.1-noble`. Restore it.",
+        "assert.ok(images, `tooling/docker-playwright.sh must pin ${expected}`);"
+      ]
+    },
+    {
+      "title": "Timing named as the only risk of moving the axe lane into the container",
+      "severity": "P2",
+      "section": "Task 9 Step 10",
+      "why_it_matters": "The one CI run that verifies the move is read for the wrong thing: web's accessibility lane leaves ubuntu-latest plus an on-demand Chromium for a pinned image with its own baked font set, and that lane asserts geometry — expectHitAreas' on-screen containment at 700 px and axe's contrast maths — not only timing. A shifted glyph metric then reads as a mystery red to be re-run rather than an expected consequence of the move. The \"render identically\" framing compounds it, since the two projects deliberately run at 1280x720 and 1280x900.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "Widen Task 9 Step 10 item 6 beyond timing: name the container's different Chromium build and baked font set, and call out expectHitAreas' 700 px containment check and axe's contrast measurements as the assertions most likely to move; and soften the three \"web's axe and web's VR render identically\" claims to \"the same build and the same browser binary\", since the two projects run at different viewports.",
+      "confidence": 50,
+      "evidence": [
+        "6. The 92 existing `web/` behaviour tests still pass in the container. Their timing changing is the",
+        "web's axe and web's VR render identically. One build per run"
+      ]
+    }
+  ],
+  "residual_risks": [
+    "Task 8's guard hardcodes the baseline directory web/e2e/pages.vr.ts-snapshots/ while globbing shots as *.vr.ts; a second shot file — which the Global Constraint \"Every *.vr.ts calls failOnUnexpectedPageErrors()\" anticipates — makes the set-equality assertion fail spuriously, and readdirSync throws if that file's own snapshot folder is the only one present.",
+    "Deleting one of the five shots that carry no surface assertion (landing, player-long-score, player-skeleton, player-header-tooltip, player-narrow) together with its baseline keeps the set-equality assertion green at eight shots; nothing pins the nine-shot count the Global Constraints settle.",
+    "sources.some((source) => source.includes('backgroundColor')) is satisfied by one occurrence anywhere, including inside a comment, and is fully subsumed by the four anchored surface patterns above it.",
+    "Task 4 Step 2 proves the @source not '../e2e/**' exclusion by comparing two consecutive next build runs in the same worktree without clearing .next/cache between them; web/vercel.json runs `rm -rf .next/cache` before every build for exactly this class of stale-scan risk, and AGENTS.md records that a restored cache can predate a change to what gets scanned.",
+    "Task 3's image-tag guard message 'no Playwright container pin found in ci.yml — a pixel job lost its container' can only fire when EVERY container: pin is gone; the vr job losing its own pin is caught loudly by a missing browser rather than by this guard.",
+    "Verified: web/scripts/app-version.mjs returns the constant 'local' when VERCEL_ENV is unset and never shells out to git, so the container build is safe from the worktree's unresolvable .git file.",
+    "Verified: web/e2e/a11y.e2e.ts already calls failOnUnexpectedPageErrors() while stalling and aborting **/alphatab/esm/alphaTab.mjs, so the plan's claim that both deliberately-broken states pass under the error gate holds empirically.",
+    "Verified: client/ carries exactly 842 committed *-chromium-linux.png baselines and .github/workflows/ci.yml is inside the `code` paths-filter, so the quality job (which runs pnpm run test:tooling) does run on a ci.yml-only PR — the repo's known paths-filter trap does not apply to these guards."
+  ],
+  "deferred_questions": [
+    "Should the token-probe pattern become one shared helper (resolveToken, with the opacity guard built in) before further shots adopt it, rather than two hand-copied probes?",
+    "Should tooling/workflow-guards.test.mjs assert the shot count is nine, given the Global Constraint that a tenth must justify itself — accepting that adding a tenth then requires editing the guard?",
+    "With web's test:e2e no longer invoked anywhere in CI after Task 9, should it remain a local-only script, or should CI keep a scoped smoke invocation so the e2e project's existence is exercised by something other than a source-text assertion?"
+  ]
+}

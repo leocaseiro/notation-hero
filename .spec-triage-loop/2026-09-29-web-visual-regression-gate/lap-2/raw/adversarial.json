@@ -1,0 +1,109 @@
+{
+  "reviewer": "adversarial",
+  "findings": [
+    {
+      "title": "Tailwind-scan probe greps a pattern the emitted CSS never contains",
+      "severity": "P1",
+      "section": "Task 4, Step 2 / The one hazard outside the spec's footprint",
+      "why_it_matters": "An implementer running Task 4 Step 2 sees `excluded — web/e2e is no longer scanned` whether or not the `@source not '../e2e/**'` line landed, because the grep can never match: Tailwind emits the selector CSS-escaped as `.mt-\\[137px\\]`, and the plan greps for the unescaped `mt-[137px]`. Proven by running both of the plan's exact commands in this checkout against `web/.next/static/chunks/42d2m7n8ftnh3.css`, which currently CONTAINS `.mt-\\[137px\\]` while `web/app/globals.css` still has no e2e exclusion — the hazard-section command printed nothing, and the Step 2 command printed the 'excluded' message. `grep -F` matches it, and the repo's own `web/scripts/assert-design-system-css.mjs` already writes the emitted form that way (String.raw `.size-\\[2\\.125rem\\]`), so the escaped shape is established in-repo.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "Replace both `grep -rl 'mt-\\[137px\\]' web/.next/static/ --include='*.css'` invocations (Task 4 Step 2 and the hazard section's reproduction block) with the fixed-string form `grep -rlF 'mt-\\[137px\\]' web/.next/static/ --include='*.css'`, so the search matches the CSS-escaped `.mt-\\[137px\\]` Tailwind actually emits, and give Task 4 Step 2 a positive control: run the probe once BEFORE adding the `@source not '../e2e/**'` line (expecting the chunk path to print) and again after (expecting no output), rather than a single `||` branch that fires either way.",
+      "confidence": 100,
+      "evidence": [
+        "grep -rl 'mt-\\[137px\\]' web/.next/static/ --include='*.css' || echo \"excluded — web/e2e is no longer scanned\"",
+        "Expected: `excluded — web/e2e is no longer scanned`, and the build's own last line still reads",
+        "grep -rl 'mt-\\[137px\\]' web/.next/static/ --include='*.css'   # prints the emitted chunk",
+        "`web/e2e/` has the same shape and no such line. **Measured, not reasoned:** a `mt-[137px]` planted in"
+      ]
+    },
+    {
+      "title": "Rail and footer surface assertions pass on a transparent surface",
+      "severity": "P1",
+      "section": "Task 5, Step 3 (surfaceDiffersFromPageBackground) and Step 5",
+      "why_it_matters": "The rail and the transport footer can lose their background entirely and both the assertion and the picture stay green, so the one regression mechanism this gate is built around — a utility that reaches `web/`'s bundle only through the `client/` source scan going missing (PR #162, NH-315) — slips through. An element with no applied `background-color` computes to `rgba(0, 0, 0, 0)`, which differs from `body`'s opaque `bg-background` (confirmed at client/src/styles.css:275-276, `--background: oklch(100% 0 0deg)`), so the helper returns true; and `--rail`/`--panel` against that page background score 20 and 5 against the 1408.6 cutoff, so the comparator counts zero pixels. Step 5's proof swaps `bg-rail` for `bg-background` — opaque to opaque — which is the one branch that does trip the assertion, so it certifies an assertion blind to the visually identical failure. The engine-error poll already carries the missing clause for exactly this reason.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "Give `surfaceDiffersFromPageBackground` the transparent-surface clause the engine-error poll already has, so it returns `own !== 'rgba(0, 0, 0, 0)' && own !== globalThis.getComputedStyle(document.body).backgroundColor`, and change Task 5 Step 5's proof to DELETE `bg-rail` from the `<aside>` (and `bg-panel` from the footer) instead of swapping each for `bg-background`, so the step exercises the transparent branch the assertion used to pass.",
+      "confidence": 75,
+      "evidence": [
+        "    return own !== globalThis.getComputedStyle(document.body).backgroundColor;",
+        "Temporarily change the `<aside>`'s `bg-rail` to `bg-background` in `PlayerShell.tsx`, then:",
+        "Expected: FAIL on `surfaceDiffersFromPageBackground('player-rail')`, **not** on the screenshot — that is",
+        "Do this before generating baselines — an assertion that cannot fail is worse than none."
+      ]
+    },
+    {
+      "title": "Engine-error poll proves only that something opaque is painted",
+      "severity": "P1",
+      "section": "Task 7, Step 2 and Step 4",
+      "why_it_matters": "The engine-error shot cannot tell the destructive tint from any other opaque surface, so replacing `bg-[color-mix(in_oklab,var(--destructive)_10%,var(--popover))]` with a plain `bg-popover` or `bg-background` passes both the poll and the picture. `engine-error`'s parent in web/app/play/NotationSurface.tsx:218 is `<div className=\"relative h-full w-full\">`, which paints nothing, so `own !== getComputedStyle(parent).backgroundColor` is satisfied by every opaque colour — the objection the plan itself writes down two tasks earlier for the rail/footer helper, and then does not apply here. What is left of the poll is the `!== 'rgba(0, 0, 0, 0)'` clause alone, and the spec's own arithmetic puts the tint at 173 against the 1408.6 cutoff, so the comparator counts zero pixels. Step 4's proof removes the background utility, exercising only the transparent branch that already works.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "Replace the poll's parent comparison with the expected tint resolved through a throwaway probe element, exactly as Task 6's ghost-hover shot resolves `var(--elevate)`: read `color-mix(in oklab, var(--destructive) 10%, var(--popover))` off a probe `div` appended to `document.body` and assert `panel`'s computed `backgroundColor` equals it (which subsumes the transparent case, so the `parent` and `rgba(0, 0, 0, 0)` clauses both go); re-anchor Task 8's engine-error guard entry from `/'rgba\\(0, 0, 0, 0\\)'/` to `/var\\(--destructive\\)/` so the guard still names an assertion that exists; and change Task 7 Step 4's proof to swap the tint for `bg-popover` rather than removing the background utility.",
+      "confidence": 75,
+      "evidence": [
+        "          own !== globalThis.getComputedStyle(parent).backgroundColor &&",
+        "  // one also has to rule out fully transparent, which \"differs from the parent\" does not.",
+        "    // Against a transparent parent EVERY opaque colour differs, bg-background included, so the",
+        "temporarily remove the background utility, keeping the border and the red text. Then:"
+      ]
+    },
+    {
+      "title": "Shot guard asserts one screenshot call, never nine paired baselines",
+      "severity": "P2",
+      "section": "Task 8, Step 2",
+      "why_it_matters": "A later PR can delete a shot's `toHaveScreenshot` call, or a whole shot plus its baseline, and the guard written to stop 'a merge-blocking gate reading green over zero pixels' stays green as long as one call survives anywhere, because it asserts `sources.some(...)` rather than a count and never pairs a shot to its committed baseline. Six of the nine shots (landing, long score, transport pressed, header tooltip, narrow, Skeleton) carry no per-shot anchor in that guard at all — only the four surface-assertion literals hold the other three in place. The nine-count check exists solely as a manual 'Before opening the PR' box that CI never runs, and Playwright does not fail on an orphaned baseline, so an eight-shot lane reads exactly like a nine-shot one.",
+      "finding_type": "omission",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "Replace the `sources.some((source) => source.includes('toHaveScreenshot('))` assertion with one that extracts every `toHaveScreenshot('<name>.png')` argument out of the `*.vr.ts` sources and asserts that set equals exactly the committed `<name>-chromium-linux.png` files under `web/e2e/pages.vr.ts-snapshots/`, so a dropped shot, a dropped baseline and a renamed snapshot each fail in CI instead of relying on the manual pre-PR count.",
+      "confidence": 75,
+      "evidence": [
+        "    sources.some((source) => source.includes('toHaveScreenshot(')),",
+        "    'no *.vr.ts calls toHaveScreenshot — the chromium project compares nothing',",
+        "Confirm the count: `ls web/e2e/pages.vr.ts-snapshots/*-chromium-linux.png | wc -l` → `9`. Local",
+        "Counting filenames is not enough: an empty file, `test.describe.skip(`,"
+      ]
+    },
+    {
+      "title": "Client baseline count is stale: 842 committed, not 698",
+      "severity": "P3",
+      "section": "Task 3, Step 5",
+      "why_it_matters": "A reader checking the one number Task 3 Step 5 offers as the scale of its regression check finds 842 committed `client/` baselines, not 698 — `git ls-files 'client/**-chromium-linux.png' | wc -l` returns 842 on this branch. Nothing breaks and the step's action is unchanged, but the plan's persuasive force rests on measured figures throughout (it even carries a table of drifted spec line numbers), so a figure 17% low invites a reader to discount the rest.",
+      "finding_type": "error",
+      "autofix_class": "safe_auto",
+      "suggested_fix": "Change '`client/` has 698 committed baselines that must still match' to 842 — the count `git ls-files 'client/**-chromium-linux.png' | wc -l` returns on this branch.",
+      "confidence": 50,
+      "evidence": [
+        "This is the real test of the helper: `client/` has 698 committed baselines that must still match."
+      ]
+    },
+    {
+      "title": "One-build option never weighed in the builds-per-CI-run argument",
+      "severity": "P2",
+      "section": "Task 9 (opening paragraph)",
+      "why_it_matters": "The CI decision is argued entirely on 'web builds per CI run', yet the option that would take it to one — reusing the `.next` output the `build` job already produces and running only `pnpm start` in this lane's `webServer` — is never named, so a reviewer reads the three-option comparison as exhaustive and reopens the question after the work lands. The blocker is real and already stated elsewhere in this plan, which is why recording it costs a sentence: `NEXT_PUBLIC_ALPHATAB_LOG_LEVEL: 'Debug'` is inlined at build time, so the `build` job's artifact is not the build this lane wants, and the two jobs run on different images (`setup-js` on `ubuntu-latest` versus the Playwright container).",
+      "finding_type": "omission",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "Add a sentence to Task 9's opening paragraph recording why reusing the `build` job's `.next` artifact — the only option that would take `web` to one build per CI run — was rejected: `NEXT_PUBLIC_ALPHATAB_LOG_LEVEL: 'Debug'` is inlined at build time so that artifact is not the build this lane needs, and the `build` job runs under `setup-js` on `ubuntu-latest` while this lane runs inside the Playwright container.",
+      "confidence": 50,
+      "evidence": [
+        "`web/` is built twice per CI run today — the `build` job's `pnpm run build` fans out to it, and the",
+        "a separate `web-vr` job, would each make that three. Moving the lane keeps it at two **and** makes",
+        "      // NEXT_PUBLIC_* is inlined at BUILD time, which is why the command above runs `pnpm build`"
+      ]
+    }
+  ],
+  "residual_risks": [
+    "Checked and found NOT a hole, so not emitted: the 'baselines deleted -> auto-written on attempt 0 -> flaky pass on retry -> green gate' path does not exist on this version. In node_modules/.pnpm/playwright@1.61.1/node_modules/playwright/lib/matchers/expect.js, `handleMissing` returns `shouldNotRetryTest: true` when `updateSnapshots === 'missing'`, and the runner plumbs that through `hasNonRetriableError`. Task 4 Step 4's claim that it 'writes the baseline and fails that attempt, without retrying' is accurate for CI as well as local.",
+    "UNTESTED: Tasks 5-7 run `pnpm --filter @notation-hero/web run test:vr -g \"...\"`. That relies on pnpm forwarding `-g` to the script rather than reading it as its own `--global` shorthand. I did not execute it.",
+    "Task 3's guard comment says it anchors the image tag to 'the installed @playwright/test' but it reads the DECLARED caret floor from `web/package.json` devDependencies, so a lockfile-only patch bump inside `^1.61.1` leaves the guard green against a stale image tag. Verified low-impact: a runner/image mismatch is loud, not silent, and the guard's other claim does hold — `.syncpackrc.json` has empty versionGroups (default single-version), both packages declare `^1.61.1`, and `pnpm run syncpack` passes today.",
+    "Both absence-waits in the lane pass instantly if their locator stops matching: `getByRole('progressbar', { name: 'Loading the player' })` and `page.locator('[data-sonner-toast]')` with `toHaveCount(0)`. Both are correct today (`label=\"Loading the player\"` at web/app/play/PlayerShell.tsx:1053; `data-sonner-toast` present in sonner@2.0.7), so this is a fragility rather than a current defect and is suppressed as speculative.",
+    "`grep -rl` over `web/.next/static/` walks whatever chunks are on disk, and stale content-hashed stylesheets can survive a rebuild (this checkout still carries `.mt-\\[137px\\]` from the author's own probe run, in a build dated 2026-09-29). Once the pattern is fixed per finding 1, consider `rm -rf web/.next` before the probe build so the check reads only the fresh stylesheet.",
+    "Verified correct and deliberately NOT raised: the nine `a11y.e2e.ts` navigation call sites the Task 2 table maps (lines 248-373 inclusive); the stale-figures comment at `web/e2e/a11y.e2e.ts:265-268` carrying exactly the 185 / 1,026 / 420 px figures the plan names; `REQUIRED_SELECTORS` being 10 entries so Task 4 Step 2's expected canary line is right; `@source not '../scripts/**'` at `web/app/globals.css:35` with no e2e sibling yet; `client/.gitignore:24` carrying the darwin line while `web/.gitignore` does not; `--elevate` being an authored `:root` variable at `client/src/styles.css:164` (with `--color-elevate: var(--elevate)` at :110), so Task 6's `var(--elevate)` probe resolves rather than going vacuous; every test id and `data-slot` the nine shots use existing today; `web/app/page.tsx` carrying no test id and using `min-h-dvh`, which supports the `fullPage` claim for `/`; the `code` paths-filter covering `client/**`, `web/**`, `tooling/**` and `.github/workflows/ci.yml`, so the guards and the `web` job both fire on the PRs that could break them; `ci.yml`'s 2-space job keys making Task 9's `webJob` slice regex work and `secret-scan:` terminating it; `playwright test` appearing exactly once in the proposed `web` job block, comments included, so the count-of-one guard is real; each of Task 8's four surface-assertion literals appearing only in its own assertion and not in prose; and `web/README.md:20` reading exactly as Task 10 Step 1 claims."
+  ],
+  "deferred_questions": [
+    "Should 'Nine shots' be a CI invariant rather than a manual pre-PR box? The plan lists it as a Global Constraint, but after finding 4 the only enforcement is a human running `ls ... | wc -l`.",
+    "Six of the nine shots carry no determinism evidence (the plan says so plainly). Is one CI lap enough to promote them straight to merge-blocking, or should the `web` job run outside `ci-green`'s `needs:` for a short observation window first?"
+  ]
+}

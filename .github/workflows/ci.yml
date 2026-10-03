@@ -219,7 +219,7 @@ jobs:
     needs: changes
     if: ${{ needs.changes.outputs.code == 'true' }}
     runs-on: ubuntu-latest
-    container: mcr.microsoft.com/playwright:v1.61.1-noble
+    container: mcr.microsoft.com/playwright:v1.61.1-noble@sha256:5b8f294aff9041b7191c34a4bab3ac270157a28774d4b0660e9743297b697e48
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # NOT the setup-js composite: inside the Playwright container, use the image's Node
@@ -235,7 +235,7 @@ jobs:
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: playwright-vr-report
+          name: playwright-client-vr-report
           path: |
             client/playwright-report/
             client/test-results/
@@ -269,7 +269,7 @@ jobs:
         continue-on-error: true
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: playwright-vr-report
+          name: playwright-client-vr-report
           path: vr-artifact
       - name: Check report present
         id: report
@@ -378,17 +378,17 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 comment_id: existing.id,
-                body: `${marker}\n✅ VR passing on \`${sha}\` — no visual diffs to review.`,
+                body: `${marker}\n✅ client VR passing on \`${sha}\` — no visual diffs to review. (web/'s VR lane is the separate \`web\` job; it has no hosted report — download \`playwright-web-report\` from the run.)`,
               });
             }
 
-  # End-to-end — two Playwright lanes. client/: the built SPA (`vite preview`) with /api/catalog
-  # mocked by MSW. web/: the built Next.js app (`next build` then `next start`), which is the only
-  # gate over the product's own UI — web/ has no Storybook, so neither `vr` nor `a11y` covers it.
-  # Models the `a11y` job (ubuntu + on-demand Chromium); unlike `vr` it is not pixel-exact, so no
-  # Playwright container. Each package needs its own browser install. Uploads traces + the HTML
-  # report so a CI failure is replayable via `npx playwright show-trace`. Path-filtered on `code`;
-  # blocks merge via ci-green.
+  # End-to-end — Playwright against client/'s built SPA (`vite preview`), with /api/catalog mocked by
+  # MSW. web/'s browser lane lives in the `web` job, which runs it in the Playwright container so
+  # one `next build` serves behaviour, axe and pixels together. Models the `a11y` job
+  # (ubuntu + on-demand Chromium): this lane is not pixel-exact, so it needs no Playwright container
+  # — which is what still distinguishes it from the `vr` and `web` jobs, both of which are. Uploads
+  # traces + the HTML report so a CI failure is replayable via `npx playwright show-trace`.
+  # Path-filtered on `code`; blocks merge via ci-green.
   e2e:
     needs: changes
     if: ${{ needs.changes.outputs.code == 'true' }}
@@ -400,20 +400,61 @@ jobs:
         run: pnpm --filter @notation-hero/client exec playwright install --with-deps chromium
       - name: e2e tests (Playwright vs built app)
         run: pnpm --filter @notation-hero/client run test:e2e
-      - name: Install Playwright Chromium (web)
-        run: pnpm --filter @notation-hero/web exec playwright install --with-deps chromium
-      - name: e2e tests (Playwright vs the built Next.js app)
-        run: pnpm --filter @notation-hero/web run test:e2e
       - name: Upload traces + HTML report
         # NOT `if: failure()` — that would drop the trace of a flaky-then-passed run (D5).
-        # ONE upload step for both lanes: a second step reusing the artifact name would collide.
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: playwright-e2e-report
+          name: playwright-client-e2e-report
           path: |
             client/playwright-report/
             client/test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # web/'s whole browser lane — behaviour, accessibility and visual regression — in ONE
+  # Playwright-container job, so ONE `next build` serves all three and web's axe and web's VR run
+  # against the same build in the same browser binary. web/ has no Storybook, so neither `vr` nor
+  # `a11y` covers it; THIS is that gate.
+  # Path-filtered on `code`; blocks merge via ci-green, from day one, as client/ VR already does.
+  # It runs PR-AUTHORED browser code, so it deliberately carries no secrets and no permissions:
+  # block, inheriting the workflow's contents: read — unlike vr-report, which holds contents: write
+  # and says so in its own header. If web/ ever gains a hosted diff page, the write token goes in a
+  # SEPARATE job, the way vr-report is separate from vr.
+  # Spec: docs/specs/2026-09-21-web-visual-regression-gate.md (NH-320).
+  web:
+    needs: changes
+    if: ${{ needs.changes.outputs.code == 'true' }}
+    runs-on: ubuntu-latest
+    container: mcr.microsoft.com/playwright:v1.61.1-noble@sha256:5b8f294aff9041b7191c34a4bab3ac270157a28774d4b0660e9743297b697e48
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # NOT the setup-js composite — same reasoning as the `vr` job: inside the Playwright container
+      # use the image's Node + corepack (pnpm from packageManager) and --ignore-scripts.
+      # pnpm/action-setup conflicts with the image's pnpm layout, and the lefthook `prepare` cannot
+      # run here. Browsers are baked into the image — no `playwright install`.
+      - name: Install deps
+        run: corepack enable && pnpm install --frozen-lockfile --ignore-scripts
+      # ONE invocation, with NO --project, and this is load-bearing. Playwright registers the
+      # webServer per INVOCATION and tears it down when that invocation ends, so two scoped steps
+      # would each run their own `pnpm build && pnpm start` and the whole reason for this job would
+      # evaporate. Measured: a two-project config recorded ONE server boot for a single unscoped run
+      # and TWO for two scoped runs. Nothing is lost by combining them — both the HTML report and
+      # the `list` reporter print the project name on every test, so a red run still says whether
+      # the pixel lane or the behaviour lane failed. The scoped test:e2e and test:vr scripts stay
+      # for local use, where running one lane at a time is the point.
+      - name: web browser lane (end-to-end + accessibility + visual regression)
+        run: pnpm --filter @notation-hero/web exec playwright test --config=playwright.e2e.config.ts
+      - name: Upload the web Playwright report
+        # NOT `if: failure()` — keep the trace of a flaky-then-passed retry (matches vr and e2e, D5).
+        # Unguarded this would never run on the one run that needs it: GitHub skips a job's remaining
+        # steps once a step fails, and web/ has no hosted diff page as a fallback — a red run is read
+        # by downloading this artifact and opening it with `npx playwright show-report`.
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: playwright-web-report
+          path: |
             web/playwright-report/
             web/test-results/
           retention-days: 7
@@ -514,6 +555,7 @@ jobs:
         a11y,
         vr,
         e2e,
+        web,
         secret-scan,
         sast,
         deps-cve,

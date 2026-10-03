@@ -115,7 +115,10 @@ export function TransportRow({
     // and this one is a flex row that nothing scrolls under, so an alpha would paint nothing.
     // The gaps and the side padding tighten before any control has to go: 24 px of gap and 32 px
     // of padding is 160 px of the row on a phone, which is most of what the seek rail needs.
-    <div className="flex h-20 w-full shrink-0 items-center gap-3 border-t border-border bg-panel px-4 sm:gap-6 sm:px-8">
+    <div
+      data-testid="transport-row"
+      className="flex h-20 w-full shrink-0 items-center gap-3 border-t border-border bg-panel px-4 sm:gap-6 sm:px-8"
+    >
       {playButton}
       {/* The LABEL names what will repeat too, for a screen reader: the button looks identical
           either way. No marker UI, so the out-of-scope constraint holds. */}

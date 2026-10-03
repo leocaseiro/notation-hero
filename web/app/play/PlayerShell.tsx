@@ -1075,7 +1075,10 @@ function Player() {
             §2), so the rail holds exactly one control and `mt-auto` is what pins it down there. */}
         {/* `bg-rail` is a step DOWN from the page, where the footer's `bg-panel` is a step up —
             the mockup's own two values. One token for both read as a single flat band. */}
-        <aside className="flex w-20 shrink-0 flex-col items-center border-r border-border bg-rail py-6 lg:w-24">
+        <aside
+          data-testid="player-rail"
+          className="flex w-20 shrink-0 flex-col items-center border-r border-border bg-rail py-6 lg:w-24"
+        >
           <div className="mt-auto">
             <OpenFileControl onNotation={requestNotation} />
           </div>

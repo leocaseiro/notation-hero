@@ -1,0 +1,93 @@
+{
+  "reviewer": "adversarial-document-reviewer",
+  "findings": [
+    {
+      "title": "Rail and footer surface assertions pass against transparent parent",
+      "severity": "P1",
+      "section": "Task 5: The three loaded-player shots, and the two test hooks they need (Step 3 helper + Step 5 proof)",
+      "why_it_matters": "Both surface assertions stay green when the rail or the transport footer loses its surface entirely, so the regression they were added to catch still ships with a green gate. In the real DOM the `<aside>` that gets `data-testid=\"player-rail\"` sits inside `<section className=\"nh-drop-zone relative flex min-h-0 flex-1\">` and TransportRow's `bg-panel` div sits inside `<div className=\"shrink-0\" data-testid=\"player-status\">`; neither paints a background (globals.css gives `.nh-drop-zone` only an outline under `[data-dragging]`), so `getComputedStyle(parent).backgroundColor` is `rgba(0, 0, 0, 0)` and ANY opaque own colour differs from it. Task 5 Step 5's prescribed proof therefore PASSES where the plan says it must FAIL, so the one check the plan gives the implementer on this assertion's validity also breaks.",
+      "finding_type": "error",
+      "autofix_class": "manual",
+      "confidence": 100,
+      "evidence": [
+        "    return parent !== null && own !== globalThis.getComputedStyle(parent).backgroundColor;",
+        "Temporarily change the `<aside>`'s `bg-rail` to `bg-background` in `PlayerShell.tsx`, then:",
+        "Expected: FAIL on `surfaceDiffersFromParent('player-rail')`, **not** on the screenshot — that is",
+        "Do this before generating baselines — an assertion that cannot fail is worse than none."
+      ],
+      "suggested_fix": "Compare against the surface actually painted behind the element rather than its (transparent) parent: read `getComputedStyle(document.body).backgroundColor` inside the same `evaluate` and assert the element's own background differs from THAT, so swapping `bg-rail`/`bg-panel` to `bg-background` fails the assertion."
+    },
+    {
+      "title": "Ghost-hover poll compares hover to its own transparent resting value",
+      "severity": "P1",
+      "section": "Task 6: The hover and breakpoint shots — Step 1 (ghost-hover shot) and Step 4 (its proof)",
+      "why_it_matters": "The ghost-hover assertion stays green under the exact regression the shot exists for. `client/src/components/ui/Button/Button.tsx` gives the ghost variant no resting background at all (`hover:bg-elevate hover:text-foreground aria-expanded:bg-elevate …`), so `resting` reads `rgba(0, 0, 0, 0)`; any opaque hover colour — `bg-muted` (the named regression) or `bg-rail` (the plan's own sabotage) — differs from it and the poll passes. Task 6 Step 4's prescribed FAIL will be a PASS, so the implementer cannot discover the assertion is inert, and the shot then covers only 'the page rendered'.",
+      "finding_type": "error",
+      "autofix_class": "manual",
+      "confidence": 100,
+      "evidence": [
+        "  const resting = await ghost.evaluate((el) => globalThis.getComputedStyle(el).backgroundColor);",
+        "  // `hover:bg-muted` (46) changes ZERO counted pixels — and that revert is the exact regression",
+        "Expected: FAIL on the `.not.toBe(resting)` poll. Revert."
+      ],
+      "suggested_fix": "Assert the hovered value against the surface the button sits on, not against its own resting value: read the rail's `backgroundColor` through the same serializer and require the hovered button background to differ from the rail's, so `hover:bg-rail` and `hover:bg-muted`-over-`--rail` both fail."
+    },
+    {
+      "title": "Task 8 hook guard vacuous for three of four assertions",
+      "severity": "P1",
+      "section": "Task 8: Guard that the pixel lane actually compares pixels — Step 2 (hook loop) and Step 4 (proof 4)",
+      "why_it_matters": "Three of the four surface assertions can be deleted with the guard still green, so the loss the Review Focus names stays exactly as silent after Task 8 as before it. `player-rail` survives in the snapshot name `player-rail-ghost-hover.png`; `engine-error` survives in both `player-engine-error.png` and the `getByTestId('engine-error')` the shot needs for its own visibility wait; `open-file-button` survives in the `ghost.hover()` locator the shot cannot work without. Only `transport-row` appears nowhere else. Task 8 Step 4's fourth proof will therefore print PASS instead of the quoted failure, leaving the implementer unable to complete the step the plan calls the reason Task 8 exists.",
+      "finding_type": "error",
+      "autofix_class": "manual",
+      "confidence": 100,
+      "evidence": [
+        "  for (const hook of ['player-rail', 'transport-row', 'open-file-button', 'engine-error']) {",
+        "      `no *.vr.ts reads ${hook} — a surface assertion the comparator cannot replace is gone`,",
+        "4. Remove the `player-rail` assertion from the bundled-beat shot → `no *.vr.ts reads player-rail`",
+        "  await expect(page).toHaveScreenshot('player-rail-ghost-hover.png', { fullPage: true });",
+        "  const panel = page.getByTestId('engine-error');",
+        "  const ghost = page.getByTestId('open-file-button');"
+      ],
+      "suggested_fix": "Anchor each arm to the assertion's own call shape instead of a bare test id — require `/surfaceDiffersFromParent\\(page, 'player-rail'\\)/` and `/surfaceDiffersFromParent\\(page, 'transport-row'\\)/`, and one `getComputedStyle`-plus-`backgroundColor` read per remaining shot — so a snapshot filename or a locator the shot needs anyway cannot satisfy the arm."
+    },
+    {
+      "title": "Web-job guard forbids a phrase the job's own comment carries",
+      "severity": "P1",
+      "section": "Task 9: Move web/'s whole browser lane into the container — Step 1 (job YAML) vs Step 7 (guard)",
+      "why_it_matters": "`pnpm run test:tooling` goes red the moment Task 9 lands, for a reason the plan never predicts. The guard slices the `web:` job block and asserts the string `playwright install` appears nowhere in it, but the job's own Install-deps comment — copied from the `vr` job — ends with \"no `playwright install`\". Step 8 tells the implementer to expect all PASS, so the first thing they see is a failure whose message points at an install step that does not exist, and the natural reaction (adding or hunting for one) is the opposite of what the guard wants.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "confidence": 100,
+      "evidence": [
+        "    # run here. Browsers are baked into the image — no `playwright install`.",
+        "    /playwright install/,",
+        "Expected: all PASS. Then prove the one-invocation guard bites — temporarily duplicate the"
+      ],
+      "suggested_fix": "Anchor the assertion to a real step line — `assert.doesNotMatch(webJob, /^\\s+run:.*playwright install/m)` — so prose mentioning the phrase cannot trip it while an actual install step still does."
+    },
+    {
+      "title": "First local shot run fails by design, not PASS",
+      "severity": "P2",
+      "section": "Task 4 Step 4 (landing shot) and Task 7 Step 3 (Skeleton shot)",
+      "why_it_matters": "Both steps tell the implementer to expect PASS on a run where no baseline exists yet, and Playwright fails that attempt by design. With the default `updateSnapshots: 'missing'` (neither web's nor client's config overrides it), `toHaveScreenshot` writes the file and returns a soft error — \"A snapshot doesn't exist at …, writing actual.\" — carrying `shouldNotRetryTest`, so the worker calls `_failWithError`, retries are suppressed and the run exits 1. Task 4 Step 4 is the plan's first end-to-end proof that the project split, snapshot path and container chain work, so a red there sends the implementer debugging the config rather than moving on.",
+      "finding_type": "error",
+      "autofix_class": "safe_auto",
+      "confidence": 100,
+      "evidence": [
+        "Expected: PASS, having written `landing-chromium-darwin.png` (on a Mac). That file is git-ignored by",
+        "Expected: PASS. Open the written darwin PNG and confirm it shows the skeleton placeholder, **not**"
+      ],
+      "suggested_fix": "State the real first-run result in both steps — a red run reporting \"A snapshot doesn't exist at …, writing actual.\" with the darwin PNG written — and add that the same command passes on its second invocation, which is the check that the shot is deterministic."
+    }
+  ],
+  "residual_risks": [
+    "The nine shots have never been measured in parallel: the 60-run determinism study ran at --workers=1, and in CI they will share one next-build server with the 91 behaviour tests under fullyParallel: true. The plan's remedy ladder is untested here, and its second rung (dependencies: ['e2e']) trades a red behaviour test for a pixel lane that reports 'did not run' and compares nothing.",
+    "Moving web/'s behaviour and axe lanes into the Playwright container changes their Chromium build, their Node version and their install flags (--ignore-scripts, no setup-js composite) all at once. Only a real CI run can show whether the 91 existing tests keep their timing; the plan names this as the one real risk of the move but has no pre-merge check for it.",
+    "surfaceDiffersFromParent's reference value is whatever element happens to be the parent in PlayerShell.tsx / TransportRow.tsx today. Inserting any wrapper div re-points the comparison, and nothing in the guard or the shots would notice.",
+    "@source not '../e2e/**' does remove real utilities from the emitted stylesheet — measured: h-[44px] is emitted today only because a web/e2e comment mentions it, and it appears nowhere in web/app or client/src. None of the ten REQUIRED_SELECTORS entries is named in web/e2e, so there is no live loss, but the change lands in Task 4 before any baseline exists that could notice one, and the nine baselines generated afterwards bake in whatever it did."
+  ],
+  "deferred_questions": [
+    "Should the three weak surface assertions be repaired inside this plan, or should the four sub-cutoff surface steps instead be asserted against their exact resolved token values so the coverage no longer depends on a 'differs from something' proxy at all?",
+    "Does the new `web` job need `needs: build` or a client build step? It replaces a job that ran under ./.github/actions/setup-js (full install, install scripts enabled) with `corepack enable && pnpm install --frozen-lockfile --ignore-scripts`, and web's build also runs scripts/vendor-alphatab.mjs and scripts/assert-design-system-css.mjs — none of which is exercised by the existing `vr` container job."
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "reviewer": "scope-guardian",
+  "findings": [],
+  "residual_risks": [
+    "Verified the plan's own disclosure that 'two files sit outside the spec's stated footprint' (web/app/globals.css, web/README.md) against the full file list in the spec's 'Process changes this carries' section — the disclosure is accurate and no third undisclosed footprint file exists across Tasks 1-10.",
+    "Verified every shared abstraction the plan introduces (web/e2e/player-states.ts, tooling/docker-playwright.sh, and pages.vr.ts's settleBeforeShot/awaitPlayerReady/surfaceDiffersFromPageBackground helpers) has two or more real current call sites within the plan's own tasks, with an explicit cost-of-duplication justification for each — none read as speculative or single-use.",
+    "Verified the shot count stays at exactly nine across Tasks 4-7 (1 + 3 + 3 + 2) and that none of the spec's explicitly deferred or excluded items (the two Plan C popover shots, dark-mode baselines, a second narrow-width pass, sub-640px transport layout, the drag-over and bar-range-selection states) were quietly folded in — Task 2's own notes explicitly decline to extract the popover navigation early to avoid speculative work.",
+    "Checked task ordering for upward dependencies: each task's declared 'Consumes' list only references outputs an earlier task's 'Produces' already delivers, and Task 8's cross-shot guard (which asserts all nine shots and their four surface assertions exist) is correctly sequenced after Tasks 4-7 finish writing them, not before.",
+    "Task 9 Step 7 adds two guard tests ('the client e2e lane still blocks merge too' and the VR-artifact-name-parity test) beyond the two rewritten assertions the CI move strictly requires; each verifies a fact the same task's own diff touches (ci-green's needs: list, the vr/vr-report artifact rename), so this reads as in-scope defensive coverage rather than scope creep, and is noted here rather than as a finding."
+  ],
+  "deferred_questions": [
+    "Now that web/app/globals.css and web/README.md are maintainer-approved as in-scope (per the plan's 'two files outside the spec's stated footprint' disclosure and the maintainer's 2026-09-29 approval), should docs/specs/2026-09-21-web-visual-regression-gate.md's own 'Process changes this carries' list be updated to include them, so a later footprint diff against the spec no longer needs this plan's standalone caveat?"
+  ]
+}

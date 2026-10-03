@@ -11,6 +11,115 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
+### 2026-10-03 — The web pixel gate ships with four execution-time decisions (NH-320)
+
+Recorded at merge, not at approval: these four were settled while executing the gate rather than
+while planning it, so the 2026-09-21 and 2026-09-22 entries above predate them. Each is stated as
+what the code does and why, for ratification on review.
+
+- **The Playwright container is pinned by DIGEST, not by tag,** in all three homes —
+  `IMAGE=` in `tooling/docker-playwright.sh`, and the `container:` lines of the `vr` and `web` CI
+  jobs. A tag can be re-pushed under you, and the helper mounts the whole working tree
+  read-write, so the image that renders the committed baselines is the one thing that must not
+  move silently. `tooling/workflow-guards.test.mjs` holds the three homes to one shared digest and
+  to the installed `@playwright/test`, so a partial bump fails CI instead of comparing baselines
+  under a renderer they were not made with.
+- **`web/e2e/**` is excluded from Tailwind's automatic source scan** (`web/app/globals.css`),
+alongside the existing `web/scripts/\*\*`exclusion. Those specs quote design-system class names
+in prose — the hit-area gate names`h-11`, the pixel shots name `bg-rail`and`hover:bg-elevate`— and Tailwind turns a class named in a COMMENT into real CSS, which would
+let`web/scripts/assert-design-system-css.mjs`pass over a utility the app itself stopped
+generating. Measured: an`mt-[137px]`planted in an`a11y.e2e.ts` comment reached the emitted
+  stylesheet. Both lines are now held by tests.
+- **One docker script family became two.** `test:vr:docker*` is split into
+  `test:client:docker*` and `test:web:docker*`, because two pixel lanes with different baselines
+  needed two entry points rather than one overloaded name. The `vr` CI artifact was renamed on
+  both the upload and the download side to match.
+- **The `web` job carries no secrets and no `permissions:` block,** and inherits the workflow's
+  `contents: read`. It runs PR-authored browser code inside a container as root over a
+  bind-mounted tree, so an escalation there has to be loud; both properties are asserted, at any
+  indent and whether written inline or as a block.
+
+**And a correction to the entry of 2026-09-22,** which is titled "grows to eleven shots". That was
+accurate when written. On 2026-09-28 the two Settings/Tracks popover shots were deferred out of
+this gate rather than widening PR #170, and that deferral was never recorded — so **ten shipped,
+not eleven**. The number now has a mechanism: `EXPECTED_SHOTS = 10` in the guard fails if the lane
+and the five documents that state it drift apart.
+
+### 2026-10-01 — Dependency CVE refresh: 19 advisories back to zero, ignore list still empty (NH-346)
+
+The `deps-cve` gate (osv-scanner) had drifted to **19 advisories across 11 packages** (2 Critical, 7 High, 9 Medium, 1 Low) — all from `pnpm-lock.yaml` on `master`, none from an open PR, and no lockfile change since the gate was last green on 2026-09-28. The vulnerability database moved under a static tree. The 2026-09-16 choice stands unchanged: a **real version fix over an allowlist**, so `osv-scanner.toml` still carries **no ignores at all**.
+
+- **Only `next` was a direct dependency.** 16.3.4 → 16.3.6 closes GHSA-vcvr-r3jv-pc5j (9.5, remote code execution in `next/og` `ImageResponse`). 16.3.6 is 8 days old and clears the 7-day `minimumReleaseAge` window; 16.3.7 is 1 day old and would have forced a `minimumReleaseAgeExclude` entry — the exact hole that gate exists to close — so it was not taken. **No release-age exception was added by this refresh.** `eslint-config-next` stays exact at 16.3.4: dev-only, no part of the advisory, and the anchor for the vetted `eslint-import-resolver-typescript@3.10.1` `trustPolicyExclude` pin (NH-275).
+- **The carrier is preferred over the override, and one override came out.** `markdownlint-cli2` pins `markdown-it` and `js-yaml` EXACTLY, so no floor could reach them — but 0.23.3 pins a patched `markdown-it` 15.0.1 and `js-yaml` 5.4.1, closing GHSA-253c-mchw-3w2r and GHSA-r3ph-w7gj-g6xm at source. That makes the old `markdown-it: ^14.2.0` override **harmful** rather than merely redundant: it would force the linter back onto the vulnerable major. It is dropped, the way the `js-yaml@3` override was dropped once its carrier left the tree. `pnpm run lint:md` is unchanged at 0 issues over 189 files.
+- **Three floated on a targeted `pnpm update --recursive`** with no override at all: `@grpc/grpc-js` 1.14.5, `ip-address` 10.7.2, `@xhmikosr/decompress` 10.2.2.
+- **`overrides` remains the lever only for the deep transitives.** Raised floors on `brace-expansion@1/@2/@5`, `fast-uri@3` and `multer`, each inside the major its parent declares.
+- **Targeted updates only — no blanket `pnpm update -r`.** Base UI, Storybook, TanStack, React, Tailwind and Playwright do not move, so the `client/` visual-regression baselines still hold. All 92 `web/` e2e browser tests pass on the `next` bump.
+
+**Status:** ✅ decided · 🤖 machine-checked — the `deps-cve` CI job is the enforcement, and it passes with an empty ignore list, so any regression or new ignore is visible in the diff.
+
+### 2026-09-22 — The web VR gate grows to eleven shots, against PR #170's layout (NH-320)
+
+Reviewing PR #170 turned up two gaps that only the composed `/play` page can show, and the
+maintainer deferred both to NH-320 rather than widening that PR. Reading #170's branch to place them
+then showed the spec's whole shot list described a screen #170 replaces, so it was re-derived rather
+than patched. The maintainer's instruction was explicit: _"we should fix everything now! Nothing
+will be delayed. This PR should be ready to implement."_
+
+- **A ghost button's hover step is photographed on the surface it actually sits on.** The ghost
+  variant is `hover:bg-elevate`, and #170 adds `--rail` (recessed), `--panel` (raised) and
+  `--elevate`. The step is strongest against Storybook's white canvas — the only place it is
+  photographed today — and weakest against `--rail`, where it could regress to invisible with every
+  existing gate green. The shot hovers `OpenFileControl`'s ghost button in the left rail. ✅ done.
+- **A portalled tooltip is proved to win the header's layer, and it is a screenshot.** `Tooltip.tsx`
+  puts `isolate z-50` on the Positioner; the `z-50` on the Popup never did anything, because Base UI
+  renders that element `position: static`. Nothing noticed until #170's header claimed `z-10` and
+  the tooltips went behind it — which Storybook cannot see, having no header. The maintainer asked
+  whether a snapshot suffices given the tooltip does not move: it does, because the tooltip is
+  portalled and positioned from its trigger's box, so it lands identically every run. The trigger
+  must be a **header** button (`back-home`); `z-10` only buries what overlaps the header's top
+  64 px, so a tooltip opening clear of it would prove nothing. ✅ done.
+- **One narrow shot, not a second full pass.** #170 renders the rail `w-20 … lg:w-24`, a real
+  breakpoint at 1024 px that a single pinned 1280 px viewport never sees. This reverses the earlier
+  "no mobile-width baselines" non-goal, which was written when the player had no breakpoint. One
+  shot at 900 px covers the narrow rail; shooting all eleven states twice is what the small-count
+  rule exists to prevent. ✅ done.
+- **The shot list is pinned to an unmerged branch, and says so.** Every shot now describes `/play`
+  as #170 leaves it. If #170 changes in review the list follows it, and the spec tells the
+  implementer to re-read `PlayerShell.tsx` rather than trust the descriptions.
+
+### 2026-09-21 — `web/` gets a visual-regression gate, and where it runs (NH-320)
+
+`web/` is the only UI surface in the repo with no pixel gate: the `a11y` and `vr` CI jobs both run
+`pnpm --filter @notation-hero/client`. That was never a decision — a screenshot lane for `web/`
+appears in no spec, plan, handoff, registry entry or pull request. The v0 spec-review lap-3 finding
+named both the accessibility and the VR gap; only the accessibility half was closed. Meanwhile the
+bug class shipped twice: the PR #162 seek rail painted 0 px wide with all 52 browser tests green,
+and NH-315 served production unstyled. `client/` VR cannot see either, because `web/` compiles its
+own Tailwind CSS by scanning `client/` source — a component can be right in Storybook and broken in
+the app.
+
+- **Page screenshots against the real `next build` app, in `web/e2e`.** Approved over two
+  alternatives. Storybook inside `web/` was rejected: it reopens the locked NH-275 decision, needs a
+  fake AlphaTab engine (the v0 spec's own "gated while rendering fabricated options"), and never
+  runs `next build`. Moving presentational pieces into `client/` (NH-298) stays worth doing but
+  cannot replace this — it never sees the composed page or the CSS the app builds. ✅ done.
+- **Sequencing: v0 Plan C (the Settings and Tracks popovers) ships first**, the gate lands after.
+- **`web/`'s whole browser lane moves into the Playwright container — one `next build` serves
+  end-to-end, axe and VR.** Bolting VR onto the existing `vr` job, or adding a separate `web-vr`
+  job, would each take `web` from two builds per CI run to three: the `build` job's
+  `pnpm run build` fans out to `web` (and the next step greps `web/.next/static/` to prove it),
+  and the `e2e` job's Playwright `webServer` runs a `pnpm build` of its own. This keeps it at two
+  and makes web's axe and web's VR render identically. ✅ done.
+- **Blocking from day one**, via `ci-green`, as `client/` VR already is. There is no flake budget to
+  earn first: sixty runs of `/play` in the pinned Playwright container were measured before the
+  design was fixed, at `threshold: 0` and `maxDiffPixels: 0`, and the full-page shot was byte-
+  identical 19 times out of 19. AlphaTab's notation render is pixel-deterministic — the only drift
+  found was the anti-aliased rounded corner of an element-_clipped_ shot, five to nine bytes each
+  off by one in a single channel, which is why the design takes page-level shots and puts no mask
+  over the score. ✅ done.
+
+Spec: `docs/specs/2026-09-21-web-visual-regression-gate.md`.
+
 ### 2026-09-28 — The transport values persist; the playback speed deliberately does not (NH-295)
 
 Four values a drummer sets every session never survived a reload, while a font picked once months
@@ -47,78 +156,6 @@ settings document the other preferences use. Fenced off deliberately in Plan C
   a metronome — and every unit test, ESLint and `tsc` stayed green throughout. The restore keys on
   the api's arrival, which is always after hydration, and an e2e case now holds it (verified to fail
   when the render-time read is put back).
-
-### 2026-09-24 — The 44px hit-area gate now covers both popovers, with two deliberate exceptions (NH-291)
-
-`expectHitAreas` (`web/e2e/a11y.e2e.ts`) enforces this repo's own 44px hit-area bar — stricter than
-WCAG 2.5.8 AA, which asks only 24px. Two controls fall under it on purpose, and the gate scopes
-around both rather than being loosened generally. The gate now also runs with the Settings popover
-(every accordion group open) and the Tracks popover (two rows expanded, a solo and a mute pressed)
-open, per an e2e case each; both pass.
-
-- **The toast close button stays 20x20.** Sonner's `[data-close-button]` is a fixed-size control,
-  and the maintainer wants `closeButton` kept on the Toaster. The gate now skips any control inside
-  `[data-sonner-toast]` — scoped to toasts, not a blanket exemption — because the toast's resting
-  state, hit area included, is already covered by the design system's own Sonner Storybook stories.
-- **Every mixer control (TrackRow, MasterRow) stays 34px** (`MIXER_BUTTON_CLASS`). The mixer row
-  packs render-select, solo, mute, volume and four per-staff toggles onto one line at tablet-landscape
-  width; 44px per control does not fit. 34px still clears WCAG 2.5.8 AA's 24px floor — it only misses
-  this repo's own stricter 44px (AAA) bar, and the density is the maintainer's deliberate choice for
-  this row, not an oversight. The gate now skips any control inside `[data-slot="track-row"]` or
-  `[data-slot="master-row"]`, scoped to those two rows only.
-- **The gate now measures the popovers' fields and selects too**: `[data-slot="popover-content"]
-select` and `input` (excluding `range`, `file` and `checkbox`, none of which is what a finger
-  hits) join the existing button/link/label/slider selectors. Scoped to popover content only, so
-  the header's BPM field — Base UI's `NumberField.Input`, deliberately out of scope for this PR —
-  stays untouched. `Input` and `NativeSelect` are `h-9` (36px) in the design system by default;
-  every row in `SettingRow` raises them to `h-11` (44px) at the call site. A design-system default
-  of 44px is a separate question, not answered here.
-- **The gate's position check is now container-aware.** With every Settings group open at once (so
-  the whole panel is auditable in one pass), the panel is far taller than the viewport — ~6000px of
-  rows in a ~500px scrolling window — and the plain window-edge check flagged nearly every row as
-  unreachable, though each is one scroll away. `expectHitAreas` now walks up from each control to
-  its nearest ancestor with computed `overflow-y: auto`/`scroll`. When none exists short of the
-  document, the check is unchanged (a shell-clipped control has no way out and still fails).
-  Otherwise position is judged against that ancestor's own scrollable content range (`[0,
-scrollHeight]`) instead of the window — horizontally unchanged, since this ancestor only scrolls
-  vertically. The 44px SIZE check is untouched either way.
-- **The code review of this PR then found two holes in that same gate, and both are closed.** The
-  mixer and toast exemptions above ran BEFORE the element's rectangle was taken, so they exempted
-  those controls from the off-screen POSITION check as well — which neither exemption's reasoning
-  argues for, and the mixer's fixed-width grid makes a narrow window its realistic failure. They
-  now resolve after the measurement and apply to the size verdict alone. Separately, the
-  container-aware branch could not fail vertically at all: `contentTop + height <= scrollHeight`
-  holds by construction for any child of a scroll container, so the relaxation silently dropped
-  vertical containment for every popover control rather than re-basing it. The branch now also
-  checks that the scrolling box is ITSELF on screen, which is the property the relaxation assumed.
-  `expectHitAreas` settles toasts before measuring, so the restored position check cannot race a
-  slide-in animation.
-- **The CSS build canary gains five `REQUIRED_SELECTORS` entries**, which is what AGENTS.md already
-  prescribes for a new shared class module — recorded here because it is a build-BLOCKING guard,
-  not because it is a new decision. Only one entry shipped with the component work, and that one
-  (`size-[2.125rem]`) is also written literally in `TrackRow.tsx` and `MasterRow.tsx`, so the `.tsx`
-  scan alone keeps it present and it proved nothing about `MixerClasses.ts`. The four added by the
-  review pass — the mixer's grid-template arbitrary value and three `aria-pressed:`/`data-pressed:`
-  fills — exist in no other file, and each fails invisibly: correct ARIA, correct behaviour,
-  nothing painted.
-- **The canary now matches a whole class name, not a substring.** It asked `css.includes(selector)`,
-  so an entry that is a PREFIX of another class was satisfied by that other class — `.grow` by
-  `.grow-0`, `.border-primary` by `.border-primary/50`, `.cursor-grab` by `.cursor-grabbing`, the two
-  pressed fills by their `/90` opacity forms. One such utility anywhere in the scanned tree would
-  satisfy its entry forever, and a build-blocking guard would report all clear on exactly the stale
-  scan it exists to catch. Nothing was broken: all ten entries were matched against the real emitted
-  stylesheet and each is present in its exact form. The match now requires a CSS boundary after the
-  entry, with `[` in that set — load-bearing, because Tailwind emits a variant utility with its
-  condition attached, so three entries never appear followed by `{` on a real build. Both sides are
-  pinned by tests; the existing ones could not have caught this, since they build their fixtures FROM
-  the list and so can only ever write exact matches.
-- **Four new design-system components, not three** — `Accordion`, `SettingRow`, `TrackRow` and
-  `MasterRow`, each with a Storybook story plus VR and axe baselines that block merge. A fifth
-  component, `PopoverIconTrigger`, was extracted during a later refactor pass to share the
-  Settings/Tracks trigger button — it lives in `web/app/play/`, not `client/`, so it is an
-  app-local component, not a fifth gated design-system one; it carries no stories/VR/a11y files of
-  its own and is covered by the popover-open e2e cases and `client/`'s existing Tooltip/Popover/
-  Button baselines that it composes.
 
 ### 2026-09-27 — A retried failure stops erasing its own toast, and the toast never covers the header (NH-331)
 
@@ -157,6 +194,70 @@ stay valid for a button with a toast painted over it.
 
 `AGENTS.md` also now lists `pnpm run check:error-codes` among the root-level checks — it was the
 one obligation the NH-331 checklist audit found unbacked.
+
+### 2026-09-26 — The registry's own statuses reconciled, and a duplicated table removed (NH-322)
+
+With the change log out of `decision-registry.md`, its state tables turned out to be
+**byte-identical to what PR #143 left on 2026-09-18** — so no PR had flipped a status since,
+although AGENTS.md requires it in the same PR. Two things came out of reconciling them, and only
+one was the expected job.
+
+**Section B held its entire 13-row table twice**, with a second `| ID | Decision |` header and
+separator mid-table, and the copies disagreed: one `L5-vitest` row read _"DECIDED but DEFERRED"_
+(💤 📄), the other _"live for client/ + server/ + infra/"_ (✅ 🤖). The wrong one came first, and
+it contradicted both AGENTS.md and NH-194. Only 3 of the 13 rows differed and the surviving copy is
+newer in all three — the other two differ only by carrying correctly escaped `` `*.test.*` `` /
+`` `/* istanbul ignore */` `` where the stale copy has the mangled MD049 form. The block first
+appears on master in `1299e826` (PR #85, NH-243, 2026-06-27), whose registry diff is 197 insertions
+/ 178 deletions on a _lint_ PR; `merge=union` had been applied to the registry two days earlier.
+**This is the NH-322 failure one section deeper** — a real edit (`L5-vitest` 💤 → ✅) "resolved" by
+keeping both sides, with no conflict for anyone to review. A scan of every section now reports no
+repeated header and no repeated row ID.
+
+**The 2026-09-16-onward window produced almost no flips**, which is worth recording so nobody
+re-runs the search. The registry is DACI-derived and does not model the v0 player work at all — zero
+mentions of alphatab, `web/`, VR, visual-regression, editorconfig, Vercel, Next.js, sonarjs or
+todo-tag. NH-291's Plan A/B/C entries, NH-317, NH-315, NH-304, NH-293 and NH-299 map to **no row**;
+NH-231 maps to `E-osv-scanner`, already ✅ 🤖. Plan A's _"D5 — 📄 → 🤖"_ is the **v0 spec's** D5
+(self-hosted AlphaTab ESM), a different numbering namespace from the ADR's `D1`–`D7`; there is no
+`D5` row to flip.
+
+**The real staleness sat in the 🟥 backlog** — the table whose whole job is to show what is decided
+but unenforced, and which instead listed shipped gates as missing. 16 enforcement cells rewritten,
+each checked against the repo:
+
+- `E-gitleaks`, `E-semgrep`, `E-osv-scanner` claimed "not wired into required CI/Lefthook". They are
+  the `secret-scan`, `sast` and `deps-cve` jobs, all in `ci-green`'s `needs`.
+- `E-syncpack` claimed "not in required CI"; it is a `quality` step and in `check:all`. `L6-4`
+  claimed commitlint "not yet wired"; Lefthook `commit-msg` + the CI `pr-title` job.
+- Seven rows (`E-no-orphans-error`, `CONV-5`, `CONV-orphans`, `L5-test-colocation`, `F2-colocate`,
+  `CONV-coloc`, `CONV-2`) all claimed `no-orphans` is WARN and whitelists `__tests__/`.
+  `.dependency-cruiser.cjs` sets `severity: 'error'` and excludes co-located tests/stories via
+  `pathNot`; `check:layout` additionally fails any `__tests__/`, `__mocks__/` or `stories/`
+  directory. The co-location rows are marked 🟡 partial, not done — nothing asserts a test sits
+  beside _its own_ source.
+- `L12-pin` and `M5-nvmrc` claimed `.nvmrc` was "not yet added"; it is committed (Node 24).
+- `L5-no-escape-hatches` is 🟡 partial on purpose: `eslint-comments/require-description` is `error`
+  in the shared base and `check:coverage-ignore` bans istanbul/c8/v8 directives, but no explicit
+  `@typescript-eslint/ban-ts-comment` rule exists. Its cell also named `.eslintrc.cjs`; the repo is
+  on flat configs.
+
+Seven section rows flipped to match: `L13` and `L5-test-colocation` → ✅ 🤖 with the 🟥 cleared;
+`L12-pin` and `M5-nvmrc` → ✅; `CONV-orphans`, `CONV-coloc` and `F2-colocate` → 🟡 enforcement,
+keeping their 🟥 because each still has a genuinely open half.
+
+**Approved by leocaseiro 2026-09-26:** `L13` reads ✅ done 🤖 rather than partial — the decision was
+"defer to first use", Storybook and Playwright both landed and block merge, and LocalStack's trigger
+simply has not fired, which is the decision working rather than a gap. He also asked that findings
+which only remove ambiguity and have a clear fix be applied without a question, which is how the
+section-B duplicate and the extra six verified-stale backlog cells were handled.
+
+**Left alone after checking, because the cells are accurate:** `E-knip` (installed, but only in the
+CI paths-filter, never a gate) and `H7` (the config carries exactly four rules — `core-purity`,
+`no-adapters-to-modules`, `no-circular`, `no-orphans` — so H8–H11's file-level bans genuinely are
+absent; an earlier reading of this as self-contradictory was wrong). Everything DangerJS, Stryker,
+floors, type-coverage and size-limit is untouched and still correctly 🟥. No rows added, no tables
+restructured.
 
 ### 2026-09-26 — The registry/changelog split finished, and made self-enforcing (NH-322)
 
@@ -277,6 +378,78 @@ not being a full-width fixed overlay — and stays a decision.
 > control at 375px, and the shell reserves nothing. The numbers above are also understated — a
 > re-measurement found 2 blocked at 700px and 6 at 375px, not one and "the header".
 
+### 2026-09-24 — The 44px hit-area gate now covers both popovers, with two deliberate exceptions (NH-291)
+
+`expectHitAreas` (`web/e2e/a11y.e2e.ts`) enforces this repo's own 44px hit-area bar — stricter than
+WCAG 2.5.8 AA, which asks only 24px. Two controls fall under it on purpose, and the gate scopes
+around both rather than being loosened generally. The gate now also runs with the Settings popover
+(every accordion group open) and the Tracks popover (two rows expanded, a solo and a mute pressed)
+open, per an e2e case each; both pass.
+
+- **The toast close button stays 20x20.** Sonner's `[data-close-button]` is a fixed-size control,
+  and the maintainer wants `closeButton` kept on the Toaster. The gate now skips any control inside
+  `[data-sonner-toast]` — scoped to toasts, not a blanket exemption — because the toast's resting
+  state, hit area included, is already covered by the design system's own Sonner Storybook stories.
+- **Every mixer control (TrackRow, MasterRow) stays 34px** (`MIXER_BUTTON_CLASS`). The mixer row
+  packs render-select, solo, mute, volume and four per-staff toggles onto one line at tablet-landscape
+  width; 44px per control does not fit. 34px still clears WCAG 2.5.8 AA's 24px floor — it only misses
+  this repo's own stricter 44px (AAA) bar, and the density is the maintainer's deliberate choice for
+  this row, not an oversight. The gate now skips any control inside `[data-slot="track-row"]` or
+  `[data-slot="master-row"]`, scoped to those two rows only.
+- **The gate now measures the popovers' fields and selects too**: `[data-slot="popover-content"]
+select` and `input` (excluding `range`, `file` and `checkbox`, none of which is what a finger
+  hits) join the existing button/link/label/slider selectors. Scoped to popover content only, so
+  the header's BPM field — Base UI's `NumberField.Input`, deliberately out of scope for this PR —
+  stays untouched. `Input` and `NativeSelect` are `h-9` (36px) in the design system by default;
+  every row in `SettingRow` raises them to `h-11` (44px) at the call site. A design-system default
+  of 44px is a separate question, not answered here.
+- **The gate's position check is now container-aware.** With every Settings group open at once (so
+  the whole panel is auditable in one pass), the panel is far taller than the viewport — ~6000px of
+  rows in a ~500px scrolling window — and the plain window-edge check flagged nearly every row as
+  unreachable, though each is one scroll away. `expectHitAreas` now walks up from each control to
+  its nearest ancestor with computed `overflow-y: auto`/`scroll`. When none exists short of the
+  document, the check is unchanged (a shell-clipped control has no way out and still fails).
+  Otherwise position is judged against that ancestor's own scrollable content range (`[0,
+scrollHeight]`) instead of the window — horizontally unchanged, since this ancestor only scrolls
+  vertically. The 44px SIZE check is untouched either way.
+- **The code review of this PR then found two holes in that same gate, and both are closed.** The
+  mixer and toast exemptions above ran BEFORE the element's rectangle was taken, so they exempted
+  those controls from the off-screen POSITION check as well — which neither exemption's reasoning
+  argues for, and the mixer's fixed-width grid makes a narrow window its realistic failure. They
+  now resolve after the measurement and apply to the size verdict alone. Separately, the
+  container-aware branch could not fail vertically at all: `contentTop + height <= scrollHeight`
+  holds by construction for any child of a scroll container, so the relaxation silently dropped
+  vertical containment for every popover control rather than re-basing it. The branch now also
+  checks that the scrolling box is ITSELF on screen, which is the property the relaxation assumed.
+  `expectHitAreas` settles toasts before measuring, so the restored position check cannot race a
+  slide-in animation.
+- **The CSS build canary gains five `REQUIRED_SELECTORS` entries**, which is what AGENTS.md already
+  prescribes for a new shared class module — recorded here because it is a build-BLOCKING guard,
+  not because it is a new decision. Only one entry shipped with the component work, and that one
+  (`size-[2.125rem]`) is also written literally in `TrackRow.tsx` and `MasterRow.tsx`, so the `.tsx`
+  scan alone keeps it present and it proved nothing about `MixerClasses.ts`. The four added by the
+  review pass — the mixer's grid-template arbitrary value and three `aria-pressed:`/`data-pressed:`
+  fills — exist in no other file, and each fails invisibly: correct ARIA, correct behaviour,
+  nothing painted.
+- **The canary now matches a whole class name, not a substring.** It asked `css.includes(selector)`,
+  so an entry that is a PREFIX of another class was satisfied by that other class — `.grow` by
+  `.grow-0`, `.border-primary` by `.border-primary/50`, `.cursor-grab` by `.cursor-grabbing`, the two
+  pressed fills by their `/90` opacity forms. One such utility anywhere in the scanned tree would
+  satisfy its entry forever, and a build-blocking guard would report all clear on exactly the stale
+  scan it exists to catch. Nothing was broken: all ten entries were matched against the real emitted
+  stylesheet and each is present in its exact form. The match now requires a CSS boundary after the
+  entry, with `[` in that set — load-bearing, because Tailwind emits a variant utility with its
+  condition attached, so three entries never appear followed by `{` on a real build. Both sides are
+  pinned by tests; the existing ones could not have caught this, since they build their fixtures FROM
+  the list and so can only ever write exact matches.
+- **Four new design-system components, not three** — `Accordion`, `SettingRow`, `TrackRow` and
+  `MasterRow`, each with a Storybook story plus VR and axe baselines that block merge. A fifth
+  component, `PopoverIconTrigger`, was extracted during a later refactor pass to share the
+  Settings/Tracks trigger button — it lives in `web/app/play/`, not `client/`, so it is an
+  app-local component, not a fifth gated design-system one; it carries no stories/VR/a11y files of
+  its own and is covered by the popover-open e2e cases and `client/`'s existing Tooltip/Popover/
+  Button baselines that it composes.
+
 ### 2026-09-22 — Eight orphaned spike documents archived, and five NH-196 decisions recovered (NH-25)
 
 The eight documents PR #57 flagged as orphan-risk on 2026-06-20 — still absent from `master` three
@@ -344,6 +517,32 @@ Approved by leocaseiro 2026-09-22.
 
 The #143 split moved the dated change log out of `decision-registry.md` into this file, leaving `registry.md` as the topic-by-topic STATE view — but `.gitattributes` still applied `merge=union` to both. On a state file, union silently keeps BOTH sides of a real edit (two PRs flipping the same decision's status) with no conflict to review, and PR #170 already hit the append-side of it (a union merge duplicated the whole change log back into the registry). So union is now scoped to `decision-changelog.md` only; `decision-registry.md` conflicts normally, surfacing real state-edit collisions for manual resolution. Approved by the maintainer 2026-09-22.
 
+### 2026-09-22 — Two June status snapshots archived, and eight documents still off master (NH-25)
+
+leocaseiro reviewed the last two documentation PRs still open from June and chose to **archive rather
+than close** both, so they stay re-readable: `docs/research/2026-06-20-documentation-worktree-status.md`
+(PR #57) and `docs/ops/2026-06-15-worktree-cleanup-plan.md` (PR #34) move to `docs/archive/2026-09/`
+under the tree PR #143 established.
+
+- **Archive, not delete.** Both documents are stale in their per-row data but were verified against
+  today's master before being retired, and that verification is written into each banner. Closing the
+  PRs would have thrown away a finding that turned out to still be live.
+- **The finding: eight documents flagged as orphan-risk on 2026-06-20 are still absent from master**,
+  three months later. Of the 45 paths PR #57 inventoried, 34 have since landed; three apparent gaps
+  were renames or archive moves (the `catalogue` → `catalog` spelling rule, and the tonal-schema
+  handoff moving to `docs/archive/2026-07/`); the remaining **eight are exactly the eight the report
+  warned about**.
+- **None of the eight is lost**, and the reason is a rule rather than luck: every one sits on a branch
+  that still exists on `origin`, preserved by the never-delete-a-remote-branch rule.
+  `nh-clean-slate-spike`'s worktree is already gone and its document survived only because the branch
+  did. Their triage — which are superseded, which still carry unique value — is tracked separately.
+- **PR #34's decisions were not adopted.** It is a decision-request artifact with eight unanswered
+  questions about 47 worktrees; the worktree set has changed since, so it is archived as a June
+  snapshot and its Bucket A–E classification model is what remains reusable.
+
+**Status:** ✅ decided · 📄 prose-only — archiving is a documentation action, not an enforced rule.
+Approved by leocaseiro 2026-09-22.
+
 ### 2026-09-21 — The player fills the window, and the design system finally wears D3 (NH-291)
 
 The player was a 1024 px column centred in a page of white space, with the notation letterboxed in
@@ -388,32 +587,6 @@ approved by the maintainer in conversation while looking at the running app.
   `staffLineColor` and `barSeparatorColor` directly.
 - **The scoring HUD, the A-B markers and the practice/game toggle stay out**, per spec §2: all
   three need the v0.2 scoring work that does not exist yet.
-
-### 2026-09-22 — Two June status snapshots archived, and eight documents still off master (NH-25)
-
-leocaseiro reviewed the last two documentation PRs still open from June and chose to **archive rather
-than close** both, so they stay re-readable: `docs/research/2026-06-20-documentation-worktree-status.md`
-(PR #57) and `docs/ops/2026-06-15-worktree-cleanup-plan.md` (PR #34) move to `docs/archive/2026-09/`
-under the tree PR #143 established.
-
-- **Archive, not delete.** Both documents are stale in their per-row data but were verified against
-  today's master before being retired, and that verification is written into each banner. Closing the
-  PRs would have thrown away a finding that turned out to still be live.
-- **The finding: eight documents flagged as orphan-risk on 2026-06-20 are still absent from master**,
-  three months later. Of the 45 paths PR #57 inventoried, 34 have since landed; three apparent gaps
-  were renames or archive moves (the `catalogue` → `catalog` spelling rule, and the tonal-schema
-  handoff moving to `docs/archive/2026-07/`); the remaining **eight are exactly the eight the report
-  warned about**.
-- **None of the eight is lost**, and the reason is a rule rather than luck: every one sits on a branch
-  that still exists on `origin`, preserved by the never-delete-a-remote-branch rule.
-  `nh-clean-slate-spike`'s worktree is already gone and its document survived only because the branch
-  did. Their triage — which are superseded, which still carry unique value — is tracked separately.
-- **PR #34's decisions were not adopted.** It is a decision-request artifact with eight unanswered
-  questions about 47 worktrees; the worktree set has changed since, so it is archived as a June
-  snapshot and its Bucket A–E classification model is what remains reusable.
-
-**Status:** ✅ decided · 📄 prose-only — archiving is a documentation action, not an enforced rule.
-Approved by leocaseiro 2026-09-22.
 
 ### 2026-09-21 — The running build names itself, in the wordmark (NH-317)
 
@@ -914,6 +1087,36 @@ Approved by leocaseiro 2026-09-18:
 - **Rework scope: one pass over eight briefs** — real edits to Tasks 5, 6, 7 and 11, Task 10 shrinks,
   light touches to Tasks 3, 13 and 14 — rather than re-planning Tasks 5-13 from scratch.
 
+### 2026-09-18 — `resources/` is data, not code: excluded from the editorconfig gate (NH-291)
+
+Tracking the source chart files under `resources/charts/` made the `lint` job fail 14 times across 4
+files. The cause is not formatting drift: `.editorconfig` requires `end_of_line = lf`, `charset = utf-8`
+and `insert_final_newline` of **every** file, and a Guitar Pro binary cannot satisfy any of them.
+`editorconfig-checker` skips ZIP-container (`.gp`, `.mxl`) and MIDI files on its own, but a `BCFZ`
+(GP6/`.gpx`) and a `FICHIER GUITAR PRO v5` (`.gp5`) header carries enough printable ASCII to be read
+as text, so those four were scanned and rejected.
+
+leocaseiro's call, 2026-09-18: **exclude both the directory and the formats** —
+`.editorconfig-checker.json` gains `^resources/` and `\.(gp|gp5|gpx|mid|mxl)$`.
+
+- **The directory pattern is the principled half.** `resources/` holds third-party musical artifacts
+  exported by other tools; it is **data, not code**, and no source-formatting rule should apply to it.
+  This also covers `resources/charts/1-beat.xml`, which despite its extension is a Guitar Pro 5
+  binary, so no per-file pattern is needed for it.
+- **The extension pattern is the travelling half.** Copies of these charts already live under
+  `web/public/charts/` and `web/e2e/fixtures/`; excluding by extension means the gate does not have
+  to be revisited each time a chart lands outside `resources/`.
+- **Accepted cost:** the four alphaTex **text** files (`beat.alphatex`/`.atex`,
+  `Punk.alphatex`/`.atex`) are inside `resources/` and so are no longer checked, even though they
+  pass today. That follows from treating the directory as data; it was not an oversight.
+- **Not a weakened gate elsewhere.** No CI job, workflow or `.editorconfig` rule changed. Every other
+  path is checked exactly as before, and the canary for this gate is that removing either pattern
+  brings the same 14 errors straight back.
+
+**Status:** ✅ decided · 🤖 machine-checked — the `lint` CI job runs `pnpm run lint:editorconfig`
+against this config, so any change to the exclusion list is visible in the diff. Approved by
+leocaseiro 2026-09-18.
+
 ### 2026-09-16 — v0 Plan A review, lap 2 finished: the last open findings triaged (NH-291)
 
 The findings the 2026-09-15 entry left open were checked against the installed packages before
@@ -1066,6 +1269,52 @@ anyway, with lap 3's six open findings all decided and applied. The frontmatter 
 armed trigger is a decided skip, not an oversight, so a later agent does not auto-run lap 4. Three
 laps produced 21 applied decisions; anything lap 4 would have raised can be raised against the code
 during implementation instead.
+
+### 2026-09-16 — Dependency CVE refresh: fix every advisory, keep the ignore list empty (NH-231)
+
+The `deps-cve` gate (osv-scanner) had drifted to **74 advisories across 29 packages** (4 Critical, 43 High, 26 Medium, 1 Low) — all from `pnpm-lock.yaml` on `master`, none from an open PR. leocaseiro chose a **real version fix over an allowlist**: the refresh takes the gate to **0**, and `osv-scanner.toml` now carries **no ignores at all**.
+
+- **The expired ignore was dropped, not renewed.** `GHSA-8988-4f7v-96qf` (`@opentelemetry/core` 1.30.1) expired at `2026-09-16T00:00:00Z`. Its stated reason — that the only fix was an unverifiable otel v1 → v2 major bump under `@pulumi/pulumi` — had become obsolete, because Pulumi 3.255.0 made that move upstream. Bumping `@pulumi/pulumi` to 3.261.0 closes the advisory outright and drops the whole js-yaml v3 line out of the tree, so the `js-yaml@3` override went with it. An expired ignore must be re-argued, never rubber-stamped.
+- **Targeted updates only — no blanket `pnpm update -r`.** A blanket run would move the pixel-sensitive UI stack (Base UI, Storybook, TanStack, React, Tailwind) and invalidate the visual-regression baselines. Only named carriers moved.
+- **Playwright is held at 1.61.1** (`playwright`, `playwright-core`, `@playwright/test`). Floating it would un-match the three version-exact `minimumReleaseAgeExclude` pins and re-trip the NH-259 release-age gate, and would desynchronise the `mcr.microsoft.com/playwright:v1.61.1-noble` container the `-linux` VR baselines are rendered in. All 612 VR snapshots still match, unchanged.
+- **`overrides` is the lever for the deep transitives.** Where a parent resolves its copy below the patch, pnpm reuses the parent's snapshot and `pnpm update` cannot reach it. Nine advisories needed a same-major `overrides` pin (`brace-expansion@1/@2/@5`, `fast-uri@3`, `qs@6`, `smol-toml`, plus raised floors on `multer` and `postcss`). Same major as the parent declares, so no API surface moves.
+- **Next.js: 16.2.10 → 16.3.4, not 16.3.5.** Both `next` and `eslint-config-next` were pinned exact, so the 11 `next` advisories could not float. 16.2.11 closes only 9; the two Criticals need 16.3.3+. 16.3.4 declares the same `sharp: ^0.35.4` as 16.3.5 — so it clears both `sharp` rows too — but it is 15 days old rather than 4, which keeps it **outside** the 7-day `minimumReleaseAge` window. Taking 16.3.5 would have forced a `minimumReleaseAgeExclude` entry for a very fresh release, opening a hole in the gate that exists to dodge compromised publishes. **No release-age exception was added by this refresh.**
+- **Pre-approved fallback NOT used.** If the 16.2 → 16.3 bump had broken anything, the agreed fallback was to keep the other 61 fixes, revert only `next`/`eslint-config-next`, and time-box a 30-day ignore for the 13 `next`/`sharp` rows. Nothing broke, so no ignore was added.
+
+**Status:** ✅ decided · 🤖 machine-checked — the `deps-cve` CI job is the enforcement, and it now passes with an empty ignore list, so any regression or new ignore is visible in the diff. Approved by leocaseiro 2026-09-16.
+
+### 2026-09-16 — `editorconfig-checker` pinned to v3.11.3: the `lint` job runs again (NH-293)
+
+The `lint` job had been failing on every pull request since **2026-07-16** — the last green `master`
+run — and took `CI Green` down with it, blocking every open PR. It is not a violation in the
+repository: `editorconfig-checker`'s npm wrapper downloads its binary from GitHub releases, asks for
+release `latest`, and looks for an asset whose name starts with `ec-<platform>-<arch>`. Upstream
+renamed every asset to `editorconfig-checker-*` in **v4.0.0 (2026-09-03)**, so the lookup finds
+nothing and the wrapper exits 1 with `The binary 'ec-…' not found`.
+
+- **Fix:** `lint:editorconfig` sets `EC_VERSION=v3.11.3`, the last release carrying the old asset
+  names. The wrapper reads that variable (verified in its shipped `dist/index.js`, where it defaults
+  to `latest`), so one script line fixes the CI job, the lefthook pre-push check and `check:all`
+  together — rather than pinning the workflow and the hook separately.
+- **Verified locally before the PR:** with the pin, the binary downloads and the check passes with
+  **zero violations**; without it, the run reproduces the exact CI error. So the two months of red
+  were entirely the download, not unnoticed formatting drift.
+- **Not accepted as an allowlist or a skip.** The pre-push hook's existing "binary unavailable —
+  skipped" branch (also NH-293) stays as a safety net for a genuine network failure; it is no longer
+  the normal path.
+- **Removing the pin** needs a wrapper release that resolves a v4 asset name; check that before
+  dropping it. Recorded in `AGENTS.md` beside the other binary-tool notes.
+
+### 2026-09-16 — ESLint allows TODO comments: `sonarjs/todo-tag` off (NH-299)
+
+leocaseiro asked that ESLint stop blocking TODO comments — in particular, a JSDoc `@todo` tag (`/** @todo … */`) must lint clean in every package. The shared base spreads `sonarjs.configs.recommended`, which turns on `sonarjs/todo-tag` as an error, so every TODO note failed `eslint . --max-warnings 0` in `web/`, `client/` and `server/`. The rule has no option to exempt JSDoc tags, so it is turned off.
+
+- **`sonarjs/todo-tag` → off** in the shared rule layer of [`eslint.config.base.mjs`](../../eslint.config.base.mjs), so the change reaches all three packages; no package config turns it back on.
+- **`unicorn/expiring-todo-comments` stays on** (from `eslint-plugin-unicorn` recommended, with `allowWarningComments: true`): plain TODOs pass, and a TODO that carries an expiry condition (for example, a past-due date) still fails.
+- **`sonarjs/fixme-tag` is unchanged** — still an error; the request covers TODOs only.
+- **Verified:** `eslint --print-config` shows `sonarjs/todo-tag: [0]` and `sonarjs/fixme-tag: [2]` in all three packages. A probe file with `// TODO: …` and `/** @todo … */` failed on `sonarjs/todo-tag` before the change and lints clean after it; a probe with a past-due TODO and a FIXME still fails on `unicorn/expiring-todo-comments` and `sonarjs/fixme-tag`.
+
+**Status:** ✅ decided · 🤖 machine enforcement (the ESLint config itself). Requested by leocaseiro 2026-09-16.
 
 ### 2026-09-15 — v0 Plan A review, lap 2: 15 decisions triaged and applied, accept list widened (NH-291)
 
@@ -1258,82 +1507,6 @@ outputMode === WebAudioAudioWorklets`, never reading `Environment.webPlatform` �
 
 **Status:** ✅ decided · 📄 prose-only enforcement so far — the spec is the contract; the machine gate arrives with the v0 build (the Playwright lane in `web/`). Approved by leocaseiro 2026-09-10 (D1–D7) and 2026-09-12 (review decisions).
 
-### 2026-09-18 — `resources/` is data, not code: excluded from the editorconfig gate (NH-291)
-
-Tracking the source chart files under `resources/charts/` made the `lint` job fail 14 times across 4
-files. The cause is not formatting drift: `.editorconfig` requires `end_of_line = lf`, `charset = utf-8`
-and `insert_final_newline` of **every** file, and a Guitar Pro binary cannot satisfy any of them.
-`editorconfig-checker` skips ZIP-container (`.gp`, `.mxl`) and MIDI files on its own, but a `BCFZ`
-(GP6/`.gpx`) and a `FICHIER GUITAR PRO v5` (`.gp5`) header carries enough printable ASCII to be read
-as text, so those four were scanned and rejected.
-
-leocaseiro's call, 2026-09-18: **exclude both the directory and the formats** —
-`.editorconfig-checker.json` gains `^resources/` and `\.(gp|gp5|gpx|mid|mxl)$`.
-
-- **The directory pattern is the principled half.** `resources/` holds third-party musical artifacts
-  exported by other tools; it is **data, not code**, and no source-formatting rule should apply to it.
-  This also covers `resources/charts/1-beat.xml`, which despite its extension is a Guitar Pro 5
-  binary, so no per-file pattern is needed for it.
-- **The extension pattern is the travelling half.** Copies of these charts already live under
-  `web/public/charts/` and `web/e2e/fixtures/`; excluding by extension means the gate does not have
-  to be revisited each time a chart lands outside `resources/`.
-- **Accepted cost:** the four alphaTex **text** files (`beat.alphatex`/`.atex`,
-  `Punk.alphatex`/`.atex`) are inside `resources/` and so are no longer checked, even though they
-  pass today. That follows from treating the directory as data; it was not an oversight.
-- **Not a weakened gate elsewhere.** No CI job, workflow or `.editorconfig` rule changed. Every other
-  path is checked exactly as before, and the canary for this gate is that removing either pattern
-  brings the same 14 errors straight back.
-
-**Status:** ✅ decided · 🤖 machine-checked — the `lint` CI job runs `pnpm run lint:editorconfig`
-against this config, so any change to the exclusion list is visible in the diff. Approved by
-leocaseiro 2026-09-18.
-
-### 2026-09-16 — Dependency CVE refresh: fix every advisory, keep the ignore list empty (NH-231)
-
-The `deps-cve` gate (osv-scanner) had drifted to **74 advisories across 29 packages** (4 Critical, 43 High, 26 Medium, 1 Low) — all from `pnpm-lock.yaml` on `master`, none from an open PR. leocaseiro chose a **real version fix over an allowlist**: the refresh takes the gate to **0**, and `osv-scanner.toml` now carries **no ignores at all**.
-
-- **The expired ignore was dropped, not renewed.** `GHSA-8988-4f7v-96qf` (`@opentelemetry/core` 1.30.1) expired at `2026-09-16T00:00:00Z`. Its stated reason — that the only fix was an unverifiable otel v1 → v2 major bump under `@pulumi/pulumi` — had become obsolete, because Pulumi 3.255.0 made that move upstream. Bumping `@pulumi/pulumi` to 3.261.0 closes the advisory outright and drops the whole js-yaml v3 line out of the tree, so the `js-yaml@3` override went with it. An expired ignore must be re-argued, never rubber-stamped.
-- **Targeted updates only — no blanket `pnpm update -r`.** A blanket run would move the pixel-sensitive UI stack (Base UI, Storybook, TanStack, React, Tailwind) and invalidate the visual-regression baselines. Only named carriers moved.
-- **Playwright is held at 1.61.1** (`playwright`, `playwright-core`, `@playwright/test`). Floating it would un-match the three version-exact `minimumReleaseAgeExclude` pins and re-trip the NH-259 release-age gate, and would desynchronise the `mcr.microsoft.com/playwright:v1.61.1-noble` container the `-linux` VR baselines are rendered in. All 612 VR snapshots still match, unchanged.
-- **`overrides` is the lever for the deep transitives.** Where a parent resolves its copy below the patch, pnpm reuses the parent's snapshot and `pnpm update` cannot reach it. Nine advisories needed a same-major `overrides` pin (`brace-expansion@1/@2/@5`, `fast-uri@3`, `qs@6`, `smol-toml`, plus raised floors on `multer` and `postcss`). Same major as the parent declares, so no API surface moves.
-- **Next.js: 16.2.10 → 16.3.4, not 16.3.5.** Both `next` and `eslint-config-next` were pinned exact, so the 11 `next` advisories could not float. 16.2.11 closes only 9; the two Criticals need 16.3.3+. 16.3.4 declares the same `sharp: ^0.35.4` as 16.3.5 — so it clears both `sharp` rows too — but it is 15 days old rather than 4, which keeps it **outside** the 7-day `minimumReleaseAge` window. Taking 16.3.5 would have forced a `minimumReleaseAgeExclude` entry for a very fresh release, opening a hole in the gate that exists to dodge compromised publishes. **No release-age exception was added by this refresh.**
-- **Pre-approved fallback NOT used.** If the 16.2 → 16.3 bump had broken anything, the agreed fallback was to keep the other 61 fixes, revert only `next`/`eslint-config-next`, and time-box a 30-day ignore for the 13 `next`/`sharp` rows. Nothing broke, so no ignore was added.
-
-**Status:** ✅ decided · 🤖 machine-checked — the `deps-cve` CI job is the enforcement, and it now passes with an empty ignore list, so any regression or new ignore is visible in the diff. Approved by leocaseiro 2026-09-16.
-
-### 2026-09-16 — `editorconfig-checker` pinned to v3.11.3: the `lint` job runs again (NH-293)
-
-The `lint` job had been failing on every pull request since **2026-07-16** — the last green `master`
-run — and took `CI Green` down with it, blocking every open PR. It is not a violation in the
-repository: `editorconfig-checker`'s npm wrapper downloads its binary from GitHub releases, asks for
-release `latest`, and looks for an asset whose name starts with `ec-<platform>-<arch>`. Upstream
-renamed every asset to `editorconfig-checker-*` in **v4.0.0 (2026-09-03)**, so the lookup finds
-nothing and the wrapper exits 1 with `The binary 'ec-…' not found`.
-
-- **Fix:** `lint:editorconfig` sets `EC_VERSION=v3.11.3`, the last release carrying the old asset
-  names. The wrapper reads that variable (verified in its shipped `dist/index.js`, where it defaults
-  to `latest`), so one script line fixes the CI job, the lefthook pre-push check and `check:all`
-  together — rather than pinning the workflow and the hook separately.
-- **Verified locally before the PR:** with the pin, the binary downloads and the check passes with
-  **zero violations**; without it, the run reproduces the exact CI error. So the two months of red
-  were entirely the download, not unnoticed formatting drift.
-- **Not accepted as an allowlist or a skip.** The pre-push hook's existing "binary unavailable —
-  skipped" branch (also NH-293) stays as a safety net for a genuine network failure; it is no longer
-  the normal path.
-- **Removing the pin** needs a wrapper release that resolves a v4 asset name; check that before
-  dropping it. Recorded in `AGENTS.md` beside the other binary-tool notes.
-
-### 2026-09-16 — ESLint allows TODO comments: `sonarjs/todo-tag` off (NH-299)
-
-leocaseiro asked that ESLint stop blocking TODO comments — in particular, a JSDoc `@todo` tag (`/** @todo … */`) must lint clean in every package. The shared base spreads `sonarjs.configs.recommended`, which turns on `sonarjs/todo-tag` as an error, so every TODO note failed `eslint . --max-warnings 0` in `web/`, `client/` and `server/`. The rule has no option to exempt JSDoc tags, so it is turned off.
-
-- **`sonarjs/todo-tag` → off** in the shared rule layer of [`eslint.config.base.mjs`](../../eslint.config.base.mjs), so the change reaches all three packages; no package config turns it back on.
-- **`unicorn/expiring-todo-comments` stays on** (from `eslint-plugin-unicorn` recommended, with `allowWarningComments: true`): plain TODOs pass, and a TODO that carries an expiry condition (for example, a past-due date) still fails.
-- **`sonarjs/fixme-tag` is unchanged** — still an error; the request covers TODOs only.
-- **Verified:** `eslint --print-config` shows `sonarjs/todo-tag: [0]` and `sonarjs/fixme-tag: [2]` in all three packages. A probe file with `// TODO: …` and `/** @todo … */` failed on `sonarjs/todo-tag` before the change and lints clean after it; a probe with a past-due TODO and a FIXME still fails on `unicorn/expiring-todo-comments` and `sonarjs/fixme-tag`.
-
-**Status:** ✅ decided · 🤖 machine enforcement (the ESLint config itself). Requested by leocaseiro 2026-09-16.
-
 ### 2026-07-21 — Typed API contract: DEFER the framework (reverses June's oRPC pick) (NH-284)
 
 leocaseiro personally decided `ARCH-CONTRACT-1` after the re-spike and a NotebookLM study pause. Findings: [`docs/spikes/2026-07-16-typed-contract-respike.md`](../spikes/2026-07-16-typed-contract-respike.md). **Reverses the June oRPC decision** — both premises behind it were false (the `@nestjs/swagger`-under-SWC blocker was fixed in 2023, `nestjs/swagger#2493`; "post-v1.0 Dec 2025" misread the InfoQ article date). Nothing was ever installed, so this was a free choice, not a migration.
@@ -1387,17 +1560,6 @@ leocaseiro ratified how apps consume the design system (`client/` → future `de
 
 **Status:** ✅ decided (CSS-distribution mechanism + tokens split + direct-consumption model) · ⏳ enforcement pending — flips when the scoped glob lands in #135 and the tokens / `design-system` rename ships (Phase 2). The `client/ → design-system/` rename and the RSC/Capacitor component seam remain **recommended follow-ups** in the ADR, not yet ratified. Approved by leocaseiro 2026-07-12.
 
-### 2026-07-07 — Component library: Radix + cmdk → Base UI (NH-254 pilot)
-
-Full record: [`docs/decisions/2026-07-07-radix-to-base-ui-migration.md`](2026-07-07-radix-to-base-ui-migration.md). leocaseiro decided to consolidate on **Base UI** (`@base-ui/react`, current package name — not the superseded `@base-ui-components/react`) in place of `radix-ui` + `cmdk`, piloted on the NH-254 catalog components (PR #99) before the wider fleet grows more Radix surface area.
-
-- **Headline change:** `FacetFilter`/`TokenPicker`/`Command` move off a hand-rolled `cmdk` combobox onto Base UI's first-class `Combobox` (built-in multi-select chips + `filteredItems`/`filter={null}`/`onInputValueChange` for async filtering) — `cmdk` is dropped entirely.
-- **Tabs/RangeSlider/ToggleChipGroup/Popover** map cleanly to Base UI equivalents (`Tabs.List` gains `activateOnFocus`/`loopFocus` for NH-268; `Popover` renders inline by omitting `Popover.Portal`, cleaner than the current Radix workaround).
-- **Gap:** `Combobox` has no built-in `loading` boolean — `useTransition`/`aria-busy`/`Combobox.Status` wiring required to keep the existing `loading` prop on the public contract.
-- **Freezes** the in-flight NH-262 (#101/#109/#112) and NH-264 primitive PRs at their current Radix state pending redirect to the Base UI mapping in the ADR. _(Resolved 2026-07-09: those PRs migrated to Base UI and merged to master first; #99 then realigned onto them via merge — zero conflicts.)_
-
-**Status:** ✅ decided · 🟡 partial (updated 2026-07-09 — PR #99 merged) — `cmdk` removal is machine-checked by its absence from `package.json`/`pnpm-lock.yaml`; `radix-ui` intentionally **stays** for `Button`/`Badge`'s `Slot` only (ADR scope — migrate only if a later PR needs it), and that Slot-only restriction is prose-only today (no lint rule blocks new `radix-ui` imports).
-
 ### 2026-07-08 — FE pivot: Next.js PWA on Vercel + NestJS-on-Lambda (hybrid BFF)
 
 Re-adopts **Next.js** (App Router PWA) as the product FE, hosted on **Vercel** now (optional AWS re-host later — Amplify/EC2, OpenNext skipped); keeps the **NestJS-on-Lambda** backend behind a hidden, OAC-locked
@@ -1429,6 +1591,17 @@ foundation.
   uses, so local and CI rendering match. Running VR natively on a Mac is no longer a supported path
   (docs updated in `client/README.md` + `AGENTS.md`).
 - **CI unchanged:** the `vr` job already compared `-linux` inside the container and stays green.
+
+### 2026-07-07 — Component library: Radix + cmdk → Base UI (NH-254 pilot)
+
+Full record: [`docs/decisions/2026-07-07-radix-to-base-ui-migration.md`](2026-07-07-radix-to-base-ui-migration.md). leocaseiro decided to consolidate on **Base UI** (`@base-ui/react`, current package name — not the superseded `@base-ui-components/react`) in place of `radix-ui` + `cmdk`, piloted on the NH-254 catalog components (PR #99) before the wider fleet grows more Radix surface area.
+
+- **Headline change:** `FacetFilter`/`TokenPicker`/`Command` move off a hand-rolled `cmdk` combobox onto Base UI's first-class `Combobox` (built-in multi-select chips + `filteredItems`/`filter={null}`/`onInputValueChange` for async filtering) — `cmdk` is dropped entirely.
+- **Tabs/RangeSlider/ToggleChipGroup/Popover** map cleanly to Base UI equivalents (`Tabs.List` gains `activateOnFocus`/`loopFocus` for NH-268; `Popover` renders inline by omitting `Popover.Portal`, cleaner than the current Radix workaround).
+- **Gap:** `Combobox` has no built-in `loading` boolean — `useTransition`/`aria-busy`/`Combobox.Status` wiring required to keep the existing `loading` prop on the public contract.
+- **Freezes** the in-flight NH-262 (#101/#109/#112) and NH-264 primitive PRs at their current Radix state pending redirect to the Base UI mapping in the ADR. _(Resolved 2026-07-09: those PRs migrated to Base UI and merged to master first; #99 then realigned onto them via merge — zero conflicts.)_
+
+**Status:** ✅ decided · 🟡 partial (updated 2026-07-09 — PR #99 merged) — `cmdk` removal is machine-checked by its absence from `package.json`/`pnpm-lock.yaml`; `radix-ui` intentionally **stays** for `Button`/`Badge`'s `Slot` only (ADR scope — migrate only if a later PR needs it), and that Slot-only restriction is prose-only today (no lint rule blocks new `radix-ui` imports).
 
 ### 2026-07-07 — NH-262 Part 1 primitives ship on Base UI (not Radix) + Button `link` dark-token fix (PR #101)
 
@@ -1665,18 +1838,6 @@ Applied to the draft seed (Bohemian voices, validated on `nh_tonal_scratch` + po
 
 **Status:** ✅ decided · 📄 prose-only (draft DDL — no machine enforcement until the real `core/catalog` + Neon land). Approved by leocaseiro in the 2026-06-25 brainstorm.
 
-### 2026-06-24 — CI deploy role: add missing Lambda read perm; lock-recovery on cancel-only (NH-206 follow-up)
-
-**Follow-up after #64 merged.** The first CI-driven `pulumi up` on master failed with `AccessDeniedException: lambda:GetFunctionCodeSigningConfig` — the aws provider reads a ZIP function's code-signing config on every `aws_lambda_function` update, but the least-privilege deploy role lacked it. Added `lambda:GetFunctionCodeSigningConfig` to `aws-iam-ci-deploy.json` **and** `aws-iam-pulumi-local-deploy.json`. Audited the full provider read-set (provider source + issue #27986): that was the **only** gap — `s3:*` / CloudFront / IAM / logs are already complete; deliberately did **not** add `lambda:GetRuntimeManagementConfig` (not called by `aws_lambda_function`, would over-grant). Also tightened `deploy.yml`'s stranded-lock recovery to fire on `cancelled` (hard-kill) only — a clean `failure` releases the lock, so firing on it was a false alarm. ⬅ **leocaseiro re-applies the updated `aws-iam-ci-deploy.json` to the live `notation-hero-ci-deploy` role (admin SSO)** — also clears the stale `iam:GetPolicy` boundary-read the failed run warned about.
-
-### 2026-06-24 — NH-238 bot-exempt the pr-title commitlint gate (L6)
-
-Dependabot PRs were stuck red: the `pr-title` job (commitlint on the PR title) had no bot exemption, and dependabot capitalizes its subject (`chore(ci): Bump …`), which commitlint rejects via `subject-case` → `pr-title` fails → the required `CI Green` fails. Added `&& github.event.pull_request.user.type != 'Bot'` to the `pr-title` `if:`, mirroring the `pr-checklist` job's existing bot exemption; `CI Green` treats a skipped job as OK, so bot PRs go green. Trade-off (documented in the workflow comment): a dependabot PR's squash subject lands on `master` un-commitlinted — acceptable, since the `chore(ci):` type/scope are valid and dependabot's "Bump" capitalization can't be changed. Relates to NH-16 (PR policy / L6).
-
-### 2026-06-24 — NH-237 PR-checklist auto-inject + resync (extends NH-16, L6)
-
-Closed the "agents paste the checklist by hand" gap. The merge checklist lives in `.github/pull_request_template.md`, but GitHub auto-fills it only in the web "Open a PR" form — PRs opened by agents/CLI via `gh pr create --body` skip it, so the author had to paste all items to pass the `pr-checklist` gate. New `pr-checklist-sync` workflow + `tooling/pr-checklist-sync.mjs` **append only the missing canonical items** to a PR body (additive — never edits existing lines or ticks boxes) on `pull_request: opened`, and **fan out to every open PR** via a `workflow_dispatch` button or a `push` to `master` that changes the template. Shared `tooling/pr-checklist-lib.mjs` gives the sync and the gate one matching function so they can't disagree; `tooling/pr-checklist.mjs` refactored to import it (behavior identical — gate tests incl. #64's infra-preview check stay green, +4 lib +4 sync cases). **Enforcement unchanged** — boxes arrive unticked; the strict gate still requires every box `[x]`. Rejected: `mheap/require-checklist-action` (re-adds the `~~N/A~~` escape removed in v1.1) and comment-delivery (would force a gate rewrite); DangerJS stays the NH-16 v2 backlog. Uses `pull_request` (not `pull_request_target`) — fork PRs aren't auto-injected (read-only token; acceptable for a solo repo). Spec: `docs/specs/2026-06-24-pr-checklist-auto-inject.md`. `AGENTS.md` "PR checklist (CI-gated)" updated.
-
 ### 2026-06-25 — Design system foundation: shadcn + preset, Storybook, Playwright VR (NH-189)
 
 First **`tlc-spec-driven`** feature (introduces `.specs/`). Builds the client component foundation on the existing Vite SPA. Full decisions: `.specs/features/design-system-foundation/` (spec/design/tasks) + `.specs/project/STATE.md` (D1–D10). Tracked by **NH-189** ("Build temporary design system"); fulfils the **NH-29** Storybook-scaffold trigger (first `.tsx` component); adjacent to **NH-16** PR-policy.
@@ -1697,6 +1858,18 @@ First **`tlc-spec-driven`** feature (introduces `.specs/`). Builds the client co
 **Deferred (own follow-ups):** VR baselines are local (darwin) only — CI/Docker-Linux baselines + wiring VR into CI are deferred (design.md §D); component set beyond Button is post-foundation.
 
 **Overlap note:** this PR also edits this registry change-log; open **PR #74** (NH-16) is making this section `merge=union` for exactly this reason — low conflict risk.
+
+### 2026-06-24 — CI deploy role: add missing Lambda read perm; lock-recovery on cancel-only (NH-206 follow-up)
+
+**Follow-up after #64 merged.** The first CI-driven `pulumi up` on master failed with `AccessDeniedException: lambda:GetFunctionCodeSigningConfig` — the aws provider reads a ZIP function's code-signing config on every `aws_lambda_function` update, but the least-privilege deploy role lacked it. Added `lambda:GetFunctionCodeSigningConfig` to `aws-iam-ci-deploy.json` **and** `aws-iam-pulumi-local-deploy.json`. Audited the full provider read-set (provider source + issue #27986): that was the **only** gap — `s3:*` / CloudFront / IAM / logs are already complete; deliberately did **not** add `lambda:GetRuntimeManagementConfig` (not called by `aws_lambda_function`, would over-grant). Also tightened `deploy.yml`'s stranded-lock recovery to fire on `cancelled` (hard-kill) only — a clean `failure` releases the lock, so firing on it was a false alarm. ⬅ **leocaseiro re-applies the updated `aws-iam-ci-deploy.json` to the live `notation-hero-ci-deploy` role (admin SSO)** — also clears the stale `iam:GetPolicy` boundary-read the failed run warned about.
+
+### 2026-06-24 — NH-238 bot-exempt the pr-title commitlint gate (L6)
+
+Dependabot PRs were stuck red: the `pr-title` job (commitlint on the PR title) had no bot exemption, and dependabot capitalizes its subject (`chore(ci): Bump …`), which commitlint rejects via `subject-case` → `pr-title` fails → the required `CI Green` fails. Added `&& github.event.pull_request.user.type != 'Bot'` to the `pr-title` `if:`, mirroring the `pr-checklist` job's existing bot exemption; `CI Green` treats a skipped job as OK, so bot PRs go green. Trade-off (documented in the workflow comment): a dependabot PR's squash subject lands on `master` un-commitlinted — acceptable, since the `chore(ci):` type/scope are valid and dependabot's "Bump" capitalization can't be changed. Relates to NH-16 (PR policy / L6).
+
+### 2026-06-24 — NH-237 PR-checklist auto-inject + resync (extends NH-16, L6)
+
+Closed the "agents paste the checklist by hand" gap. The merge checklist lives in `.github/pull_request_template.md`, but GitHub auto-fills it only in the web "Open a PR" form — PRs opened by agents/CLI via `gh pr create --body` skip it, so the author had to paste all items to pass the `pr-checklist` gate. New `pr-checklist-sync` workflow + `tooling/pr-checklist-sync.mjs` **append only the missing canonical items** to a PR body (additive — never edits existing lines or ticks boxes) on `pull_request: opened`, and **fan out to every open PR** via a `workflow_dispatch` button or a `push` to `master` that changes the template. Shared `tooling/pr-checklist-lib.mjs` gives the sync and the gate one matching function so they can't disagree; `tooling/pr-checklist.mjs` refactored to import it (behavior identical — gate tests incl. #64's infra-preview check stay green, +4 lib +4 sync cases). **Enforcement unchanged** — boxes arrive unticked; the strict gate still requires every box `[x]`. Rejected: `mheap/require-checklist-action` (re-adds the `~~N/A~~` escape removed in v1.1) and comment-delivery (would force a gate rewrite); DangerJS stays the NH-16 v2 backlog. Uses `pull_request` (not `pull_request_target`) — fork PRs aren't auto-injected (read-only token; acceptable for a solo repo). Spec: `docs/specs/2026-06-24-pr-checklist-auto-inject.md`. `AGENTS.md` "PR checklist (CI-gated)" updated.
 
 ### 2026-06-24 — CI/CD: OIDC deploy hardening — drop preview-on-PR (NH-206 review #3)
 

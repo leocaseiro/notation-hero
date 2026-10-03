@@ -1,0 +1,432 @@
+{
+  "_header": {
+    "artifact_path": "docs/specs/2026-09-21-web-visual-regression-gate.md",
+    "artifact_lines": 871,
+    "reviewed_commit": "3ca1b11f",
+    "reviewed_commit_sha256": "257f2328cc4ed0c9c655e391553b9461b104f08a9e0c25a4d627ec7975676e45",
+    "lap": 5,
+    "review_skill": "compound-engineering:ce-doc-review",
+    "review_mode": "mode:headless",
+    "pr": "#171",
+    "jira": "NH-320",
+    "worktree": "/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/error-code-pr-checklist-b055bb",
+    "branch": "claude/lap-5-review-833468",
+    "push_target": "git push origin HEAD:docs/nh-320-web-vr-gate-spec",
+    "document_type": "plan",
+    "origin": "none (no frontmatter, no origin:, no product_contract_source -- greenfield)",
+    "state_store_note": "STATE-STORE for this loop is THIS FILE, not the document. The spec has NO YAML frontmatter and must not gain one -- no sibling spec in docs/specs/ has any. Carried unchanged from lap 4.",
+    "LAP_CAP_WARNING": "RESOLVED. Lap 5 was the cap; the maintainer halted at it on 2026-09-29 rather than overriding. The loop is closed — see lap_state.lap_decision.",
+    "step_2b_silent_edits": "NONE. The four persona reviewers were dispatched read-only and applied nothing. Verified three ways at the close of the review half: git status --porcelain empty, git diff 3ca1b11f -- <doc> empty, and the doc still 871 lines / 17 headings / one H1 with sha256 257f2328... matching the reviewed commit.",
+    "pre_review_spike_this_lap": "A container measurement ran BEFORE the review, at the maintainer's instruction, and its result CONTRADICTED the spec. Measured in mcr.microsoft.com/playwright:v1.61.1-noble: pnpm install --frozen-lockfile --ignore-scripts = 28 s (18.7 s of it pnpm's supply-chain policy check), next build = 7 s cold AND warm (re-run with web/.next shadowed by an empty volume; the app is three static routes so the Turbopack cache buys nothing), nine shots ~20 s at 2.2 s/shot. Container Node v24.17.0 clears engines.node >= 24 under engine-strict=true -- the risk most likely to fail outright, and it does not. reactCompiler ran (useMemoCache in 3 emitted chunks), vendor-alphatab copied 8 files, assert-design-system-css reported all 10 selectors present, --ignore-scripts broke nothing. The Cost paragraph said 'The dominant cost is the next build, not the screenshots'; the build is in fact the CHEAPEST of the three steps. Corrected in commit 3ca1b11f, which is this lap's reviewed baseline.",
+    "cross_model_judgment_pass": "SKIPPED -- and this is now PERMANENT, because lap 5 is the cap. Named as a real coverage gap in laps 3 and 4 and put to the maintainer directly this lap with tested routes in hand: ollama IS installed with qwen3.5:9b and qwen3:8b (on-host, zero egress; a probe read the whole 15,486-token spec in 51.8 s but its single finding was a FALSE POSITIVE -- it misparsed the relative clause in 'web/.gitignore gains the line client/.gitignore already carries' at line 510); OpenAI codex CLI absent, no ~/.codex auth; gemini/llm/aichat absent; AWS Bedrock DENIED (user/notation-hero-pulumi-local not authorized for bedrock:ListFoundationModels). The maintainer chose to skip a third time. Recorded here so it reads as a decision, not an oversight.",
+    "premise_collapse_judgment": "Rule 3.3b (same-persona premise redundancy collapse) was NOT applied to feasibility's L5-F-1 / L5-F-2 / L5-F-3, though they technically trip it (3 findings, same persona, same finding_type=error, and one upstream action -- 're-take every number against master' -- would obviate all three). Reason: 3.3b is titled PREMISE redundancy and its own worked example is one persona firing five variants of 'the motivation is weak'. These three are distinct FACTUAL defects with different consequences (a CI sizing decision / a waits inventory / an implementer landing in unrelated code) and separate clean fixes; 3.3b's own cluster test also requires substantially overlapping why_it_matters, which they do not have. Collapsing would have demoted two verified wrong numbers to FYI observations that never get corrected. Recorded so the maintainer can overrule.",
+    "finding_count_raw_from_reviewers": 15,
+    "finding_count_total_surviving": 15,
+    "finding_count_dropped_in_verification": 0,
+    "finding_count_applied_silently_this_half": 4,
+    "finding_count_awaiting_decision": 9,
+    "finding_count_fyi_no_decision": 2,
+    "finding_count_verifier_surfaced": 2,
+    "severity_split_awaiting_decision": {
+      "P0": 0,
+      "P1": 4,
+      "P2": 5,
+      "P3": 0
+    },
+    "verification_verdicts": {
+      "CONFIRMED": 11,
+      "PARTIAL": 4,
+      "DROP": 0
+    },
+    "fixes_corrected_by_verification": [
+      "L5-A-4 (regex half wrong + its stated reason false)",
+      "L5-F-5 (wrong remedy; premise about workers also wrong)",
+      "L5-F-6 ('verbatim second copy' overstated)",
+      "L5-A-2 (three surface steps -> two; wrong justification; locator trap)",
+      "L5-F-3 (14 numbers right, five more missed; headline range wrong)",
+      "L5-A-5 (must not 'correct' a clause that is true)"
+    ],
+    "CAP_WARNING": "9 findings await decision, under the 12-finding triage cap -- but FOUR are P1 and three carry corrected fixes that need care, so expect 3 picker rounds minimum against the 5-round cap. The 2 FYI observations need NO decision and do not consume the cap. Suggested order is severity-first, which is how `findings` is already sorted.",
+    "exit_signal_raw": "NOT CLEAN -- 9 actionable findings await decision (4 P1, 5 P2). A Proposed-fixes section is non-empty, so the doc-review-loop EXIT-SIGNAL (neither a Proposed-fixes nor a Decisions section present) does not fire. No finding landed as `manual` at anchor 75+, so there is no Decisions section and no premise-dependency chain: all 9 carry a concrete fix.",
+    "no_chains": "No premise-dependency chains. A chain root must be P0/P1 AND `manual`; all four P1s are gated_auto with concrete fixes. All 9 are independent decisions.",
+    "lap_5_triage_half_note": "Triage half ran 2026-09-29 in worktree .claude/worktrees/nh-320-spec-lap-3-b024c3 on branch claude/nh-320-lap-5-triage-78d81f, pushing to docs/nh-320-web-vr-gate-spec. 3 picker rounds against the 5-round cap; 11 findings applied against the 12-finding cap."
+  },
+  "settled_do_not_relitigate": [
+    "1. Page-level Playwright screenshots in web/e2e (not a web/ Storybook, not NH-298 alone).",
+    "2. REVISED 2026-09-28 by the maintainer (only he may): v0 Plan C MERGED (PR #176), and its two popover shots are deliberately OUT of this gate -- they land after it as their own piece of work.",
+    "3. web/'s whole browser lane moves into the Playwright container.",
+    "4. Blocking via ci-green from day one.",
+    "5. REVISED 2026-09-28 by the maintainer: NINE shots, not eleven -- the two Plan C popover shots are deferred (see item 2). Still against PR #170's merged layout.",
+    "6. Playwright's DEFAULT comparison tolerance, same as client/.",
+    "7. tooling/docker-playwright.sh replaces the inlined container command.",
+    "8. No gh-pages diff report for web/; a red run gives a downloadable artifact.",
+    "9. ONE unscoped `playwright test` invocation in CI, not two scoped steps.",
+    "10. Shots run in PARALLEL, matching client/.",
+    "11. Navigation shared via web/e2e/player-states.ts; a11y.e2e.ts refactored to import it.",
+    "12. Whether the gate is worth building at all."
+  ],
+  "settled_note": "All twelve were passed to all four reviewers in the Settled-decisions slot, exactly as lap 4 did. The document carries no `session-settled:` annotations (it has no frontmatter at all), so strictly the skill's {settled_ktds} slot would be the literal `none` -- passing the loop's accumulated decisions there instead is a deliberate carry-forward, because otherwise every lap re-litigates ground laps 1-4 already closed. No finding this lap challenges any of the twelve on preference grounds. The verifier checked L5-F-5 specifically against settled 9 and 10 and found no contradiction -- see that finding's corrected fix.",
+  "known_open_carried_forward": [
+    "Whether web/ needs client/'s extra global `transition/animation: none !important` freeze (client/src/vr-helpers.ts) on top of Playwright's animations:'disabled'. STILL NOT measurable until the shots exist; the spec states no number and treats it as open. Unchanged from lap 4.",
+    "RESOLVED THIS LAP, no longer open: what `next build` costs inside the Playwright container. Measured (7 s) and the spec corrected -- see pre_review_spike_this_lap above."
+  ],
+  "id_glossary": {
+    "L5-C-N / L5-S-N / L5-A-N / L5-F-N": "Lap-5 finding N from the coherence / scope-guardian / adversarial / feasibility reviewer respectively.",
+    "P0": "Would ship a gate that passes while the thing it guards is broken -- the failure this whole spec exists to prevent. NONE this lap.",
+    "P1": "An implementer is blocked, or the gate has a hole that lets the guarded bug through.",
+    "P2": "Real defect; the spec still works but misleads or leaves a hole.",
+    "P3": "Minor; nothing breaks.",
+    "confidence anchor": "The review engine's evidence scale: 100 = evidence directly confirms it; 75 = double-checked, will be hit in practice; 50 = verified real but advisory, routed to FYI and never asked as a decision. Anchors 0 and 25 are dropped silently -- none occurred.",
+    "safe_auto / gated_auto / manual": "Whether the fix applies silently (one clear right answer, anchor 100 only), applies after the maintainer confirms, or needs his judgement.",
+    "PR #162": "An already-shipped bug of exactly the guarded class: the seek rail rendered 0 px wide and every browser test passed, axe included.",
+    "NH-315 / PR #167": "The other shipped bug of this class: production served the design system unstyled while the same commit's preview was perfect. L5-A-1 argues its true mechanism was a branch-keyed Vercel build cache that a cold container build cannot reproduce.",
+    "NH-335": "An uncaught TypeError out of AlphaTab's worker that went unnoticed for the whole of PR #176 -- why web/e2e/page-errors.ts exists, and the basis of L5-F-4.",
+    "PR #170": "The merged full-bleed player layout the nine shots are taken against.",
+    "ci-green": "The single required merge-gate CI context; a new job needs no ruleset change.",
+    "the nine shots": "landing, bundled beat, long score, Skeleton, engine error, transport toggles, ghost hover, header tooltip, narrow viewport."
+  },
+  "coverage": {
+    "activated": ["coherence", "feasibility", "scope-guardian", "adversarial"],
+    "not_activated": [
+      "product-lens -- both legs (premise claims, strategic weight) are foreclosed by settled items 1 and 12, so it could only re-litigate settled ground. Same call as laps 3 and 4.",
+      "design-lens -- the doc's screen references are incidental to test infrastructure and the nine-shot list is settled. Same call as laps 3 and 4.",
+      "security-lens -- no auth, PII, endpoint or trust-boundary surface."
+    ],
+    "model_tiering": "coherence on haiku (cheapest capable tier per the skill's dispatch table), scope-guardian on sonnet (mid-tier), feasibility and adversarial inheriting the parent model (Opus 5) as the skill's high-capability review tier.",
+    "cross_model_judgment_pass": "SKIPPED by the maintainer's decision -- see _header.cross_model_judgment_pass. Non-blocking by the skill's own design.",
+    "dropped_anchors_0_25": 0
+  },
+  "findings": [
+    {
+      "id": "L5-A-1",
+      "reviewer": "adversarial",
+      "severity": "P1",
+      "anchor": 75,
+      "cls": "gated_auto",
+      "ftype": "error",
+      "section": "Why this exists / Approaches weighed (lines 34, 39, 60)",
+      "verdict": "CONFIRMED",
+      "scenario": "You read this spec to decide whether the gate is worth building. It opens by naming two bugs that already shipped and says this gate stops that class. You approve it, it gets built, and you believe both holes are now covered. Only one of them is. The second bug was caused by a build cache on the hosting side serving a stale answer -- and a container that builds from scratch has no cache to serve, so it cannot reproduce that failure at all. Worse, the two guards that DO hold that bug shut go unnamed in this spec, so the next person tidying up sees a shiny new gate and prunes them.",
+      "whats_wrong": "The doc presents NH-315 as a bug this gate would catch. The changelog records its mechanism as a branch-keyed Vercel build cache that outlived a change to what Tailwind scans. A cold container build cannot reproduce that. Of the two cited incidents the gate catches PR #162's 0-px seek rail, not NH-315.",
+      "verified": "CONFIRMED by primary sources: decision-changelog.md:483 names the branch-keyed cache mechanism ('outlived a change to what Tailwind scans'). Both remedies exist and AGENTS.md:111 says they must stay -- web/vercel.json:5 removes .next/cache, and REQUIRED_SELECTORS lives at web/scripts/assert-design-system-css.mjs:62, run by web's own build script.",
+      "fix": "In 'Why this exists', state NH-315's real mechanism, that a cold container build cannot reproduce it, and that it is already held shut by web/vercel.json's .next/cache removal plus the assert-design-system-css.mjs REQUIRED_SELECTORS canary -- so of the two cited incidents this gate would have caught the PR #162 rail, not NH-315. Add a fourth 'Approaches weighed' row for that canary, verdict 'complement, not substitute'. Restate the Storybook rejection's third count as the coverage this gate actually adds (the composed page's pixels at a real width) instead of 'never runs next build'.",
+      "knock_on": "MUST ALSO EDIT line 34, 'The bug class has already shipped twice:'. Reclassifying NH-315 without rewriting that lead-in makes the section contradict itself.",
+      "before_lines": "34, 39, 60"
+    },
+    {
+      "id": "L5-A-4",
+      "reviewer": "adversarial",
+      "severity": "P1",
+      "anchor": 75,
+      "cls": "gated_auto",
+      "ftype": "error",
+      "section": "Process changes this carries -- web/e2e/*.vr.ts (line 795)",
+      "verdict": "PARTIAL -- finding real, reviewer's fix HALF WRONG",
+      "scenario": "Someone parks a flaky screenshot by skipping the block it lives in, meaning to come back to it. The guard that exists to catch exactly that does not fire, so the shot quietly stops being compared while CI stays green. The gate keeps reporting that a screen is protected when it no longer is.",
+      "whats_wrong": "The guard's pattern requires skip or fixme immediately after `test.`, so it matches test.skip( but not test.describe.skip( -- and this design already needs a test.describe() wrapper for the narrow-viewport shot, which makes skipping the describe the natural way to park it.",
+      "verified": "PARTIAL. The miss is real and measured. But the reviewer's proposed replacement is half wrong on BOTH counts: dropping the trailing \\( makes it match any TEXT occurrence ('test.skip.png' in a snapshot name, '// never use test.skip here', 'const skip = test.skip;'), and its stated reason -- 'so no-argument call forms are caught' -- is FALSE: test.skip() and test.fixme() are calls the CURRENT pattern already matches.",
+      "fix": "CORRECTED BY VERIFICATION -- apply this, not the reviewer's original. Use /\\btest\\.(?:describe\\.)?(?:skip|fixme)\\s*\\(/ . Measured truth table: catches test.skip(, test.fixme(, test.describe.skip(, test.describe.fixme( and test.skip ( cond ); rejects test.describe(, test.describe.configure(, test.step(, test.slow(, skipIf( and every string/comment case. DROP the no-argument rationale from the doc -- it is false.",
+      "before_lines": "795"
+    },
+    {
+      "id": "L5-A-2",
+      "reviewer": "adversarial",
+      "severity": "P1",
+      "anchor": 75,
+      "cls": "gated_auto",
+      "ftype": "omission",
+      "section": "The pixel-stability measurement / The shots (lines 121, 124, 238, 244)",
+      "verdict": "CONFIRMED -- real gap, NOT a duplicate of lap 4",
+      "scenario": "Someone changes a colour token and the left rail stops being a different shade from the panel behind it. The player page flattens into one slab of colour -- visibly wrong to any human who opens it. All nine screenshots still pass, and the gate goes green. That is exactly the green-while-broken outcome this whole spec exists to prevent, on the very surfaces the merged layout introduced.",
+      "whats_wrong": "The doc works out the right rule -- a shot whose stated coverage IS a surface step needs an assertion on the signal rather than a tighter tolerance -- then applies it to only two shots. The bundled-beat shot's own stated coverage is 'header, rail, score, footer', which includes surface steps the comparator cannot see: rail-over-panel scores 20 and panel-over-background 5, against a 1408.6 cutoff.",
+      "verified": "CONFIRMED as a real gap. The only computed-background assertions in all 871 lines are ghost-hover (:310,:313) and engine-error (:321,:323), and line 725 says 'Two shots'. The bundled-beat shot is never excluded anywhere, Deferred block included. Its steps (20, 5) are FURTHER under the cutoff than the 80/173 the doc does protect.",
+      "fix": "CORRECTED BY VERIFICATION -- apply this, not the reviewer's original. Give the bundled-beat shot a signal-side assertion on TWO surface steps, not three: rail vs page background, and transport footer vs page background. The header is NOT one of them -- the doc itself says at :702 that the header paints no background. Say so in that row's coverage cell the way the ghost-hover and engine-error rows already say 'asserted, not photographed'.",
+      "fix_cautions": [
+        "Do NOT justify it with the NH-315 @source-staleness mechanism: bg-rail and bg-panel are written in web/'s OWN source (PlayerShell.tsx:1033, TransportRow.tsx:102, PlayerHeader.tsx:193), so Tailwind's automatic detection generates them. The realistic vector is a token-value change in client/src/styles.css.",
+        "LOCATORS: neither the rail <aside> nor the footer <div> has a data-testid. The rail is reachable as getByRole('complementary').",
+        "NEVER use a .bg-panel class locator. web/app/globals.css:31-35 excludes only web/scripts/** from Tailwind's automatic source detection, so a utility written literally in a web/e2e/*.vr.ts file would ARM ITSELF -- the same self-defeating trap that file already documents."
+      ],
+      "before_lines": "238, 244"
+    },
+    {
+      "id": "L5-A-3",
+      "reviewer": "adversarial",
+      "severity": "P1",
+      "anchor": 75,
+      "cls": "gated_auto",
+      "ftype": "omission",
+      "section": "Process changes this carries -- web/e2e/*.vr.ts (lines 776, 791)",
+      "verdict": "CONFIRMED -- demonstrated by running it",
+      "scenario": "Months from now someone tidies the Playwright config and renames or drops the browser project that runs the screenshots. Every guard still passes, the CI step still exits 0, the merge gate still shows green -- and zero screenshots are being compared. The gate is switched off and nothing tells you.",
+      "whats_wrong": "The doc MEASURED this hole (an unscoped run over a config with an empty chromium project exits 0) but its guard only proves that *.vr.ts files exist and that one calls toHaveScreenshot. The project is what makes those files run.",
+      "verified": "CONFIRMED BY DEMONSTRATION on real Playwright 1.61.1, not by argument. Delete the chromium project: unscoped `playwright test` exits 0 and never runs the shots. Keep the name but typo testMatch: also exits 0. The prescribed guard passes in both cases because it reads only web/e2e/ filenames, never the config. Note web/playwright.e2e.config.ts today has NO projects array at all -- it is added by the implementing PR.",
+      "fix": "Add a second assertion to the same tooling/workflow-guards.test.mjs test: read web/playwright.e2e.config.ts and require both `name: 'chromium'` and `testMatch: '**/*.vr.ts'`, so deleting or renaming the project fails the guard instead of silently emptying the lane.",
+      "before_lines": "776, 791"
+    },
+    {
+      "id": "L5-F-3",
+      "reviewer": "feasibility",
+      "severity": "P2",
+      "anchor": 100,
+      "cls": "gated_auto",
+      "ftype": "error",
+      "section": "Readiness / The shots / CI / Process changes this carries (lines 169, 224, 304, 583, 696)",
+      "verdict": "PARTIAL -- all 14 supplied numbers land correctly, but the fix's SCOPE and HEADLINE are wrong",
+      "scenario": "You hand this spec to whoever implements it. They open the file at a line number the spec cites and land in completely unrelated code -- the citation for a loading-state stall points at scroll-geometry logic instead. They either waste time hunting for the real thing or, worse, wire the new test against the wrong code. The spec's only warning about stale line numbers names one file, so they have no reason to distrust the rest.",
+      "whats_wrong": "Line references into web/e2e and ci.yml have drifted by 11 to 155 lines; four merged PRs moved them. The doc's sole drift caveat names PlayerShell.tsx alone.",
+      "verified": "PARTIAL. All 14 line numbers the reviewer supplied were checked one by one and ALL LAND CORRECTLY (25-row per-reference table in lap5-verify-numbers.json). What is wrong is what the fix LEAVES OUT, plus its headline.",
+      "fix": "EXPANDED BY VERIFICATION -- the reviewer's 14 corrections are all right, but apply them PLUS the five it misses, and fix the headline. (1) Apply the 14 as given. (2) ALSO re-take these, which the fix omits entirely: PlayerShell.tsx:600 -> :1033 (the rail; off by 433 -- the document's WORST stale reference, and the reviewer's list omits this file altogether); PlayerShell.tsx:537 -> :959 (header relative z-10; off by 422); OpenFileControl.tsx:118 -> :126 (ghost button; off by 8); ci.yml:224 -> :235 and ci.yml:399 -> :410 (the two sibling upload `if: ${{ !cancelled() }}` guards cited at doc line 608). (3) FIX A WRONG FILE, not a wrong line: the two popover test ids are attributed to PlayerShell.tsx:139 and :321, but they live at SettingsPopover.tsx:139 and TracksPopover.tsx:321 -- a line-number refresh alone leaves this error in place. (4) The player data-file wait is :196 for the assertion head but the timeout: 30_000 literal sits on :197. (5) CORRECT THE HEADLINE: 'stale by 11 to 155 lines' is wrong -- the measured span is 5 to 433. (6) Still widen the Risks line-drift caveat from PlayerShell.tsx alone to every file the document cites by line.",
+      "before_lines": "169, 224, 304, 583, 696, 699-700",
+      "fix_cautions": [
+        "The drift-confinement claim is PARTIAL: the conclusion (a small identifiable set) holds, but the PR list is wrong BOTH ways. PR #170 contributed ZERO drift (it merged 2026-09-22, before the numbers were taken at 6a38f13f). #177 (dependabot) and #181 touched cited files but net-zero lines, so shifted nothing. OpenFileControl.tsx drifted under #179 and is never mentioned. The PRs that actually moved lines are #176, #178 and #179 -- THREE, not four.",
+        "Verified UNCHANGED, needing no edit: Popover.tsx:44; workflow-guards.test.mjs :40/:44/:47/:48/:51; ci.yml:105; the nh-197 spec's :186/:206/:223.",
+        "Slice 4 OVERLAPS L5-S-1's stray second quote at lines 766-768. Do not double-apply.",
+        "Does NOT cover the a11y 60 000 ms refs at line 408 -- that was L5-F-2, applied this lap."
+      ]
+    },
+    {
+      "id": "L5-A-5",
+      "reviewer": "adversarial",
+      "severity": "P2",
+      "anchor": 75,
+      "cls": "gated_auto",
+      "ftype": "error",
+      "section": "Process changes this carries -- tooling/workflow-guards.test.mjs (lines 842-843)",
+      "verdict": "CONFIRMED",
+      "scenario": "The spec asks for a test that pins the new CI job to the Playwright container image. Someone writes it as an unscoped search of the workflow file. It passes on day one and every day after -- because an older job already contains that exact line. The new job could lose its container entirely and the test would never notice.",
+      "whats_wrong": "The prescribed replacement assertion is satisfied by an occurrence that already exists elsewhere in the file, which is the same vacuity that file's own comment warns against.",
+      "verified": "CONFIRMED. `container: mcr.microsoft.com/playwright:v1.61.1-noble` occurs at exactly one line today -- .github/workflows/ci.yml:222, inside the vr: job (header :218, next job :254) -- so an unscoped assertion already passes. tooling/workflow-guards.test.mjs has no container/mcr reference at all, and the job-slicing fix shape is already the house idiom in that same file at :65-73.",
+      "fix": "Scope the replacement assertion to the web job's own block, the way that file's existing job-sliced test already does: split ci.yml on the job header, then match the container line inside that slice. Say in the spec that the scoping is what makes the pin real, since the bare literal already exists for vr.",
+      "fix_cautions": [
+        "Do NOT 'correct' the doc's clause 'nothing in the suite pins it today' -- verified LITERALLY TRUE (tooling/ has no such literal). The fix ADDS the scoping rationale; it does not rewrite a true sentence.",
+        "ci.yml has no `web:` key yet, so the split anchor only exists after the implementing PR adds the job."
+      ],
+      "before_lines": "842-843"
+    },
+    {
+      "id": "L5-F-5",
+      "reviewer": "feasibility",
+      "severity": "P2",
+      "anchor": 75,
+      "cls": "gated_auto",
+      "ftype": "error",
+      "section": "Risks and caveats (lines 708, 548)",
+      "verdict": "PARTIAL -- finding real, reviewer's fix WRONG REMEDY",
+      "scenario": "Screenshots start flaking. You reach for the one-line escape hatch the spec promises and find it barely helps, because it only serialises the shots against each other -- 91 behaviour tests keep hammering the same server in parallel, which is where the contention actually comes from. You are now debugging a flaky merge gate with the remedy the document told you would fix it.",
+      "whats_wrong": "`fullyParallel: false` on the VR project serialises only tests WITHIN each file; test files still run in parallel, so the behaviour tests keep running concurrently against the same server. It does not restore the conditions the 60-run stability study was measured under.",
+      "verified": "PARTIAL. The defect is CONFIRMED and measured: Playwright's own types plus a timestamped run show project-level fullyParallel:false serialised the two shots 57 ms apart while both behaviour files ran concurrently with them. web/playwright.e2e.config.ts:9 sets fullyParallel: true config-wide. BUT the reviewer's premise that `workers` is config-level only is WRONG -- TestProject.workers exists. And its proposed remedy (replace the hatch with a separate web-vr job) is the wrong first move: the doc's own table prices that at a third web build, and the doc ALREADY names that fallback two lines below the hatch at :711.",
+      "fix": "CORRECTED BY VERIFICATION -- apply this, not the reviewer's original. Do NOT delete the one-line hatch. Instead: (a) add the caveat that fullyParallel:false serialises only the shots inside each file and leaves the behaviour tests concurrent against the same server; (b) record Playwright's first-class remedy, `dependencies: ['e2e']` on the chromium project, which MEASURED under one unscoped invocation: both behaviour files finish, THEN the shots run -- pair it with fullyParallel:false or workers:1 to serialise the shots among themselves; (c) keep the separate web-vr job as the documented fallback, not the first remedy.",
+      "fix_cautions": [
+        "RECORD THE MEASURED TRADE-OFF of dependencies: one failing behaviour test makes the dependent project report '2 did not run'. The run is red so merge still blocks, but it compares ZERO pixels -- and retries: 2 means a persistent failure costs the whole pixel lane.",
+        "Verified NOT a contradiction of settled 9 (one unscoped invocation) or settled 10 (parallel shots): the doc already names the web-vr fallback at :711 alongside settled 9, and dependencies works under a single unscoped invocation.",
+        "This is the same inverted-fix shape lap 4 hit with its own L4-F-7. Present the CORRECTED fix; do not offer the reviewer's 'replace the hatch' version."
+      ],
+      "before_lines": "708"
+    },
+    {
+      "id": "L5-F-4",
+      "reviewer": "feasibility",
+      "severity": "P2",
+      "anchor": 75,
+      "cls": "gated_auto",
+      "ftype": "omission",
+      "section": "Process changes this carries (lines 763, 770)",
+      "verdict": "CONFIRMED -- strengthened by a live precedent",
+      "scenario": "A new merge-blocking screenshot lane goes green while the page underneath it threw an uncaught error. That is not hypothetical: opening a score threw a TypeError out of the notation engine's worker for the whole of one merged PR with nothing noticing. The repo has a gate for exactly this, but it is opt-in per file -- and the spec never tells the new files to switch it on. A screenshot comparison is even less likely to notice a throw than a behaviour assertion.",
+      "whats_wrong": "The footprint entry for the nine shot files never mentions the page-error gate, though both sibling e2e files install it.",
+      "verified": "CONFIRMED. failOnUnexpectedPageErrors is exported at web/e2e/page-errors.ts:90 with the guidance 'Call once at module scope, next to the imports'; installed at web/e2e/player.e2e.ts:10 and web/e2e/a11y.e2e.ts:8. Its allowance is origin-scoped to the engine bundle, and both the Skeleton and engine-error states already pass under it. The document has ZERO hits for page-error/pageerror/failOnUnexpected/uncaught. NEW EVIDENCE from verification: web/e2e/toast-occlusion.e2e.ts does NOT install it -- a live precedent that a web/e2e file can silently omit it, which turns this from a footprint nicety into a real requirement.",
+      "fix": "Add to the web/e2e/*.vr.ts footprint entry that each new shot file calls failOnUnexpectedPageErrors() at module scope next to its imports, as player.e2e.ts:10 and a11y.e2e.ts:8 already do. Its allowance is scoped to engine frames, so the deliberately-broken Skeleton and engine-error states still pass.",
+      "before_lines": "763, 770"
+    },
+    {
+      "id": "L5-F-6",
+      "reviewer": "feasibility",
+      "severity": "P2",
+      "anchor": 75,
+      "cls": "gated_auto",
+      "ftype": "omission",
+      "section": "The shots / Process changes this carries (lines 220, 765)",
+      "verdict": "PARTIAL -- counts exact, one characterisation WRONG",
+      "scenario": "The spec justifies a shared navigation module by saying a renamed test id then lands in one place. An implementer follows it, moves the six states that have screenshots, and stops. Three accessibility cases still reach the player page by hand, so the promise is only two-thirds true and the next test-id rename still breaks something.",
+      "whats_wrong": "a11y.e2e.ts holds nine cases and only six map to shots. The narrow-700px case and the two popover cases each keep their own navigation. The footprint promises a11y is refactored 'instead of carrying its own copies', leaving the implementer to guess the scope.",
+      "verified": "PARTIAL. Counts EXACT: nine a11y cases, six with VR counterparts, and exactly the three named -- narrow 700 px at :341, Settings popover at :353, Tracks popover at :371, each with its own goto('/play') at :343/:354/:372. Settled decision 2 is NOT breached: this moves navigation only, it adds no popover shots. BUT 'verbatim second copy' is NOT TRUE -- the Tracks open shares only the two navigation lines plus settleToasts; the readiness waits genuinely differ (the long-score case polls scrollHeight > clientHeight after an SVG-visible wait; Tracks waits on data-file='Punk.gp', which appears at :374 only).",
+      "fix": "CORRECTED BY VERIFICATION. State that the three a11y.e2e.ts cases with no VR counterpart -- narrow 700 px, Settings popover, Tracks popover -- also move their /play navigation into player-states.ts. Word it as 'the three cases reach /play by hand and two reuse navigations already being extracted', NOT as 'a verbatim second copy' -- that overstates it and contradicts the doc's own rule at :222 that each lane keeps its own readiness waits.",
+      "fix_cautions": [
+        "Scope note: this widens the a11y refactor from 6 to 9 cases on a lane that passes today."
+      ],
+      "before_lines": "220, 765"
+    }
+  ],
+  "applied_silently_this_lap": [
+    {
+      "id": "L5-C-1",
+      "reviewer": "coherence",
+      "severity": "P2",
+      "anchor": 100,
+      "line": 358,
+      "before": "The other ten shots are pinned at",
+      "after": "The other eight shots are pinned at",
+      "why": "Residue of the eleven-shot list that commit 74720b87 cut to nine. Active table = 9 rows, exactly 1 at 900 px, so 8 at 1280 px. Only such reference left; 13 other lines already say nine.",
+      "verified_by": "orchestrator (counted the table) + verify-quotes (internal contradiction) + verify-numbers (arithmetic)"
+    },
+    {
+      "id": "L5-S-1",
+      "reviewer": "scope-guardian",
+      "severity": "P2",
+      "anchor": "50 -> RE-ANCHORED to 100",
+      "line": "10-11",
+      "before": "the way 45 of / the 46 component folders",
+      "after": "the way 49 of / the 50 component folders",
+      "why": "client/src/components/ui/ holds 50 folders, 49 with a *.vr.ts; only Table/ lacks one, so the sentence's conclusion is untouched. Stale by 4 in both numbers.",
+      "verified_by": "orchestrator (directory listing) + verify-numbers (independent count)",
+      "RE_ANCHOR_DISCLOSURE": "The reviewer self-anchored this 50, which routes to FYI and per rule 3.7 must NEVER auto-apply. The orchestrator re-anchored it to 100 and applied it. Reason: the anchor-50 rubric means 'verified real but a nitpick' -- it is about IMPORTANCE, not doubt -- and two independent directory counts leave no room for interpretation, which is the anchor-100 criterion and the textbook safe_auto 'wrong count' pattern. Recorded here rather than applied quietly so the maintainer can reverse it.",
+      "note": "Its second evidence quote (line 768) is byte-exact but MIS-ATTACHED -- it lives in the a11y stale-figures bullet that L5-F-3 also targets. The Goal-count fix stands on its first quote alone. Nothing was double-applied."
+    },
+    {
+      "id": "L5-F-1",
+      "reviewer": "feasibility",
+      "severity": "P2",
+      "anchor": 100,
+      "line": "211, 710",
+      "before": "the 51 existing web/ browser tests / sitting through fifty behaviour tests",
+      "after": "the 91 existing web/ browser tests / sitting through ninety behaviour tests",
+      "why": "`playwright test --list` reports 'Total: 91 tests in 3 files' (a11y 9, player 79, toast-occlusion 3). 51 was NOT a mistake -- it was CORRECT on 2026-09-26 when lap 2 wrote it (45 naive + 6 loop); #176/#179/#181 grew the lane the next day. A naive grep gives 83; three generator loops account for the other eight.",
+      "verified_by": "verify-quotes AND verify-numbers, both by running playwright test --list",
+      "note": "Line-scoped edit deliberately: line 111 has an unrelated 'ninety' and line 847 an unrelated ':51'. Both confirmed untouched after the edit."
+    },
+    {
+      "id": "L5-F-2",
+      "reviewer": "feasibility",
+      "severity": "P2",
+      "anchor": 100,
+      "line": 408,
+      "before": "its 60 000 ms ceilings at `:161` and `:190` are already",
+      "after": "its three 60 000 ms ceilings at `:315`, `:344` and `:355` are already",
+      "why": "a11y.e2e.ts carries three 60 000 ms ceilings, all transport-play toBeEnabled, at :315/:344/:355. The cited :161/:190 are unrelated expectHitAreas internals. The sentence's CONCLUSION (a config with no timeout caps them all at 30 s) was already correct; only the count and positions were wrong.",
+      "verified_by": "verify-quotes AND verify-numbers, independently",
+      "note": "Left scoped to a11y.e2e.ts on purpose -- player.e2e.ts has 41 such ceilings and toast-occlusion 1, so widening the sentence would make it false. Line 408 is now 106 chars against the file's ~100 hand-wrap; left as is because MD013 is disabled (Prettier owns prose wrapping), Prettier reports the file unchanged, and line 10 was already 104. Re-wrapping would touch lines no finding needed."
+    }
+  ],
+  "applied_commit": "e077556b -- 'docs(spec): correct four stale numbers the lap-5 review verified (NH-320)'. Pushed to docs/nh-320-web-vr-gate-spec. Each is one `git revert` away. Baseline before the applies was 3ca1b11f.",
+  "fyi_observations": [
+    {
+      "id": "L5-A-6",
+      "reviewer": "adversarial",
+      "severity": "P3",
+      "anchor": 50,
+      "cls": "manual",
+      "section": "The shots -- Narrow viewport",
+      "scenario": "You read that narrow widths are covered and assume the player chrome is gated at small sizes. Only the rail's flip is. The transport footer changes layout at a width no shot ever takes.",
+      "whats_wrong": "The transport footer carries a second breakpoint -- `sm:gap-6 sm:px-8`, flipping at 640 px -- and both 900 px and 1280 px sit above it, so no shot sees the below-sm transport layout. Nothing breaks (desktop web is the v0 target, nine shots is settled); the gap is that it is absent from the 'deliberately not in v1' list, which exists so each uncovered candidate reads as a decision rather than an oversight.",
+      "verified": "CONFIRMED real -- web/app/play/TransportRow.tsx:102 carries `... px-4 sm:gap-6 sm:px-8`, a genuine second flip at sm (640 px) a 900 px shot cannot see.",
+      "fix": "Add a third 'deliberately not in v1' entry naming the transport footer's sm flip at 640 px as uncovered by the 900 px shot; change the non-goal's 'a real breakpoint' to name the lg rail flip as the one this shot covers.",
+      "route": "FYI -- anchor 50. Reported, NOT a decision. Does not consume the triage cap."
+    },
+    {
+      "id": "L5-F-7",
+      "reviewer": "feasibility",
+      "severity": "P3",
+      "anchor": 50,
+      "cls": "gated_auto",
+      "section": "The shots (line 323)",
+      "scenario": "You copy the assertion snippet the spec gives you into a new shot file and the build fails on a type error before a single screenshot is taken.",
+      "whats_wrong": "web/tsconfig.json is strict and includes **/*.ts, so web/e2e/*.vr.ts is typechecked, and el.parentElement is HTMLElement | null where getComputedStyle takes Element. The logic is sound -- the panel's parent is in practice a non-null wrapper -- only the nil path is unhandled.",
+      "verified": "CONFIRMED by running tsc. web/tsconfig.json:7 is strict and includes **/*.ts. The snippet verbatim gives `error TS2345: Argument of type 'HTMLElement | null' is not assignable to parameter of type 'Element'` (exit 2). The guarded rewrite compiles clean (exit 0).",
+      "fix": "Hoist and guard the parent: `const parent = el.parentElement;` then `return parent !== null && own !== getComputedStyle(parent).backgroundColor && own !== 'rgba(0, 0, 0, 0)';`",
+      "route": "FYI -- anchor 50. Reported, NOT a decision. Does not consume the triage cap. NOTE: it is a real typecheck failure against a CI gate, so the maintainer may well want it applied despite the FYI routing -- worth one line at the end of triage."
+    }
+  ],
+  "verifier_surfaced_not_persona_findings": [
+    {
+      "id": "L5-V-1",
+      "severity": "P2 (suggested)",
+      "source": "verify-behavior, during the L5-A-2 check",
+      "title": "bg-elevate has no canary entry and IS in the NH-315 class",
+      "scenario": "A design-system class that only reaches web/'s bundle through the client/ scan goes missing from the emitted CSS. The ghost-hover state stops being visibly raised. Nothing fails, because the only guard that would catch this class of loss does not list that class.",
+      "detail": "bg-elevate exists only in client/src/components/ui/Button/Button.tsx (:30, :37), so it reaches web/'s bundle SOLELY through the client/ @source glob -- exactly the NH-315 mechanism -- and it is absent from web/scripts/assert-design-system-css.mjs REQUIRED_SELECTORS. This independently justifies the ghost-hover assertion the doc already has.",
+      "suggested": "Either a doc line noting it, or a REQUIRED_SELECTORS entry. If the latter: it must be written beyond Tailwind's reach, per that file's own rule that a watched utility must not be named in prose there.",
+      "note": "NOT raised by any persona. Surfaced by verification. Recorded rather than folded in silently."
+    },
+    {
+      "id": "L5-V-2",
+      "severity": "strengthens L5-F-4",
+      "source": "verify-behavior, during the L5-F-4 check",
+      "title": "web/e2e/toast-occlusion.e2e.ts does not install the page-error gate",
+      "detail": "A live precedent that a web/e2e file can silently omit failOnUnexpectedPageErrors. This turns L5-F-4 from a footprint nicety into a real requirement -- the omission is not hypothetical, it already exists in the tree.",
+      "note": "Folded into L5-F-4's evidence as well as recorded here."
+    }
+  ],
+  "dropped": [],
+  "dropped_note": "NOTHING was dropped. 15 raw findings, 15 survive: 13 CONFIRMED, 4 PARTIAL (L5-A-4, L5-F-5, L5-F-6, L5-F-3 -- each real but with a fix that verification corrected or expanded), 0 DROP. No finding failed on a bad section, an absent quote, or a contradiction. Anchors 0/25: none, so no silent drops either.",
+  "quote_integrity": "ONE reflowed quote across the whole lap, and it was caught before triage. L5-C-1's evidence joined three wrapped lines (358-360) so it failed an exact single-line grep; the claim itself was sound. The other 29 quotes across 14 findings are byte-exact single lines -- zero paraphrases, zero absent, zero em-dash-to-hyphen substitutions (the defect that broke three applies in lap 3). Every `before` slice in this file was cut from the document BY LINE NUMBER by a script, never retyped, and round-tripped back through `grep -n -F` with 0 failures. Apply with an exact-match edit and it will match.",
+  "residual_concerns": [
+    "retries: 2 is confirmed real (web/playwright.e2e.config.ts sets retries: process.env.CI ? 2 : 0), so the stated absorber exists -- but it absorbs SYSTEMATIC nondeterminism as readily as a one-off blip. A shot that drifts one run in three reads green roughly 96% of the time, visible only as a 'flaky' line nobody reads on a green run. For the seven unmeasured shots that means the lane can be green without being deterministic. (adversarial; could not raise above advisory because client/ runs 698 blocking baselines under the same setting)",
+    "CROSS-ARCHITECTURE BASELINES: generated locally in Docker on an arm64 Mac, compared on GitHub's amd64 runners. Neither the spec nor docs/runbooks/vr-a11y-testing.md addresses CPU architecture, and test:vr:docker passes no --platform. client/'s 698 baselines already travel that path successfully, so cross-arch parity is empirically established for Storybook components -- but AlphaTab's SVG notation render is new to it, and the 60-run study's host architecture is not stated. (adversarial)",
+    "The unscoped CI invocation the document calls load-bearing is protected only as a SIDE EFFECT of tooling/workflow-guards.test.mjs:40 being $-anchored, which would reject an appended --project=e2e. The document prescribes rewriting that literal without saying the anchor must survive, while separately teaching 'Every invocation must name its project' -- the exact rule that would tempt someone to scope the CI step. (adversarial)",
+    "The shots build under the shared webServer.env, which sets NEXT_PUBLIC_ALPHATAB_LOG_LEVEL: 'Debug' -- so every baseline photographs a configuration that never ships. The config's own comment says Debug prints to the console; whether it changes anything PAINTED was not confirmed. (feasibility)",
+    "Moving a11y.e2e.ts into the Playwright container moves its LAYOUT MEASUREMENTS too, not only its timing: expectHitAreas compares boxes against a fixed 44 px floor and against window/scroll-container edges, and its comment leans on specific render heights. Exposure judged small (self-hosted @fontsource variable faces, same Playwright-pinned Chromium both paths) -- but the spec's risk bullet names timing only. (feasibility)",
+    "The CI artifact rename extends the change footprint into three additional doc files beyond what avoiding the upload-artifact 409 collision alone would require; a uniquely-named new web/ artifact would not itself collide. The document argues the disambiguation deliberately rather than overlooking it, so this is advisory. (scope-guardian)",
+    "The 'Process changes this carries' footprint touches roughly 16 files, past the >8-file complexity threshold. Each is explicitly justified in-document as core implementation or a correctness-preserving consequence of the settled CI restructuring, so no finding was raised -- but the count is worth re-checking if implementation surfaces further incidental touches. (scope-guardian)",
+    "Line 596 cites a bare `D5` -- `# NOT `if: failure()` — keep the trace of a flaky-then-passed retry (matches vr and e2e, D5).` -- an identifier this document never defines. (coherence)",
+    "Verified accurate, NO ACTION needed: tooling/workflow-guards.test.mjs :38-39/:40/:44/:47/:48/:51 and its test name; docs/runbooks/vr-a11y-testing.md lines 1/6/15/19-22/27-34/50; client/src/styles.css:27; Popover.tsx:44; ci.yml:105; the root test:vr:docker and :update lengths of 395 and 402 characters. (feasibility)",
+    "Verified, NO ACTION: the container job needs no working git for the build. appVersion() returns the constant 'local' because channelPrefix short-circuits on an unset VERCEL_ENV and never reaches resolveSha's git rev-parse -- so the document's VERCEL_ENV claim holds for the whole build, not just the tooltip. (feasibility; independently re-confirmed by the pre-review container spike, where the build succeeded with .git unreachable from inside the mount)",
+    "Verified, NO ACTION: the pre-push hook's last command is `pnpm -r --if-present run test` with no root test:tooling, so the document's 'green push, red CI' warning on tooling/workflow-guards.test.mjs is correct. (feasibility)",
+    "Verified, NO ACTION: tooling/README.md's file table indexes only 4 of roughly 30 files in that directory, so omitting the new tooling/docker-playwright.sh from the footprint matches existing practice rather than being a gap. (feasibility)",
+    "Verified, NO ACTION: 'Playwright's forbidOnly catches .only' is true (web/playwright.e2e.config.ts:10), and 'nothing in the suite pins it today' is true for the container image. (verify-behavior, incidental)"
+  ],
+  "restated_suppressed": 1,
+  "restated_note": "1 residual suppressed as a restatement of an actionable finding: adversarial's 'Line 358 says \"The other ten shots are pinned at\" where the settled count is nine ... Left to coherence-reviewer, whose territory it is.' That is L5-C-1, applied this lap. NOTE for the record: this was independent corroboration of L5-C-1, but it arrived as a residual rather than a finding, so rule 3.4 gives it no anchor promotion.",
+  "deferred_questions": [
+    "Should bg-rail and bg-panel be added to web/scripts/assert-design-system-css.mjs REQUIRED_SELECTORS, or is a per-shot computed-style assertion the right home for surfaces the comparator cannot see? The canary's own rule (an entry must appear nowhere else in scanned text, including prose) would need checking against web/app/**, which Tailwind auto-detects. See also L5-V-1 on bg-elevate. (adversarial)",
+    "Once error toasts stop auto-dismissing (noted in Readiness as intended by the maintainer, 2026-09-26), does any of the nine shots gain a persistent toast in frame, and does the long-score shot's toast-count-zero wait need to become an explicit dismiss? (adversarial)",
+    "ANSWERED BY VERIFICATION THIS LAP -- folded into L5-F-5's corrected fix, no longer open: 'Under one unscoped invocation, would dependencies: [e2e] on the chromium project be a better isolation lever than a separate web-vr job?' Measured: YES. Both behaviour files finish, then the shots run, under one unscoped invocation and one webServer. The accepted cost the doc must record: a red behaviour test makes the pixel project report 'did not run' -- the run is red so merge still blocks, but it compares zero pixels, and retries: 2 makes a persistent failure cost the whole pixel lane. (feasibility, answered by verify-behavior)",
+    "Does the web job want an explicit workers cap now that 91 behaviour tests plus nine engine-driving shots share one Next.js server on a four-core runner, where Playwright's default is half the logical cores? NOTE: TestProject.workers does exist (the reviewer's premise that workers is config-level only was wrong), so this can be set per project. (feasibility, premise corrected by verify-behavior)"
+  ],
+  "lap_state": {
+    "lap": 5,
+    "lap_bumped": false,
+    "lap_bump_note": "NOT bumped. Every finding is decided, so step 6 is complete — but step 7a's bound fires FIRST: lap 5 IS the lap cap. A lap 6 needs the maintainer's explicit override, and he has not been asked yet at the time this was written. Bump to 6 only if he overrides.",
+    "half_completed": "BOTH. Review half (steps 1-3) in the previous invocation; triage half (steps 4-6) in this one.",
+    "triaged": true,
+    "undecided": [],
+    "last_applied": "P1 — the highest severity applied this lap (L5-A-1, L5-A-2, L5-A-3, L5-A-4).",
+    "decisions": {
+      "L5-A-1": "APPLY — maintainer, picker round 1.",
+      "L5-A-2": "APPLY — maintainer, picker round 1. Applied in two parts: the doc changes in round 1, the locator (L5-A-2b) in round 2.",
+      "L5-A-3": "APPLY — maintainer, picker round 1.",
+      "L5-A-4": "APPLY — maintainer, picker round 2.",
+      "L5-A-2b": "AUTO-RESOLVE REST — maintainer chose option 1 (two data-testid attributes) via the auto-resolve escape hatch, round 2.",
+      "L5-A-5": "AUTO-RESOLVE REST — maintainer, round 2.",
+      "L5-F-3": "AUTO-RESOLVE REST — applied, see re_derivation_note below.",
+      "L5-F-4": "AUTO-RESOLVE REST — applied.",
+      "L5-F-5": "AUTO-RESOLVE REST — applied (the corrected fix: keep the hatch, add the caveat, record dependencies:['e2e'] and its cost, keep web-vr as fallback).",
+      "L5-F-6": "AUTO-RESOLVE REST — applied.",
+      "L5-F-7": "APPLIED although routed FYI. It is a real typecheck failure against a CI gate (web/tsconfig.json is strict and includes **/*.ts), verified by running tsc, and the guarded rewrite compiles clean. Reported to the maintainer rather than applied quietly.",
+      "L5-A-6": "APPLIED — maintainer, final round. He chose to add it after all: a fifth Non-goals bullet naming the transport footer's `sm` flip at 640 px as uncovered on purpose, plus the neighbouring bullet reworded to name the rail's `lg` flip as the breakpoint the narrow shot does cover."
+    },
+    "re_derivation_note": "L5-F-3's fix said 'apply the 14 as given', but the 14 corrections lived in lap5-verify-numbers.json, which was NEVER PERSISTED — a real defect in the review half's handoff (the artifact references a file that exists nowhere in the repo or any worktree). Rather than guess, the triage half re-derived the whole set: it extracted every file:line citation from the spec and checked each against master. Result: 13 stale by 5 to 433 lines, 2 pointing at the wrong FILE (the popover test ids are in SettingsPopover.tsx / TracksPopover.tsx, not PlayerShell.tsx), 5 already correct and left alone. All 7 corrections the artifact DID name explicitly were confirmed. A post-edit re-scan shows every citation now landing on the content the document claims for it. LESSON for the next review half: persist the verifier's tables next to findings.json, or inline their rows.",
+    "applied_this_half": [
+      "L5-A-1",
+      "L5-A-2",
+      "L5-A-2b",
+      "L5-A-3",
+      "L5-A-4",
+      "L5-A-5",
+      "L5-F-3",
+      "L5-F-4",
+      "L5-F-5",
+      "L5-F-6",
+      "L5-F-7",
+      "L5-A-6"
+    ],
+    "commits_this_half": [
+      "358a773d — round 1: the three P1s (NH-315 reclassified, bundled-beat surface assertion, chromium-project guard).",
+      "bb9ac751 — rounds 2-3: skip-guard regex, scoped container pin, two test ids, every line citation re-taken, page-error gate, parallelism caveat, a11y refactor scope, the tsc guard."
+    ],
+    "bound_check": "AT THE CAP, and every finding is now decided — so review-loop step 7a fires: HALT and hand to the maintainer. Step 7b would otherwise re-lap (four P1s were applied this lap, and EXIT-SIGNAL was not clean), but the bound is evaluated FIRST and wins. A lap 6 requires the maintainer's EXPLICIT override. For that conversation: four P1s found fresh on the final lap is itself evidence the document still has depth left, which argues FOR an override — but it is his call, and the counter-argument is that five laps and 70+ decisions is already past the point of diminishing returns.",
+    "next_step": "NONE for this loop — it is closed. The spec is the maintainer's to merge via PR #171, and implementation is the next piece of work. Do NOT re-enter the review loop on this document without an explicit new instruction.",
+    "open_after_this_lap": [],
+    "lap_decision": "HALT — chosen by the maintainer on 2026-09-29 at the step-7a bound. The loop is CLOSED at lap 5. No lap 6; `lap` stays 5 and is never bumped. His reasoning matched the recommendation: every P0/P1/P2 is resolved, and much of lap 5's yield was stale line citations that re-stale on every merge — a treadmill rather than remaining depth. The cross-model judgment pass stays permanently unclosed and is recorded as a known gap, not an oversight.",
+    "loop_closed": true
+  }
+}
