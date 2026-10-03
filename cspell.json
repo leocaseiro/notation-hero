@@ -534,6 +534,9 @@
     "mouseleave",
     "focusability",
     "Pictogrammers",
-    "valuenow"
+    "valuenow",
+    "fontconfig",
+    "buildx",
+    "imagetools"
   ]
 }

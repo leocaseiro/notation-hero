@@ -131,9 +131,10 @@ not a pixel of it is painted. Two things hold it shut, and both must stay:
   If you add a shared class module under `client/src/components/ui/`, add its distinctive utilities
   to `REQUIRED_SELECTORS`. Covered by `tooling/assert-design-system-css.test.mjs`.
 
-`web/app/globals.css` also keeps `web/scripts/**` out of Tailwind's automatic source detection. Do
-not remove that line: the guard names the utilities it checks for, so scanning it makes Tailwind
-generate them and the guard silently passes on a broken build.
+`web/app/globals.css` also keeps `web/scripts/**` AND `web/e2e/**` out of Tailwind's automatic
+source detection. Do not remove either line: the guard names the utilities it checks for, so
+scanning a folder that discusses class names in prose makes Tailwind generate them and the guard
+silently passes on a broken build.
 
 **Supply-chain release-age gate (NH-259):** `pnpm-workspace.yaml` sets `minimumReleaseAge` (7 days), so
 pnpm holds back versions published < 7 days ago — a plain `pnpm add <pkg>@latest` may resolve an older
@@ -145,7 +146,14 @@ lockfile refresh.
 (pnpm + Node-from-`.nvmrc` + frozen install) AFTER `actions/checkout@v6`; do not inline
 the pnpm/node setup. **Exception:** a dependency-free Node script (e.g. the `pr-checklist`
 gate) may use `actions/setup-node@v6` with `node-version-file: .nvmrc` directly — it needs
-no pnpm install; leave an inline comment saying so.
+no pnpm install; leave an inline comment saying so. **Second exception:** a job running INSIDE
+the Playwright container (`vr`, `web`) installs with `corepack enable && pnpm install
+--frozen-lockfile --ignore-scripts` and no `setup-js` at all — `pnpm/action-setup` conflicts with
+the image's own pnpm layout, the image supplies Node, and the lefthook `prepare` cannot resolve a
+worktree's `.git` from inside the container. Keep both flags: `--frozen-lockfile` stops the
+container resolving fresh versions for the caret ranges while the pinned image half stays put, and
+`--ignore-scripts` keeps dependency lifecycle scripts from running as root over a bind-mounted
+tree. Browsers are baked into the image, so there is no `playwright install` either.
 
 - Default branch is `master` (NOT main). Never pass `git commit/push --no-verify`.
 - Server, client, and infra tests run under **Vitest** (DACI L5 / NH-194), not Jest — despite
@@ -198,11 +206,13 @@ in the `quality` job); coverage globs and the `build:dts` excludes
 ⚠️ The legacy `docs/plans/2026-06-07-001-feat-cms-k-build-plan.md` predates this
 rule and still shows `__tests__/` paths — those are SUPERSEDED; co-locate instead.
 
-## VR & a11y testing (`client/` — Storybook + Playwright)
+## VR & a11y testing (Storybook for `client/`, the real app for `web/`)
 
-Four test layers in `client/`: **Unit** (Vitest, `quality` job), **a11y** (axe-core over Storybook stories, light + dark + hover — `a11y` job, blocks merge, OS-independent), **VR** (Playwright `toHaveScreenshot` — `vr` job, blocks merge, **Linux-only baselines**, regenerate via `pnpm test:vr:docker:update`), **e2e** (Playwright vs built SPA, MSW mocks `/api/*` — `e2e` job, blocks merge, uploads traces on failure).
+Four test layers in `client/`: **Unit** (Vitest, `quality` job), **a11y** (axe-core over Storybook stories, light + dark + hover — `a11y` job, blocks merge, OS-independent), **VR** (Playwright `toHaveScreenshot` — `vr` job, blocks merge, **Linux-only baselines**, regenerate via `pnpm test:client:docker:update`), **e2e** (Playwright vs built SPA, MSW mocks `/api/*` — `e2e` job, blocks merge, uploads traces on failure).
 
-**Full runbook:** [`docs/runbooks/vr-a11y-testing.md`](docs/runbooks/vr-a11y-testing.md) — VR-in-Docker mechanics, e2e config, trace debugging.
+`web/` has **no Storybook**, so its gate is ten page screenshots of `/` and `/play` against the real `next build` — the `web` job, which runs behaviour, axe and pixels in ONE Playwright-container invocation so one build serves all three. Blocks merge. Baselines are Linux-only too: regenerate via `pnpm test:web:docker:update` and commit them. This is the gate `client/` VR cannot be — `web/` compiles its own Tailwind CSS by scanning `client/` **source**, so a component can be correct in Storybook and broken in the app (NH-320). What the ten shots CANNOT see is a change between two of this design system's neutral surfaces: those steps score 5 to 173 against Playwright's `1408.6` per-pixel cutoff, so a new low-contrast surface on `/` or `/play` needs its own computed `background-color` assertion beside the shot, not a baseline alone. The runbook below carries the formula for scoring a step against that cutoff.
+
+**Full runbook:** [`docs/runbooks/vr-a11y-testing.md`](docs/runbooks/vr-a11y-testing.md) — VR-in-Docker mechanics, the ten `web/` shots, e2e config, trace debugging.
 
 ## Setup in a fresh worktree / clone
 

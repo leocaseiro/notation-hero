@@ -1,0 +1,78 @@
+{
+  "reviewer": "security-lens",
+  "findings": [
+    {
+      "title": "Image-tag guard checks the helper by substring, not exact pin",
+      "severity": "P2",
+      "section": "Task 3, Step 3 — Write the failing image-tag guard",
+      "why_it_matters": "A commented-out or duplicated image line in tooling/docker-playwright.sh leaves this guard green while the container actually used is a different Chromium, so pixel baselines compare under a renderer they were not made with and the failure reads as a real visual regression — the exact outcome the guard is introduced to prevent. The guard checks the helper with a bare substring test, so it passes as long as the expected string appears anywhere in the file, including inside a comment or beside a second stale IMAGE assignment. The same guard treats ci.yml exhaustively (it collects every container: pin and asserts equality on each), so the plan already knows and applies the stronger form one block later; only the shell-script half is weak. The plan's own standard forbids this shape for run: lines (\"the unanchored form stays green against a ci.yml where the whole step is commented out with `#`\"), and this is that shape.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "confidence": 75,
+      "evidence": [
+        "    ).includes(expected),",
+        "    assert.equal(pin.trim(), `container: ${expected}`, `${pin.trim()} disagrees with ${expected}`);",
+        "# three agree with the installed version, so a partial bump fails CI rather than silently comparing"
+      ],
+      "suggested_fix": "Give the helper the same exhaustive treatment ci.yml gets: match every image pin in the script with an anchored regex (`/^IMAGE=mcr\\.microsoft\\.com\\/playwright:\\S+$/gm`), assert at least one match, and assert.equal each match against `IMAGE=${expected}` — so a second, stale, or commented-out image line fails the guard instead of hiding behind it."
+    },
+    {
+      "title": "No permanent guard pins the renamed artifact's upload-to-download pair",
+      "severity": "P2",
+      "section": "Task 9, Step 3 — Rename the `vr` artifact and its matching download",
+      "why_it_matters": "If the two halves of this rename ever drift again — a future rename, a revert, or a merge that takes one side — the privileged vr-report job silently stops publishing: its download step carries continue-on-error: true, the presence gate then reports present=false and the job SUCCEEDS, and vr-report is deliberately absent from ci-green's needs, so nothing anywhere goes red. A developer facing a failed client VR run then gets no hosted diff page and no sticky comment, and the quickest route to green becomes a blind baseline refresh — which this plan itself names as how a page nobody looked at gets blessed. The plan acknowledges the hazard in prose and adds no assertion for it, even though Task 8 rewrites this guard file's header to claim it pins every CI arrangement whose loss would be silent. Task 10 Step 1's grep over `*.yml` does catch a half-applied rename for THIS PR, so this is a durability gap rather than a break the implementer will hit; the guard is the part that would survive.",
+      "finding_type": "omission",
+      "autofix_class": "gated_auto",
+      "confidence": 50,
+      "evidence": [
+        "Two edits, and they must move together or `vr-report` silently stops finding the report it publishes:",
+        "// It has since grown to pin every CI arrangement whose loss would be SILENT rather than loud: the",
+        "5. The three artifacts are named `playwright-client-vr-report`, `playwright-client-e2e-report` and"
+      ],
+      "suggested_fix": "In Task 9 Step 7, add one assertion to the guard: slice ci.yml to the `vr` job and to the `vr-report` job, extract each block's `name:` under its upload/download step, and assert the two strings are equal — so a one-sided rename fails `pnpm run test:tooling` instead of silently disarming the only consumer of that artifact."
+    },
+    {
+      "title": "lint:shell cannot see the new helper it claims to lint",
+      "severity": "P3",
+      "section": "Task 3, Step 6 — Lint the shell and commit",
+      "why_it_matters": "This step runs `pnpm run lint:shell` before `git add`, and that script is `git ls-files -z '*.sh' | xargs -0 -r shellcheck` — it enumerates TRACKED files only, so the brand-new untracked tooling/docker-playwright.sh is never passed to shellcheck. The step goes green having checked every OTHER shell script in the repo, so the plan's \"shellcheck-clean\" claim about the one file this task creates is unverified at the only point it is checked. The pre-push hook and the CI lint job do catch it once the file is committed, so this is false confidence in the verification chain rather than a shipped defect. For the record I ran shellcheck on the script as written, at default severity and at `-S info`: it is clean, and the `bash -c '...' _ \"$1\" \"$2\"` positional form is genuinely injection-safe — the arguments reach pnpm as argv with no shell re-evaluation.",
+      "finding_type": "error",
+      "autofix_class": "safe_auto",
+      "confidence": 75,
+      "evidence": [
+        "pnpm run lint:shell && pnpm run lint:sort-pkg && pnpm run test:tooling",
+        "git add tooling/docker-playwright.sh package.json tooling/workflow-guards.test.mjs",
+        "shell instead of interpolating them into the command string — no quoting hazard, and shellcheck-clean."
+      ],
+      "suggested_fix": "Swap the order in Step 6: `git add tooling/docker-playwright.sh package.json tooling/workflow-guards.test.mjs` first, then run `pnpm run lint:shell && pnpm run lint:sort-pkg && pnpm run test:tooling`, then commit — so the file is tracked when `git ls-files` enumerates it."
+    },
+    {
+      "title": "Standalone probe recipe discards uncommitted edits without a precondition",
+      "severity": "P3",
+      "section": "The one hazard outside the spec's footprint — measured, and fixed in Task 4",
+      "why_it_matters": "Anyone who runs this reproduction block to verify the measurement — a reviewer, or an agent re-running it out of task order — permanently loses any uncommitted work in web/e2e/a11y.e2e.ts, because the recipe ends in an unconditional `git checkout --` on a file this very plan rewrites at nine call sites in Task 2. Inside Task 4 the sequencing makes it safe (Task 2 already committed that file), but this closing copy is presented as a self-contained recipe with no such precondition stated. A build failure between the printf and the checkout also leaves the planted comment in the working tree with no later `git add` that would surface it.",
+      "finding_type": "omission",
+      "autofix_class": "safe_auto",
+      "confidence": 50,
+      "evidence": [
+        "printf '\\n// mt-[137px]\\n' >> web/e2e/a11y.e2e.ts",
+        "git checkout -- web/e2e/a11y.e2e.ts",
+        "- Modify: `web/e2e/a11y.e2e.ts` (every `page.goto` / `setInputFiles` / `page.route` call site, plus"
+      ],
+      "suggested_fix": "Preface the reproduction block with a one-line precondition — `git diff --quiet -- web/e2e/a11y.e2e.ts` must pass before running it, because the final step discards that file's working-tree state — and state the same precondition in Task 4 Step 2."
+    }
+  ],
+  "residual_risks": [
+    "Verified clean — the new `web` job's privilege posture: it declares no `permissions:` block, so it inherits ci.yml's top-level `permissions: contents: read`; it receives no secret; and it matches both the `vr` job and storybook-preview.yml's trust split (the job that executes untrusted PR code stays read-only and only uploads an artifact, while the privileged publisher is a separate job with its own `permissions:` and a same-repo `if:` gate). Nothing in the plan gives the new job more than it needs.",
+    "Verified clean — action pinning: `actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1` and `actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1` in the plan's new job are character-for-character the SHA/comment pairs ci.yml already uses everywhere. No unpinned or mismatched action is introduced.",
+    "Verified clean — the artifact rename cannot make the privileged job consume the wrong artifact: `actions/download-artifact@v8` with an explicit `name:` resolves exactly that artifact from the current run, and the new `playwright-web-report` is a distinct name with no privileged consumer. The `continue-on-error` + `[ -f ./vr-artifact/playwright-report/index.html ]` presence gate is unaffected, because upload-artifact's least-common-ancestor root (`client/`) is unchanged by a name-only edit.",
+    "Verified clean — `pnpm install --frozen-lockfile --ignore-scripts` in the new job is byte-identical to the existing `vr` job's install line and is the STRONGER posture, not a weakening: `--ignore-scripts` blocks postinstall execution, and `--frozen-lockfile` resolves from pnpm-lock.yaml so pnpm-workspace.yaml's `minimumReleaseAge` / `trustPolicy` gates (NH-259) are not in play at install time.",
+    "Accepted, unchanged by this plan — every PR-triggered job in this repo executes untrusted PR code (`quality` runs the test suites, `vr` runs client Playwright), and the new `web` job extends that to `next build` plus a browser suite. A fork PR can already make `webServer.command` run arbitrary commands, but the blast radius stays an ephemeral `contents: read`, secret-less container, so the new job adds no new privilege for that code to reach.",
+    "Accepted, unchanged by this plan — `corepack enable` in the container fetches the pnpm version from root `package.json`'s `packageManager: \"pnpm@11.5.2\"`, which carries no integrity hash, so the pnpm binary is not integrity-pinned. This is the existing `vr` job's line verbatim and the existing inlined `test:vr:docker` scripts' line verbatim; the plan replicates rather than introduces it.",
+    "Accepted — moving the `docker run` invocation out of package.json into a tracked tooling/docker-playwright.sh keeps the pre-existing surface where a PR that edits the local baseline-refresh path could run code on a maintainer's machine with the repo bind-mounted read-write at /work. Code review is the control, as it is for today's inlined scripts, and the plan's new image-tag guard narrows the registry-swap sub-case (see the P2 finding on strengthening it to cover the whole invocation)."
+  ],
+  "deferred_questions": [
+    "The container is pinned by tag (`mcr.microsoft.com/playwright:v1.61.1-noble`), not by digest, and this plan takes the number of places that tag lives from two to three. Matching the `vr` job is a deliberate decision and the new guard keeps the three in lockstep with @playwright/test — but a tag is still mutable upstream. Worth deciding once, repo-wide, whether the pixel jobs should move to `@sha256:` digests with the tag kept as the comment.",
+    "`web/` gets no hosted diff page: a red pixel run is read only by downloading `playwright-web-report`. Since the plan also rewrites the `vr-report-resolve` comment to point developers at that artifact, is a `web` counterpart to the `vr-report` gh-pages publish wanted later — and if so, does it reuse the same same-repo-only, separate-privileged-job trust split?"
+  ]
+}

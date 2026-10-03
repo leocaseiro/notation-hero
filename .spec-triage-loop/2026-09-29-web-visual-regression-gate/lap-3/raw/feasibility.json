@@ -1,0 +1,76 @@
+{
+  "reviewer": "feasibility",
+  "findings": [
+    {
+      "title": "One-invocation guard counts a literal string the script form avoids",
+      "severity": "P2",
+      "section": "Task 9: Move `web/`'s whole browser lane into the container — Step 7",
+      "why_it_matters": "A second Playwright run can be added to the `web` job without the guard noticing, so CI silently goes back to three `next build`s per run — the exact cost this job exists to remove. The guard counts occurrences of the literal text `playwright test`, but Task 1 deliberately keeps the scoped package scripts alive for local use, and a step written `run: pnpm --filter @notation-hero/web run test:vr` contains no such substring while still registering its own `webServer` and running its own build. Counting the job's Playwright-invoking `run:` lines instead closes the gap the guard's own failure message claims to close.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "Replace the literal-substring count with a count of the job's Playwright-invoking `run:` lines: assert that `(webJob.match(/^\\s+run:.*(?:playwright test|run test:(?:e2e|vr))/gm) ?? []).length` equals 1, so a second step written with the scoped `test:e2e` / `test:vr` package scripts fails the same assertion.",
+      "confidence": 75,
+      "evidence": [
+        "    (webJob.match(/playwright test/g) ?? []).length,",
+        "    # test:vr scripts stay for local use, where running one lane at a time is the point."
+      ]
+    },
+    {
+      "title": "Chromium-project assertions are unanchored, so a commented-out testMatch passes",
+      "severity": "P2",
+      "section": "Task 8: Guard that the pixel lane actually compares pixels — Step 2",
+      "why_it_matters": "The guard written to fail when the `chromium` project is deleted or its `testMatch` mistyped stays green over a config where the real `testMatch` line has been commented out and replaced, or where the two projects' patterns are swapped — leaving an unscoped CI run at exit 0 over zero pixels, which is the failure mode Task 8 exists for. Both assertions search the whole config text with no line anchor, while every other assertion in this suite (the web job's run line, the container pin) is anchored with `/^\\s+…$/m` precisely because the unanchored form survives a commented-out line. Anchoring these two and scoping them to the `chromium` entry applies the idiom the plan already argues for elsewhere.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "Slice the config from `name: 'chromium'` to the end of that project entry, the way Task 9's web-job test slices ci.yml, and assert inside the slice with anchored patterns — `/^\\s+name: 'chromium',$/m` and `/^\\s+testMatch: '\\*\\*\\/\\*\\.vr\\.ts',$/m` — so a commented-out line or a pattern swapped onto the `e2e` project fails.",
+      "confidence": 75,
+      "evidence": [
+        "  assert.match(config, /name:\\s*'chromium'/, 'the chromium project is gone — the shots never run');",
+        "  assert.match(config, /testMatch:\\s*'\\*\\*\\/\\*\\.vr\\.ts'/, 'chromium no longer matches *.vr.ts');"
+      ]
+    },
+    {
+      "title": "Toast wait sized against 4 000 ms when the app configures 5 000 ms",
+      "severity": "P2",
+      "section": "Task 5: The three loaded-player shots, and the two test hooks they need — Step 4",
+      "why_it_matters": "The long-score shot's toast wait is sized against a lifetime this app does not use, so its stated headroom is about a second smaller than the comment claims and the shot can go red on a toast the comment says it removed. `web/app/layout.tsx` renders `<Toaster closeButton duration={5000} />`, and sonner 2.0.7 resolves a toast's duration as `toast.duration || durationFromToaster || TOAST_LIFETIME`, so the success toast lives 5 000 ms — which makes the claimed 871 ms of slack negative against a bare expect and shrinks the named 10 000 ms ceiling's real margin on a multi-worker CI run. Naming the real source and raising the ceiling keeps the wait from becoming the shot's flakiest step, whose quickest route to green is a baseline refresh.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "Rewrite the comment to name `web/app/layout.tsx`'s `<Toaster duration={5000} />` as the lifetime source (5 000 ms, overriding sonner's 4 000 ms `TOAST_LIFETIME`), drop the 4 129 ms and 871 ms figures, and raise the wait to `{ timeout: 15_000 }`.",
+      "confidence": 75,
+      "evidence": [
+        "  // `loading` toast from the close timer entirely, so the 4 000 ms TOAST_LIFETIME is armed by the",
+        "  // toast's measured life reaches 4 129 ms and a bare expect falls back to 5 000 ms — 871 ms of"
+      ]
+    },
+    {
+      "title": "120 s project budget is under two shots' own stacked ceilings",
+      "severity": "P2",
+      "section": "Task 1: Split the config into two projects, and scope every local invocation — Step 1",
+      "why_it_matters": "Two of the loaded-player shots can be killed by the project's own 120 s cap before any of their named ceilings expires, so a slow-but-healthy CI run reports `Test timeout of 120000ms exceeded` instead of naming which readiness signal never arrived — and with `retries: 2` that costs three attempts each. The 120 s was sized against readiness alone (30 + 60 + 10 = 100 s), but the transport shot adds `pressEveryTransportToggle`'s own 60 s `toBeEnabled` before `awaitPlayerReady` repeats it (worst chain about 165 s), and the long-score shot adds a 30 s `data-file` wait plus a 10 s toast wait (about 140 s). Raising the project budget above the longest chain keeps the named ceilings, not the cap, as the thing that fails first — the diagnostic value the plan gives as its reason for naming them.",
+      "finding_type": "omission",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "Raise the `chromium` project to `timeout: 180_000` and restate the comment's arithmetic as the longest chain rather than readiness alone: `pressEveryTransportToggle`'s 60 s plus `awaitPlayerReady`'s 100 s plus the shot's own poll.",
+      "confidence": 75,
+      "evidence": [
+        "      // Readiness alone can spend 100 s (30 + 60 + 10) before a pixel is compared, and the",
+        "      timeout: 120_000,",
+        "  await expect(page.locator('[data-sonner-toast]')).toHaveCount(0, { timeout: 10_000 });"
+      ]
+    }
+  ],
+  "residual_risks": [
+    "Task 4 adds the `@source not '../e2e/**'` line BEFORE any baseline exists, so all nine baselines are generated from a post-exclusion build. If the exclusion removed a utility the app itself paints but that the 10-selector canary does not watch, the broken rendering is baked into the reference images and the gate can never see it. The plan's only checks are the canary's `all 10 selectors present` line and the mandated eyeball pass over each PNG; a before/after diff of the emitted stylesheet's selector list across Step 2's two builds would close it cheaply.",
+    "The `Infinity` branch of `stallEngine` leaves the engine module request pending for the life of the test, and `failOnUnexpectedPageErrors`'s `afterEach` then calls `page.evaluate(() => {})` on that page. Only the accessibility lane's 5 000 ms variant is proven against that teardown hook today; the never-resuming variant is new. Task 7 Step 3's verification would surface a hang, but the plan does not name it as an expected failure shape.",
+    "Verified in @playwright/test 1.61.1's type definitions: `TestProject` does accept `workers`, `dependencies`, `fullyParallel` and `timeout`, so every fallback remedy in Task 9 Step 10 is expressible exactly as written.",
+    "Verified with shellcheck 0.11.0 (--shell=bash): `tooling/docker-playwright.sh` as drafted is clean, including the single-quoted `bash -c` payload that references the container shell's positional parameters — no SC2016 — so Task 3 Step 6's `pnpm run lint:shell` expectation holds.",
+    "Verified `next build` deletes distDir except cache|dev|lock|trace (web/node_modules/next/dist/build/index.js), so Task 4 Step 2's second grep cannot be contaminated by the positive control's stale CSS chunk.",
+    "Verified Task 10's rename table against the repo: `client/README.md` 2 hits, `docs/runbooks/vr-a11y-testing.md` 1, the NH-197 spec 3, the gh-pages spec 2, `.github/workflows/ci.yml` 3, and no other tracked file outside `docs/plans/**` carries the old artifact names. Every test id, accessible name, class and element the shots target exists where the plan says, except `player-rail` and `transport-row`, which Task 5 adds.",
+    "Verified the `code` paths filter in `.github/workflows/ci.yml` covers `web/**`, `tooling/**` and `.github/workflows/ci.yml`, so the `quality` job (which runs `pnpm run test:tooling`) does run on exactly the PR shapes Tasks 3, 8 and 9's guards target — this plan does not repeat the NH-322 paths-filter trap."
+  ],
+  "deferred_questions": [
+    "Does moving `web/`'s ~92 behaviour tests from ubuntu-latest plus on-demand Chromium into the Playwright container change their wall-clock enough to need the documented separate `web-vr` job? Only the first real CI run on the pushed branch can answer it, which Task 9 Step 10 item 6 already schedules.",
+    "`web/e2e/toast-occlusion.e2e.ts` is a third `*.e2e.ts` file the plan never names, and Task 9 moves it into the container with the rest of the lane. Its assertions re-run Sonner's occlusion geometry measurements — worth confirming they are renderer-independent before treating the move as a no-op for that file.",
+    "Should the shared `player-states.ts` extraction also cover `web/e2e/player.e2e.ts`'s own copies of the same navigations? The plan's drift argument applies there too, but Task 2 scopes the move to `a11y.e2e.ts` only."
+  ]
+}

@@ -149,8 +149,8 @@ VR tests render each Storybook story in isolation and compare a screenshot again
 
 ```bash
 # From the repo root — compare against the committed Linux baselines in the Playwright container:
-pnpm test:vr:docker            # compare
-pnpm test:vr:docker:update     # regenerate baselines after an intended visual change, then commit
+pnpm test:client:docker            # compare
+pnpm test:client:docker:update     # regenerate baselines after an intended visual change, then commit
 
 # Raw commands (used by CI and inside the container above). On a Mac these render against
 # local, git-ignored darwin shots — fine for quick iteration, never the source of truth:
@@ -160,7 +160,8 @@ pnpm --filter @notation-hero/client test:vr:update
 
 - Playwright auto-starts Storybook as its `webServer` (see `playwright.config.ts`) — you do **not** need Storybook running separately.
 - Specs match `**/*.vr.{ts,tsx}`. Each test opens `…/iframe.html?id=<story-id>` and calls `toHaveScreenshot`.
-- Baselines live in `<Component>.vr.ts-snapshots/` and are **committed** — **Linux only** (`…-chromium-linux.png`). macOS and Linux rasterize fonts differently (subpixel vs grayscale antialiasing, different glyph metrics), so a single OS's baselines are the source of truth. **CI compares against `-linux`** — the `vr` job runs in the `mcr.microsoft.com/playwright:v1.61.1-noble` container, matching the committed set exactly; run `pnpm test:vr:docker` locally to use that same container. Darwin shots (`…-chromium-darwin.png`) are git-ignored, so a Mac `test:vr:update` can't leak them into the repo.
+- Baselines live in `<Component>.vr.ts-snapshots/` and are **committed** — **Linux only** (`…-chromium-linux.png`). macOS and Linux rasterize fonts differently (subpixel vs grayscale antialiasing, different glyph metrics), so a single OS's baselines are the source of truth. **CI compares against `-linux`** — the `vr` job runs in the Playwright container pinned by digest in the three homes `tooling/workflow-guards.test.mjs` keeps in step (`IMAGE=` in `tooling/docker-playwright.sh`, and the `container:` lines of the `vr` and `web` jobs) — matching the committed set exactly; run `pnpm test:client:docker` locally to use that same container. Darwin shots (`…-chromium-darwin.png`) are git-ignored, so a Mac `test:vr:update` can't leak them into the repo.
+- **A `client/` visual change also moves `web/`'s ten page baselines** in `web/e2e/pages.vr.ts-snapshots/`, because `web/` compiles its own Tailwind CSS by scanning `client/` **source**, and the `web` job is gated on the `code` filter — so a `client/`-only PR runs it. Regenerate them with `pnpm test:web:docker:update` and commit them in the same PR; the `web` job blocks merge.
 
 **Debugging a failing VR test:**
 
@@ -175,9 +176,9 @@ pnpm --filter @notation-hero/client exec playwright test --ui
 pnpm --filter @notation-hero/client exec playwright test --headed
 ```
 
-- **On a failing PR (one-click):** CI publishes the report to gh-pages and posts a **sticky PR comment** linking it — `https://leocaseiro.github.io/notation-hero/vr-report/pr/<n>/` — with the image-diff **Slider** and the trace **timeline**. The comment carries the head SHA + Sydney time and refreshes on every commit while VR fails; it flips to `✅ VR passing` once the run goes green. (The `playwright-vr-report` artifact is still uploaded as a downloadable fallback.)
+- **On a failing PR (one-click):** CI publishes the report to gh-pages and posts a **sticky PR comment** linking it — `https://leocaseiro.github.io/notation-hero/vr-report/pr/<n>/` — with the image-diff **Slider** and the trace **timeline**. The comment carries the head SHA + Sydney time and refreshes on every commit while VR fails; it flips to `✅ VR passing` once the run goes green. (The `playwright-client-vr-report` artifact is still uploaded as a downloadable fallback.)
 - **Locally:** `test:vr` writes the same report; run `npx playwright show-report` to open it, and add `--trace on` to also capture the timeline (local runs have no retry, so `on-first-retry` records nothing).
-- **Change was intentional?** Regenerate the Linux baselines and commit them: `pnpm test:vr:docker:update` (from the repo root — runs in the Playwright container so the shots match CI). See [`docs/runbooks/vr-a11y-testing.md`](../docs/runbooks/vr-a11y-testing.md) § "VR baselines are Linux-only".
+- **Change was intentional?** Regenerate the Linux baselines and commit them: `pnpm test:client:docker:update` (from the repo root — runs in the Playwright container so the shots match CI). See [`docs/runbooks/vr-a11y-testing.md`](../docs/runbooks/vr-a11y-testing.md) § "VR baselines are Linux-only".
 - **Looks like a flake?** The usual cause is web fonts not being ready. Specs already `await document.fonts.ready` before snapshotting (so Material Symbols render as glyphs, not the ligature fallback text) — if you introduce a new font/icon, load it the same way.
 - `test-results/`, `playwright-report/`, and `storybook-static/` are git-ignored.
 
@@ -213,7 +214,7 @@ pnpm --filter @notation-hero/client test:e2e:ui       # interactive UI mode
   future feature tests.
 
 **Debugging a failing e2e (traces):** `trace: 'on-first-retry'` records a replayable timeline. CI
-uploads it as the `playwright-e2e-report` artifact (kept even on flaky-then-passed runs). Download,
+uploads it as the `playwright-client-e2e-report` artifact (kept even on flaky-then-passed runs). Download,
 unzip, then:
 
 ```bash

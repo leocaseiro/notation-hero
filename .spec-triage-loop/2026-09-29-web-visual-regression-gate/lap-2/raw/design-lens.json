@@ -1,0 +1,27 @@
+{
+  "reviewer": "design-lens",
+  "findings": [
+    {
+      "title": "Dismissed engine-error leaves a fourth, unshot notation-surface state",
+      "severity": "P2",
+      "section": "Task 7: The two states that never finish loading",
+      "why_it_matters": "Dismissing the engine-error banner (NotationSurface.tsx's own Dismiss button) does not restore the Skeleton or clear the underlying failure - it only hides the alert text, leaving a blank rendering of the notation surface with no error copy, no skeleton, and a permanently disabled transport underneath. None of the nine shots reach this state, so a regression there (a stray background tint, a leftover overlay, disabled-transport styling drifting) would ship unnoticed. The plan's own framing that the engine-error state is 'reachable and PERMANENT' is accurate about the underlying failure but glosses over the fact that the visible banner is itself dismissable, which is what produces this further, uncaptured appearance.",
+      "finding_type": "omission",
+      "autofix_class": "manual",
+      "confidence": 50,
+      "evidence": [
+        "The engine-error state is reachable and PERMANENT",
+        "Task 7: The two states that never finish loading"
+      ]
+    }
+  ],
+  "residual_risks": [
+    "Whether any of the nine shots incidentally exercises a keyboard :focus-visible ring on a ghost-variant button (distinct from the mouse-triggered hover that 'the ghost hover step on the left rail' captures) was not verified against a live render; Button's base classes add that ring unconditionally, and the ghost variant's own hover:bg-elevate does not apply on focus alone, so a focus-only ring state may have no page-level regression coverage beyond client/'s own component-level Storybook stories.",
+    "Verified against the current web/app/play/ source: the three Tailwind breakpoint utilities actually in use (lg:w-24 on PlayerShell's rail at 1024px, max-md:sr-only on PlayerHeader's wordmark at 768px, sm:gap-6/sm:px-8 on TransportRow's footer at 640px) match exactly the one the narrow-viewport shot covers and the two the plan already documents as deliberately uncovered - no fourth, undocumented breakpoint exists in this surface.",
+    "Confirmed web/'s dark mode is genuinely unreachable today: web/app/layout.tsx renders a bare <html lang=\"en\"> with no .dark class, no theme toggle, and no next-themes/prefers-color-scheme wiring anywhere under web/. The plan's 'Light only' constraint is accurate, not a coverage gap.",
+    "Confirmed the disabled/unavailable visual treatment of the transport toggles (TransportRow's hasBackingTrack/noPlayer states) is already covered by client/'s own TransportToggle Storybook stories and VR snapshots (TransportToggle.stories.tsx's Disabled story, TransportToggle.vr.ts-snapshots/), so its absence from the nine web/ page-level shots is not a gap given the plan's stated purpose of catching app-composition regressions rather than duplicating component-level state coverage."
+  ],
+  "deferred_questions": [
+    "Should a tenth shot ever be justified for the dismissed-engine-error state, per the plan's own bar ('A tenth must justify itself')? Today that state is very low-content (a blank canvas), so it may never clear the stated 1408.6 per-pixel cutoff test - worth a maintainer decision only if the blank state later grows visible content (e.g. a placeholder graphic or retry control)."
+  ]
+}

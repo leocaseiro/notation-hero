@@ -1,0 +1,67 @@
+{
+  "reviewer": "coherence",
+  "findings": [
+    {
+      "title": "File Structure's Modified list omits web/app/globals.css",
+      "severity": "P2",
+      "section": "File Structure",
+      "why_it_matters": "A reviewer or implementer scanning the File Structure section for a complete account of touched files will not expect `web/app/globals.css` to change, even though Task 4 Step 1 explicitly modifies it and the plan later stresses (in \"Two files sit outside the spec's stated footprint\" and the \"Before opening the PR\" checklist) that this exact file needs deliberate PR-body disclosure precisely because it is easy to miss. The Modified list is otherwise exhaustive — every other file touched across Tasks 1-10 appears in it, including `web/README.md`, which is called out for the same out-of-spec-footprint reason — so the omission reads as an oversight rather than a deliberate exclusion. Add `web/app/globals.css` to the Modified list so the section stays a complete footprint a reviewer can check the diff against.",
+      "finding_type": "omission",
+      "autofix_class": "safe_auto",
+      "suggested_fix": "Add `web/app/globals.css` to the File Structure section's Modified list, alongside `web/README.md` which is already there for the same reason.",
+      "confidence": 100,
+      "evidence": [
+        "**Modified:** `web/playwright.e2e.config.ts` · `web/package.json` · `web/.gitignore` ·\n`web/e2e/a11y.e2e.ts` · `web/app/play/PlayerShell.tsx` · `web/app/play/TransportRow.tsx` ·\n`package.json` (root) · `tooling/workflow-guards.test.mjs` · `.github/workflows/ci.yml` ·\n`AGENTS.md` · `docs/runbooks/vr-a11y-testing.md` · `client/README.md` ·\n`web/README.md` · `docs/specs/2026-06-26-nh-197-e2e-traces.md` ·\n`docs/specs/2026-07-08-vr-report-gh-pages-on-failure.md` ·\n`docs/specs/2026-09-21-web-visual-regression-gate.md` (its Status line) ·\n`docs/decisions/decision-changelog.md`.",
+        "Modify: `web/app/globals.css` — one `@source not` line, before the new file is written"
+      ]
+    },
+    {
+      "title": "Step 1 and Step 5 disagree on registry's NH-320 content",
+      "severity": "P2",
+      "section": "Task 10: The documentation the move invalidates",
+      "why_it_matters": "A reader following Task 10 Step 1's grep-verification guidance is told the old artifact names live on in \"the registry\" as history, which would send them looking in `decision-registry.md` for NH-320 content that Step 5 — five steps later in the same task — explicitly says is not there (\"carries no NH-320 text at all\"). Grepping the actual file confirms Step 5 is the correct one: neither `playwright-vr-report` nor `playwright-e2e-report` nor any NH-320 text appears anywhere in `decision-registry.md`. Dropping the registry clause from Step 1's sentence removes the false lead and leaves the two passages agreeing, matching Step 5's more specific and verified statement.",
+      "finding_type": "error",
+      "autofix_class": "safe_auto",
+      "suggested_fix": "In Task 10 Step 1, change \"...and in the change log and the registry — all of which keep them as history\" to \"...and in the change log, which keeps them as history\" (drop the registry clause).",
+      "confidence": 100,
+      "evidence": [
+        "the registry — all of which keep them as history.",
+        "`decision-registry.md` carries no NH-320 text at all, so it needs no edit — the change log was split"
+      ]
+    },
+    {
+      "title": "Surface-score comment mislabels rail's cutoff as vs `--panel`",
+      "severity": "P2",
+      "section": "Task 5: The three loaded-player shots, and the two test hooks they need",
+      "why_it_matters": "The shared `surfaceDiffersFromPageBackground` helper's own doc comment gives two incompatible explanations of what its \"20\" score measures within the same comment block: the opening sentence attributes it to \"`--rail` over `--panel`\", while a later paragraph in the same JSDoc says the 20 (and 5) scores were \"measured against\" the page's `--background\" — matching what the code actually does, since it only ever diffs an element's background against `document.body`'s, never against `--panel`. This comment ships verbatim into the codebase, so a future maintainer reading it to understand the surface-assertion safety net hits a self-contradiction on the very number the assertion depends on. Correcting the opening sentence to say `--background` instead of `--panel` makes it agree with the code-accurate explanation later in the same comment.",
+      "finding_type": "error",
+      "autofix_class": "safe_auto",
+      "suggested_fix": "In Task 5 Step 3's `surfaceDiffersFromPageBackground` doc comment, change \"`--rail` over `--panel` 20\" to \"`--rail` over `--background` 20\", matching the comment's own later statement that both the 20 and 5 scores were measured against `document.body`'s `--background`.",
+      "confidence": 100,
+      "evidence": [
+        "`--rail` over `--panel` 20",
+        "surface the 20 and 5 scores were measured against"
+      ]
+    },
+    {
+      "title": "Task 4 Step 1 miscites step 2 instead of step 3",
+      "severity": "P2",
+      "section": "Task 4: The first shot — the landing page — and the baseline workflow end to end",
+      "why_it_matters": "Task 4 Step 1 justifies doing the Tailwind-exclusion work first by claiming \"the file added in step 2 is the third one under `web/e2e/` that discusses design-system class names in prose\" — but Step 2 only appends and reverts a throwaway comment in the existing `a11y.e2e.ts`; the actual new file, `web/e2e/pages.vr.ts`, is created in Step 3 (\"Write the file with the one shot\"). The document's own closing section confirms this ordering, placing the exclusion fix \"before the third file is written\" as an event that follows steps 1 and 2, not something step 2 itself does. A reviewer checking Step 1's stated rationale against Step 2's actual content will find no new file there and may doubt the sequencing argument the whole step depends on.",
+      "finding_type": "error",
+      "autofix_class": "safe_auto",
+      "suggested_fix": "In Task 4 Step 1, change \"the file added in step 2 is the third one\" to \"the file added in step 3 is the third one\".",
+      "confidence": 100,
+      "evidence": [
+        "the file added in step 2 is the third one under `web/e2e/` that",
+        "- [ ] **Step 3: Write the file with the one shot**",
+        "applied in **Task 4, steps 1 and 2** —"
+      ]
+    }
+  ],
+  "residual_risks": [
+    "The stale-line-number table's row for `a11y.e2e.ts` gives the spec's original citation as `:224-243` and the actual as `:224-245`, annotated \"(this one holds)\". Verified against the current file that `settleToasts` does span 224-245, so the printed numbers are correct either way, but the annotation's meaning (whether the start line \"holding\" is what is meant, versus the whole citation) is not fully clear from the text — a low-stakes wording ambiguity, not a factual error.",
+    "Did not independently re-verify every numeric claim carried over from docs/decisions/decision-changelog.md (e.g. the \"sixty runs ... byte-identical 19 times out of 19\" figures repeated in Task 4's file header comment) — those figures originate in an already-approved, pre-existing decision record rather than this plan, so any internal tension in them is out of this document's scope."
+  ],
+  "deferred_questions": []
+}

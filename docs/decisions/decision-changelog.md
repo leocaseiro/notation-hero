@@ -46,6 +46,51 @@ failing, not merely written. It excludes its own two files by exact path, since 
 patterns; a test pins that exclusion list at exactly two entries so it cannot be widened into a
 hiding place. Follow-up to NH-318, which git-ignored the untracked reference map but left the
 already-committed paths in place.
+### 2026-10-03 — The web pixel gate ships with four execution-time decisions (NH-320)
+
+Recorded at merge, not at approval: these four were settled while executing the gate rather than
+while planning it, so the 2026-09-21 and 2026-09-22 entries above predate them. Each is stated as
+what the code does and why, for ratification on review.
+
+- **The Playwright container is pinned by DIGEST, not by tag,** in all three homes —
+  `IMAGE=` in `tooling/docker-playwright.sh`, and the `container:` lines of the `vr` and `web` CI
+  jobs. A tag can be re-pushed under you, and the helper mounts the whole working tree
+  read-write, so the image that renders the committed baselines is the one thing that must not
+  move silently. `tooling/workflow-guards.test.mjs` holds the three homes to one shared digest and
+  to the installed `@playwright/test`, so a partial bump fails CI instead of comparing baselines
+  under a renderer they were not made with.
+- **`web/e2e/**` is excluded from Tailwind's automatic source scan** (`web/app/globals.css`),
+alongside the existing `web/scripts/\*\*`exclusion. Those specs quote design-system class names
+in prose — the hit-area gate names`h-11`, the pixel shots name `bg-rail`and`hover:bg-elevate`— and Tailwind turns a class named in a COMMENT into real CSS, which would
+let`web/scripts/assert-design-system-css.mjs`pass over a utility the app itself stopped
+generating. Measured: an`mt-[137px]`planted in an`a11y.e2e.ts` comment reached the emitted
+  stylesheet. Both lines are now held by tests.
+- **One docker script family became two.** `test:vr:docker*` is split into
+  `test:client:docker*` and `test:web:docker*`, because two pixel lanes with different baselines
+  needed two entry points rather than one overloaded name. The `vr` CI artifact was renamed on
+  both the upload and the download side to match.
+- **The `web` job carries no secrets and no `permissions:` block,** and inherits the workflow's
+  `contents: read`. It runs PR-authored browser code inside a container as root over a
+  bind-mounted tree, so an escalation there has to be loud; both properties are asserted, at any
+  indent and whether written inline or as a block.
+
+**And a correction to the entry of 2026-09-22,** which is titled "grows to eleven shots". That was
+accurate when written. On 2026-09-28 the two Settings/Tracks popover shots were deferred out of
+this gate rather than widening PR #170, and that deferral was never recorded — so **ten shipped,
+not eleven**. The number now has a mechanism: `EXPECTED_SHOTS = 10` in the guard fails if the lane
+and the five documents that state it drift apart.
+
+### 2026-10-01 — Dependency CVE refresh: 19 advisories back to zero, ignore list still empty (NH-346)
+
+The `deps-cve` gate (osv-scanner) had drifted to **19 advisories across 11 packages** (2 Critical, 7 High, 9 Medium, 1 Low) — all from `pnpm-lock.yaml` on `master`, none from an open PR, and no lockfile change since the gate was last green on 2026-09-28. The vulnerability database moved under a static tree. The 2026-09-16 choice stands unchanged: a **real version fix over an allowlist**, so `osv-scanner.toml` still carries **no ignores at all**.
+
+- **Only `next` was a direct dependency.** 16.3.4 → 16.3.6 closes GHSA-vcvr-r3jv-pc5j (9.5, remote code execution in `next/og` `ImageResponse`). 16.3.6 is 8 days old and clears the 7-day `minimumReleaseAge` window; 16.3.7 is 1 day old and would have forced a `minimumReleaseAgeExclude` entry — the exact hole that gate exists to close — so it was not taken. **No release-age exception was added by this refresh.** `eslint-config-next` stays exact at 16.3.4: dev-only, no part of the advisory, and the anchor for the vetted `eslint-import-resolver-typescript@3.10.1` `trustPolicyExclude` pin (NH-275).
+- **The carrier is preferred over the override, and one override came out.** `markdownlint-cli2` pins `markdown-it` and `js-yaml` EXACTLY, so no floor could reach them — but 0.23.3 pins a patched `markdown-it` 15.0.1 and `js-yaml` 5.4.1, closing GHSA-253c-mchw-3w2r and GHSA-r3ph-w7gj-g6xm at source. That makes the old `markdown-it: ^14.2.0` override **harmful** rather than merely redundant: it would force the linter back onto the vulnerable major. It is dropped, the way the `js-yaml@3` override was dropped once its carrier left the tree. `pnpm run lint:md` is unchanged at 0 issues over 189 files.
+- **Three floated on a targeted `pnpm update --recursive`** with no override at all: `@grpc/grpc-js` 1.14.5, `ip-address` 10.7.2, `@xhmikosr/decompress` 10.2.2.
+- **`overrides` remains the lever only for the deep transitives.** Raised floors on `brace-expansion@1/@2/@5`, `fast-uri@3` and `multer`, each inside the major its parent declares.
+- **Targeted updates only — no blanket `pnpm update -r`.** Base UI, Storybook, TanStack, React, Tailwind and Playwright do not move, so the `client/` visual-regression baselines still hold. All 92 `web/` e2e browser tests pass on the `next` bump.
+
+**Status:** ✅ decided · 🤖 machine-checked — the `deps-cve` CI job is the enforcement, and it passes with an empty ignore list, so any regression or new ignore is visible in the diff.
 
 ### 2026-09-22 — The web VR gate grows to eleven shots, against PR #170's layout (NH-320)
 
@@ -59,7 +104,7 @@ will be delayed. This PR should be ready to implement."_
   variant is `hover:bg-elevate`, and #170 adds `--rail` (recessed), `--panel` (raised) and
   `--elevate`. The step is strongest against Storybook's white canvas — the only place it is
   photographed today — and weakest against `--rail`, where it could regress to invisible with every
-  existing gate green. The shot hovers `OpenFileControl`'s ghost button in the left rail. ⏳ pending.
+  existing gate green. The shot hovers `OpenFileControl`'s ghost button in the left rail. ✅ done.
 - **A portalled tooltip is proved to win the header's layer, and it is a screenshot.** `Tooltip.tsx`
   puts `isolate z-50` on the Positioner; the `z-50` on the Popup never did anything, because Base UI
   renders that element `position: static`. Nothing noticed until #170's header claimed `z-10` and
@@ -67,12 +112,12 @@ will be delayed. This PR should be ready to implement."_
   whether a snapshot suffices given the tooltip does not move: it does, because the tooltip is
   portalled and positioned from its trigger's box, so it lands identically every run. The trigger
   must be a **header** button (`back-home`); `z-10` only buries what overlaps the header's top
-  64 px, so a tooltip opening clear of it would prove nothing. ⏳ pending.
+  64 px, so a tooltip opening clear of it would prove nothing. ✅ done.
 - **One narrow shot, not a second full pass.** #170 renders the rail `w-20 … lg:w-24`, a real
   breakpoint at 1024 px that a single pinned 1280 px viewport never sees. This reverses the earlier
   "no mobile-width baselines" non-goal, which was written when the player had no breakpoint. One
   shot at 900 px covers the narrow rail; shooting all eleven states twice is what the small-count
-  rule exists to prevent. ⏳ pending.
+  rule exists to prevent. ✅ done.
 - **The shot list is pinned to an unmerged branch, and says so.** Every shot now describes `/play`
   as #170 leaves it. If #170 changes in review the list follows it, and the spec tells the
   implementer to re-read `PlayerShell.tsx` rather than trust the descriptions.
@@ -92,21 +137,21 @@ the app.
   alternatives. Storybook inside `web/` was rejected: it reopens the locked NH-275 decision, needs a
   fake AlphaTab engine (the v0 spec's own "gated while rendering fabricated options"), and never
   runs `next build`. Moving presentational pieces into `client/` (NH-298) stays worth doing but
-  cannot replace this — it never sees the composed page or the CSS the app builds. ⏳ pending.
+  cannot replace this — it never sees the composed page or the CSS the app builds. ✅ done.
 - **Sequencing: v0 Plan C (the Settings and Tracks popovers) ships first**, the gate lands after.
 - **`web/`'s whole browser lane moves into the Playwright container — one `next build` serves
   end-to-end, axe and VR.** Bolting VR onto the existing `vr` job, or adding a separate `web-vr`
   job, would each take `web` from two builds per CI run to three: the `build` job's
   `pnpm run build` fans out to `web` (and the next step greps `web/.next/static/` to prove it),
   and the `e2e` job's Playwright `webServer` runs a `pnpm build` of its own. This keeps it at two
-  and makes web's axe and web's VR render identically. ⏳ pending.
+  and makes web's axe and web's VR render identically. ✅ done.
 - **Blocking from day one**, via `ci-green`, as `client/` VR already is. There is no flake budget to
   earn first: sixty runs of `/play` in the pinned Playwright container were measured before the
   design was fixed, at `threshold: 0` and `maxDiffPixels: 0`, and the full-page shot was byte-
   identical 19 times out of 19. AlphaTab's notation render is pixel-deterministic — the only drift
   found was the anti-aliased rounded corner of an element-_clipped_ shot, five to nine bytes each
   off by one in a single channel, which is why the design takes page-level shots and puts no mask
-  over the score. ⏳ pending.
+  over the score. ✅ done.
 
 Spec: `docs/specs/2026-09-21-web-visual-regression-gate.md`.
 
