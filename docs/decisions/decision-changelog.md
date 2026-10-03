@@ -11,6 +11,52 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
+### 2026-10-03 — Sentry error monitoring for `web/`: design approved (NH-124)
+
+leocaseiro approved the design for [NH-124](https://leocaseiro.atlassian.net/browse/NH-124) section
+by section in a brainstorming session: four sections and ten decisions. Spec:
+[`docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md`](../specs/2026-10-03-nh-124-sentry-error-monitoring-design.md).
+Goal, in leocaseiro's words: every error monitored, "both under try/catch, and the ones that
+aren't".
+
+- **S1 — report every error, never the file.** The home page promised "Nothing you open leaves this
+  device" and both error pages "Nothing you opened was sent anywhere". Reports now go out, with the
+  file name, title and track names replaced by `[file]` before sending, and the copy is reworded to
+  say so. Rejected: an opt-in switch (few people turn it on, which defeats the goal) and sending
+  file names (breaks shipped copy; the ticket itself said "strip filenames").
+- **S2 — Sentry carries errors and warnings only.** leocaseiro wants burn rates but judged that
+  Sentry should not carry them. A rate needs every attempt counted, which is usage tracking, and
+  the free plan's 5,000-a-month error cap would flatten the failure count on the worst day. Burn
+  rates stay with [NH-52](https://leocaseiro.atlassian.net/browse/NH-52); the reasoning is a comment
+  there. Recorded correction: since 2026-05-05 Sentry has generally-available Application Metrics
+  (5 GB free), so Sentry _could_ do it — a candidate for NH-52, not for this ticket.
+- **S2b — storage the browser blocks leaves a breadcrumb only.** It costs no quota and travels
+  inside the next real report. Saved data that is _corrupt_ is different — a bug signal — and sends
+  a warning.
+- **S3 — errors only.** No performance tracing, no Session Replay: replay would record the score
+  drawn on screen.
+- **S4 — Release Health on**, the crash-free share of visits per release, as the interim health
+  number "until we move to AWS burn rates" (leocaseiro). It pings on every visit, so the home page
+  names it: "anonymous crash statistics".
+- **D1 — `@sentry/nextjs`, browser part only.** `web/` has no runtime server code. Rejected:
+  `@sentry/react` plus our own upload script (we would own the step that keeps source maps off the
+  public site) and Sentry's Loader Script (third-party code on every visit).
+- **D2 — known engine noise is dropped**, using one list shared with `web/e2e/page-errors.ts`:
+  NH-335 fires seven times in one ordinary file open and NH-338 in 7 of 10 quick Pause clicks.
+- **D3 — no tunnel.** A visitor's ad blocker is respected, and their reports are lost.
+- **D4 — source maps: Sentry's default, and "Hide source content" off.** leocaseiro asked what the
+  risk of public source maps is. The June reason (rebuilding the source from the maps) no longer
+  applies: the repository is public. Sentry's default — upload, then delete from the deploy —
+  needs no configuration, so it stays. Hiding the code inside Sentry would protect nothing.
+- **D5 — production only.** Preview deployments do not report.
+
+**Registry:** L11-sentry points at the spec; L11-srcmap reworded (D4); L11-envsecret ⛔ superseded
+and F7-sentry rewritten, because the source-map upload runs inside Vercel's build rather than a
+GitHub Actions job.
+
+**Status:** ✅ decided · 📄 prose-only — the spec is the contract until the implementation PR, which
+flips L11-sentry from ⏳ pending.
+
 ### 2026-10-03 — The web pixel gate ships with four execution-time decisions (NH-320)
 
 Recorded at merge, not at approval: these four were settled while executing the gate rather than
