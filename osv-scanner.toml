@@ -1,10 +1,16 @@
-# osv-scanner.toml — accepted-risk ignores for the CI `deps-cve` gate (NH-191, NH-231).
+# osv-scanner.toml — accepted-risk ignores for the CI `deps-cve` gate (NH-191, NH-231, NH-347).
 #
 # The `deps-cve` job (google/osv-scanner-action, `--recursive ./`) auto-loads this file.
 #
-# THERE ARE CURRENTLY NO IGNORES. Every advisory in the tree is fixed for real — by moving
-# the carrier package, or by a same-major `overrides` pin in `pnpm-workspace.yaml` where the
-# parent holds its copy below the patch. An empty ignore list is the intended steady state.
+# TWO IGNORES, both time-boxed to 2026-11-03 (NH-347). Every OTHER advisory in the tree is
+# fixed for real — by moving the carrier package, or by a same-major `overrides` pin in
+# `pnpm-workspace.yaml` where the parent holds its copy below the patch. An empty ignore list
+# is still the intended steady state; these two are the exception the rule at the bottom of
+# this file allows, because for each of them osv-scanner reports `0 vulnerabilities can be
+# fixed` — the version we hold IS the newest one published, so there is nothing to float to.
+#
+# NH-348 is the reminder to re-argue both, due a week before the date. Do not extend either
+# one without re-reading its reason.
 #
 # NH-231 (2026-09-16) removed the one entry this file used to carry:
 #
@@ -18,3 +24,13 @@
 # `ignoreUntil` review date. Prefer a real version fix; reach for an ignore only when no
 # patched version exists. An expired ignore must be re-argued, never rubber-stamped —
 # osv-scanner reports a stale entry as an "unused ignores" warning.
+
+[[IgnoredVulns]]
+id = "GHSA-vfj7-8cjw-p6xm"
+ignoreUntil = 2026-11-03T00:00:00Z
+reason = "braces <=3.0.3 stack-exhaustion DoS through deeply nested patterns. NO patched version exists: 3.0.3 is the newest release npm has and it is the version we hold, so there is nothing to float to. It reaches the tree only through micromatch@4.0.8 — build and dev glob matching, whose patterns come from this repo's own config files and never from a request. Re-argue at NH-348; drop this entry the moment braces publishes a fix."
+
+[[IgnoredVulns]]
+id = "GHSA-ch52-4w7c-c8xp"
+ignoreUntil = 2026-11-03T00:00:00Z
+reason = "http-cache-semantics <=4.2.0 max-stale handling can disclose cross-user cached responses. NO patched version exists: 4.2.0 is the newest release npm has and it is the version we hold. It is dev and CLI only — @nestjs/cli plus @swc/cli in server devDependencies, and @pulumi/pulumi's npm internals (@npmcli/arborist -> pacote -> make-fetch-happen). Nothing in this repo serves user HTTP traffic through it, so there is no shared multi-user cache for the bug to leak across. Re-argue at NH-348."
