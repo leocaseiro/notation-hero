@@ -5,7 +5,7 @@ status: handoff — Group D wireframe DONE; next = schema↔wireframe reconcilia
 worktree: wireframe-pattern-lesson-model
 branch: docs/wireframe-pattern-lesson-model
 pr: https://github.com/leocaseiro/notation-hero/pull/52
-home: /Users/leocaseiro/Sites/notation-hero/.claude/worktrees/wireframe-pattern-lesson-model/docs/wireframe/2026-06-20-HANDOFF-schema-reconciliation.md
+home: .claude/worktrees/wireframe-pattern-lesson-model/docs/wireframe/2026-06-20-HANDOFF-schema-reconciliation.md
 ---
 
 # Handoff — schema ↔ wireframe reconciliation (audit-first, then 1-by-1)
@@ -13,7 +13,7 @@ home: /Users/leocaseiro/Sites/notation-hero/.claude/worktrees/wireframe-pattern-
 ## 0 · How to start (paste into a fresh Claude Code session — SAME worktree)
 
 ```
-Working directory: /Users/leocaseiro/Sites/notation-hero/.claude/worktrees/wireframe-pattern-lesson-model
+Working directory: .claude/worktrees/wireframe-pattern-lesson-model
 Use the same worktree (do NOT branch off master). Read
 docs/wireframe/2026-06-20-HANDOFF-schema-reconciliation.md (this file) FIRST, then the two schema
 drafts it references.
@@ -97,7 +97,7 @@ profiles sit on the playable, but Group D added per-track; per-instrument tonal/
 
 ## 4 · Key files (full absolute paths)
 
-- Wireframe: `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/wireframe-pattern-lesson-model/docs/wireframe/index.html`
+- Wireframe: `.claude/worktrees/wireframe-pattern-lesson-model/docs/wireframe/index.html`
 - Model map: `.../docs/wireframe/model-map.html`
 - Latest base schema: `.../docs/archive/2026-07/wireframe/2026-06-19-tonal-drum-schema-draft.sql` + spec `.../2026-06-19-tonal-drum-extensible-schema-spec.md`
 - Group D: `.../docs/wireframe/2026-06-20-group-d-track-media-difficulty-draft.sql` + spec `.../2026-06-20-group-d-spec.md`

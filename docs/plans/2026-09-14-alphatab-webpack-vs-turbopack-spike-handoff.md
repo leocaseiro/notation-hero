@@ -53,7 +53,7 @@ and on why it still copies assets into `public/`:
 > (vercel/next.js#45478, vercel/next.js#67302)
 
 **Next 16 supports the opt-out.** From the bundled docs in
-`/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/alphatab-spike/web/node_modules/next/dist/docs/`:
+`.claude/worktrees/alphatab-spike/web/node_modules/next/dist/docs/`:
 _"Turbopack is now the default bundler. To use Webpack run `next dev --webpack` or
 `next build --webpack`."_
 
@@ -125,18 +125,18 @@ should be a deliberate decision with evidence behind it, which is the point of t
 ## Paths
 
 ```
-/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/alphatab-spike/docs/spikes/2026-09-10-alphatab-in-nextjs-app-router.md
-/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/alphatab-spike/docs/specs/2026-09-10-v0-local-file-player-design.md
-/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/alphatab-spike/docs/plans/2026-09-13-v0a-engine-and-first-sound-plan.md
-/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/alphatab-spike/docs/decisions/decision-registry.md
-/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/alphatab-spike/web/next.config.ts
-/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/alphatab-spike/web/vercel.json
-/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/alphatab-spike/web/e2e/fixtures/
-/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/alphatab-spike/web/node_modules/@coderline/alphatab/
+.claude/worktrees/alphatab-spike/docs/spikes/2026-09-10-alphatab-in-nextjs-app-router.md
+.claude/worktrees/alphatab-spike/docs/specs/2026-09-10-v0-local-file-player-design.md
+.claude/worktrees/alphatab-spike/docs/plans/2026-09-13-v0a-engine-and-first-sound-plan.md
+.claude/worktrees/alphatab-spike/docs/decisions/decision-registry.md
+.claude/worktrees/alphatab-spike/web/next.config.ts
+.claude/worktrees/alphatab-spike/web/vercel.json
+.claude/worktrees/alphatab-spike/web/e2e/fixtures/
+.claude/worktrees/alphatab-spike/web/node_modules/@coderline/alphatab/
 ```
 
 The reference fork, worth checking before any AlphaTab decision:
-`/Users/leocaseiro/Sites/alphaTabWebsite` (branch `rhythm-game`).
+the local alphaTab fork (branch `rhythm-game`).
 
 ## Ground rules
 

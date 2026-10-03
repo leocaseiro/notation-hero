@@ -194,4 +194,4 @@ All from `drum-tutor-clone` sessions (pre-rename). Key files quoted into those s
 - **Review gaps:** _"Game mode (scope §44-48: locks tempo/A-B/repeat) is entirely missing from Success Criteria. Fix: add Game mode toggle to v1."_ / _"Repeat on/off (scope §38) never mentioned. Fix: add to player feature checklist in v1."_
 - **AlphaTab external docs referenced:** alphatab.net/docs/reference/api, AlphaTab `boundsLookup` (`api.renderer.boundsLookup.findBeat()`), External Cursor API, CSS hooks `.at-cursor-bar` / `.at-cursor-beat` / `.at-selection`.
 
-**Session origin (worktrees):** `serene-grothendieck-fb5e67`, `pensive-boyd-6d17e3`, `recursing-feistel-29cb4e` under `~/.claude/projects/-Users-leocaseiro-Sites-drum-tutor-clone-*`.
+**Session origin (worktrees):** `serene-grothendieck-fb5e67`, `pensive-boyd-6d17e3`, `recursing-feistel-29cb4e` under the drum-tutor-clone sessions.

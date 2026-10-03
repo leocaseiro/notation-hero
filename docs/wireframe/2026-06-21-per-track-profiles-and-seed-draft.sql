@@ -276,7 +276,7 @@ CREATE INDEX idx_drum_kit_pieces ON drum_profile USING gin (kit_pieces);
 -- SEED DATA
 -- ----------------------------------------------------------------------------
 -- Provenance: drum patterns are REAL grooves from
---   ~/Sites/notation-hero-resources/groovescribe-import.json
+--   <resources-repo>/groovescribe-import.json
 -- Each pattern stores its real GrooveScribe share URL in playable.data
 -- (the authoritative score). Patterns/lessons may have notation_id NULL
 -- (constraint p_needs_score), so no fabricated alphaTex blob is invented; the

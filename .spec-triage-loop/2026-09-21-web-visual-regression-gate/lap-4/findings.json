@@ -8,7 +8,7 @@
     "review_mode": "mode:headless",
     "pr": "#171",
     "jira": "NH-320",
-    "worktree": "/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/nh-320-vr-spec-lap-4-92e22a",
+    "worktree": ".claude/worktrees/nh-320-vr-spec-lap-4-92e22a",
     "push_target": "git push origin HEAD:docs/nh-320-web-vr-gate-spec",
     "branch": "claude/nh-320-vr-spec-lap-4-92e22a",
     "finding_count_total": 12,

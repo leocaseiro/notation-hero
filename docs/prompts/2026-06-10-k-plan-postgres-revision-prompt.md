@@ -19,7 +19,7 @@ NotationHero — revise the Area-K CMS build plan so its data layer matches the 
 
 Goal: produce the revised, executable K-plan (bite-sized TDD tasks, exact file paths) that builds Area K against the locked schema.
 
-Read first (absolute paths; all under /Users/leocaseiro/Sites/notation-hero/.claude/worktrees/optimistic-lalande-2ad538/ , or docs/ after merge):
+Read first (absolute paths; all under .claude/worktrees/optimistic-lalande-2ad538/ , or docs/ after merge):
 - docs/specs/2026-06-10-catalog-schema.md — ★ THE LOCKED catalog contract (brainstormed, reviewed twice via ce-doc-review, validated against a live Postgres). Entities: `catalog_item` (type='song'|'lesson', shared facets as typed columns) + `exercise` (a lesson's ordered steps) + `pattern` (beats/fills/rudiments) + `item_pattern` (m:n). Neon Postgres + JSONB. This is AUTHORITATIVE — implement it; do NOT re-litigate the schema fields or the Postgres decision.
 - docs/plans/2026-06-07-001-feat-cms-k-build-plan.md — the existing K-plan to revise (U1–U9, 1125 lines, fully doc-reviewed). U1 (the Layout-4 hexagonal skeleton) is already built/committed. Its R6 anticipated this: "implement against song-schema.md (DRAFT — Track 3 finalizes); if Track 3 lands changes, update core/lesson/Lesson.ts." That trigger has now fired.
 - docs/decisions/2026-06-09-catalog-store-postgres-neon.md — why Neon Postgres+JSONB for the catalog, and why DynamoDB stays for per-user data only.

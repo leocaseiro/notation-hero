@@ -199,7 +199,7 @@ These were explicit scoping decisions made in 2026-06 during the office-hours/re
 
 ## Sources / quotes
 
-All from the drum-tutor-clone session transcripts (read-only; the live `scope.md` lived at `~/Sites/drum-tutor-clone/.claude/worktrees/pensive-boyd-6d17e3/scope.md`, git commit `179185f "initial scope"`, 4853 bytes).
+All from the drum-tutor-clone session transcripts (read-only; the live `scope.md` lived at `<drum-tutor-clone>/.claude/worktrees/pensive-boyd-6d17e3/scope.md`, git commit `179185f "initial scope"`, 4853 bytes).
 
 - **Raw `scope.md` (lines 1-63)** — reproduced verbatim in Part 1 above; captured from in-session file reads.
 - **Reviewer mapping scope §-lines to v1 gaps** (ce-doc-review / spec-review):
@@ -218,11 +218,11 @@ All from the drum-tutor-clone session transcripts (read-only; the live `scope.md
 - **Spike-not-architecture framing** (prior-art assignment): _"The spike is the assignment, not the architecture. Don't draw a database schema until you've felt a drum hit make a ring appear."_
 - **"Unusually deep spec" note**: _"Scope.md covers feature flags the horizontal-highway drum app doesn't have (memory mode, auto-speed practice, hi-hat pedal extra-hit forgiveness, dynamic detection for ghost notes)."_
 
-### Source transcripts (absolute paths, read-only)
+### Source transcripts (read-only)
 
 ```
-/Users/leocaseiro/.claude/projects/-Users-leocaseiro-Sites-drum-tutor-clone--claude-worktrees-pensive-boyd-6d17e3/53466813-7343-411e-8e12-99a3ea7b6d33.jsonl
-/Users/leocaseiro/.claude/projects/-Users-leocaseiro-Sites-drum-tutor-clone--claude-worktrees-serene-grothendieck-fb5e67/c9615811-444a-427a-8e80-a814484b621d.jsonl
-/Users/leocaseiro/.claude/projects/-Users-leocaseiro-Sites-drum-tutor-clone--claude-worktrees-pensive-boyd-6d17e3/53466813-7343-411e-8e12-99a3ea7b6d33/subagents/agent-a44a55cbd3514a4c3.jsonl
-/Users/leocaseiro/.claude/projects/-Users-leocaseiro-Sites-drum-tutor-clone--claude-worktrees-pensive-boyd-6d17e3/53466813-7343-411e-8e12-99a3ea7b6d33/subagents/agent-ad495835ca923de95.jsonl
+session transcript 53466813-7343-411e-8e12-99a3ea7b6d33 (worktree pensive-boyd-6d17e3)
+session transcript c9615811-444a-427a-8e80-a814484b621d (worktree serene-grothendieck-fb5e67)
+subagent transcript agent-a44a55cbd3514a4c3 under session 53466813-7343-411e-8e12-99a3ea7b6d33 (worktree pensive-boyd-6d17e3)
+subagent transcript agent-ad495835ca923de95 under session 53466813-7343-411e-8e12-99a3ea7b6d33 (worktree pensive-boyd-6d17e3)
 ```

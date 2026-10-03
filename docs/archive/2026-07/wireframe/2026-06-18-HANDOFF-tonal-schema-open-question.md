@@ -4,11 +4,11 @@ date: 2026-06-18
 status: paused — handoff for a dedicated next-session brainstorm
 worktree: wireframe-pattern-lesson-model
 branch: docs/wireframe-pattern-lesson-model (single Wireframe + schema design space)
-home: /Users/leocaseiro/Sites/notation-hero/.claude/worktrees/wireframe-pattern-lesson-model/docs/wireframe/2026-06-18-HANDOFF-tonal-schema-open-question.md
+home: .claude/worktrees/wireframe-pattern-lesson-model/docs/wireframe/2026-06-18-HANDOFF-tonal-schema-open-question.md
 handoff_via: MemStack "💾 Project" skill (markdown-only — MEMSTACK_PATH unset, SQLite step skipped)
-supersedes_context: /Users/leocaseiro/Sites/notation-hero/.claude/worktrees/wireframe-pattern-lesson-model/docs/wireframe/2026-06-16-schema-deltas.md (Round 5/6 open questions)
-companion_adr: /Users/leocaseiro/Sites/notation-hero/.claude/worktrees/architecture-spec/docs/decisions/2026-06-17-architecture-decisions.md (approved NH-194)
-companion_reqs: /Users/leocaseiro/Sites/notation-hero/.claude/worktrees/architecture-spec/docs/specs/2026-06-17-data-layer-requirements.md (R1–R16)
+supersedes_context: .claude/worktrees/wireframe-pattern-lesson-model/docs/wireframe/2026-06-16-schema-deltas.md (Round 5/6 open questions)
+companion_adr: .claude/worktrees/architecture-spec/docs/decisions/2026-06-17-architecture-decisions.md (approved NH-194)
+companion_reqs: .claude/worktrees/architecture-spec/docs/specs/2026-06-17-data-layer-requirements.md (R1–R16)
 ---
 
 # Handoff — Chord-Progression model + the **Extensible Tonal Schema** open question
@@ -157,7 +157,7 @@ toward **(4)/(5)**.
 ## 4 · Still PENDING (not done — don't lose these)
 
 The **reconciliation pass** against the approved ADR
-(`/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/architecture-spec/docs/decisions/2026-06-17-architecture-decisions.md`)
+(`.claude/worktrees/architecture-spec/docs/decisions/2026-06-17-architecture-decisions.md`)
 still has to happen (was the next batch when we paused):
 
 - **`created_by`** (R1, the Cognito `sub`) on the catalog item — ownership seam.
@@ -184,7 +184,7 @@ still has to happen (was the next batch when we paused):
 **--- PASTE INTO NEXT CC SESSION ---**
 
 ```
-Working directory: /Users/leocaseiro/Sites/notation-hero/.claude/worktrees/wireframe-pattern-lesson-model
+Working directory: .claude/worktrees/wireframe-pattern-lesson-model
 Read docs/wireframe/2026-06-18-HANDOFF-tonal-schema-open-question.md (full context + decisions).
 
 Brainstorm: an EXTENSIBLE schema for tonal/harmonic attributes (key, scale, mode, chord
@@ -204,12 +204,12 @@ https://github.com/tonaljs/tonal · hooktheory advanced-search by chordString.
 
 ## 6 · Key files / references (full paths)
 
-- **This handoff:** `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/wireframe-pattern-lesson-model/docs/wireframe/2026-06-18-HANDOFF-tonal-schema-open-question.md`
-- **Open-question source (Round 5/6):** `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/wireframe-pattern-lesson-model/docs/wireframe/2026-06-16-schema-deltas.md`
-- **Locked Playable model + draft SQL:** `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/wireframe-pattern-lesson-model/docs/wireframe/2026-06-17-notation-model-draft.sql`
-- **Model map (source of truth):** `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/wireframe-pattern-lesson-model/docs/wireframe/model-map.html`
-- **Sibling handoff (wireframe review):** `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/wireframe-pattern-lesson-model/docs/wireframe/2026-06-18-HANDOFF-wireframe-review-done.md`
-- **Approved ADR (NH-194):** `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/architecture-spec/docs/decisions/2026-06-17-architecture-decisions.md`
-- **Data-layer requirements R1–R16:** `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/architecture-spec/docs/specs/2026-06-17-data-layer-requirements.md`
+- **This handoff:** `.claude/worktrees/wireframe-pattern-lesson-model/docs/wireframe/2026-06-18-HANDOFF-tonal-schema-open-question.md`
+- **Open-question source (Round 5/6):** `.claude/worktrees/wireframe-pattern-lesson-model/docs/wireframe/2026-06-16-schema-deltas.md`
+- **Locked Playable model + draft SQL:** `.claude/worktrees/wireframe-pattern-lesson-model/docs/wireframe/2026-06-17-notation-model-draft.sql`
+- **Model map (source of truth):** `.claude/worktrees/wireframe-pattern-lesson-model/docs/wireframe/model-map.html`
+- **Sibling handoff (wireframe review):** `.claude/worktrees/wireframe-pattern-lesson-model/docs/wireframe/2026-06-18-HANDOFF-wireframe-review-done.md`
+- **Approved ADR (NH-194):** `.claude/worktrees/architecture-spec/docs/decisions/2026-06-17-architecture-decisions.md`
+- **Data-layer requirements R1–R16:** `.claude/worktrees/architecture-spec/docs/specs/2026-06-17-data-layer-requirements.md`
 - **Chord-progression worked example (throwaway):** `/tmp/nh-progression/index.html` (served on `:8781`)
 - **tonaljs:** <https://github.com/tonaljs/tonal> · **hooktheory** TheoryTab advanced-search

@@ -9,7 +9,7 @@ rewritten VR helper and regenerating their Linux baselines.
 
 ## Where you are
 
-- **Worktree (work here, never touch master):** `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/base-ui-migration-nh254`
+- **Worktree (work here, never touch master):** `.claude/worktrees/base-ui-migration-nh254`
 - **Local branch:** `base-ui-migration` → pushes to `origin/claude/keen-nash-31b894`
 - **PR:** #99 "feat(catalog): search + filter-row UI components (NH-254)", base `master`
 - **Git state:** MID-MERGE, uncommitted. `git status` says _"All conflicts fixed but you are still
@@ -111,7 +111,7 @@ panel]` + the `'open'` state (Tooltip pattern). CHECK each component's `*.storie
 
 ## Context refs
 
-- Base UI migration ADR: `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/base-ui-migration-nh254/docs/decisions/2026-07-07-radix-to-base-ui-migration.md`
+- Base UI migration ADR: `.claude/worktrees/base-ui-migration-nh254/docs/decisions/2026-07-07-radix-to-base-ui-migration.md`
 - Button/input token-reuse convention (memory): buttons → `buttonVariants`/`<Button>`; input
   surfaces → `inputSurfaceClasses` (`@/lib/utils`). Don't hand-copy token strings.
 - Follow-up ticket already filed: NH-272 (TokenPicker creatable) — not part of this merge.

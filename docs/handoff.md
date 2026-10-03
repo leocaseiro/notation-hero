@@ -32,7 +32,7 @@
 
 - **This session ID:** `53466813-7343-411e-8e12-99a3ea7b6d33`
 - **Transcript path (stable, survives folder rename):**
-  `~/.claude/projects/-Users-leocaseiro-Sites-notation-hero--claude-worktrees-pensive-boyd-6d17e3/53466813-7343-411e-8e12-99a3ea7b6d33.jsonl`
+  `session transcript 53466813-7343-411e-8e12-99a3ea7b6d33 (worktree pensive-boyd-6d17e3)`
   - The `.jsonl` is keyed by session UUID and is **not moved or deleted** by
     renaming the folder. New sessions just log under the new path slug.
   - Resume with `claude --resume` (locate by the ID above), or find it via the
@@ -40,16 +40,16 @@
 
 ## Key paths (read these on re-entry)
 
-| What                                                                                    | Path                                                                                                                    |
-| --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| Requirements (original scope)                                                           | `scope.md` (this repo)                                                                                                  |
-| **Tech stack design doc (APPROVED)**                                                    | `docs/design-stack.md` (this repo)                                                                                      |
-| Design doc source-of-truth copy                                                         | `~/.gstack/projects/pensive-boyd-6d17e3/leocaseiro-claude-pensive-boyd-6d17e3-design-20260603-163704.md`                |
-| AWS backend brainstorm (committed on branch `claude/serene-grothendieck-fb5e67`)        | `~/Sites/notation-hero/.claude/worktrees/serene-grothendieck-fb5e67/stack-aws-brainstorm.md`                            |
-| Client-stack brainstorm (committed, same branch; has UI design + alternatives-rejected) | `~/Sites/notation-hero/.claude/worktrees/serene-grothendieck-fb5e67/stack-brainstorm.md`                                |
-| Phase-0 working rhythm game (MPL-2.0 fork)                                              | `~/Sites/alphaTabWebsite` (branch `rhythm-game`), live: <https://leocaseiro.github.io/alphaTabWebsite/docs/rhythm-game> |
-| MIDI mapping feature plan                                                               | `~/Sites/alphaTabWebsite/MIDI_MAPPING_PLAN_SUMMARY.md`                                                                  |
-| Reference only (GPL-3, do NOT copy code)                                                | `~/Sites/sightread` (sightread.dev)                                                                                     |
+| What                                                                                    | Path                                                                                                                  |
+| --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Requirements (original scope)                                                           | `scope.md` (this repo)                                                                                                |
+| **Tech stack design doc (APPROVED)**                                                    | `docs/design-stack.md` (this repo)                                                                                    |
+| Design doc source-of-truth copy                                                         | `~/.gstack/projects/pensive-boyd-6d17e3/leocaseiro-claude-pensive-boyd-6d17e3-design-20260603-163704.md`              |
+| AWS backend brainstorm (committed on branch `claude/serene-grothendieck-fb5e67`)        | `.claude/worktrees/serene-grothendieck-fb5e67/stack-aws-brainstorm.md`                                                |
+| Client-stack brainstorm (committed, same branch; has UI design + alternatives-rejected) | `.claude/worktrees/serene-grothendieck-fb5e67/stack-brainstorm.md`                                                    |
+| Phase-0 working rhythm game (MPL-2.0 fork)                                              | the local alphaTab fork (branch `rhythm-game`), live: <https://leocaseiro.github.io/alphaTabWebsite/docs/rhythm-game> |
+| MIDI mapping feature plan                                                               | `<alphatab-fork>/MIDI_MAPPING_PLAN_SUMMARY.md`                                                                        |
+| Reference only (GPL-3, do NOT copy code)                                                | `a local clone of sightread` (sightread.dev)                                                                          |
 
 ## Decisions locked
 
@@ -102,10 +102,10 @@ cd notation-hero
 git worktree repair \
   .claude/worktrees/pensive-boyd-6d17e3 \
   .claude/worktrees/serene-grothendieck-fb5e67
-git worktree list   # every path should now start with ~/Sites/notation-hero
+git worktree list   # every path should now start with the repo root
 ```
 
-~~Then start a fresh Claude session from `~/Sites/notation-hero`.~~ <!-- SUPERSEDED: rename already done; no-op procedure -->
+~~Then start a fresh Claude session from the repo root.~~ <!-- SUPERSEDED: rename already done; no-op procedure -->
 ~~Optional: update `.specstory/.project.json` `project_name` to `notation-hero`.~~ <!-- SUPERSEDED: rename already done; no-op procedure -->
 
 ## AWS toolchain status (2026-06-04)
@@ -130,7 +130,7 @@ git worktree list   # every path should now start with ~/Sites/notation-hero
 6. **Branch protection** on `master`: require PR + require CI status checks green.
 7. ~~**Advanced PR policy** (Danger, VR-required-on-UI, Storybook-required-on-new-~~ <!-- SUPERSEDED: locked convention = stories CO-LOCATED next to source; NO top-level/per-package stories/ dirs -->
    ~~components, agent-vs-human rules) → designed via `/plan-eng-review` first,~~ <!-- SUPERSEDED: stories co-located, no stories/ folders -->
-   ~~then implemented. Lift patterns from `~/Sites/alpha-drums` (own repo: has~~ <!-- SUPERSEDED: stories co-located, no stories/ folders -->
+   ~~then implemented. Lift patterns from `a local clone of alpha-drums` (own repo: has~~ <!-- SUPERSEDED: stories co-located, no stories/ folders -->
    ~~Playwright + auto-merge + Dependabot workflows).~~ <!-- SUPERSEDED: stories co-located, no stories/ folders -->
 
 ## Skill workflow recipe ("best of all")

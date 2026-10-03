@@ -7,7 +7,7 @@
 - **Related (kept separate):** NH-32 (license + header rule — a licensing decision, only linked), NH-39 (type-coverage ratchet — distinct tool)
 - **Already done (context only):** NH-91 (no-escape-hatches ESLint), NH-93 (commitlint), NH-152 (gitleaks), NH-153 (semgrep), NH-125 (structure enforcement)
 - **Decision-registry impact:** updates `L3-eslint`, `L3-prettier`, `M4-prettier` (Biome evaluated and rejected with reasons — see Rejected alternatives below)
-- **Reference:** `~/Sites/base-skill` (vetted ESLint/lint setup this spec mirrors)
+- **Reference:** `the base-skill reference repo` (vetted ESLint/lint setup this spec mirrors)
 
 ## 1. Context & goals
 

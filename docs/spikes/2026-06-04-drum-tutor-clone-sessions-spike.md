@@ -49,7 +49,7 @@
 | Jun 2, 20:27               | First recommendation: **one TypeScript web app, AlphaTab as the music engine.**                                                                                                                                                               |
 | Jun 2, 20:31               | Detour: **.NET MAUI / C#** evaluated → rejected (Mac can't build Windows).                                                                                                                                                                    |
 | Jun 2, 20:35               | Detour: **game engines (Unity/Godot)** evaluated → rejected. The "timing decoupled from rendering" insight lands here.                                                                                                                        |
-| Jun 2, 21:01               | User reveals an existing **prototype** (`~/Sites/alphaTabWebsite`, a fork of CoderLine's demo) — read-only, "don't take anything." It **validates AlphaTab works**.                                                                           |
+| Jun 2, 21:01               | User reveals an existing **prototype** (the local alphaTab fork, a fork of CoderLine's demo) — read-only, "don't take anything." It **validates AlphaTab works**.                                                                             |
 | Jun 2, 21:16               | Ambition clarified: **personal now / product maybe later · free · web + iOS + Android · Mac-built.**                                                                                                                                          |
 | Jun 2, 21:20               | Lean architecture: **PWA covers everything free; Capacitor only for iOS.**                                                                                                                                                                    |
 | Jun 2, 21:27 → Jun 3 00:36 | Persistence thread: storage ≠ server · Next.js rejected · sync moved up · Firestore vs Supabase · RxDB/Legend-State/PowerSync.                                                                                                                |
@@ -184,8 +184,8 @@ This is the reframe that changed the project's _purpose_ (2026-06-03 ~01:04).
 ### K · License & IP gate (the App Store reality check)
 
 - **K1 — AlphaTab core (`@coderline/alphatab`) = MPL-2.0 → App Store compatible**, including a **paid** app. File-level copyleft: modifications to AlphaTab _source_ must stay open, but new files that merely _call_ AlphaTab APIs can be proprietary (use it as an npm dependency). _Date:_ 2026-06-03. _Now:_ ✅ holds.
-- **K2 — `sightread` (sightread.dev) = GPL-3 → App-Store-INCOMPATIBLE for a paid app. Reference patterns only — do NOT copy its code.** _Date:_ 2026-06-03. _Now:_ ✅ holds (reference repo at `~/Sites/sightread`).
-- **K3 — The `alphaTabWebsite` fork is a _spike_, not a foundation.** Most of it is CoderLine's MPL-2.0 demo; what's the user's is the rhythm-game logic grafted on (`AlphaTabRhythmGame`) + the validated knowledge that AlphaTab works. Productionization = a **clean app the user owns**, AlphaTab as an npm dep, proven patterns ported clean-room. The fork stays read-only/off-limits. _Date:_ 2026-06-02/03. _Now:_ ✅ holds (`~/Sites/alphaTabWebsite`, branch `rhythm-game`; always check it for prior art before building related features).
+- **K2 — `sightread` (sightread.dev) = GPL-3 → App-Store-INCOMPATIBLE for a paid app. Reference patterns only — do NOT copy its code.** _Date:_ 2026-06-03. _Now:_ ✅ holds (reference repo at `a local clone of sightread`).
+- **K3 — The `alphaTabWebsite` fork is a _spike_, not a foundation.** Most of it is CoderLine's MPL-2.0 demo; what's the user's is the rhythm-game logic grafted on (`AlphaTabRhythmGame`) + the validated knowledge that AlphaTab works. Productionization = a **clean app the user owns**, AlphaTab as an npm dep, proven patterns ported clean-room. The fork stays read-only/off-limits. _Date:_ 2026-06-02/03. _Now:_ ✅ holds (the local alphaTab fork, branch `rhythm-game`; always check it for prior art before building related features).
 
 ### L · Process / meta findings (only in the transcripts)
 
@@ -253,10 +253,10 @@ The "don't-miss-anything" payoff — items that lived in the discussion but neve
 **Transcripts (keyed by session UUID; survive the folder rename):**
 
 ```
-~/.claude/projects/-Users-leocaseiro-Sites-drum-tutor-clone--claude-worktrees-serene-grothendieck-fb5e67/c9615811-444a-427a-8e80-a814484b621d.jsonl
-~/.claude/projects/-Users-leocaseiro-Sites-drum-tutor-clone--claude-worktrees-serene-grothendieck-fb5e67/9d6a169e-6435-4dea-b291-0e4cab2dc7be.jsonl   (empty)
-~/.claude/projects/-Users-leocaseiro-Sites-drum-tutor-clone--claude-worktrees-recursing-feistel-29cb4e/fdc2c0ed-df1b-43f1-a7f1-b416c5c2fc33.jsonl     (empty / gstack-upgrade)
-~/.claude/projects/-Users-leocaseiro-Sites-drum-tutor-clone--claude-worktrees-pensive-boyd-6d17e3/53466813-7343-411e-8e12-99a3ea7b6d33.jsonl
+session transcript c9615811-444a-427a-8e80-a814484b621d (worktree serene-grothendieck-fb5e67)
+session transcript 9d6a169e-6435-4dea-b291-0e4cab2dc7be (worktree serene-grothendieck-fb5e67)   (empty)
+session transcript fdc2c0ed-df1b-43f1-a7f1-b416c5c2fc33 (worktree recursing-feistel-29cb4e)     (empty / gstack-upgrade)
+session transcript 53466813-7343-411e-8e12-99a3ea7b6d33 (worktree pensive-boyd-6d17e3)
 ```
 
 **Committed artifacts these sessions produced (all still in the repo):**

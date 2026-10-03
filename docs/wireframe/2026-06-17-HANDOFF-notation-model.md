@@ -4,7 +4,7 @@
 
 ## Where to work
 
-- Worktree: `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/wireframe-pattern-lesson-model`
+- Worktree: `.claude/worktrees/wireframe-pattern-lesson-model`
 - Branch: `docs/wireframe-pattern-lesson-model`. Session-2 commits (local, not pushed): `b2c02fa` → `a87cf7f` → `d409ada` → `7ad0033` → `cb00d1f` → `88005e8`.
 - Serve: preview config in repo `.claude/launch.json` (name `wireframe`, port 8780), or `python3 -m http.server 8780 --directory <worktree>`. URLs:
   - **Model map (source of truth):** `http://localhost:8780/docs/wireframe/model-map.html`

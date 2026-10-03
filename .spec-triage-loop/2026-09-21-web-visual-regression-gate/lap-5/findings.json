@@ -9,7 +9,7 @@
     "review_mode": "mode:headless",
     "pr": "#171",
     "jira": "NH-320",
-    "worktree": "/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/error-code-pr-checklist-b055bb",
+    "worktree": ".claude/worktrees/error-code-pr-checklist-b055bb",
     "branch": "claude/lap-5-review-833468",
     "push_target": "git push origin HEAD:docs/nh-320-web-vr-gate-spec",
     "document_type": "plan",

@@ -189,7 +189,7 @@ We run no server of our own, so this means **error tracking + usage analytics + 
 ## 7. Nice-to-haves / later
 
 - **File upload** → needs Storage (may nudge Firebase to Blaze; Supabase Storage on free tier). Later.
-- **Song search** (Songsterr / Ultimate Guitar — the `tablatures` project approach): store a **`source + id`** per song (dovetails with sync-by-reference). **Needs a small server-side proxy** (CORS + unofficial/scraped APIs) — the first feature justifying a tiny serverless function (Cloud Function / Cloudflare Worker). ⚠️ **ToS/legal gray area** (esp. Ultimate Guitar) and **scraper fragility**. Reference repos cloned at `~/Sites/tablatures` + `~/Sites/tablatures-api` (check their license before reusing code).
+- **Song search** (Songsterr / Ultimate Guitar — the `tablatures` project approach): store a **`source + id`** per song (dovetails with sync-by-reference). **Needs a small server-side proxy** (CORS + unofficial/scraped APIs) — the first feature justifying a tiny serverless function (Cloud Function / Cloudflare Worker). ⚠️ **ToS/legal gray area** (esp. Ultimate Guitar) and **scraper fragility**. Reference repos cloned at `a local clone of tablatures` + `a local clone of tablatures-api` (check their license before reusing code).
 - **Native low-latency Windows audio** (ASIO via Electron + native addon) → only if it becomes a product.
 - **Android native wrapper** (Capacitor + Play Store, $25 once) → for native MIDI reliability later; PWA is fine for now.
 
