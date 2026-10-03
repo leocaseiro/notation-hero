@@ -50,9 +50,10 @@
       "P3": "worth fixing — small, cheap"
     },
     "triage_progress": {
-      "decided": ["F-1", "F-7", "F-12", "F-15", "F-16"],
-      "undecided": ["F-2", "F-3", "F-4", "F-5", "F-6", "F-8", "F-9", "F-10", "F-11", "F-13", "F-14"]
-    }
+      "decided": ["F-1", "F-7", "F-12", "F-15", "F-16", "F-2", "F-3"],
+      "undecided": ["F-4", "F-5", "F-6", "F-8", "F-9", "F-10", "F-11", "F-13", "F-14"]
+    },
+    "picker_rounds_used": 1
   },
   "already_applied": [],
   "ambiguity_fixes": [
@@ -131,103 +132,6 @@
     }
   ],
   "undecided_findings": [
-    {
-      "id": "F-2",
-      "severity": "P1",
-      "confidence": 100,
-      "route": "Proposed fix",
-      "autofix_class": "gated_auto",
-      "reviewers": ["adversarial", "feasibility"],
-      "section": "§2.6 Known engine noise; §3.3 SDK settings; §6 e2e",
-      "title": "Sentry's own error catcher would break the known-noise filter — and the CI job that blocks merging",
-      "terms_first": "Known engine noise = two harmless errors from the music engine, NH-335 and NH-338, that we already know about. Today the end-to-end lane excuses them only when every line of the error's stack trace sits inside the engine's own file, and the spec makes the Sentry filter use the same rule.",
-      "scenario": "You merge the Sentry work. The `web` CI job, which blocks merging, now builds with the fake Sentry address. It opens `guitar-no-percussion.gp` — the NH-335 file — and fails: the engine error it has always excused is suddenly unexpected. In production the same thing happens on Sentry's side: both known engine errors arrive as new issues instead of being dropped, spending the 5,000 monthly reports on bugs we already know.",
-      "whats_wrong": "Sentry 11 turns on its `BrowserApiErrors` integration by default (sdk.ts:38). It wraps every `addEventListener` callback — including the `message` listeners the engine adds to its Worker objects (alphaTab.core.mjs:34436 and :33640), which is exactly where NH-335 and NH-338 are thrown. The wrapper adds one stack frame from our own Next.js chunk, so 'every frame is in the engine file' (page-errors.ts:79-82) stops being true. Sentry removes that frame only while its function is still named `sentryWrapped` (stacktrace.ts:93-95), and a minified build renames it (Sentry's own third-party-errors-filter.ts:137-139 says so). Stack depth does not save us: NH-335's recorded stack has 3 frames, NH-338 traces to 4, and Sentry raises Error.stackTraceLimit to 50 (globalhandlers.ts:36).",
-      "evidence_quotes": [
-        "in the engine bundle `/alphatab/esm/alphaTab.core.mjs`; the same words thrown from our own code still fail.",
-        "The e2e gate reads it from a stack string and the Sentry filter reads it from Sentry's structured frames",
-        "The CI build sets a fake DSN, `https://public@sentry.invalid/1`."
-      ],
-      "before_after": [
-        {
-          "where": "§3.3 code (one line shared with F-1)",
-          "lines": "253",
-          "before": "  integrations: [breadcrumbsIntegration({ console: false })],",
-          "after": "  integrations: (defaults) =>\n    defaults.filter((integration) => !['Console', 'BrowserApiErrors'].includes(integration.name)),"
-        },
-        {
-          "where": "§2.6, a new paragraph after line 211",
-          "lines": null,
-          "before": "(absent — nothing there today)",
-          "after": "Sentry's default `BrowserApiErrors` integration is removed (§3.3). It wraps every\n`addEventListener` callback — including the engine's worker listeners, where both errors are\nthrown — and adds a frame from our own bundle, so \"every frame in the engine bundle\" would stop\nmatching. Without it, these throws still reach Sentry's global `error` handler with their\nengine-only stack."
-        },
-        {
-          "where": "§6, a new e2e case after case 5",
-          "lines": null,
-          "before": "(absent — nothing there today)",
-          "after": "    6. Play then Pause quickly, repeated until a page error with the NH-338 message has been\n       seen (at most 20 tries): no event envelope carries that message.",
-          "note": "One Play-then-Pause burst reproduces NH-338 only about 7 times in 10 (page-errors.ts:61), so the case must first see the throw — otherwise \"sends no error\" passes without it ever happening."
-        }
-      ],
-      "proposed_fix": "Remove `BrowserApiErrors` in the same `integrations` filter as `Console`; explain why in §2.6; add an e2e case that first makes NH-338 happen, then checks nothing was sent. (The wrong 'inside the worker' wording is corrected separately, whatever is decided here — AMB-3.)",
-      "why_it_works": "Without the wrapper, listener errors keep their engine-only stacks, so the e2e gate and the Sentry filter keep matching. Sentry's global error handler still catches them with the full stack, because the engine is served from our own domain. The new case fails if the gate or the filter drifts.",
-      "cost": "BrowserApiErrors also wraps timers, animation frames and XHR callbacks to add a little detail to their reports. Without it, errors there still reach the global handler.",
-      "alternative_considered": "Keep BrowserApiErrors and teach both checks to ignore one outermost frame from our own bundle — fragile, because the frame's name and chunk change with every build.",
-      "drop_consequence": "Discard it. The merge-blocking `web` job fails on the Guitar Pro cases as soon as the fake address is set, and production sends both known engine errors.",
-      "basis": "BrowserApiErrors wraps the engine's worker listeners and adds a frame from our bundle; the engine-only frame rule then never matches (static analysis of Sentry 11.0.0 + the engine bundle).",
-      "spike": "Static analysis only: Sentry 11.0.0 source (commit 3e02c87c), the engine bundle (unminified and minified), the recorded NH-335 stack. Not run in a browser — (untested at runtime). The plan's go/no-go build will exercise it.",
-      "disposition_hint": "PICKER — removes a default SDK feature (a real trade-off).",
-      "verification": "pass",
-      "severity_meaning": "should fix before planning — something would ship broken, or a promise in the spec would be false"
-    },
-    {
-      "id": "F-3",
-      "severity": "P1",
-      "confidence": 100,
-      "route": "Proposed fix",
-      "autofix_class": "gated_auto",
-      "reviewers": ["security-lens", "feasibility"],
-      "section": "§3.1 What could leave the device (query-strings row); §3.3; §6",
-      "title": "Tracking codes in the page address still reach Sentry",
-      "terms_first": "Query string = the part of a web address after `?` — for example `?fbclid=…`, which Facebook adds to every link it sends you through. Fragment = the part after `#`.",
-      "scenario": "Someone shares the site on Facebook. You tap the link, and Facebook adds its tracking code to the address: `/?fbclid=IwAR3x…`. You click Play, open a file, and the player hits an error. The report that reaches Sentry carries that tracking code — in the 'navigation' breadcrumb, and in the page address if the error happens on the home page — while the home page says 'anonymous', and the spec says `dataCollection` switched query strings off.",
-      "whats_wrong": "§3.1 says `dataCollection` turns query strings off. In Sentry 11 it does not cover them: the browser's HttpContext integration copies the full address into `event.request.url`, and its source says 'The URL isn't gated by `dataCollection`' (httpcontext.ts:32-33). `urlQueryParams` only reaches span attributes, and spans are off. Navigation breadcrumbs keep `?query` and `#hash` in from/to. Play is a next/link, so a landing address with a tracking code becomes the 'from' of the navigation breadcrumb on every later /play error. web/ never reads a query string, so removing them loses nothing.",
-      "evidence_quotes": [
-        "IP address, cookies, headers, query strings",
-        "dataCollection: { userInfo: false, cookies: false, httpHeaders: false, urlQueryParams: false },",
-        "The copy says \"anonymous\", so the IP address must be stopped on **both** sides"
-      ],
-      "before_after": [
-        {
-          "where": "§3.1 table, the IP/cookies/headers/query-strings row",
-          "lines": "222",
-          "before": "| IP address, cookies, headers, query strings    | collected by Sentry's defaults                                                                                                                                                                                                                                                                               | `dataCollection` turns each one off, **and** the project setting \"Prevent Storing of IP Addresses\" is on (section 5) |",
-          "after": "| IP address, cookies, headers | collected by Sentry's defaults | `dataCollection` turns each one off, **and** the project setting \"Prevent Storing of IP Addresses\" is on (section 5) |\n| query strings and `#` fragments | the event's page address, and the from/to of navigation breadcrumbs — Sentry 11's `dataCollection` covers neither | `scrub.ts` cuts each address at its first `?` or `#`: the event's `request.url`, navigation breadcrumbs' `from` and `to`, fetch and xhr breadcrumbs' `url` |",
-          "note": "one row becomes two; prettier re-pads the table"
-        },
-        {
-          "where": "§6 unit list, after line 336",
-          "lines": null,
-          "before": "(absent — nothing there today)",
-          "after": "  - the address scrub: `/play?fbclid=abc#x` comes out as `/play`, in the event's address and in a\n    navigation breadcrumb;"
-        },
-        {
-          "where": "§6 e2e, a new case",
-          "lines": null,
-          "before": "(absent — nothing there today)",
-          "after": "    7. Open `/?fbclid=probe123#frag` and cause an error there, then click Play and cause another:\n       neither envelope contains `probe123` or `frag`.",
-          "note": "Two errors on purpose: the Link drops the query, so an error on /play alone only tests the breadcrumb; the error on `/` tests the page address. Number it after F-2's case."
-        }
-      ],
-      "proposed_fix": "Cut every address at its first `?` or `#` in `scrub.ts` (the event's address, navigation breadcrumbs, fetch/xhr breadcrumbs); correct the §3.1 row; add a unit case and an e2e case that covers both `/` and /play. `urlQueryParams: false` (line 252) can stay — harmless.",
-      "why_it_works": "Cutting at the first `?` or `#` removes every tracking code, whatever its name, and the app never reads them. The e2e case checks both places a code can travel.",
-      "drop_consequence": "Discard it. A visitor who arrives from a Facebook or email link sends that link's tracking code with any error, while the home page says 'anonymous'.",
-      "basis": "Sentry 11's HttpContext copies location.href unfiltered and navigation breadcrumbs keep the query; dataCollection's urlQueryParams only touches spans.",
-      "spike": "Static analysis of Sentry 11.0.0 source. (untested at runtime)",
-      "disposition_hint": "PICKER — adds scrubbing behaviour.",
-      "verification": "pass",
-      "severity_meaning": "should fix before planning — something would ship broken, or a promise in the spec would be false"
-    },
     {
       "id": "F-4",
       "severity": "P1",
@@ -1069,6 +973,115 @@
         "decision": "Apply — auto-resolved (a lint guard, spiked)",
         "applied": true,
         "notes": "Adds one sentence: nothing sets no-restricted-globals today, so the entry adds a rule and replaces none."
+      }
+    },
+    {
+      "id": "F-2",
+      "severity": "P1",
+      "confidence": 100,
+      "route": "Proposed fix",
+      "autofix_class": "gated_auto",
+      "reviewers": ["adversarial", "feasibility"],
+      "section": "§2.6 Known engine noise; §3.3 SDK settings; §6 e2e",
+      "title": "Sentry's own error catcher would break the known-noise filter — and the CI job that blocks merging",
+      "terms_first": "Known engine noise = two harmless errors from the music engine, NH-335 and NH-338, that we already know about. Today the end-to-end lane excuses them only when every line of the error's stack trace sits inside the engine's own file, and the spec makes the Sentry filter use the same rule.",
+      "scenario": "You merge the Sentry work. The `web` CI job, which blocks merging, now builds with the fake Sentry address. It opens `guitar-no-percussion.gp` — the NH-335 file — and fails: the engine error it has always excused is suddenly unexpected. In production the same thing happens on Sentry's side: both known engine errors arrive as new issues instead of being dropped, spending the 5,000 monthly reports on bugs we already know.",
+      "whats_wrong": "Sentry 11 turns on its `BrowserApiErrors` integration by default (sdk.ts:38). It wraps every `addEventListener` callback — including the `message` listeners the engine adds to its Worker objects (alphaTab.core.mjs:34436 and :33640), which is exactly where NH-335 and NH-338 are thrown. The wrapper adds one stack frame from our own Next.js chunk, so 'every frame is in the engine file' (page-errors.ts:79-82) stops being true. Sentry removes that frame only while its function is still named `sentryWrapped` (stacktrace.ts:93-95), and a minified build renames it (Sentry's own third-party-errors-filter.ts:137-139 says so). Stack depth does not save us: NH-335's recorded stack has 3 frames, NH-338 traces to 4, and Sentry raises Error.stackTraceLimit to 50 (globalhandlers.ts:36).",
+      "evidence_quotes": [
+        "in the engine bundle `/alphatab/esm/alphaTab.core.mjs`; the same words thrown from our own code still fail.",
+        "The e2e gate reads it from a stack string and the Sentry filter reads it from Sentry's structured frames",
+        "The CI build sets a fake DSN, `https://public@sentry.invalid/1`."
+      ],
+      "before_after": [
+        {
+          "where": "§3.3 code (one line shared with F-1)",
+          "lines": "253",
+          "before": "  integrations: [breadcrumbsIntegration({ console: false })],",
+          "after": "  integrations: (defaults) =>\n    defaults.filter((integration) => !['Console', 'BrowserApiErrors'].includes(integration.name)),"
+        },
+        {
+          "where": "§2.6, a new paragraph after line 211",
+          "lines": null,
+          "before": "(absent — nothing there today)",
+          "after": "Sentry's default `BrowserApiErrors` integration is removed (§3.3). It wraps every\n`addEventListener` callback — including the engine's worker listeners, where both errors are\nthrown — and adds a frame from our own bundle, so \"every frame in the engine bundle\" would stop\nmatching. Without it, these throws still reach Sentry's global `error` handler with their\nengine-only stack."
+        },
+        {
+          "where": "§6, a new e2e case after case 5",
+          "lines": null,
+          "before": "(absent — nothing there today)",
+          "after": "    6. Play then Pause quickly, repeated until a page error with the NH-338 message has been\n       seen (at most 20 tries): no event envelope carries that message.",
+          "note": "One Play-then-Pause burst reproduces NH-338 only about 7 times in 10 (page-errors.ts:61), so the case must first see the throw — otherwise \"sends no error\" passes without it ever happening."
+        }
+      ],
+      "proposed_fix": "Remove `BrowserApiErrors` in the same `integrations` filter as `Console`; explain why in §2.6; add an e2e case that first makes NH-338 happen, then checks nothing was sent. (The wrong 'inside the worker' wording is corrected separately, whatever is decided here — AMB-3.)",
+      "why_it_works": "Without the wrapper, listener errors keep their engine-only stacks, so the e2e gate and the Sentry filter keep matching. Sentry's global error handler still catches them with the full stack, because the engine is served from our own domain. The new case fails if the gate or the filter drifts.",
+      "cost": "BrowserApiErrors also wraps timers, animation frames and XHR callbacks to add a little detail to their reports. Without it, errors there still reach the global handler.",
+      "alternative_considered": "Keep BrowserApiErrors and teach both checks to ignore one outermost frame from our own bundle — fragile, because the frame's name and chunk change with every build.",
+      "drop_consequence": "Discard it. The merge-blocking `web` job fails on the Guitar Pro cases as soon as the fake address is set, and production sends both known engine errors.",
+      "basis": "BrowserApiErrors wraps the engine's worker listeners and adds a frame from our bundle; the engine-only frame rule then never matches (static analysis of Sentry 11.0.0 + the engine bundle).",
+      "spike": "Static analysis only: Sentry 11.0.0 source (commit 3e02c87c), the engine bundle (unminified and minified), the recorded NH-335 stack. Not run in a browser — (untested at runtime). The plan's go/no-go build will exercise it.",
+      "disposition_hint": "PICKER — removes a default SDK feature (a real trade-off).",
+      "verification": "pass",
+      "severity_meaning": "should fix before planning — something would ship broken, or a promise in the spec would be false",
+      "triage": {
+        "round": "round 1 (picker)",
+        "decision": "Apply (leocaseiro, picker)",
+        "applied": true,
+        "notes": "One integrations filter removes Console and BrowserApiErrors; §2.6 paragraph says why, plus what the integration adds elsewhere; e2e case 6."
+      }
+    },
+    {
+      "id": "F-3",
+      "severity": "P1",
+      "confidence": 100,
+      "route": "Proposed fix",
+      "autofix_class": "gated_auto",
+      "reviewers": ["security-lens", "feasibility"],
+      "section": "§3.1 What could leave the device (query-strings row); §3.3; §6",
+      "title": "Tracking codes in the page address still reach Sentry",
+      "terms_first": "Query string = the part of a web address after `?` — for example `?fbclid=…`, which Facebook adds to every link it sends you through. Fragment = the part after `#`.",
+      "scenario": "Someone shares the site on Facebook. You tap the link, and Facebook adds its tracking code to the address: `/?fbclid=IwAR3x…`. You click Play, open a file, and the player hits an error. The report that reaches Sentry carries that tracking code — in the 'navigation' breadcrumb, and in the page address if the error happens on the home page — while the home page says 'anonymous', and the spec says `dataCollection` switched query strings off.",
+      "whats_wrong": "§3.1 says `dataCollection` turns query strings off. In Sentry 11 it does not cover them: the browser's HttpContext integration copies the full address into `event.request.url`, and its source says 'The URL isn't gated by `dataCollection`' (httpcontext.ts:32-33). `urlQueryParams` only reaches span attributes, and spans are off. Navigation breadcrumbs keep `?query` and `#hash` in from/to. Play is a next/link, so a landing address with a tracking code becomes the 'from' of the navigation breadcrumb on every later /play error. web/ never reads a query string, so removing them loses nothing.",
+      "evidence_quotes": [
+        "IP address, cookies, headers, query strings",
+        "dataCollection: { userInfo: false, cookies: false, httpHeaders: false, urlQueryParams: false },",
+        "The copy says \"anonymous\", so the IP address must be stopped on **both** sides"
+      ],
+      "before_after": [
+        {
+          "where": "§3.1 table, the IP/cookies/headers/query-strings row",
+          "lines": "222",
+          "before": "| IP address, cookies, headers, query strings    | collected by Sentry's defaults                                                                                                                                                                                                                                                                               | `dataCollection` turns each one off, **and** the project setting \"Prevent Storing of IP Addresses\" is on (section 5) |",
+          "after": "| IP address, cookies, headers | collected by Sentry's defaults | `dataCollection` turns each one off, **and** the project setting \"Prevent Storing of IP Addresses\" is on (section 5) |\n| query strings and `#` fragments | the event's page address, and the from/to of navigation breadcrumbs — Sentry 11's `dataCollection` covers neither | `scrub.ts` cuts each address at its first `?` or `#`: the event's `request.url`, navigation breadcrumbs' `from` and `to`, fetch and xhr breadcrumbs' `url` |",
+          "note": "one row becomes two; prettier re-pads the table"
+        },
+        {
+          "where": "§6 unit list, after line 336",
+          "lines": null,
+          "before": "(absent — nothing there today)",
+          "after": "  - the address scrub: `/play?fbclid=abc#x` comes out as `/play`, in the event's address and in a\n    navigation breadcrumb;"
+        },
+        {
+          "where": "§6 e2e, a new case",
+          "lines": null,
+          "before": "(absent — nothing there today)",
+          "after": "    7. Open `/?fbclid=probe123#frag` and cause an error there, then click Play and cause another:\n       neither envelope contains `probe123` or `frag`.",
+          "note": "Two errors on purpose: the Link drops the query, so an error on /play alone only tests the breadcrumb; the error on `/` tests the page address. Number it after F-2's case."
+        }
+      ],
+      "proposed_fix": "Cut every address at its first `?` or `#` in `scrub.ts` (the event's address, navigation breadcrumbs, fetch/xhr breadcrumbs); correct the §3.1 row; add a unit case and an e2e case that covers both `/` and /play. `urlQueryParams: false` (line 252) can stay — harmless.",
+      "why_it_works": "Cutting at the first `?` or `#` removes every tracking code, whatever its name, and the app never reads them. The e2e case checks both places a code can travel.",
+      "drop_consequence": "Discard it. A visitor who arrives from a Facebook or email link sends that link's tracking code with any error, while the home page says 'anonymous'.",
+      "basis": "Sentry 11's HttpContext copies location.href unfiltered and navigation breadcrumbs keep the query; dataCollection's urlQueryParams only touches spans.",
+      "spike": "Static analysis of Sentry 11.0.0 source. (untested at runtime)",
+      "disposition_hint": "PICKER — adds scrubbing behaviour.",
+      "verification": "pass",
+      "severity_meaning": "should fix before planning — something would ship broken, or a promise in the spec would be false",
+      "triage": {
+        "round": "round 1 (picker)",
+        "decision": "Apply (leocaseiro, picker)",
+        "applied": true,
+        "notes": "§3.1 row split; unit case beside the names filter; e2e case 7. cspell.json gains 'fbclid'. §3.2 does not yet describe the address cut — revisit with F-10, which rewrites the names-filter section."
       }
     }
   ]

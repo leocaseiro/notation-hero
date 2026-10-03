@@ -220,6 +220,13 @@ fail. That list moves to `web/lib/monitoring/known-engine-noise.ts`. The e2e gat
 stack string and the Sentry filter reads it from Sentry's structured frames, so removing one entry
 when NH-335 or NH-338 is fixed updates both.
 
+Sentry's default `BrowserApiErrors` integration is removed (section 3.3). It wraps every
+`addEventListener` callback — including the engine's listeners on its worker, where both errors are
+thrown — and adds a frame from our own bundle, so "every frame in the engine bundle" would stop
+matching. Without it, these throws still reach Sentry's global `error` handler with their
+engine-only stack. What it adds elsewhere, a little detail on errors in timers, animation frames
+and XHR callbacks, is lost; those errors still arrive through the same global handler.
+
 ## 3. Privacy
 
 ### 3.1 What could leave the device, and what stops it
@@ -229,7 +236,8 @@ when NH-335 or NH-338 is fixed updates both.
 | track names, title, artist, album              | **Verified in Sentry's source** (`packages/browser-utils/src/htmlTreeAsString.ts:156`): click breadcrumbs record each element's `aria-label`, `type`, `name`, `title` and `alt`. The Solo, Mute and Render buttons are labelled `` `Solo ${name}` `` (`client/src/components/ui/TrackRow/TrackRow.tsx:247`). | the names filter (3.2) replaces them with `[file]`                                                                                                                   |
 | the file name                                  | any error message that quotes it — none does today                                                                                                                                                                                                                                                           | the same filter                                                                                                                                                      |
 | the score's contents — notes, lyrics, alphaTex | AlphaTab's console logs, and its parse messages, can quote a broken alphaTex line                                                                                                                                                                                                                            | console breadcrumbs are off: the default `Console` integration is removed (3.3), since Sentry 11 has no `console` switch; E101–E103 drop the exception message (2.3) |
-| IP address, cookies, headers, query strings    | collected by Sentry's defaults                                                                                                                                                                                                                                                                               | `dataCollection` turns each one off, **and** the project setting "Prevent Storing of IP Addresses" is on (section 5)                                                 |
+| IP address, cookies, headers                   | collected by Sentry's defaults                                                                                                                                                                                                                                                                               | `dataCollection` turns each one off, **and** the project setting "Prevent Storing of IP Addresses" is on (section 5)                                                 |
+| query strings and `#` fragments                | the event's page address, and the from/to of navigation breadcrumbs — Sentry 11's `dataCollection` covers neither                                                                                                                                                                                            | `scrub.ts` cuts each address at its first `?` or `#`: the event's `request.url`, navigation breadcrumbs' `from` and `to`, fetch and xhr breadcrumbs' `url`           |
 
 The copy says "anonymous", so the IP address must be stopped on **both** sides: Sentry's docs warn
 that with `userInfo` off, an IP address can still arrive through headers, cookies or query strings.
@@ -260,7 +268,8 @@ Sentry.init({
   release: APP_VERSION,
   environment: process.env.NEXT_PUBLIC_VERCEL_ENV,
   dataCollection: { userInfo: false, cookies: false, httpHeaders: false, urlQueryParams: false },
-  integrations: (defaults) => defaults.filter((integration) => integration.name !== 'Console'),
+  integrations: (defaults) =>
+    defaults.filter((integration) => !['Console', 'BrowserApiErrors'].includes(integration.name)),
   beforeBreadcrumb: scrubBreadcrumb,
   beforeSend: (event) => (isKnownEngineNoise(event) ? null : scrubEvent(event)),
 });
@@ -341,6 +350,8 @@ secret. The upload now runs inside Vercel's build, so neither GitHub mechanism a
 - **Unit (Vitest), beside each `lib/monitoring` file:**
   - the names filter: the file name, the title and every track name become `[file]`; strings shorter
     than 3 characters are left alone; stack frames are untouched;
+  - the address scrub: `/play?fbclid=abc#x` comes out as `/play`, in the event's address and in a
+    navigation breadcrumb;
   - `reportError`: the default level, the `code` tag, and E101–E103 dropping the message;
   - known engine noise: a throw whose frames all sit in the engine bundle is dropped; the same
     message with one frame from our code is kept.
@@ -369,6 +380,10 @@ secret. The upload now runs inside Vercel's build, so neither GitHub mechanism a
     4. Opening `guitar-no-percussion.gp` (the NH-335 file) sends no error.
     5. With storage blocked by an init script, nothing is sent until a real error, and that report
        carries the storage breadcrumb.
+    6. Play then Pause quickly, repeated until a page error with the NH-338 message has been
+       seen (at most 20 tries): no event envelope carries that message.
+    7. Open `/?fbclid=probe123#frag` and cause an error there, then click Play and cause another:
+       neither envelope contains `probe123` or `frag`.
 - **Screenshots:** the new home-page copy changes the `/` shot (`landing-chromium-linux.png`). Its
   baseline is regenerated in the Linux container (`pnpm test:web:docker:update`) and committed.
 - **Download size:** `/play`'s first-load JavaScript is measured before and after, and both numbers go

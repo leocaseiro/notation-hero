@@ -27,6 +27,7 @@
     "networkidle",
     "requestfailed",
     "unhandledrejection",
+    "fbclid",
     "sonivox",
     "flatrow",
     "peaceiris",
