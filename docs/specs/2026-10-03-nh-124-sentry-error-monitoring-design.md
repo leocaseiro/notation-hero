@@ -69,22 +69,22 @@ whatever pnpm resolves under the 7-day `minimumReleaseAge` gate; the plan record
 
 **New files:**
 
-| File                                       | Job                                                                                                                                                              |
-| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `web/instrumentation-client.ts`            | Starts Sentry before the page becomes interactive. With no DSN the SDK sends nothing — which is the state locally, in CI unit tests, and on preview deployments. |
-| `web/app/global-error.tsx`                 | Catches a crash in the root layout itself. Today there is none, so a root-layout crash shows Next's bare default page.                                           |
-| `web/lib/monitoring/report.ts`             | `reportError()` and `noteError()`. Apart from `instrumentation-client.ts`, the only file that imports Sentry.                                                    |
-| `web/lib/monitoring/scrub.ts`              | The privacy filter (section 3).                                                                                                                                  |
-| `web/lib/monitoring/known-engine-noise.ts` | The known AlphaTab throws, shared by the Sentry filter and `web/e2e/page-errors.ts` (section 2.6).                                                               |
-| `web/e2e/error-reporting.e2e.ts`           | The end-to-end reporting and privacy cases (section 6).                                                                                                          |
+| File                                       | Job                                                                                                                                                                 |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `web/instrumentation-client.ts`            | Starts Sentry before the page becomes interactive. With no DSN the SDK sends nothing — which is the state in `pnpm dev`, in unit tests, and on preview deployments. |
+| `web/app/global-error.tsx`                 | Catches a crash in the root layout itself. Today there is none, so a root-layout crash shows Next's bare default page.                                              |
+| `web/lib/monitoring/report.ts`             | `reportError()` and `noteError()`. Apart from `instrumentation-client.ts`, the only file that imports Sentry.                                                       |
+| `web/lib/monitoring/scrub.ts`              | The privacy filter (section 3).                                                                                                                                     |
+| `web/lib/monitoring/known-engine-noise.ts` | The known AlphaTab throws, shared by the Sentry filter and `web/e2e/page-errors.ts` (section 2.6).                                                                  |
+| `web/e2e/error-reporting.e2e.ts`           | The end-to-end reporting and privacy cases (section 6).                                                                                                             |
 
 Each `lib/monitoring` file has its unit test beside it.
 
 **Changed files:** `web/next.config.ts` (the `withSentryConfig` wrapper), both `error.tsx` files, the
 16 catch sites and 4 failure paths listed in section 2.4, `web/app/page.tsx` (copy),
 `web/eslint.config.mjs` (the rule), `web/e2e/page-errors.ts` (reads the shared list), the `/`
-screenshot baselines, `web/README.md` (the environment variables), the `web` CI job (a fake DSN),
-`cspell.json`, and the decision registry and changelog.
+screenshot baseline, `web/README.md` (the environment variables), `web/playwright.e2e.config.ts`
+(a fake DSN), `cspell.json`, and the decision registry and changelog.
 
 ## 2. How each error reaches Sentry
 
@@ -100,13 +100,13 @@ an error happens
 
 ### 2.1 Errors nobody catches
 
-| Channel                                        | Caught by                                                                                                                                       |
-| ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| a `throw` in an event handler, timer or effect | Sentry's global `error` handler — automatic                                                                                                     |
-| a rejected promise nobody awaited              | Sentry's global `unhandledrejection` handler — automatic                                                                                        |
-| a throw inside AlphaTab's Web Worker           | It reaches the page's `error` handler. Evidence: that is how the e2e lane caught NH-335's worker TypeError (`web/e2e/page-errors.ts`).          |
-| a throw inside AlphaTab's AudioWorklet         | **Not caught.** A worklet error does not reach the page. Only what AlphaTab forwards through its own `error` event arrives. See "Known limits". |
-| a React render crash                           | The error pages, which swallow it today — section 2.2.                                                                                          |
+| Channel                                        | Caught by                                                                                                                                                                                                                                                                             |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| a `throw` in an event handler, timer or effect | Sentry's global `error` handler — automatic                                                                                                                                                                                                                                           |
+| a rejected promise nobody awaited              | Sentry's global `unhandledrejection` handler — automatic                                                                                                                                                                                                                              |
+| a throw inside AlphaTab's Web Worker           | It reaches the page's `error` handler. Evidence: a spike on 2026-10-03 (Chromium 149, worker served from the same origin) — a throw inside a module or classic worker reached `window.onerror` and Playwright's `pageerror`. NH-335 is not evidence: it is thrown on the main thread. |
+| a throw inside AlphaTab's AudioWorklet         | **Not caught.** A worklet error does not reach the page. Only what AlphaTab forwards through its own `error` event arrives. See "Known limits".                                                                                                                                       |
+| a React render crash                           | The error pages, which swallow it today — section 2.2.                                                                                                                                                                                                                                |
 
 ### 2.2 The error pages
 
@@ -119,8 +119,12 @@ one line, and the new `global-error.tsx` carries the same line:
 +  useEffect(() => reportError(error, { code: ERROR.unexpectedCrash }), [error]);
 ```
 
-`global-error.tsx` replaces the root layout when it renders, so it supplies its own `<html>` and
-`<body>` and imports `globals.css` itself.
+`global-error.tsx` replaces the root layout when it renders, so it supplies its own
+`<html lang="en">` and `<body>` and imports `globals.css` itself. It is a client component
+(`'use client'`) that repeats `web/app/error.tsx` as changed by the diff above: the "Something went
+wrong" heading, the same `<main>` classes, the "Error E901" line, a Try again button wired to
+`reset`, and the section 3.4 sentence. It names the tab with a React `<title>Notation Hero</title>`,
+because this file does not support metadata exports.
 
 ### 2.3 The reporting functions
 
@@ -192,13 +196,19 @@ on 2026-10-03 with the installed ESLint 9.39.4: they flagged exactly `catch { }`
 - **A deliberate silence** is `// eslint-disable-next-line no-restricted-syntax -- <reason>`. The
   repository already requires a reason on every disable comment
   (`eslint-comments/require-description`).
+- **The browser has its own global `reportError`**, so a call with a forgotten import still
+  type-checks. `no-restricted-globals` bans the global —
+  `{ name: 'reportError', message: 'Import reportError from web/lib/monitoring/report.ts.' }` — so
+  that call is a lint error, while the imported function stays allowed. Nothing sets
+  `no-restricted-globals` today, so this adds a rule and replaces none.
 
 ### 2.6 Known engine noise
 
 AlphaTab 1.8.4 throws two errors that break nothing a person can see:
 
-- **NH-335:** `Cannot read properties of undefined (reading 'voices')`, from inside its worker, on
-  ordinary Guitar Pro files — seven times in one open of `guitar-no-percussion.gp`.
+- **NH-335:** `Cannot read properties of undefined (reading 'voices')`, thrown on the main thread by
+  the engine's listener on its worker, on ordinary Guitar Pro files — seven times in one open of
+  `guitar-no-percussion.gp`.
 - **NH-338:** `cannot call stop without calling start first`, in 7 of 10 quick Pause clicks.
 
 Sent as they are, a handful of visitors would use hundreds of the 5,000 monthly reports on two bugs
@@ -214,12 +224,12 @@ when NH-335 or NH-338 is fixed updates both.
 
 ### 3.1 What could leave the device, and what stops it
 
-| What                                           | How it would leak                                                                                                                                                                                                                                                                                            | What stops it                                                                                                        |
-| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
-| track names, title, artist, album              | **Verified in Sentry's source** (`packages/browser-utils/src/htmlTreeAsString.ts:156`): click breadcrumbs record each element's `aria-label`, `type`, `name`, `title` and `alt`. The Solo, Mute and Render buttons are labelled `` `Solo ${name}` `` (`client/src/components/ui/TrackRow/TrackRow.tsx:246`). | the names filter (3.2) replaces them with `[file]`                                                                   |
-| the file name                                  | any error message that quotes it — none does today                                                                                                                                                                                                                                                           | the same filter                                                                                                      |
-| the score's contents — notes, lyrics, alphaTex | AlphaTab's console logs, and its parse messages, can quote a broken alphaTex line                                                                                                                                                                                                                            | console breadcrumbs are off entirely; E101–E103 drop the exception message (2.3)                                     |
-| IP address, cookies, headers, query strings    | collected by Sentry's defaults                                                                                                                                                                                                                                                                               | `dataCollection` turns each one off, **and** the project setting "Prevent Storing of IP Addresses" is on (section 5) |
+| What                                           | How it would leak                                                                                                                                                                                                                                                                                            | What stops it                                                                                                                                                        |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| track names, title, artist, album              | **Verified in Sentry's source** (`packages/browser-utils/src/htmlTreeAsString.ts:156`): click breadcrumbs record each element's `aria-label`, `type`, `name`, `title` and `alt`. The Solo, Mute and Render buttons are labelled `` `Solo ${name}` `` (`client/src/components/ui/TrackRow/TrackRow.tsx:247`). | the names filter (3.2) replaces them with `[file]`                                                                                                                   |
+| the file name                                  | any error message that quotes it — none does today                                                                                                                                                                                                                                                           | the same filter                                                                                                                                                      |
+| the score's contents — notes, lyrics, alphaTex | AlphaTab's console logs, and its parse messages, can quote a broken alphaTex line                                                                                                                                                                                                                            | console breadcrumbs are off: the default `Console` integration is removed (3.3), since Sentry 11 has no `console` switch; E101–E103 drop the exception message (2.3) |
+| IP address, cookies, headers, query strings    | collected by Sentry's defaults                                                                                                                                                                                                                                                                               | `dataCollection` turns each one off, **and** the project setting "Prevent Storing of IP Addresses" is on (section 5)                                                 |
 
 The copy says "anonymous", so the IP address must be stopped on **both** sides: Sentry's docs warn
 that with `userInfo` off, an IP address can still arrive through headers, cookies or query strings.
@@ -250,7 +260,7 @@ Sentry.init({
   release: APP_VERSION,
   environment: process.env.NEXT_PUBLIC_VERCEL_ENV,
   dataCollection: { userInfo: false, cookies: false, httpHeaders: false, urlQueryParams: false },
-  integrations: [breadcrumbsIntegration({ console: false })],
+  integrations: (defaults) => defaults.filter((integration) => integration.name !== 'Console'),
   beforeBreadcrumb: scrubBreadcrumb,
   beforeSend: (event) => (isKnownEngineNoise(event) ? null : scrubEvent(event)),
 });
@@ -334,25 +344,33 @@ secret. The upload now runs inside Vercel's build, so neither GitHub mechanism a
   - `reportError`: the default level, the `code` tag, and E101–E103 dropping the message;
   - known engine noise: a throw whose frames all sit in the engine bundle is dropped; the same
     message with one frame from our code is kept.
+- **The three error pages** (`web/app/error.tsx`, `web/app/play/error.tsx`,
+  `web/app/global-error.tsx`), with a test beside them: each, rendered with a stub error, shows the
+  section 3.4 sentence and "Error E901", its Try again calls `reset`, and `reportError` is called
+  once with the stub error and code E901. (Rendering `global-error.tsx` prints one development
+  warning, `<html>` inside a `<div>`; it does not fail the test.)
 - **Lint canary:** a test runs ESLint over a silent `catch { }` and expects it to fail, so the rule
   cannot stop working quietly — the same idea as `tooling/check-core-purity-canary.sh`.
 - **End to end (Playwright, in the existing `web` job):**
-  - The CI build sets a fake DSN, `https://public@sentry.invalid/1`. One shared fixture routes every
-    request to that host, answers it, and records the envelope, so nothing reaches the network and
-    the real SDK is under test with no test code in the app.
+  - Every build of the lane — CI, local, and the Docker baseline update — gets a fake DSN,
+    `https://public@sentry.invalid/1`, from `webServer.env` in `web/playwright.e2e.config.ts`,
+    beside `NEXT_PUBLIC_ALPHATAB_LOG_LEVEL`. One shared fixture routes every request to that host,
+    answers it, and records the envelope, so nothing reaches the network and the real SDK is under
+    test with no test code in the app.
   - **Cases that already force a failure** get one extra assertion each: the engine-module abort
     (`web/e2e/player-states.ts:55`) must produce E201, the font abort (`web/e2e/player.e2e.ts:218`)
     E203, and the SoundFont abort (`web/e2e/player.e2e.ts:267`) E202.
   - **New cases in `web/e2e/error-reporting.e2e.ts`:**
     1. A throw injected by the test (`page.evaluate`) sends an `error`.
     2. Opening a file that is not a score sends an E103 `warning` with its type and size, and no name.
-    3. Open a sample whose name, title and track names are known, click Solo, then cause an error:
-       the raw envelope contains none of those strings.
+    3. Open a sample whose name, title and track names are known, click Solo, log a marker string
+       with `console.error`, then cause an error: the raw envelope contains none of those strings,
+       and not the marker.
     4. Opening `guitar-no-percussion.gp` (the NH-335 file) sends no error.
     5. With storage blocked by an init script, nothing is sent until a real error, and that report
        carries the storage breadcrumb.
-- **Screenshots:** the new home-page copy changes the `/` shots. The `web/` baselines are regenerated
-  in the Linux container (`pnpm test:web:docker:update`) and committed.
+- **Screenshots:** the new home-page copy changes the `/` shot (`landing-chromium-linux.png`). Its
+  baseline is regenerated in the Linux container (`pnpm test:web:docker:update`) and committed.
 - **Download size:** `/play`'s first-load JavaScript is measured before and after, and both numbers go
   in the PR description.
 

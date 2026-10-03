@@ -48,6 +48,10 @@
       "P1": "should fix before planning — something would ship broken, or a promise in the spec would be false",
       "P2": "should fix — a real gap an implementer will hit",
       "P3": "worth fixing — small, cheap"
+    },
+    "triage_progress": {
+      "decided": ["F-1", "F-7", "F-12", "F-15", "F-16"],
+      "undecided": ["F-2", "F-3", "F-4", "F-5", "F-6", "F-8", "F-9", "F-10", "F-11", "F-13", "F-14"]
     }
   },
   "already_applied": [],
@@ -64,7 +68,8 @@
           "after": "the same row with `client/src/components/ui/TrackRow/TrackRow.tsx:247` in place of `:246`"
         }
       ],
-      "apply": "silently, report in one line"
+      "apply": "silently, report in one line",
+      "status": "applied (auto-resolve commit)"
     },
     {
       "id": "AMB-2",
@@ -84,7 +89,8 @@
           "after": "same text, with \"changes the `/` shot (`landing-chromium-linux.png`)\""
         }
       ],
-      "apply": "silently, report in one line"
+      "apply": "silently, report in one line",
+      "status": "applied (auto-resolve commit)"
     },
     {
       "id": "AMB-3",
@@ -105,7 +111,8 @@
           "after": "- **NH-335:** `Cannot read properties of undefined (reading 'voices')`, thrown on the main thread by\n  the engine's listener on its worker, on ordinary Guitar Pro files — seven times in one open of\n  `guitar-no-percussion.gp`."
         }
       ],
-      "apply": "silently, whatever F-2 decides; report in one line. (web/e2e/page-errors.ts:26 has the same wording in a code comment — fix it in the implementation, not here.)"
+      "apply": "silently, whatever F-2 decides; report in one line. (web/e2e/page-errors.ts:26 has the same wording in a code comment — fix it in the implementation, not here.)",
+      "status": "applied (auto-resolve commit). The same wording in a code comment, web/e2e/page-errors.ts:26, is fixed in the implementation."
     },
     {
       "id": "AMB-4",
@@ -119,58 +126,11 @@
           "after": "the same paragraph, completed with the missing files — composed after every decision lands"
         }
       ],
-      "apply": "LAST, after all decisions, so the list reflects them; silently; report in one line"
+      "apply": "LAST, after all decisions, so the list reflects them; silently; report in one line",
+      "status": "pending — applied LAST, after every decision"
     }
   ],
   "undecided_findings": [
-    {
-      "id": "F-1",
-      "severity": "P1",
-      "confidence": 100,
-      "route": "Proposed fix",
-      "autofix_class": "gated_auto",
-      "reviewers": ["feasibility", "security-lens", "adversarial"],
-      "section": "§3.3 SDK settings (also the §3.1 \"score's contents\" row and §6 e2e case 3)",
-      "title": "The setting that should keep console lines out of reports does not exist in Sentry 11",
-      "terms_first": "Breadcrumb = a short note Sentry keeps about what happened just before an error — a click, a page change, a line printed to the browser console — and sends with the error report.",
-      "scenario": "You open a broken alphaTex file. The music engine prints its error to the browser console, and that line can quote text from inside your file. A moment later the player shows E103 and sends a warning to Sentry. The spec promised that this warning leaves the error message out, so nothing from your file goes with it. But the console line goes anyway, as a breadcrumb: the setting the spec uses to stop console breadcrumbs is not an option in Sentry 11. The line does not even compile — and the obvious repair, deleting the unknown option, leaves console breadcrumbs switched on.",
-      "whats_wrong": "§3.3 passes `console: false` to `breadcrumbsIntegration`. In @sentry/browser 11.0.0 that integration takes only dom, fetch, history, sentry and xhr. Console breadcrumbs now come from a separate default integration named `Console`, and Sentry's 11.0.0 migration guide (MIGRATION.md:1593) says to filter it out. A type-check of the 11.0.0 declarations rejects the line (TS2353). The engine's ScoreLoader prints import failures with console.error at the Info level web/ uses.",
-      "evidence_quotes": [
-        "integrations: [breadcrumbsIntegration({ console: false })],",
-        "console breadcrumbs are off entirely; E101–E103 drop the exception message (2.3)",
-        "One new dependency: `@sentry/nextjs` (major version 11), in `web/package.json` only."
-      ],
-      "before_after": [
-        {
-          "where": "§3.3 code",
-          "lines": "253",
-          "before": "  integrations: [breadcrumbsIntegration({ console: false })],",
-          "after": "  integrations: (defaults) => defaults.filter((integration) => integration.name !== 'Console'),",
-          "note": "If F-2 is applied too, this same line also removes 'BrowserApiErrors' — write one filter."
-        },
-        {
-          "where": "§3.1 table, \"the score's contents\" row — last cell",
-          "lines": "221",
-          "before": "| the score's contents — notes, lyrics, alphaTex | AlphaTab's console logs, and its parse messages, can quote a broken alphaTex line                                                                                                                                                                                                                            | console breadcrumbs are off entirely; E101–E103 drop the exception message (2.3)                                     |",
-          "after": "last cell becomes: console breadcrumbs are off — the default `Console` integration is removed (§3.3; Sentry 11 has no `console` switch); E101–E103 drop the exception message (2.3)"
-        },
-        {
-          "where": "§6 e2e case 3",
-          "lines": "349-350",
-          "before": "    3. Open a sample whose name, title and track names are known, click Solo, then cause an error:\n       the raw envelope contains none of those strings.",
-          "after": "    3. Open a sample whose name, title and track names are known, click Solo, log a marker string\n       with `console.error`, then cause an error: the raw envelope contains none of those strings,\n       and not the marker.",
-          "note": "F-14 and F-10 also edit case 3 — compose the final wording once."
-        }
-      ],
-      "proposed_fix": "Remove the default `Console` integration with the function form of `integrations`; say so in the §3.1 row; extend e2e case 3 so a console line logged before the error must not appear in the envelope.",
-      "why_it_works": "Removing the integration is the documented Sentry 11 way to stop console breadcrumbs, and it compiles. The console marker turns the promise into a test that fails the day console lines travel again.",
-      "drop_consequence": "Discard it. The spec's code fails the type-check, and whoever fixes that by deleting the option ships console lines — which can quote a broken file — inside every report.",
-      "basis": "Sentry 11.0.0 moved console breadcrumbs into their own default integration; breadcrumbsIntegration has no console option (model tsc: TS2353).",
-      "spike": "RUN: model type-check (tsc 5.9.3 over a copy of the 11.0.0 declarations, scratchpad/verify-A/ts-f1): `{ console: false }` → TS2353; `{ dom: false }` compiles. Real @sentry/nextjs types not installed. Runtime: (untested).",
-      "disposition_hint": "AUTO-RESOLVE: it corrects an API that does not exist, so the already-approved intent (console breadcrumbs off) holds. No behaviour, scope or trade-off changes. Apply and report in one line.",
-      "verification": "pass",
-      "severity_meaning": "should fix before planning — something would ship broken, or a promise in the spec would be false"
-    },
     {
       "id": "F-2",
       "severity": "P1",
@@ -450,51 +410,6 @@
       "severity_meaning": "should fix before planning — something would ship broken, or a promise in the spec would be false"
     },
     {
-      "id": "F-7",
-      "severity": "P2",
-      "confidence": 100,
-      "route": "Proposed fix",
-      "autofix_class": "gated_auto",
-      "reviewers": ["scope-guardian", "feasibility", "adversarial"],
-      "promotion": "75 → 100: three separately dispatched reviewers flagged it (+1 anchor)",
-      "section": "§1 Changed files; §1 new-files table; §6 end to end",
-      "title": "Set the fake Sentry address in the Playwright config, so local test runs match CI",
-      "scenario": "You run the end-to-end tests on your laptop before pushing. The new error-reporting tests fail — or the 'sends no error' ones pass for the wrong reason — because only the CI job sets the fake Sentry address, so your local build has Sentry switched off. Only CI tells you the truth, after you push.",
-      "whats_wrong": "§1 and §6 put the fake DSN in the `web` CI job. The lane already sets its build-only variable `NEXT_PUBLIC_ALPHATAB_LOG_LEVEL` through `webServer.env` in web/playwright.e2e.config.ts, and the CI job, `test:e2e`, `test:vr` and `test:web:docker:update` all build through that config. (A CI-job variable would also work in CI — Playwright passes the job's environment to the build — so the reason to move it is local parity, not CI correctness.)",
-      "evidence_quotes": [
-        "the `web` CI job (a fake DSN)",
-        "The CI build sets a fake DSN, `https://public@sentry.invalid/1`."
-      ],
-      "before_after": [
-        {
-          "where": "§1 Changed files",
-          "lines": "86",
-          "before": "screenshot baselines, `web/README.md` (the environment variables), the `web` CI job (a fake DSN),",
-          "after": "screenshot baselines, `web/README.md` (the environment variables), `web/playwright.e2e.config.ts` (a fake DSN),"
-        },
-        {
-          "where": "§6 end to end",
-          "lines": "340",
-          "before": "  - The CI build sets a fake DSN, `https://public@sentry.invalid/1`. One shared fixture routes every",
-          "after": "  - Every build of the lane — CI, local and the Docker baseline update — gets a fake DSN,\n    `https://public@sentry.invalid/1`, from `webServer.env` in `web/playwright.e2e.config.ts`, beside\n    `NEXT_PUBLIC_ALPHATAB_LOG_LEVEL`. One shared fixture routes every"
-        },
-        {
-          "where": "§1 new-files table, instrumentation-client row",
-          "lines": "74",
-          "before": "| `web/instrumentation-client.ts`            | Starts Sentry before the page becomes interactive. With no DSN the SDK sends nothing — which is the state locally, in CI unit tests, and on preview deployments. |",
-          "after": "…With no DSN the SDK sends nothing — which is the state in `pnpm dev`, in unit tests, and on preview deployments. |"
-        }
-      ],
-      "proposed_fix": "Set the fake DSN in `webServer.env` of web/playwright.e2e.config.ts; update §1 and §6 to say so.",
-      "why_it_works": "One place sets it for every run of the lane — the way the lane already sets its other build-only variable.",
-      "drop_consequence": "Discard it. Local e2e runs build without Sentry, so the new cases only mean something in CI.",
-      "basis": "Every lane run builds through webServer.env; a CI-only variable leaves local and Docker runs with Sentry off.",
-      "spike": "Config read (verify-B). Not run.",
-      "disposition_hint": "AUTO-RESOLVE: keeps the approved intent (the e2e lane runs against a fake address) and only moves where it is set; three reviewers agree; no trade-off. Apply and report.",
-      "verification": "pass",
-      "severity_meaning": "should fix — a real gap an implementer will hit"
-    },
-    {
       "id": "F-8",
       "severity": "P2",
       "confidence": 75,
@@ -703,41 +618,6 @@
       "severity_meaning": "should fix — a real gap an implementer will hit"
     },
     {
-      "id": "F-12",
-      "severity": "P2",
-      "confidence": 75,
-      "route": "Proposed fix",
-      "autofix_class": "gated_auto",
-      "reviewers": ["design-lens"],
-      "section": "§2.2 The error pages",
-      "title": "The new root-level error page's layout is not specified — only its sentence and its report line",
-      "scenario": "The root layout crashes. Instead of the familiar 'Something went wrong' page you get whatever the implementer guessed: maybe no 'Error E901' to quote, maybe no Try again button — and the browser tab has no title, and screen readers get no page language, because this page replaces the layout that supplied both.",
-      "whats_wrong": "§2.2 gives global-error.tsx its own <html> and <body>, the globals.css import and the reportError line — but not what a visitor sees. Next 16's bundled docs: global-error must be a client component, must define <html> and <body>, and does not support metadata exports — use React's <title> (error.md:163, :167, :170; 10-error-handling.md:397). The root layout supplies `lang=\"en\"` and the title 'Notation Hero' (layout.tsx:8), which this page replaces.",
-      "evidence_quotes": [
-        "`global-error.tsx` replaces the root layout when it renders, so it supplies its own `<html>` and",
-        "`<body>` and imports `globals.css` itself."
-      ],
-      "before_after": [
-        {
-          "where": "§2.2",
-          "lines": "122-123",
-          "before": "`global-error.tsx` replaces the root layout when it renders, so it supplies its own `<html>` and\n`<body>` and imports `globals.css` itself.",
-          "after": "`global-error.tsx` replaces the root layout when it renders, so it supplies its own `<html lang=\"en\">`\nand `<body>` and imports `globals.css` itself. It is a client component (`'use client'`) that repeats\n`web/app/error.tsx` as changed by the diff above — the \"Something went wrong\" heading, the same\n`<main>` classes, the \"Error E901\" line, a Try again button wired to `reset`, and the section 3.4\nsentence — and it names the tab with a React `<title>Notation Hero</title>`, because metadata\nexports are not supported in this file."
-        }
-      ],
-      "proposed_fix": "Spell out global-error.tsx against app/error.tsx, plus the three framework requirements.",
-      "why_it_works": "The third error page then matches the other two, and keeps a page language and a tab title.",
-      "drop_consequence": "Discard it. The root-level crash page is whatever the implementer guesses, with no language or tab title.",
-      "basis": "Next 16 requires a client component with its own html/body and no metadata export; the visible layout is unspecified.",
-      "spike": "Bundled Next docs + code read (verify-C).",
-      "notes": [
-        "Next 16.3's docs prefer `retry()` over `reset` in most cases; mirroring error.tsx keeps the three pages alike. Moving all three to retry would be a separate decision (residual R17)."
-      ],
-      "disposition_hint": "AUTO-RESOLVE: spells out what the spec already implies (match the existing error pages) plus three framework requirements; no trade-off. Apply and report.",
-      "verification": "pass",
-      "severity_meaning": "should fix — a real gap an implementer will hit"
-    },
-    {
       "id": "F-13",
       "severity": "P2",
       "confidence": 75,
@@ -813,71 +693,6 @@
       "disposition_hint": "AUTO-RESOLVE: makes the planned tests able to fail; spiked; a test improvement (your standing rule: test improvements without asking, always reported). Wait for F-10 before writing case 3.",
       "verification": "pass",
       "severity_meaning": "should fix — a real gap an implementer will hit"
-    },
-    {
-      "id": "F-15",
-      "severity": "P2",
-      "confidence": 75,
-      "route": "Proposed fix",
-      "autofix_class": "gated_auto",
-      "reviewers": ["design-lens"],
-      "section": "§6 Testing; §2.2 The error pages",
-      "title": "No test renders the three error pages",
-      "scenario": "Someone tidies `app/play/error.tsx` and drops the reportError line by accident. Every test passes. From then on every crash on /play shows the error page — and reaches Sentry as nothing. The three pages also carry the same promise sentence by copy and paste; one can change and nobody notices.",
-      "whats_wrong": "§6 lists no test for the React-crash channel — the one path in the §2 diagram that no planned test exercises. web/ already runs Vitest on jsdom with Testing Library (four component tests); neither error page has a test.",
-      "evidence_quotes": [
-        "a React render crash ─► error.tsx / global-error.tsx ─► reportError()",
-        "**Unit (Vitest), beside each `lib/monitoring` file:**"
-      ],
-      "before_after": [
-        {
-          "where": "§6, a new bullet after line 336",
-          "lines": null,
-          "before": "(absent — nothing there today)",
-          "after": "- **The three error pages** (`app/error.tsx`, `app/play/error.tsx`, `app/global-error.tsx`), a test\n  beside them: each, rendered with a stub error, shows the same section 3.4 sentence and \"Error E901\",\n  its Try again calls `reset`, and `reportError` is called once with the stub error and code E901.\n  (Rendering `global-error.tsx` prints one development warning, `<html>` inside a `<div>`; it does\n  not fail the test.)"
-        }
-      ],
-      "proposed_fix": "Add one Vitest file per page (or one shared) that renders it with a stub error and checks the sentence, E901, reset and the report call.",
-      "why_it_works": "The React-crash channel gets a test, and the three sentences cannot drift apart unseen.",
-      "drop_consequence": "Discard it. A dropped reportError line in any error page ships green, and those crashes never reach Sentry.",
-      "basis": "No planned test covers the error pages; the infrastructure already exists.",
-      "spike": "RUN: scratchpad/verify-B/global-error-render-spike.cjs — an <html><body> component renders in Testing Library; queries, the reset click and cleanup work; one non-failing warning. Importing globals.css in a unit test is untried (vi.mock is the fallback).",
-      "disposition_hint": "AUTO-RESOLVE: a test improvement, spiked. Apply and report.",
-      "verification": "pass",
-      "severity_meaning": "should fix — a real gap an implementer will hit"
-    },
-    {
-      "id": "F-16",
-      "severity": "P3",
-      "confidence": 75,
-      "route": "Proposed fix",
-      "autofix_class": "gated_auto",
-      "reviewers": ["feasibility", "adversarial"],
-      "promotion": "50 → 75: two separately dispatched reviewers (+1 anchor); also noted by security-lens and scope-guardian as residuals",
-      "section": "§2.5 The lint rule",
-      "title": "`reportError` has the same name as a browser built-in, so a missing import goes unnoticed",
-      "scenario": "You add a catch, call `reportError(error)`, and forget the import. TypeScript is happy and so is the new lint rule — but you just called the browser's own `window.reportError`. The error reaches Sentry as an unhandled crash with no code, no level, and no message removal for file errors.",
-      "whats_wrong": "TypeScript's DOM library declares a global `reportError(e: any): void` (lib.dom.d.ts:39146), web/tsconfig.json includes it, and both §2.5 selectors match the callee by name only. `no-restricted-globals` is not set anywhere today, so adding it replaces nothing.",
-      "evidence_quotes": [
-        "export function reportError(",
-        "they flagged exactly `catch { }` and `.catch(() => null)`, and passed every form that calls `reportError` or `noteError`."
-      ],
-      "before_after": [
-        {
-          "where": "§2.5, a new bullet after line 194",
-          "lines": null,
-          "before": "(absent — nothing there today)",
-          "after": "- **The browser has its own global `reportError`.** `no-restricted-globals` bans it\n  (`{ name: 'reportError', message: 'Import reportError from web/lib/monitoring/report.ts.' }`), so a\n  call with no import is a lint error, while the imported function stays allowed."
-        }
-      ],
-      "proposed_fix": "Add a `no-restricted-globals` entry for `reportError` in web/eslint.config.mjs.",
-      "why_it_works": "ESLint only flags names that resolve to the global, so the imported function passes and a forgotten import fails.",
-      "drop_consequence": "Discard it. A forgotten import silently routes a report through the browser's global handler, without its code or message removal.",
-      "basis": "A global reportError exists in lib.dom; the selectors match by name only.",
-      "spike": "RUN: ESLint 9.39.4 + @typescript-eslint/parser 8.61.1 (scratchpad/verify-A/lint-16): imported call → clean; call with no import → flagged only by no-restricted-globals; silent catch → flagged only by no-restricted-syntax. With the spec's selectors alone, the no-import call passes lint AND tsc.",
-      "disposition_hint": "AUTO-RESOLVE: a lint guard, spiked. Apply and report.",
-      "verification": "pass",
-      "severity_meaning": "worth fixing — small, cheap"
     }
   ],
   "fyi_observations": [
@@ -1026,10 +841,235 @@
     "Chunks for the person: scenario first, then What's wrong, Before → After, Proposed fix, Why it works; expand every id (F-N, P1, S4, E102…) in plain words; quote, never cite."
   ],
   "resume": {
-    "triage_half": "Run spec-triage-loop:doc-review-loop on the spec (absolute path below). The entry rule finds this un-triaged artifact and starts at step 4.",
-    "spec_absolute": "/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/nh-320-vr-spec-lap-4-92e22a/docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md",
-    "artifact_absolute": "/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/nh-320-vr-spec-lap-4-92e22a/.spec-triage-loop/2026-10-03-nh-124-sentry-error-monitoring-design/lap-1/findings.json",
-    "spec_permalink": "https://github.com/leocaseiro/notation-hero/blob/cea5a76d2781ae1c4f4accd451858efff70957ab/docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md"
+    "triage_half": "Run spec-triage-loop:doc-review-loop on the spec (spec_path_from_root below, prefixed with your repo root). The entry rule finds this un-triaged artifact and starts at step 4, on its undecided findings only.",
+    "spec_permalink": "https://github.com/leocaseiro/notation-hero/blob/cea5a76d2781ae1c4f4accd451858efff70957ab/docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md",
+    "spec_path_from_root": ".claude/worktrees/nh-320-vr-spec-lap-4-92e22a/docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md",
+    "artifact_path_from_root": ".claude/worktrees/nh-320-vr-spec-lap-4-92e22a/.spec-triage-loop/2026-10-03-nh-124-sentry-error-monitoring-design/lap-1/findings.json",
+    "paths_note": "Repo-root-relative, because this file is tracked in a public repo. Chat prints the absolute form, built from the reader's own repo root."
   },
-  "decided_findings": []
+  "decided_findings": [
+    {
+      "id": "F-1",
+      "severity": "P1",
+      "confidence": 100,
+      "route": "Proposed fix",
+      "autofix_class": "gated_auto",
+      "reviewers": ["feasibility", "security-lens", "adversarial"],
+      "section": "§3.3 SDK settings (also the §3.1 \"score's contents\" row and §6 e2e case 3)",
+      "title": "The setting that should keep console lines out of reports does not exist in Sentry 11",
+      "terms_first": "Breadcrumb = a short note Sentry keeps about what happened just before an error — a click, a page change, a line printed to the browser console — and sends with the error report.",
+      "scenario": "You open a broken alphaTex file. The music engine prints its error to the browser console, and that line can quote text from inside your file. A moment later the player shows E103 and sends a warning to Sentry. The spec promised that this warning leaves the error message out, so nothing from your file goes with it. But the console line goes anyway, as a breadcrumb: the setting the spec uses to stop console breadcrumbs is not an option in Sentry 11. The line does not even compile — and the obvious repair, deleting the unknown option, leaves console breadcrumbs switched on.",
+      "whats_wrong": "§3.3 passes `console: false` to `breadcrumbsIntegration`. In @sentry/browser 11.0.0 that integration takes only dom, fetch, history, sentry and xhr. Console breadcrumbs now come from a separate default integration named `Console`, and Sentry's 11.0.0 migration guide (MIGRATION.md:1593) says to filter it out. A type-check of the 11.0.0 declarations rejects the line (TS2353). The engine's ScoreLoader prints import failures with console.error at the Info level web/ uses.",
+      "evidence_quotes": [
+        "integrations: [breadcrumbsIntegration({ console: false })],",
+        "console breadcrumbs are off entirely; E101–E103 drop the exception message (2.3)",
+        "One new dependency: `@sentry/nextjs` (major version 11), in `web/package.json` only."
+      ],
+      "before_after": [
+        {
+          "where": "§3.3 code",
+          "lines": "253",
+          "before": "  integrations: [breadcrumbsIntegration({ console: false })],",
+          "after": "  integrations: (defaults) => defaults.filter((integration) => integration.name !== 'Console'),",
+          "note": "If F-2 is applied too, this same line also removes 'BrowserApiErrors' — write one filter."
+        },
+        {
+          "where": "§3.1 table, \"the score's contents\" row — last cell",
+          "lines": "221",
+          "before": "| the score's contents — notes, lyrics, alphaTex | AlphaTab's console logs, and its parse messages, can quote a broken alphaTex line                                                                                                                                                                                                                            | console breadcrumbs are off entirely; E101–E103 drop the exception message (2.3)                                     |",
+          "after": "last cell becomes: console breadcrumbs are off — the default `Console` integration is removed (§3.3; Sentry 11 has no `console` switch); E101–E103 drop the exception message (2.3)"
+        },
+        {
+          "where": "§6 e2e case 3",
+          "lines": "349-350",
+          "before": "    3. Open a sample whose name, title and track names are known, click Solo, then cause an error:\n       the raw envelope contains none of those strings.",
+          "after": "    3. Open a sample whose name, title and track names are known, click Solo, log a marker string\n       with `console.error`, then cause an error: the raw envelope contains none of those strings,\n       and not the marker.",
+          "note": "F-14 and F-10 also edit case 3 — compose the final wording once."
+        }
+      ],
+      "proposed_fix": "Remove the default `Console` integration with the function form of `integrations`; say so in the §3.1 row; extend e2e case 3 so a console line logged before the error must not appear in the envelope.",
+      "why_it_works": "Removing the integration is the documented Sentry 11 way to stop console breadcrumbs, and it compiles. The console marker turns the promise into a test that fails the day console lines travel again.",
+      "drop_consequence": "Discard it. The spec's code fails the type-check, and whoever fixes that by deleting the option ships console lines — which can quote a broken file — inside every report.",
+      "basis": "Sentry 11.0.0 moved console breadcrumbs into their own default integration; breadcrumbsIntegration has no console option (model tsc: TS2353).",
+      "spike": "RUN: model type-check (tsc 5.9.3 over a copy of the 11.0.0 declarations, scratchpad/verify-A/ts-f1): `{ console: false }` → TS2353; `{ dom: false }` compiles. Real @sentry/nextjs types not installed. Runtime: (untested).",
+      "disposition_hint": "AUTO-RESOLVE: it corrects an API that does not exist, so the already-approved intent (console breadcrumbs off) holds. No behaviour, scope or trade-off changes. Apply and report in one line.",
+      "verification": "pass",
+      "severity_meaning": "should fix before planning — something would ship broken, or a promise in the spec would be false",
+      "triage": {
+        "round": "auto-resolve (before round 1)",
+        "decision": "Apply — auto-resolved (a confident fix: applied without asking, reported)",
+        "applied": true,
+        "notes": "As proposed. The §3.1 cell cites the section as (3.3), the spec's own style. e2e case 3 carries the console marker; F-10 and F-14 may still reword case 3."
+      }
+    },
+    {
+      "id": "F-7",
+      "severity": "P2",
+      "confidence": 100,
+      "route": "Proposed fix",
+      "autofix_class": "gated_auto",
+      "reviewers": ["scope-guardian", "feasibility", "adversarial"],
+      "promotion": "75 → 100: three separately dispatched reviewers flagged it (+1 anchor)",
+      "section": "§1 Changed files; §1 new-files table; §6 end to end",
+      "title": "Set the fake Sentry address in the Playwright config, so local test runs match CI",
+      "scenario": "You run the end-to-end tests on your laptop before pushing. The new error-reporting tests fail — or the 'sends no error' ones pass for the wrong reason — because only the CI job sets the fake Sentry address, so your local build has Sentry switched off. Only CI tells you the truth, after you push.",
+      "whats_wrong": "§1 and §6 put the fake DSN in the `web` CI job. The lane already sets its build-only variable `NEXT_PUBLIC_ALPHATAB_LOG_LEVEL` through `webServer.env` in web/playwright.e2e.config.ts, and the CI job, `test:e2e`, `test:vr` and `test:web:docker:update` all build through that config. (A CI-job variable would also work in CI — Playwright passes the job's environment to the build — so the reason to move it is local parity, not CI correctness.)",
+      "evidence_quotes": [
+        "the `web` CI job (a fake DSN)",
+        "The CI build sets a fake DSN, `https://public@sentry.invalid/1`."
+      ],
+      "before_after": [
+        {
+          "where": "§1 Changed files",
+          "lines": "86",
+          "before": "screenshot baselines, `web/README.md` (the environment variables), the `web` CI job (a fake DSN),",
+          "after": "screenshot baselines, `web/README.md` (the environment variables), `web/playwright.e2e.config.ts` (a fake DSN),"
+        },
+        {
+          "where": "§6 end to end",
+          "lines": "340",
+          "before": "  - The CI build sets a fake DSN, `https://public@sentry.invalid/1`. One shared fixture routes every",
+          "after": "  - Every build of the lane — CI, local and the Docker baseline update — gets a fake DSN,\n    `https://public@sentry.invalid/1`, from `webServer.env` in `web/playwright.e2e.config.ts`, beside\n    `NEXT_PUBLIC_ALPHATAB_LOG_LEVEL`. One shared fixture routes every"
+        },
+        {
+          "where": "§1 new-files table, instrumentation-client row",
+          "lines": "74",
+          "before": "| `web/instrumentation-client.ts`            | Starts Sentry before the page becomes interactive. With no DSN the SDK sends nothing — which is the state locally, in CI unit tests, and on preview deployments. |",
+          "after": "…With no DSN the SDK sends nothing — which is the state in `pnpm dev`, in unit tests, and on preview deployments. |"
+        }
+      ],
+      "proposed_fix": "Set the fake DSN in `webServer.env` of web/playwright.e2e.config.ts; update §1 and §6 to say so.",
+      "why_it_works": "One place sets it for every run of the lane — the way the lane already sets its other build-only variable.",
+      "drop_consequence": "Discard it. Local e2e runs build without Sentry, so the new cases only mean something in CI.",
+      "basis": "Every lane run builds through webServer.env; a CI-only variable leaves local and Docker runs with Sentry off.",
+      "spike": "Config read (verify-B). Not run.",
+      "disposition_hint": "AUTO-RESOLVE: keeps the approved intent (the e2e lane runs against a fake address) and only moves where it is set; three reviewers agree; no trade-off. Apply and report.",
+      "verification": "pass",
+      "severity_meaning": "should fix — a real gap an implementer will hit",
+      "triage": {
+        "round": "auto-resolve (before round 1)",
+        "decision": "Apply — auto-resolved",
+        "applied": true,
+        "notes": "As proposed."
+      }
+    },
+    {
+      "id": "F-12",
+      "severity": "P2",
+      "confidence": 75,
+      "route": "Proposed fix",
+      "autofix_class": "gated_auto",
+      "reviewers": ["design-lens"],
+      "section": "§2.2 The error pages",
+      "title": "The new root-level error page's layout is not specified — only its sentence and its report line",
+      "scenario": "The root layout crashes. Instead of the familiar 'Something went wrong' page you get whatever the implementer guessed: maybe no 'Error E901' to quote, maybe no Try again button — and the browser tab has no title, and screen readers get no page language, because this page replaces the layout that supplied both.",
+      "whats_wrong": "§2.2 gives global-error.tsx its own <html> and <body>, the globals.css import and the reportError line — but not what a visitor sees. Next 16's bundled docs: global-error must be a client component, must define <html> and <body>, and does not support metadata exports — use React's <title> (error.md:163, :167, :170; 10-error-handling.md:397). The root layout supplies `lang=\"en\"` and the title 'Notation Hero' (layout.tsx:8), which this page replaces.",
+      "evidence_quotes": [
+        "`global-error.tsx` replaces the root layout when it renders, so it supplies its own `<html>` and",
+        "`<body>` and imports `globals.css` itself."
+      ],
+      "before_after": [
+        {
+          "where": "§2.2",
+          "lines": "122-123",
+          "before": "`global-error.tsx` replaces the root layout when it renders, so it supplies its own `<html>` and\n`<body>` and imports `globals.css` itself.",
+          "after": "`global-error.tsx` replaces the root layout when it renders, so it supplies its own `<html lang=\"en\">`\nand `<body>` and imports `globals.css` itself. It is a client component (`'use client'`) that repeats\n`web/app/error.tsx` as changed by the diff above — the \"Something went wrong\" heading, the same\n`<main>` classes, the \"Error E901\" line, a Try again button wired to `reset`, and the section 3.4\nsentence — and it names the tab with a React `<title>Notation Hero</title>`, because metadata\nexports are not supported in this file."
+        }
+      ],
+      "proposed_fix": "Spell out global-error.tsx against app/error.tsx, plus the three framework requirements.",
+      "why_it_works": "The third error page then matches the other two, and keeps a page language and a tab title.",
+      "drop_consequence": "Discard it. The root-level crash page is whatever the implementer guesses, with no language or tab title.",
+      "basis": "Next 16 requires a client component with its own html/body and no metadata export; the visible layout is unspecified.",
+      "spike": "Bundled Next docs + code read (verify-C).",
+      "notes": [
+        "Next 16.3's docs prefer `retry()` over `reset` in most cases; mirroring error.tsx keeps the three pages alike. Moving all three to retry would be a separate decision (residual R17)."
+      ],
+      "disposition_hint": "AUTO-RESOLVE: spells out what the spec already implies (match the existing error pages) plus three framework requirements; no trade-off. Apply and report.",
+      "verification": "pass",
+      "severity_meaning": "should fix — a real gap an implementer will hit",
+      "triage": {
+        "round": "auto-resolve (before round 1)",
+        "decision": "Apply — auto-resolved",
+        "applied": true,
+        "notes": "As proposed, lightly reworded."
+      }
+    },
+    {
+      "id": "F-15",
+      "severity": "P2",
+      "confidence": 75,
+      "route": "Proposed fix",
+      "autofix_class": "gated_auto",
+      "reviewers": ["design-lens"],
+      "section": "§6 Testing; §2.2 The error pages",
+      "title": "No test renders the three error pages",
+      "scenario": "Someone tidies `app/play/error.tsx` and drops the reportError line by accident. Every test passes. From then on every crash on /play shows the error page — and reaches Sentry as nothing. The three pages also carry the same promise sentence by copy and paste; one can change and nobody notices.",
+      "whats_wrong": "§6 lists no test for the React-crash channel — the one path in the §2 diagram that no planned test exercises. web/ already runs Vitest on jsdom with Testing Library (four component tests); neither error page has a test.",
+      "evidence_quotes": [
+        "a React render crash ─► error.tsx / global-error.tsx ─► reportError()",
+        "**Unit (Vitest), beside each `lib/monitoring` file:**"
+      ],
+      "before_after": [
+        {
+          "where": "§6, a new bullet after line 336",
+          "lines": null,
+          "before": "(absent — nothing there today)",
+          "after": "- **The three error pages** (`app/error.tsx`, `app/play/error.tsx`, `app/global-error.tsx`), a test\n  beside them: each, rendered with a stub error, shows the same section 3.4 sentence and \"Error E901\",\n  its Try again calls `reset`, and `reportError` is called once with the stub error and code E901.\n  (Rendering `global-error.tsx` prints one development warning, `<html>` inside a `<div>`; it does\n  not fail the test.)"
+        }
+      ],
+      "proposed_fix": "Add one Vitest file per page (or one shared) that renders it with a stub error and checks the sentence, E901, reset and the report call.",
+      "why_it_works": "The React-crash channel gets a test, and the three sentences cannot drift apart unseen.",
+      "drop_consequence": "Discard it. A dropped reportError line in any error page ships green, and those crashes never reach Sentry.",
+      "basis": "No planned test covers the error pages; the infrastructure already exists.",
+      "spike": "RUN: scratchpad/verify-B/global-error-render-spike.cjs — an <html><body> component renders in Testing Library; queries, the reset click and cleanup work; one non-failing warning. Importing globals.css in a unit test is untried (vi.mock is the fallback).",
+      "disposition_hint": "AUTO-RESOLVE: a test improvement, spiked. Apply and report.",
+      "verification": "pass",
+      "severity_meaning": "should fix — a real gap an implementer will hit",
+      "triage": {
+        "round": "auto-resolve (before round 1)",
+        "decision": "Apply — auto-resolved (a test improvement)",
+        "applied": true,
+        "notes": "Paths written as web/app/… to match the rest of the spec."
+      }
+    },
+    {
+      "id": "F-16",
+      "severity": "P3",
+      "confidence": 75,
+      "route": "Proposed fix",
+      "autofix_class": "gated_auto",
+      "reviewers": ["feasibility", "adversarial"],
+      "promotion": "50 → 75: two separately dispatched reviewers (+1 anchor); also noted by security-lens and scope-guardian as residuals",
+      "section": "§2.5 The lint rule",
+      "title": "`reportError` has the same name as a browser built-in, so a missing import goes unnoticed",
+      "scenario": "You add a catch, call `reportError(error)`, and forget the import. TypeScript is happy and so is the new lint rule — but you just called the browser's own `window.reportError`. The error reaches Sentry as an unhandled crash with no code, no level, and no message removal for file errors.",
+      "whats_wrong": "TypeScript's DOM library declares a global `reportError(e: any): void` (lib.dom.d.ts:39146), web/tsconfig.json includes it, and both §2.5 selectors match the callee by name only. `no-restricted-globals` is not set anywhere today, so adding it replaces nothing.",
+      "evidence_quotes": [
+        "export function reportError(",
+        "they flagged exactly `catch { }` and `.catch(() => null)`, and passed every form that calls `reportError` or `noteError`."
+      ],
+      "before_after": [
+        {
+          "where": "§2.5, a new bullet after line 194",
+          "lines": null,
+          "before": "(absent — nothing there today)",
+          "after": "- **The browser has its own global `reportError`.** `no-restricted-globals` bans it\n  (`{ name: 'reportError', message: 'Import reportError from web/lib/monitoring/report.ts.' }`), so a\n  call with no import is a lint error, while the imported function stays allowed."
+        }
+      ],
+      "proposed_fix": "Add a `no-restricted-globals` entry for `reportError` in web/eslint.config.mjs.",
+      "why_it_works": "ESLint only flags names that resolve to the global, so the imported function passes and a forgotten import fails.",
+      "drop_consequence": "Discard it. A forgotten import silently routes a report through the browser's global handler, without its code or message removal.",
+      "basis": "A global reportError exists in lib.dom; the selectors match by name only.",
+      "spike": "RUN: ESLint 9.39.4 + @typescript-eslint/parser 8.61.1 (scratchpad/verify-A/lint-16): imported call → clean; call with no import → flagged only by no-restricted-globals; silent catch → flagged only by no-restricted-syntax. With the spec's selectors alone, the no-import call passes lint AND tsc.",
+      "disposition_hint": "AUTO-RESOLVE: a lint guard, spiked. Apply and report.",
+      "verification": "pass",
+      "severity_meaning": "worth fixing — small, cheap",
+      "triage": {
+        "round": "auto-resolve (before round 1)",
+        "decision": "Apply — auto-resolved (a lint guard, spiked)",
+        "applied": true,
+        "notes": "Adds one sentence: nothing sets no-restricted-globals today, so the entry adds a rule and replaces none."
+      }
+    }
+  ]
 }
