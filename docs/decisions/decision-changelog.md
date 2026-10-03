@@ -46,6 +46,7 @@ failing, not merely written. It excludes its own two files by exact path, since 
 patterns; a test pins that exclusion list at exactly two entries so it cannot be widened into a
 hiding place. Follow-up to NH-318, which git-ignored the untracked reference map but left the
 already-committed paths in place.
+
 ### 2026-10-03 — The web pixel gate ships with four execution-time decisions (NH-320)
 
 Recorded at merge, not at approval: these four were settled while executing the gate rather than
