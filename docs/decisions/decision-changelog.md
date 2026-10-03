@@ -46,6 +46,17 @@ failing, not merely written. It excludes its own two files by exact path, since 
 patterns; a test pins that exclusion list at exactly two entries so it cannot be widened into a
 hiding place. Follow-up to NH-318, which git-ignored the untracked reference map but left the
 already-committed paths in place.
+### 2026-10-04 — Two unfixable advisories get a dated deferral, not a fix (NH-347)
+
+leocaseiro approved this in conversation, after being shown the exposure for each one: do the ignores, put them in their own PR, and set a reminder to re-check in a few weeks.
+
+`deps-cve` went red on `master` — and therefore on every open PR — over two advisories published 2026-09-18 for which **no patched version exists**: `GHSA-vfj7-8cjw-p6xm` (`braces` <=3.0.3, stack-exhaustion DoS through deeply nested patterns) and `GHSA-ch52-4w7c-c8xp` (`http-cache-semantics` <=4.2.0, `max-stale` handling can disclose cross-user cached responses). Both packages already sit at the newest version npm publishes, so the `overrides` route that closed NH-231 and NH-346 has nothing to aim at — osv-scanner reports `0 vulnerabilities can be fixed`.
+
+- **What was decided:** two `[[IgnoredVulns]]` entries in `osv-scanner.toml`, each carrying `ignoreUntil = 2026-11-03T00:00:00Z` and a reason that states no patch exists. NH-348 is the reminder to re-argue them, due a week before that date.
+- **Why an ignore rather than a real fix,** against the standing NH-231 preference: there is no version to move to. That file's own closing rule already carves out this case — "reach for an ignore only when no patched version exists".
+- **Why the risk is acceptable:** neither package sits on a request path. `braces` reaches the tree only through `micromatch@4.0.8` (build and dev glob matching, whose patterns come from this repo's own config files), and `http-cache-semantics` only through `@nestjs/cli` / `@swc/cli` devDependencies and `@pulumi/pulumi`'s npm internals. Nothing here serves user HTTP traffic through it.
+- **Why it is dated rather than permanent:** the gate goes red again on 2026-11-04 on its own, and osv-scanner reports a stale entry as an "unused ignores" warning if either advisory is fixed sooner. The deferral cannot quietly become the status quo.
+- **What did NOT change:** `E-osv-scanner` stays locked-active and enforced in [`decision-registry.md`](decision-registry.md). The gate still fails the build on every other CVE; these are two dated exceptions inside it, not a weakening of it.
 
 ### 2026-10-03 — The web pixel gate ships with four execution-time decisions (NH-320)
 

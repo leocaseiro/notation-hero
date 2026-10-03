@@ -133,3 +133,40 @@ export function readStoredTransport(): StoredTransport {
     return { values: { ...DEFAULT_TRANSPORT_VALUES }, reset: false, repaired: [] };
   }
 }
+
+/**
+ * The one place an EDIT reaches storage. Each writer in `PlayerShell` calls it with just the value
+ * it changed; the other three come from the document already IN storage, never from that render's
+ * closure.
+ *
+ * It is NOT this key's only writer, and saying so would mislead: the repair write-back in
+ * `useRestoredTransport` rewrites the whole healed document after a corrupt read. That is a
+ * different operation — it already holds all four values and has nothing to merge, so it writes
+ * direct rather than through here. A change to the stored envelope has to touch both.
+ *
+ * Reading storage rather than closing over React state is what makes the write correct in a way a
+ * closure cannot be. A second open /play tab holds its own state, so a whole-document write from
+ * that state silently reverts whatever the other tab last set — the drummer turns the metronome on
+ * in one tab, flips Loop in the other, and the metronome preference is gone, with nothing shown at
+ * the time.
+ *
+ * It sits here rather than in the component for the reason `readStoredTransport` does: the parse,
+ * the per-key merge and the clamp already live in this module. A plain module function is also
+ * stable by construction, which is what the `useCallback` it replaced was for — the four writers
+ * that call it stay stable too, so a Loop press cannot re-render the memo()'d TracksPopover that
+ * only displays the master volume.
+ *
+ * The extra getItem + JSON.parse costs one four-key document per user gesture: the sliders commit
+ * once per drag (useSliderDraft), so this is never per-frame work.
+ */
+export function persistTransport(change: Partial<TransportValues>): void {
+  try {
+    globalThis.localStorage.setItem(
+      TRANSPORT_STORAGE_KEY,
+      serializeTransport({ ...readStoredTransport().values, ...change }),
+    );
+  } catch {
+    // Private browsing and a full quota both throw here. Losing persistence is survivable; losing
+    // the transport is not, so swallow it rather than breaking the toggle.
+  }
+}
