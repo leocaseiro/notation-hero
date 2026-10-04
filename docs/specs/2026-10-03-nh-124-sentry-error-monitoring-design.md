@@ -332,7 +332,9 @@ we already know about.
 in the engine bundle `/alphatab/esm/alphaTab.core.mjs`; the same words thrown from our own code still
 fail. That list moves to `web/lib/monitoring/known-engine-noise.ts`. The e2e gate reads it from a
 stack string and the Sentry filter reads it from Sentry's structured frames, so removing one entry
-when NH-335 or NH-338 is fixed updates both.
+when NH-335 or NH-338 is fixed updates both. Two end-to-end cases need the bugs to happen and
+change in the same step (section 6): when NH-335 is fixed, case 4 stops waiting for its page error
+and keeps its `instruments` check; when NH-338 is fixed, case 6 is deleted.
 
 Sentry's default `BrowserApiErrors` integration is removed (section 3.3). It wraps every
 `addEventListener` callback — including the engine's listeners on its worker, where both errors are
@@ -366,7 +368,7 @@ that with `userInfo` off, an IP address can still arrive through headers, cookie
 // web/lib/monitoring/scrub.ts
 export function rememberOpenFile(fileName: string): void; // called when a file is picked or dropped
 export function rememberScore(score: ScoreFacts): void; // title, subtitle, artist, album, words,
-// music, copyright, tab author, and every track's name and short name
+// music, copyright, tab author, instructions, notices, and every track's name and short name
 ```
 
 - **Error messages only.** Click breadcrumbs are off (section 3.3), so no button label — and no
@@ -401,7 +403,6 @@ when it is sent, and navigation, fetch and xhr breadcrumbs when they are recorde
 Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN, // absent → the SDK sends nothing
   release: APP_VERSION,
-  environment: process.env.NEXT_PUBLIC_VERCEL_ENV,
   dataCollection: {
     userInfo: false,
     cookies: false,
@@ -410,7 +411,10 @@ Sentry.init({
   },
   integrations: (defaults) => [
     ...defaults.filter(
-      (integration) => !['Console', 'BrowserApiErrors', 'Breadcrumbs'].includes(integration.name),
+      (integration) =>
+        !['Console', 'BrowserApiErrors', 'Breadcrumbs', 'BrowserTracing'].includes(
+          integration.name,
+        ),
     ),
     breadcrumbsIntegration({ dom: false }), // no click breadcrumbs: their labels hold track names
   ],
@@ -418,6 +422,11 @@ Sentry.init({
   beforeSend: (event) => (isKnownEngineNoise(event) ? null : scrubEvent(event)),
 });
 ```
+
+The filter also removes `BrowserTracing` (S3: errors only). `@sentry/nextjs` adds it to the
+defaults, and even with no `tracesSampleRate` it adds `sentry-trace` and `baggage` headers to every
+same-origin request, such as the SoundFont download. Its code still ships: Sentry's options that
+remove it at build time work with webpack only, and `next build` uses Turbopack.
 
 `dom: false` turns off click and key-press breadcrumbs (section 3.2); navigation, fetch and xhr
 breadcrumbs stay. The shape of `dataCollection` matches the types of Sentry 11.0.0; the plan checks
@@ -463,15 +472,22 @@ a name. Until the visitor opens a file it reads `sample`, which names the bundle
 - **Release** = the existing `APP_VERSION` (`web/lib/app-version.ts`), for example
   `v0.26.09.21-1143.5f027f6`. The source-map upload reads the same `NEXT_PUBLIC_APP_VERSION`, which
   the `build` script already sets for `next build`, so a report always matches its own maps.
-- **Environment** = `NEXT_PUBLIC_VERCEL_ENV`. With D5 only `production` reports.
+- **Environment** is not set in `Sentry.init`; the SDK default applies:
+  `NEXT_PUBLIC_VERCEL_TARGET_ENV`, else `NEXT_PUBLIC_VERCEL_ENV`, else `NODE_ENV`. With D5 only
+  `production` reports.
 - **Source maps** (D4): `withSentryConfig` uploads them after `next build` (Turbopack builds are
   supported from `@sentry/nextjs` 10.13) and deletes them from the deploy by default
   (`sourcemaps.deleteSourcemapsAfterUpload: true`). "Hide source content" stays **off**: the
   repository is public, so hiding the code in Sentry protects nothing and removes the code around
   each error line.
 - **No upload without a token.** `SENTRY_AUTH_TOKEN` exists only in Vercel's Production environment.
-  Preview builds, CI builds and local builds skip the upload, and the wrapper is told so rather than
-  left to warn.
+  Preview builds, CI builds and local builds skip the upload and the release step
+  (`useRunAfterProductionCompileHook` is off without a token), so they print no "No auth token"
+  warning. A release with no name would not stop it: Sentry's build plugin then names the release
+  after the git commit, and it checks the token before it reads `release.create`.
+- **No navigation-tracing prompt.** `suppressOnRouterTransitionStartWarning: true` stops the
+  "ACTION REQUIRED … `onRouterTransitionStart`" line that the wrapper prints on every build. That
+  hook is for navigation tracing, which S3 rules out.
 - **The build plugin's own telemetry is off** (`telemetry: false`).
 
 ```ts
@@ -482,6 +498,8 @@ export default withSentryConfig(nextConfig, {
   authToken: process.env.SENTRY_AUTH_TOKEN,
   release: { name: process.env.NEXT_PUBLIC_APP_VERSION },
   sourcemaps: { disable: !process.env.SENTRY_AUTH_TOKEN },
+  useRunAfterProductionCompileHook: Boolean(process.env.SENTRY_AUTH_TOKEN),
+  suppressOnRouterTransitionStartWarning: true,
   telemetry: false,
 });
 ```
@@ -501,7 +519,11 @@ An agent may not create accounts or handle the token.
    regresses"**, **"An issue escalates"**. No level filter; the action is **"Notify on preferred
    channel → Member: leocaseiro"**, which arrives by email on the Developer plan. Each new kind of
    error or warning, and each fixed one that comes back, then sends one email.
-3. Project settings → Security & Privacy → turn on **"Prevent Storing of IP Addresses"**.
+3. Project settings → Security & Privacy → turn on **"Prevent Storing of IP Addresses"**. Then
+   Project settings → General Settings → Client Security → **Allowed Domains**: replace the default
+   `*` with the production domain. Sentry then rejects a report that a browser sends with this DSN
+   from any other site. A request with no `Origin` or `Referer` header still gets through, so this
+   limits misuse of the public DSN; it does not stop it.
 4. Create an **organization auth token**, used only for the source-map upload.
 5. Vercel → the project → Settings → Environment Variables, **Production only** (D5):
    - `NEXT_PUBLIC_SENTRY_DSN` — public by design; it ships inside the page.
@@ -667,7 +689,6 @@ Each is a claim this design rests on but no one has run yet:
 - That the source-map upload reaches the EU region with the organization auth token alone, or needs
   the region's address set as well.
 - Which Release Health figure shows "visits with no unhandled error" under Sentry 11.
-- That `NEXT_PUBLIC_VERCEL_ENV` is exposed on Vercel for this project.
 - What argument AlphaTab's `error` event passes — an `Error` or a string.
 - That Vercel never builds a fork's pull request with Production variables.
 - That Playwright can route a request to the `.invalid` host before any DNS lookup.

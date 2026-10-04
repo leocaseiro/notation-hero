@@ -85,7 +85,7 @@
       "undecided": [],
       "pending_apply": []
     },
-    "triage_status": "Round 3 applied (F-28 option 1, F-29 option 1, ADD-4). Every finding is decided. NEXT: round 4 (FYI-9..14, two multi-select cards), then the wrap-up — spec frontmatter lap: 2 / last_applied: P1, mark this file triaged, the changelog list 'Changed by the spec review, lap 2', commit, PR body, push — and step 7, the lap decision.",
+    "triage_status": "Round 4 applied (FYI-9..14, all approved). Every finding and observation is decided. NEXT: the owner's round-4 question (does SENTRY_AUTH_TOKEN stay out of CI and the browser?) is answered in chat, with a proposed build guard to decide; then the wrap-up — spec frontmatter lap: 2 / last_applied: P1, mark this file triaged, the changelog list 'Changed by the spec review, lap 2', commit, PR body, push — and step 7, the lap decision.",
     "added_in_triage": [
       {
         "id": "R25",
@@ -305,7 +305,12 @@
         },
         "corrections": "The suggested `bundleSizeOptimizations: { excludeTracing: true }` would not remove the code here: `next build` uses Turbopack, Sentry's tree-shaking options are webpack-only, and the Next.js option is `webpack.treeshake.removeTracing` anyway. Filtering `BrowserTracing` by name stops the hooks and headers at runtime; the code still ships."
       },
-      "triage": null
+      "triage": {
+        "round": "round 4 (2026-10-05)",
+        "decision": "Approve (recommended), chosen by leocaseiro",
+        "applied": true,
+        "notes": "§3.3's filter gains 'BrowserTracing'; a paragraph after the code block says why (S3) and that its code still ships under Turbopack."
+      }
     },
     {
       "id": "FYI-10",
@@ -341,7 +346,12 @@
         },
         "corrections": "None; ten is exact for fields. One more piece of file text exists as a getter: `tempoLabel` returns the first tempo marking's text (@coderline/alphatab@1.8.4:dist/alphaTab.core.mjs:3482-3484). Section markers and lyrics are file text too; they are contents rather than names, and §3.1 handles contents by dropping the parse messages."
       },
-      "triage": null
+      "triage": {
+        "round": "round 4 (2026-10-05)",
+        "decision": "Approve (recommended), chosen by leocaseiro",
+        "applied": true,
+        "notes": "§3.2's rememberScore comment names instructions and notices: all ten text fields."
+      }
     },
     {
       "id": "FYI-11",
@@ -383,7 +393,12 @@
         },
         "corrections": "The claim holds, but FEA-5's fix for the release warning is wrong: \"with `create: false` and no name, the wrapper neither falls back to git nor warns\" is true of the wrapper only. Sentry's build plugin then names the release from GITHUB_SHA, VERCEL_GIT_COMMIT_SHA or git, and createRelease warns about the token before it reads `create` (spike). The draft turns the post-build step off when there is no token instead. `suppressOnRouterTransitionStartWarning: true` is correct as suggested."
       },
-      "triage": null
+      "triage": {
+        "round": "round 4 (2026-10-05)",
+        "decision": "Approve (recommended), chosen by leocaseiro",
+        "applied": true,
+        "notes": "§4's bullet rewritten (useRunAfterProductionCompileHook off without a token; a release with no name would not stop the warning) and a new bullet for suppressOnRouterTransitionStartWarning; both options added to the next.config.ts snippet. sourcemaps.disable stays."
+      }
     },
     {
       "id": "FYI-12",
@@ -431,7 +446,12 @@
         },
         "corrections": "Minor: the chain also includes SENTRY_ENVIRONMENT (not exposed to the browser), and the explicit option does more than repeat the default — when the variable is empty it overrides the chain with `undefined`, which becomes `production`."
       },
-      "triage": null
+      "triage": {
+        "round": "round 4 (2026-10-05)",
+        "decision": "Approve (recommended), chosen by leocaseiro",
+        "applied": true,
+        "notes": "The environment line is gone from §3.3; §4's bullet names the SDK default chain; the To-verify item about NEXT_PUBLIC_VERCEL_ENV is removed."
+      }
     },
     {
       "id": "FYI-13",
@@ -473,7 +493,12 @@
         },
         "corrections": "Deleting case 4 whole, as suggested, also deletes the only end-to-end check of the instruments tag; only its wait for the NH-335 page error depends on the bug. Case 6 does depend on its bug entirely."
       },
-      "triage": null
+      "triage": {
+        "round": "round 4 (2026-10-05)",
+        "decision": "Approve — option 1 (corrected), chosen by leocaseiro",
+        "applied": true,
+        "notes": "Option 1 (corrected): §2.6 says case 4 stops waiting for its NH-335 page error and keeps its instruments check (round 2's `instruments: 025`), and case 6 is deleted, when the bugs are fixed. The reviewer's option 2 (delete case 4) was not taken."
+      }
     },
     {
       "id": "FYI-14",
@@ -509,7 +534,12 @@
         },
         "corrections": "The setting is not on step 3's \"Security & Privacy\" page: it is Project settings → General Settings → Client Security → Allowed Domains. Everything else holds, including \"a forged server-side request still gets through\"."
       },
-      "triage": null
+      "triage": {
+        "round": "round 4 (2026-10-05)",
+        "decision": "Approve (recommended), chosen by leocaseiro",
+        "applied": true,
+        "notes": "§5 step 3 adds Allowed Domains (General Settings → Client Security): the production domain instead of `*`; limits misuse of the public DSN, does not stop it."
+      }
     }
   ],
   "rejected_findings": [],
