@@ -72,8 +72,8 @@
     },
     "picker_rounds_used": 3,
     "changelog_note": "docs/decisions/decision-changelog.md, NH-124 entry: S4 and S1 bullets corrected in place; the 'Changed by the spec review, lap 1' list records F-2, F-3, F-4, F-5, F-6, F-8, F-9, F-10, the instruments tag and NH-349.",
-    "triage_status": "Invocation 2: round 4 applied (F-10 + F-11, F-13, F-14 + the instruments tag + NH-349). Next: round 5 (the 8 FYIs + Q1), then AMB-4, the frontmatter, mark triaged.",
-    "picker_rounds_used_invocation_2": 2,
+    "triage_status": "Invocation 2: round 4 and round 5 applied; every finding and observation is decided. Q1 (data region) asked again with the Australia answer. Next: Q1 into setup step 1, AMB-4, the frontmatter, mark triaged.",
+    "picker_rounds_used_invocation_2": 3,
     "added_in_triage": [
       {
         "id": "ADD-1",
@@ -178,7 +178,13 @@
       "section": "§3.4 The copy",
       "line": "The new home copy is about twice today's tagline (119 → 245 characters; 276 with F-5's wording) — about 4 lines on desktop. Only one `/` baseline exists (1280×900), so phone width is never pictured.",
       "suggestion": "Keep the tagline as it is and put the privacy sentences in their own small `text-sm text-muted-foreground` paragraph below the Play button.",
-      "before": "After:                        …and play along. Your scores never leave this device. The player\n                              sends anonymous crash statistics, and an error report when it\n                              breaks — never your file, its name, or what's in it."
+      "before": "After:                        …and play along. Your scores never leave this device. The player\n                              sends anonymous crash statistics, and an error report when it\n                              breaks — never your file, its name, or what's in it.",
+      "triage": {
+        "round": "5 (triage invocation 2), multi-select",
+        "decision": "approved",
+        "applied": true,
+        "notes": "Home copy split: the tagline keeps two lines; the privacy sentences get their own text-sm paragraph below Play (119 -> 318 characters as one paragraph). Changelog bullet added."
+      }
     },
     {
       "id": "FYI-2",
@@ -187,7 +193,13 @@
       "section": "§3.4 The copy",
       "line": "The privacy note appears only on `/`. A returning visitor who opens /play directly is counted on every visit and reads nothing about it (the logo links home).",
       "suggestion": null,
-      "before": "\"Crash statistics\" is Release Health (S4): a small ping on every visit, not only on a crash. It\ncarries the release, the environment and whether the visit crashed — no file data. That is why the\nhome page names it."
+      "before": "\"Crash statistics\" is Release Health (S4): a small ping on every visit, not only on a crash. It\ncarries the release, the environment and whether the visit crashed — no file data. That is why the\nhome page names it.",
+      "triage": {
+        "round": "5 (triage invocation 2), multi-select",
+        "decision": "approved",
+        "applied": true,
+        "notes": "Recorded as a Known limit (no new UI): the privacy note is on / only; NH-349's popup would show on every page."
+      }
     },
     {
       "id": "FYI-3",
@@ -196,7 +208,13 @@
       "section": "§2.3 The reporting functions",
       "line": "`FileFacts.type` has no source at the E103 site: the parsed input holds only a name and bytes (PlayerShell.tsx:68-72), and browsers give an empty MIME type for .gp/.gp5/.gpx/.atex.",
       "suggestion": "Define `type` as the lower-case file extension (e.g. `gp5`, never the base name), carried on LoadedNotation from readNotation. Open question: does an extension count as 'its name' under the copy?",
-      "before": "type FileFacts = { readonly type: string; readonly bytes: number }; // never the name"
+      "before": "type FileFacts = { readonly type: string; readonly bytes: number }; // never the name",
+      "triage": {
+        "round": "5 (triage invocation 2), multi-select",
+        "decision": "approved",
+        "applied": true,
+        "notes": "FileFacts.type = the lower-case extension, read with the file and carried on LoadedNotation; only an extension in OpenFileControl's ACCEPT list is sent, otherwise \"other\". Unit case added. Answers the open question: an extension is the kind of file, not its name."
+      }
     },
     {
       "id": "FYI-4",
@@ -205,7 +223,13 @@
       "section": "§2.5 The lint rule",
       "line": "The test-file exemption has no consumer: no test, e2e or setup file under web/ has a catch today, and the existing lint block already covers test files.",
       "suggestion": "Delete the sentence about a narrower `files` scope and a shared constant; the selectors join the existing block for all `**/*.{ts,tsx}` files.",
-      "before": "- **They join the existing `no-restricted-syntax` list** at `web/eslint.config.mjs:68`. A second\n  block that sets the same rule would silently replace the AlphaTab dynamic-import fence already\n  there. If the new selectors need a narrower `files` scope (test files are exempt), that block must\n  repeat the fence's selector, held in a shared constant."
+      "before": "- **They join the existing `no-restricted-syntax` list** at `web/eslint.config.mjs:68`. A second\n  block that sets the same rule would silently replace the AlphaTab dynamic-import fence already\n  there. If the new selectors need a narrower `files` scope (test files are exempt), that block must\n  repeat the fence's selector, held in a shared constant.",
+      "triage": {
+        "round": "5 (triage invocation 2), multi-select",
+        "decision": "approved",
+        "applied": true,
+        "notes": "The test-file exemption and shared-constant sentence deleted; the selectors join the existing block for all **/*.{ts,tsx} files."
+      }
     },
     {
       "id": "FYI-5",
@@ -214,7 +238,13 @@
       "section": "§6 Testing (lint canary)",
       "line": "A closer model for the lint canary exists: tooling/alphatab-import-fence.test.sh (an expect_rejected helper over the same no-restricted-syntax array; runs in the quality job). check-core-purity-canary.sh would need its own script and CI step.",
       "suggestion": "Point §6 at tooling/alphatab-import-fence.test.sh; the canary is a sibling tooling/*.test.sh probing a silent `catch { }` AND a silent `.catch(() => null)` (residual R11: the second selector has no canary today).",
-      "before": "- **Lint canary:** a test runs ESLint over a silent `catch { }` and expects it to fail, so the rule\n  cannot stop working quietly — the same idea as `tooling/check-core-purity-canary.sh`."
+      "before": "- **Lint canary:** a test runs ESLint over a silent `catch { }` and expects it to fail, so the rule\n  cannot stop working quietly — the same idea as `tooling/check-core-purity-canary.sh`.",
+      "triage": {
+        "round": "5 (triage invocation 2), multi-select",
+        "decision": "approved",
+        "applied": true,
+        "notes": "Lint canary = tooling/silent-catch-fence.test.sh, a sibling of tooling/alphatab-import-fence.test.sh (expect_rejected; run by test:tooling in the quality job), probing catch { } AND .catch(() => null) (covers R11)."
+      }
     },
     {
       "id": "FYI-6",
@@ -223,7 +253,13 @@
       "section": "§6 Testing (download size)",
       "line": "Next 16 removed \"First Load JS\" from `next build` output (bundled docs version-16.md:989), so the before/after size needs a named method.",
       "suggestion": "Name one method, used the same way before and after: `next experimental-analyze` (16.1+), or the total transferred size of .js files in one Playwright cold load of /play against `next start`.",
-      "before": "- **Download size:** `/play`'s first-load JavaScript is measured before and after, and both numbers go\n  in the PR description."
+      "before": "- **Download size:** `/play`'s first-load JavaScript is measured before and after, and both numbers go\n  in the PR description.",
+      "triage": {
+        "round": "5 (triage invocation 2), multi-select",
+        "decision": "approved",
+        "applied": true,
+        "notes": "Download size = total transferred .js in one cold Playwright load of /play against next start, before and after."
+      }
     },
     {
       "id": "FYI-7",
@@ -232,7 +268,13 @@
       "section": "§5 Setup",
       "line": "Setup step 5 proves an event arrives, not that source maps work: an E103 arrives whether or not its stack resolves.",
       "suggestion": "Add to step 5: the E103 event's stack shows our file names (e.g. PlayerShell.tsx) with the code around the line, and its release equals the version in the wordmark tooltip.",
-      "before": "5. After the first production deploy, open a file that is not a score. An E103 warning appearing in\n   Sentry, with the file's type and size and without its name, proves the whole path."
+      "before": "5. After the first production deploy, open a file that is not a score. An E103 warning appearing in\n   Sentry, with the file's type and size and without its name, proves the whole path.",
+      "triage": {
+        "round": "5 (triage invocation 2), multi-select",
+        "decision": "approved",
+        "applied": true,
+        "notes": "Setup step 6 (was 5) also checks a readable stack (source maps) and that the release equals the wordmark tooltip version."
+      }
     },
     {
       "id": "FYI-8",
@@ -241,7 +283,13 @@
       "section": "Known limits",
       "line": "The ad-block comparison has no visit count to compare against: web/ has no Vercel Web Analytics, and Vercel Hobby Observability keeps 12 hours with no per-path view. Adding Web Analytics would be a new visit counter needing its own privacy decision (S2 / NH-52).",
       "suggestion": "Replace the sentence with: 'Not measured: this project collects no visit count, and adding one is the usage tracking NH-52 owns.'",
-      "before": "- **Ad-blocked visitors.** Their reports never arrive (D3). After a month, Release Health's session\n  count against Vercel's visit count shows how many are missed."
+      "before": "- **Ad-blocked visitors.** Their reports never arrive (D3). After a month, Release Health's session\n  count against Vercel's visit count shows how many are missed.",
+      "triage": {
+        "round": "5 (triage invocation 2), multi-select",
+        "decision": "approved",
+        "applied": true,
+        "notes": "Known limit reworded: how many ad-blocked reports are missed is not measured; a visit counter is NH-52's usage tracking."
+      }
     }
   ],
   "rejected_findings": [],

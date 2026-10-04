@@ -89,6 +89,9 @@ aren't".
   music in it" on the error pages.
 - **A visitor's choice of what to send** — reject all, accept all, errors only — is a follow-up,
   [NH-349](https://leocaseiro.atlassian.net/browse/NH-349), not part of NH-124.
+- **The home copy is split in two.** The tagline keeps its two lines, and the privacy sentences get
+  their own smaller paragraph below the Play button: as one paragraph the copy would have grown
+  from 119 to 318 characters.
 
 **Registry:** L11-sentry points at the spec; L11-srcmap reworded (D4); L11-envsecret ⛔ superseded
 and F7-sentry rewritten, because the source-map upload runs inside Vercel's build rather than a

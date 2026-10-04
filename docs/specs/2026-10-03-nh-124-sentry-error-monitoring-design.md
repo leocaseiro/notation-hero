@@ -134,7 +134,7 @@ because this file does not support metadata exports.
 
 ```ts
 // web/lib/monitoring/report.ts
-type FileFacts = { readonly type: string; readonly bytes: number }; // never the name
+type FileFacts = { readonly type: string; readonly bytes: number }; // the extension, never the name
 
 /** An error or a warning: one event against the monthly quota. */
 export function reportError(
@@ -159,6 +159,12 @@ export function tagInstruments(tracks: readonly { program: number; isPercussion:
   Sentry search.
 - **E101, E102 and E103 drop the exception message** and keep its type, its stack, and the file's
   type and size. The engine's parse message can quote text from inside the file (section 3.1).
+- **`FileFacts.type` is the file's extension**, lower-case, read from the name when the file is
+  read and carried on `LoadedNotation`: browsers give `.gp`, `.gp5`, `.gpx` and `.atex` files an
+  empty MIME type, and the code that reports E103 holds only the name and the bytes. Only an
+  extension the open-file picker accepts is sent (`ACCEPT` in `web/app/play/OpenFileControl.tsx`:
+  `gp`, `gp3`, `gp4`, `gp5`, `gpx`, `musicxml`, `mxl`, `xml`, `capx`, `atex`, `alphatex`); any
+  other, or none, becomes `other`. It says what kind of file it is, never what it is called.
 - **E105 keeps its message.** It is our own code failing after the file was read, so the message
   describes our bug, not the file. The names filter (section 3.2) still runs over it.
 - **`instruments`** is a Sentry tag naming the open score's kinds of instrument, so an issue's
@@ -225,10 +231,9 @@ on 2026-10-03 with the installed ESLint 9.39.4: they flagged exactly `catch { }`
 { selector: "CallExpression[callee.property.name='catch'] > :function:not(:has(CallExpression[callee.name=/^(reportError|noteError)$/]))", … },
 ```
 
-- **They join the existing `no-restricted-syntax` list** at `web/eslint.config.mjs:68`. A second
-  block that sets the same rule would silently replace the AlphaTab dynamic-import fence already
-  there. If the new selectors need a narrower `files` scope (test files are exempt), that block must
-  repeat the fence's selector, held in a shared constant.
+- **They join the existing `no-restricted-syntax` list** at `web/eslint.config.mjs:68`, for all
+  `**/*.{ts,tsx}` files. A second block that sets the same rule would silently replace the AlphaTab
+  dynamic-import fence already there.
 - **A deliberate silence** is `// eslint-disable-next-line no-restricted-syntax -- <reason>`. The
   repository already requires a reason on every disable comment
   (`eslint-comments/require-description`).
@@ -333,10 +338,12 @@ breadcrumbs stay. The exact shape of `dataCollection` is confirmed against the i
 
 ```text
 Before (web/app/page.tsx:9):  …and play along. Nothing you open leaves this device.
-After:                        …and play along. Your scores never leave this device. This site
-                              counts visits and crashes anonymously, and sends an error report
-                              when something goes wrong. Neither includes your file, its name,
-                              or the music in it — only the kinds of instrument it uses.
+After:                        …and play along. Your scores never leave this device.
+                              [the Play button]
+After, a new paragraph below the Play button, `text-sm text-muted-foreground`:
+                              This site counts visits and crashes anonymously, and sends an error
+                              report when something goes wrong. Neither includes your file, its
+                              name, or the music in it — only the kinds of instrument it uses.
 
 Before (web/app/error.tsx:12 and web/app/play/error.tsx:12):
                               Nothing you opened was sent anywhere. Try again, or reload the page.
@@ -344,6 +351,9 @@ After (both, and the new global-error.tsx):
                               Errors are reported automatically — without your file, its name, or
                               the music in it. Try again, or reload the page.
 ```
+
+The tagline keeps its two lines. As one paragraph, the copy would grow from 119 to 318 characters,
+about five lines on a desktop and more on a phone.
 
 The error pages deliberately do **not** say "a report was sent". An ad blocker may have stopped it,
 and the page cannot know.
@@ -402,7 +412,9 @@ An agent may not create accounts or handle the token.
    - `SENTRY_AUTH_TOKEN` — marked **Sensitive**. Never in chat, never in the repository.
 6. After the first production deploy, open a file that is not a score. An E103 warning appearing in
    Sentry, with the file's type and size and without its name, proves the whole path — and its
-   email (step 2) proves the alert.
+   email (step 2) proves the alert. Its stack must show readable file and function names with the
+   code around each line, which proves the source maps, and its release must equal the version in
+   the wordmark's tooltip.
 
 This replaces two registry rows written for GitHub Actions: L11-envsecret required a `production-build`
 GitHub environment for the upload job, and F7-sentry required `SENTRY_AUTH_TOKEN` as a GitHub Actions
@@ -420,6 +432,7 @@ secret. The upload now runs inside Vercel's build, so neither GitHub mechanism a
   - the address scrub: `/play?fbclid=abc#x` comes out as `/play`, in the event's address and in a
     navigation breadcrumb;
   - `reportError`: the default level, the `code` tag, and E101–E103 dropping the message;
+  - the file type: `Song.GP5` gives `gp5`; `notes.txt` and a name with no extension give `other`;
   - `tagInstruments`: a percussion track and a Distortion Guitar track (program 30) give
     `drums,30`; two tracks on the same program give one number; an empty list clears the tag;
   - `isStorageRefusal`: `SecurityError`, `QuotaExceededError` and `NS_ERROR_DOM_QUOTA_REACHED` count
@@ -435,8 +448,10 @@ secret. The upload now runs inside Vercel's build, so neither GitHub mechanism a
   shows E102 and reports a warning without the message; an `onNotation` that fails shows E105 and
   reports an error that keeps its message; and picking a file clears the `instruments` tag before
   the file is read.
-- **Lint canary:** a test runs ESLint over a silent `catch { }` and expects it to fail, so the rule
-  cannot stop working quietly — the same idea as `tooling/check-core-purity-canary.sh`.
+- **Lint canary:** `tooling/silent-catch-fence.test.sh`, a sibling of
+  `tooling/alphatab-import-fence.test.sh` — its `expect_rejected` helper over the same
+  `no-restricted-syntax` list, already run in the `quality` job — expects both a silent `catch { }`
+  and a silent `.catch(() => null)` to fail, so neither selector can stop working quietly.
 - **End to end (Playwright, in the existing `web` job):**
   - Every build of the lane — CI, local, and the Docker baseline update — gets a fake DSN,
     `https://public@sentry.invalid/1`, from `webServer.env` in `web/playwright.e2e.config.ts`,
@@ -472,8 +487,9 @@ secret. The upload now runs inside Vercel's build, so neither GitHub mechanism a
     its cases throw on purpose, and only `*.vr.ts` files must.
 - **Screenshots:** the new home-page copy changes the `/` shot (`landing-chromium-linux.png`). Its
   baseline is regenerated in the Linux container (`pnpm test:web:docker:update`) and committed.
-- **Download size:** `/play`'s first-load JavaScript is measured before and after, and both numbers go
-  in the PR description.
+- **Download size:** the total transferred size of the `.js` files in one cold Playwright load of
+  `/play` against `next start`, measured the same way before and after; both numbers go in the PR
+  description. (Next 16's `next build` no longer prints "First Load JS".)
 
 ## 7. Documents that change
 
@@ -491,8 +507,12 @@ secret. The upload now runs inside Vercel's build, so neither GitHub mechanism a
 
 - **AudioWorklet errors.** A throw inside AlphaTab's sound thread is reported only if AlphaTab
   forwards it through its `error` event. Untested.
-- **Ad-blocked visitors.** Their reports never arrive (D3). After a month, Release Health's session
-  count against Vercel's visit count shows how many are missed.
+- **Ad-blocked visitors.** Their reports never arrive (D3). How many are missed is not measured:
+  this project counts no visits outside Sentry, and adding a counter is the usage tracking
+  [NH-52](https://leocaseiro.atlassian.net/browse/NH-52) owns.
+- **The privacy note is on the home page only.** A visitor who opens `/play` directly is counted
+  without seeing it. The choice popup, [NH-349](https://leocaseiro.atlassian.net/browse/NH-349),
+  would show on every page.
 - **The quota.** Past 5,000 errors in a month, Sentry refuses further reports until it resets — "Events
   and attachments that exceed your quota will not be accepted" (Sentry's quota docs). The SDK stops
   sending without any sign to the visitor, and Release Health keeps counting. There is no per-page cap:
