@@ -15,9 +15,10 @@ neither the score, nor its file name, nor anything in it leaves the device.
 
 - **No burn rates, no SLOs.** A rate needs every attempt counted, not only the failures, and that is
   usage tracking. It belongs to [NH-52](https://leocaseiro.atlassian.net/browse/NH-52) ("[H-7]
-  CloudWatch + X-Ray SLOs"). Until NH-52 lands, Sentry Release Health — the crash-free share of
-  visits per release — is the interim front-end health number. The reasoning is recorded as a
-  comment on NH-52, dated 2026-10-03.
+  CloudWatch + X-Ray SLOs"). Until NH-52 lands, Sentry Release Health — the share of visits per
+  release that ended without an unhandled error — is the interim front-end health number. Sentry 11
+  marks a broken browser visit "unhandled", never "crashed", so a crash-free share would always read
+  100%. The reasoning is recorded as a comment on NH-52, dated 2026-10-03.
 - **No performance tracing, no Session Replay, no feedback widget.** Errors only. Replay would record
   the score drawn on screen.
 - **No server or edge SDK.** `web/` has no runtime server code: no route handlers, no server
@@ -116,7 +117,7 @@ one line, and the new `global-error.tsx` carries the same line:
 ```diff
 -export default function AppError({ reset }: Readonly<{ error: Error; reset: () => void }>) {
 +export default function AppError({ error, reset }: Readonly<{ error: Error; reset: () => void }>) {
-+  useEffect(() => reportError(error, { code: ERROR.unexpectedCrash }), [error]);
++  useEffect(() => reportError(error, { code: ERROR.unexpectedCrash, handled: false }), [error]);
 ```
 
 `global-error.tsx` replaces the root layout when it renders, so it supplies its own
@@ -135,7 +136,7 @@ type FileFacts = { readonly type: string; readonly bytes: number }; // never the
 /** An error or a warning: one event against the monthly quota. */
 export function reportError(
   error: unknown,
-  options?: { code?: ErrorCode; level?: 'error' | 'warning'; file?: FileFacts },
+  options?: { code?: ErrorCode; level?: 'error' | 'warning'; file?: FileFacts; handled?: false },
 ): void;
 
 /** A breadcrumb: never sent alone; it travels inside the next real report. Costs no quota. */
@@ -143,6 +144,11 @@ export function noteError(error: unknown, what: string): void;
 ```
 
 - `level` defaults to `error`.
+- `handled: false` marks the report _unhandled_, and the visit with it, which is what the interim
+  health number counts (Non-goals). Only the three error pages (E901) and the player failures
+  E201–E204 pass it. It reaches Sentry as
+  `captureException(error, { mechanism: { handled: false }, captureContext: { tags: { code }, level } })`.
+  The shorter `{ tags, mechanism }` form fails the type-check and, forced through, stays handled.
 - `code` becomes the Sentry tag `code`, so a visitor who quotes "Error E203" maps straight to a
   Sentry search.
 - **E101, E102 and E103 drop the exception message** and keep its type, its stack, and the file's
@@ -154,7 +160,7 @@ export function noteError(error: unknown, what: string): void;
 
 | Where                                                                                          | What fails                                    | Code      | Sends                                                 |
 | ---------------------------------------------------------------------------------------------- | --------------------------------------------- | --------- | ----------------------------------------------------- |
-| `web/lib/alphatab/AlphaTabEngineContext.tsx:35`                                                | the player engine did not load                | E201      | error                                                 |
+| `web/lib/alphatab/AlphaTabEngineContext.tsx:35`                                                | the player engine did not load                | E201      | error, unhandled                                      |
 | `web/app/play/PlayerShell.tsx:805`                                                             | the same failure, met when a file is opened   | E205      | breadcrumb — E201 has already reported the cause      |
 | `web/app/play/PlayerShell.tsx:309`                                                             | stored settings cannot be applied at start    | —         | error                                                 |
 | `web/app/play/PlayerShell.tsx:743` and `:761`                                                  | MIDI and Guitar Pro export                    | E401      | error                                                 |
@@ -167,12 +173,12 @@ export function noteError(error: unknown, what: string): void;
 
 **Failures that never throw** — an event, a timer, or a state change:
 
-| Where                                              | What fails                                          | Code      | Sends   |
-| -------------------------------------------------- | --------------------------------------------------- | --------- | ------- |
-| `web/app/play/NotationSurface.tsx:117`             | the music font failed to download                   | E203      | error   |
-| `web/app/play/NotationSurface.tsx:126`             | the music font did not arrive within 60 seconds     | E204      | error   |
-| `web/app/play/NotationSurface.tsx:139`             | AlphaTab's `error` event, for example the SoundFont | E202      | error   |
-| `web/app/play/PlayerShell.tsx`, both restore paths | saved settings or transport repaired, or unreadable | E601/E603 | warning |
+| Where                                              | What fails                                          | Code      | Sends            |
+| -------------------------------------------------- | --------------------------------------------------- | --------- | ---------------- |
+| `web/app/play/NotationSurface.tsx:117`             | the music font failed to download                   | E203      | error, unhandled |
+| `web/app/play/NotationSurface.tsx:126`             | the music font did not arrive within 60 seconds     | E204      | error, unhandled |
+| `web/app/play/NotationSurface.tsx:139`             | AlphaTab's `error` event, for example the SoundFont | E202      | error, unhandled |
+| `web/app/play/PlayerShell.tsx`, both restore paths | saved settings or transport repaired, or unreadable | E601/E603 | warning          |
 
 **Blocked is not corrupt.** Storage the browser _blocks_ is the visitor's environment: a breadcrumb
 (S2b). Saved data that is _corrupt_ means our own code wrote something bad, or an update changed which
@@ -281,9 +287,10 @@ The exact shape of `dataCollection` is confirmed against the installed types (se
 
 ```text
 Before (web/app/page.tsx:9):  …and play along. Nothing you open leaves this device.
-After:                        …and play along. Your scores never leave this device. The player
-                              sends anonymous crash statistics, and an error report when it
-                              breaks — never your file, its name, or what's in it.
+After:                        …and play along. Your scores never leave this device. This site
+                              counts visits and crashes anonymously, and sends an error report
+                              when something goes wrong. Neither includes your file, its name,
+                              or what's in it.
 
 Before (web/app/error.tsx:12 and web/app/play/error.tsx:12):
                               Nothing you opened was sent anywhere. Try again, or reload the page.
@@ -295,9 +302,9 @@ After (both, and the new global-error.tsx):
 The error pages deliberately do **not** say "a report was sent". An ad blocker may have stopped it,
 and the page cannot know.
 
-"Crash statistics" is Release Health (S4): a small ping on every visit, not only on a crash. It
-carries the release, the environment and whether the visit crashed — no file data. That is why the
-home page names it.
+"Counts visits" is Release Health (S4): a small ping on every visit, not only on a crash. It carries
+the release, the environment and whether the visit ended in an unhandled error — no file data.
+That is why the home page names it.
 
 ## 4. Releases, environments and source maps
 
@@ -333,13 +340,20 @@ An agent may not create accounts or handle the token.
 
 1. Create a Sentry account on the free Developer plan, and a project with the platform **Next.js**.
    Note the organization and project slugs for `next.config.ts`.
-2. Project settings → Security & Privacy → turn on **"Prevent Storing of IP Addresses"**.
-3. Create an **organization auth token**, used only for the source-map upload.
-4. Vercel → the project → Settings → Environment Variables, **Production only** (D5):
+2. At project creation, choose **"I'll create my own alerts later"**: the default alert fires on
+   high-priority issues only, and Sentry ranks a warning as medium. Then create one issue alert that
+   fires when **any** of these happens: **"A new issue is created"**, **"A resolved issue
+   regresses"**, **"An issue escalates"**. No level filter; the action is **"Notify on preferred
+   channel → Member: leocaseiro"**, which arrives by email on the Developer plan. Each new kind of
+   error or warning, and each fixed one that comes back, then sends one email.
+3. Project settings → Security & Privacy → turn on **"Prevent Storing of IP Addresses"**.
+4. Create an **organization auth token**, used only for the source-map upload.
+5. Vercel → the project → Settings → Environment Variables, **Production only** (D5):
    - `NEXT_PUBLIC_SENTRY_DSN` — public by design; it ships inside the page.
    - `SENTRY_AUTH_TOKEN` — marked **Sensitive**. Never in chat, never in the repository.
-5. After the first production deploy, open a file that is not a score. An E103 warning appearing in
-   Sentry, with the file's type and size and without its name, proves the whole path.
+6. After the first production deploy, open a file that is not a score. An E103 warning appearing in
+   Sentry, with the file's type and size and without its name, proves the whole path — and its
+   email (step 2) proves the alert.
 
 This replaces two registry rows written for GitHub Actions: L11-envsecret required a `production-build`
 GitHub environment for the upload job, and F7-sentry required `SENTRY_AUTH_TOKEN` as a GitHub Actions
@@ -423,6 +437,7 @@ Each is a claim this design rests on but no one has run yet:
   back to `@sentry/react` plus our own upload script.
 - The exact shape of `dataCollection` in the installed version.
 - That the browser SDK sends Release Health sessions by default.
+- Which Release Health figure shows "visits with no unhandled error" under Sentry 11.
 - That `NEXT_PUBLIC_VERCEL_ENV` is exposed on Vercel for this project.
 - What argument AlphaTab's `error` event passes — an `Error` or a string.
 - That Vercel never builds a fork's pull request with Production variables.

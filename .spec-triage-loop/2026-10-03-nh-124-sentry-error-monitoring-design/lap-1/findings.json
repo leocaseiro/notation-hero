@@ -50,10 +50,11 @@
       "P3": "worth fixing — small, cheap"
     },
     "triage_progress": {
-      "decided": ["F-1", "F-7", "F-12", "F-15", "F-16", "F-2", "F-3"],
-      "undecided": ["F-4", "F-5", "F-6", "F-8", "F-9", "F-10", "F-11", "F-13", "F-14"]
+      "decided": ["F-1", "F-7", "F-12", "F-15", "F-16", "F-2", "F-3", "F-4", "F-5", "F-6"],
+      "undecided": ["F-8", "F-9", "F-10", "F-11", "F-13", "F-14"]
     },
-    "picker_rounds_used": 1
+    "picker_rounds_used": 2,
+    "changelog_note": "docs/decisions/decision-changelog.md: the NH-124 entry's S4 bullet is corrected in place, and a 'Changed by the spec review, lap 1' list records each approved change (F-2, F-3, F-4, F-5, F-6 so far). Add F-8/F-9/F-10 outcomes there too."
   },
   "already_applied": [],
   "ambiguity_fixes": [
@@ -132,187 +133,6 @@
     }
   ],
   "undecided_findings": [
-    {
-      "id": "F-4",
-      "severity": "P1",
-      "confidence": 100,
-      "route": "Decision",
-      "autofix_class": "manual",
-      "reviewers": ["adversarial", "feasibility", "product-lens"],
-      "promotion": "75 → 100: three separately dispatched reviewers flagged it (+1 anchor)",
-      "section": "Non-goals (first bullet); S4; §2.2; §2.3; §3.4 (the \"Crash statistics\" paragraph)",
-      "title": "The 'crash-free' health number cannot move in Sentry 11 browsers",
-      "terms_first": "Release Health = Sentry's count of visits (sessions) per release, each marked healthy, errored, or crashed/unhandled. Decision S4 made its crash-free share the interim health number until NH-52 (CloudWatch burn rates) lands.",
-      "scenario": "A release goes out with a bug that sends half your visitors to 'Something went wrong'. You open Sentry's Release Health to check the interim health number the spec chose — the crash-free share of visits — and it says 100%. Nothing looks wrong. In Sentry 11 a browser visit is never marked 'crashed', and the reports our error pages send do not count against the number at all.",
-      "whats_wrong": "In @sentry/browser 11.0.0 a visit hit by an uncaught error is marked 'unhandled', never 'crashed' (client.ts:111-112: 'Unhandled errors don't actually crash the browser, so we report `unhandled` rather than `crashed`'). Sentry's docs: since Sentry 25.9.0 crashes and unhandled errors are counted separately. Every `reportError` call is a handled capture, which only marks the visit 'errored' — and the error pages catch the crash themselves, through `reportError`. So the visits where the page broke never count.",
-      "how_to_mark_unhandled": "`captureException(error, { mechanism: { handled: false }, captureContext: { tags: { code }, level } })`, or set tags and level with `withScope`. The natural form `captureException(error, { tags: { code }, mechanism: { handled: false } })` fails the type-check and, if forced through, silently stays handled (prepareEvent.ts:347-351).",
-      "evidence_quotes": [
-        "Until NH-52 lands, Sentry Release Health — the crash-free share of visits per release — is the interim front-end health number.",
-        "It carries the release, the environment and whether the visit crashed — no file data.",
-        "useEffect(() => reportError(error, { code: ERROR.unexpectedCrash }), [error]);"
-      ],
-      "options": [
-        {
-          "label": "1️⃣ Error pages only",
-          "what": "The interim number becomes 'the share of visits with no unhandled error'. `reportError` gains `handled?: false`; the three error pages (E901) pass it.",
-          "pros": "Counts exactly the visits whose page broke; a pure bug signal.",
-          "cons": "A visit where the player engine, the music font or the SoundFont failed (E201–E204) still counts as healthy-but-errored.",
-          "example": "-  useEffect(() => reportError(error, { code: ERROR.unexpectedCrash }), [error]);\n+  useEffect(() => reportError(error, { code: ERROR.unexpectedCrash, handled: false }), [error]);"
-        },
-        {
-          "label": "2️⃣ Error pages + player failures (E201–E204)",
-          "what": "As 1️⃣, and E201 (engine did not load), E202 (engine error event, e.g. the SoundFont), E203 (font failed) and E204 (font timeout) also send `handled: false`.",
-          "pros": "Counts every visit where the player could not play — the failure a health number exists to show.",
-          "cons": "Failures caused by the visitor's connection (a font download that fails) count too, so the number mixes our bugs with their network.",
-          "example": "reportError(fontError, { code: ERROR.fontFailed, handled: false }); // NotationSurface.tsx:117"
-        }
-      ],
-      "comparison_table": "| Option | Pros | Cons | Best when |\n|---|---|---|---|\n| 1️⃣ Error pages only | only whole-page crashes; pure bug signal | a player that never loads still reads healthy | you want the number to track our code's crashes |\n| 2️⃣ + E201–E204 | every visit where the player could not play | network failures count too | you want the number to track the visitor's experience |",
-      "matrix": "Criteria (weight): fits \"front-end health number\" (×3), signal purity (×2), simplicity (×1). 1️⃣: 3→9, 5→10, 5→5 = 24. 2️⃣: 5→15, 3→6, 4→4 = 25. Close.",
-      "trade_off": "What the number should mean: \"our code crashed\" (1️⃣) vs \"the visitor could not play\" (2️⃣).",
-      "recommendation": "2️⃣, narrowly — a health number should go down when the player cannot play. Flip to 1️⃣ if a slow connection should never lower it.",
-      "doc_changes_either_way": [
-        {
-          "where": "Non-goals, first bullet",
-          "lines": "16-20",
-          "before": "- **No burn rates, no SLOs.** A rate needs every attempt counted, not only the failures, and that is\n  usage tracking. It belongs to [NH-52](https://leocaseiro.atlassian.net/browse/NH-52) (\"[H-7]\n  CloudWatch + X-Ray SLOs\"). Until NH-52 lands, Sentry Release Health — the crash-free share of\n  visits per release — is the interim front-end health number. The reasoning is recorded as a\n  comment on NH-52, dated 2026-10-03.",
-          "after": "same bullet, with 'the crash-free share of visits per release' → 'the share of visits per release that ended without an unhandled error (Sentry 11 marks a broken browser visit \"unhandled\", never \"crashed\")'"
-        },
-        {
-          "where": "§2.2 diff",
-          "lines": "116-120",
-          "before": "```diff\n-export default function AppError({ reset }: Readonly<{ error: Error; reset: () => void }>) {\n+export default function AppError({ error, reset }: Readonly<{ error: Error; reset: () => void }>) {\n+  useEffect(() => reportError(error, { code: ERROR.unexpectedCrash }), [error]);\n```",
-          "after": "the useEffect line gains `handled: false`"
-        },
-        {
-          "where": "§2.3 reportError options",
-          "lines": "132-135",
-          "before": "export function reportError(\n  error: unknown,\n  options?: { code?: ErrorCode; level?: 'error' | 'warning'; file?: FileFacts },\n): void;",
-          "after": "options gain `handled?: false`, with one line on the capture form (how_to_mark_unhandled)"
-        },
-        {
-          "where": "§3.4 paragraph",
-          "lines": "279-281",
-          "before": "\"Crash statistics\" is Release Health (S4): a small ping on every visit, not only on a crash. It\ncarries the release, the environment and whether the visit crashed — no file data. That is why the\nhome page names it.",
-          "after": "'whether the visit crashed' → 'whether the visit ended in an unhandled error' (F-5 rewrites this paragraph too — compose once)"
-        },
-        {
-          "where": "To verify at plan time",
-          "lines": null,
-          "before": "(absent — nothing there today)",
-          "after": "- Which Release Health figure shows \"visits with no unhandled error\" under Sentry 11."
-        },
-        {
-          "where": "OUTSIDE the spec — docs/decisions/decision-changelog.md, the 2026-10-03 NH-124 entry, S4 bullet",
-          "lines": "changelog 38-40",
-          "before": "- **S4 — Release Health on**, the crash-free share of visits per release, as the interim health\n  number \"until we move to AWS burn rates\" (leocaseiro). It pings on every visit, so the home page\n  names it: \"anonymous crash statistics\".",
-          "after": "'the crash-free share of visits per release' → 'the share of visits that ended without an unhandled error' (F-5 edits the same bullet — compose once)"
-        }
-      ],
-      "drop_consequence": "Discard it. The interim health number reads 100% whatever the player does, until NH-52 replaces it.",
-      "basis": "Sentry 11 browser sessions are 'unhandled', never 'crashed', and reportError's captures are handled; error-page crashes never touch the number.",
-      "spike": "Sentry 11.0.0 source + docs (docs partly verified: they do not say whether an \"unhandled\" figure is shown on its own). (untested at runtime)",
-      "disposition_hint": "PICKER — a real choice between two variants. S4 itself (Release Health on) stays; this corrects what its number means.",
-      "verification": "pass",
-      "severity_meaning": "should fix before planning — something would ship broken, or a promise in the spec would be false"
-    },
-    {
-      "id": "F-5",
-      "severity": "P1",
-      "confidence": 75,
-      "route": "Proposed fix",
-      "autofix_class": "gated_auto",
-      "reviewers": ["design-lens"],
-      "section": "§3.4 The copy (and Known limits, last bullet)",
-      "title": "The new home-page sentence does not say a ping goes out on every visit",
-      "scenario": "You read the new home page: 'The player sends anonymous crash statistics, and an error report when it breaks.' You think: it only talks to Sentry when something breaks. Then you open the browser's network tab on the home page — before opening any file — and see a request to Sentry. The page did not tell you that. The spec even says the home page names this ping ('That is why the home page names it'), but the drafted words do not.",
-      "whats_wrong": "Release Health sends a small ping on every page load, including `/`: Next loads instrumentation-client on every route, and Sentry's docs say browser SDKs track sessions by default. 'Crash statistics' reads as 'numbers about crashes'. §3.4 (lines 279-281) and Known limits (line 382) both claim the copy discloses the every-visit ping; it does not.",
-      "evidence_quotes": [
-        "sends anonymous crash statistics, and an error report when it",
-        "a small ping on every visit, not only on a crash.",
-        "The home-page copy says so."
-      ],
-      "before_after": [
-        {
-          "where": "§3.4, home-page After text",
-          "lines": "265-267",
-          "before": "After:                        …and play along. Your scores never leave this device. The player\n                              sends anonymous crash statistics, and an error report when it\n                              breaks — never your file, its name, or what's in it.",
-          "after": "After:                        …and play along. Your scores never leave this device. This site\n                              counts visits and crashes anonymously, and sends an error report\n                              when something goes wrong. Neither includes your file, its name,\n                              or what's in it."
-        },
-        {
-          "where": "§3.4, the paragraph under the copy",
-          "lines": "279-281",
-          "before": "\"Crash statistics\" is Release Health (S4): a small ping on every visit, not only on a crash. It\ncarries the release, the environment and whether the visit crashed — no file data. That is why the\nhome page names it.",
-          "after": "\"Counts visits\" is Release Health (S4): a small ping on every visit, not only on a crash. It\ncarries the release, the environment and whether the visit ended in an error — no file data. That\nis why the home page names it.",
-          "note": "F-4 edits the same paragraph — compose once."
-        },
-        {
-          "where": "OUTSIDE the spec — docs/decisions/decision-changelog.md, the 2026-10-03 NH-124 entry, S4 bullet",
-          "lines": "changelog 38-40",
-          "before": "- **S4 — Release Health on**, the crash-free share of visits per release, as the interim health\n  number \"until we move to AWS burn rates\" (leocaseiro). It pings on every visit, so the home page\n  names it: \"anonymous crash statistics\".",
-          "after": "- **S4 — Release Health on**, as the interim health number \"until we move to AWS burn rates\"\n  (leocaseiro). It pings on every visit, so the home page names it: \"counts visits and crashes\n  anonymously\".",
-          "note": "F-4 also changes this bullet (\"the crash-free share of visits per release\") — compose once."
-        }
-      ],
-      "proposed_fix": "Use design-lens's wording (above), or your own — it must say a ping goes out on every visit.",
-      "why_it_works": "The copy then describes what actually happens on every page, which is what the spec says it does.",
-      "notes": [
-        "The new text is 276 characters, against 245 for the spec's current After and 119 today — see FYI-1.",
-        "'Counts visits' puts visit counting into public copy. S2 rejected counting attempts (usage), not visits, and S4 already counts visits — no conflict, but read them together."
-      ],
-      "drop_consequence": "Discard it. The home page under-describes what is sent, while the spec claims it discloses the per-visit ping.",
-      "basis": "Release Health pings from every route, including `/`; \"crash statistics\" does not say so.",
-      "disposition_hint": "PICKER — user-facing copy you approved; your words matter. Offer: apply this wording / write my own (Other) / Skip — decide later / Drop.",
-      "verification": "pass",
-      "severity_meaning": "should fix before planning — something would ship broken, or a promise in the spec would be false"
-    },
-    {
-      "id": "F-6",
-      "severity": "P1",
-      "confidence": 75,
-      "route": "Proposed fix",
-      "autofix_class": "gated_auto",
-      "reviewers": ["product-lens"],
-      "section": "§5 Setup — done by leocaseiro, by hand",
-      "title": "Nothing tells you when a new error arrives",
-      "scenario": "The Sentry work ships. Two weeks later a release breaks file opening in Firefox: every attempt ends in an E102 warning. Sentry has every report — but you don't open the Sentry dashboard every day, and no email arrives. The alert you clicked through at setup, 'Alert me on high priority issues', skips warnings, because Sentry ranks a warning as medium priority. You find out a month later, from a visitor.",
-      "whats_wrong": "§5 never sets up an alert. Sentry's project-creation form offers only 'Alert me on high priority issues' (the default), a threshold rule, or 'I'll create my own alerts later'. Warning-level events get Medium priority, so the default never fires for E101/E102/E103, E602 or E601/E603 — including the E103 that setup step 5 waits for. The free Developer plan includes alerts by email.",
-      "evidence_quotes": [
-        "nothing tells us a failure happened unless the visitor writes to us",
-        "Create a Sentry account on the free Developer plan, and a project with the platform **Next.js**."
-      ],
-      "before_after": [
-        {
-          "where": "§5, a new step 2 after line 316 (steps 2-5 become 3-6; line 302 still points at step 1 for the slugs)",
-          "lines": null,
-          "before": "(absent — nothing there today)",
-          "after": "2. At project creation, choose **\"I'll create my own alerts later\"**. Then create one issue alert:\n   trigger **\"A new issue is created\"**, no level filter, action **\"Notify on preferred channel →\n   Member: leocaseiro\"** (on the Developer plan it arrives by email). Each new kind of error or\n   warning then sends one email."
-        }
-      ],
-      "options": [
-        {
-          "label": "1️⃣ New issues only",
-          "what": "The step above, one trigger.",
-          "pros": "Simplest; one email per new kind of problem.",
-          "cons": "A bug you fixed that comes back, or an archived issue that spikes, sends nothing."
-        },
-        {
-          "label": "2️⃣ New + regressed + escalating (Recommended)",
-          "what": "The same rule with three triggers (\"any of\"): \"A new issue is created\", \"A resolved issue regresses\", \"An issue escalates\".",
-          "pros": "Also tells you when a fixed bug returns — the case a solo maintainer most wants to hear about.",
-          "cons": "Two more lines in one setup step."
-        }
-      ],
-      "recommendation": "2️⃣ — the extra triggers fire rarely and catch a returning bug; flip to 1️⃣ if you want the step as short as possible.",
-      "proposed_fix": "Add the alert step to §5.",
-      "why_it_works": "One email per new (or returning) problem: little noise, nothing missed, no cost.",
-      "drop_consequence": "Discard it. Reports pile up in a dashboard nobody opens; no warning ever notifies anyone.",
-      "basis": "The project-creation default alerts only on high priority, and Sentry ranks warnings medium.",
-      "spike": "Public Sentry docs (verify-C), form wording as of 2026-10-03. The form cannot create this rule itself — hence \"I'll create my own alerts later\" first.",
-      "disposition_hint": "PICKER — a new setup step in your own workflow (two options).",
-      "verification": "pass",
-      "severity_meaning": "should fix before planning — something would ship broken, or a promise in the spec would be false"
-    },
     {
       "id": "F-8",
       "severity": "P2",
@@ -1082,6 +902,205 @@
         "decision": "Apply (leocaseiro, picker)",
         "applied": true,
         "notes": "§3.1 row split; unit case beside the names filter; e2e case 7. cspell.json gains 'fbclid'. §3.2 does not yet describe the address cut — revisit with F-10, which rewrites the names-filter section."
+      }
+    },
+    {
+      "id": "F-4",
+      "severity": "P1",
+      "confidence": 100,
+      "route": "Decision",
+      "autofix_class": "manual",
+      "reviewers": ["adversarial", "feasibility", "product-lens"],
+      "promotion": "75 → 100: three separately dispatched reviewers flagged it (+1 anchor)",
+      "section": "Non-goals (first bullet); S4; §2.2; §2.3; §3.4 (the \"Crash statistics\" paragraph)",
+      "title": "The 'crash-free' health number cannot move in Sentry 11 browsers",
+      "terms_first": "Release Health = Sentry's count of visits (sessions) per release, each marked healthy, errored, or crashed/unhandled. Decision S4 made its crash-free share the interim health number until NH-52 (CloudWatch burn rates) lands.",
+      "scenario": "A release goes out with a bug that sends half your visitors to 'Something went wrong'. You open Sentry's Release Health to check the interim health number the spec chose — the crash-free share of visits — and it says 100%. Nothing looks wrong. In Sentry 11 a browser visit is never marked 'crashed', and the reports our error pages send do not count against the number at all.",
+      "whats_wrong": "In @sentry/browser 11.0.0 a visit hit by an uncaught error is marked 'unhandled', never 'crashed' (client.ts:111-112: 'Unhandled errors don't actually crash the browser, so we report `unhandled` rather than `crashed`'). Sentry's docs: since Sentry 25.9.0 crashes and unhandled errors are counted separately. Every `reportError` call is a handled capture, which only marks the visit 'errored' — and the error pages catch the crash themselves, through `reportError`. So the visits where the page broke never count.",
+      "how_to_mark_unhandled": "`captureException(error, { mechanism: { handled: false }, captureContext: { tags: { code }, level } })`, or set tags and level with `withScope`. The natural form `captureException(error, { tags: { code }, mechanism: { handled: false } })` fails the type-check and, if forced through, silently stays handled (prepareEvent.ts:347-351).",
+      "evidence_quotes": [
+        "Until NH-52 lands, Sentry Release Health — the crash-free share of visits per release — is the interim front-end health number.",
+        "It carries the release, the environment and whether the visit crashed — no file data.",
+        "useEffect(() => reportError(error, { code: ERROR.unexpectedCrash }), [error]);"
+      ],
+      "options": [
+        {
+          "label": "1️⃣ Error pages only",
+          "what": "The interim number becomes 'the share of visits with no unhandled error'. `reportError` gains `handled?: false`; the three error pages (E901) pass it.",
+          "pros": "Counts exactly the visits whose page broke; a pure bug signal.",
+          "cons": "A visit where the player engine, the music font or the SoundFont failed (E201–E204) still counts as healthy-but-errored.",
+          "example": "-  useEffect(() => reportError(error, { code: ERROR.unexpectedCrash }), [error]);\n+  useEffect(() => reportError(error, { code: ERROR.unexpectedCrash, handled: false }), [error]);"
+        },
+        {
+          "label": "2️⃣ Error pages + player failures (E201–E204)",
+          "what": "As 1️⃣, and E201 (engine did not load), E202 (engine error event, e.g. the SoundFont), E203 (font failed) and E204 (font timeout) also send `handled: false`.",
+          "pros": "Counts every visit where the player could not play — the failure a health number exists to show.",
+          "cons": "Failures caused by the visitor's connection (a font download that fails) count too, so the number mixes our bugs with their network.",
+          "example": "reportError(fontError, { code: ERROR.fontFailed, handled: false }); // NotationSurface.tsx:117"
+        }
+      ],
+      "comparison_table": "| Option | Pros | Cons | Best when |\n|---|---|---|---|\n| 1️⃣ Error pages only | only whole-page crashes; pure bug signal | a player that never loads still reads healthy | you want the number to track our code's crashes |\n| 2️⃣ + E201–E204 | every visit where the player could not play | network failures count too | you want the number to track the visitor's experience |",
+      "matrix": "Criteria (weight): fits \"front-end health number\" (×3), signal purity (×2), simplicity (×1). 1️⃣: 3→9, 5→10, 5→5 = 24. 2️⃣: 5→15, 3→6, 4→4 = 25. Close.",
+      "trade_off": "What the number should mean: \"our code crashed\" (1️⃣) vs \"the visitor could not play\" (2️⃣).",
+      "recommendation": "2️⃣, narrowly — a health number should go down when the player cannot play. Flip to 1️⃣ if a slow connection should never lower it.",
+      "doc_changes_either_way": [
+        {
+          "where": "Non-goals, first bullet",
+          "lines": "16-20",
+          "before": "- **No burn rates, no SLOs.** A rate needs every attempt counted, not only the failures, and that is\n  usage tracking. It belongs to [NH-52](https://leocaseiro.atlassian.net/browse/NH-52) (\"[H-7]\n  CloudWatch + X-Ray SLOs\"). Until NH-52 lands, Sentry Release Health — the crash-free share of\n  visits per release — is the interim front-end health number. The reasoning is recorded as a\n  comment on NH-52, dated 2026-10-03.",
+          "after": "same bullet, with 'the crash-free share of visits per release' → 'the share of visits per release that ended without an unhandled error (Sentry 11 marks a broken browser visit \"unhandled\", never \"crashed\")'"
+        },
+        {
+          "where": "§2.2 diff",
+          "lines": "116-120",
+          "before": "```diff\n-export default function AppError({ reset }: Readonly<{ error: Error; reset: () => void }>) {\n+export default function AppError({ error, reset }: Readonly<{ error: Error; reset: () => void }>) {\n+  useEffect(() => reportError(error, { code: ERROR.unexpectedCrash }), [error]);\n```",
+          "after": "the useEffect line gains `handled: false`"
+        },
+        {
+          "where": "§2.3 reportError options",
+          "lines": "132-135",
+          "before": "export function reportError(\n  error: unknown,\n  options?: { code?: ErrorCode; level?: 'error' | 'warning'; file?: FileFacts },\n): void;",
+          "after": "options gain `handled?: false`, with one line on the capture form (how_to_mark_unhandled)"
+        },
+        {
+          "where": "§3.4 paragraph",
+          "lines": "279-281",
+          "before": "\"Crash statistics\" is Release Health (S4): a small ping on every visit, not only on a crash. It\ncarries the release, the environment and whether the visit crashed — no file data. That is why the\nhome page names it.",
+          "after": "'whether the visit crashed' → 'whether the visit ended in an unhandled error' (F-5 rewrites this paragraph too — compose once)"
+        },
+        {
+          "where": "To verify at plan time",
+          "lines": null,
+          "before": "(absent — nothing there today)",
+          "after": "- Which Release Health figure shows \"visits with no unhandled error\" under Sentry 11."
+        },
+        {
+          "where": "OUTSIDE the spec — docs/decisions/decision-changelog.md, the 2026-10-03 NH-124 entry, S4 bullet",
+          "lines": "changelog 38-40",
+          "before": "- **S4 — Release Health on**, the crash-free share of visits per release, as the interim health\n  number \"until we move to AWS burn rates\" (leocaseiro). It pings on every visit, so the home page\n  names it: \"anonymous crash statistics\".",
+          "after": "'the crash-free share of visits per release' → 'the share of visits that ended without an unhandled error' (F-5 edits the same bullet — compose once)"
+        }
+      ],
+      "drop_consequence": "Discard it. The interim health number reads 100% whatever the player does, until NH-52 replaces it.",
+      "basis": "Sentry 11 browser sessions are 'unhandled', never 'crashed', and reportError's captures are handled; error-page crashes never touch the number.",
+      "spike": "Sentry 11.0.0 source + docs (docs partly verified: they do not say whether an \"unhandled\" figure is shown on its own). (untested at runtime)",
+      "disposition_hint": "PICKER — a real choice between two variants. S4 itself (Release Health on) stays; this corrects what its number means.",
+      "verification": "pass",
+      "severity_meaning": "should fix before planning — something would ship broken, or a promise in the spec would be false",
+      "triage": {
+        "round": "round 2 (picker)",
+        "decision": "Apply — option 2️⃣: error pages + player failures E201–E204 report as unhandled (leocaseiro, picker)",
+        "applied": true,
+        "notes": "Non-goals, §2.2 diff, §2.3 signature + a handled:false bullet (with the captureException form), §2.4 rows E201–E204 'error, unhandled', §3.4 note, a 'To verify' item; changelog S4 corrected in place."
+      }
+    },
+    {
+      "id": "F-5",
+      "severity": "P1",
+      "confidence": 75,
+      "route": "Proposed fix",
+      "autofix_class": "gated_auto",
+      "reviewers": ["design-lens"],
+      "section": "§3.4 The copy (and Known limits, last bullet)",
+      "title": "The new home-page sentence does not say a ping goes out on every visit",
+      "scenario": "You read the new home page: 'The player sends anonymous crash statistics, and an error report when it breaks.' You think: it only talks to Sentry when something breaks. Then you open the browser's network tab on the home page — before opening any file — and see a request to Sentry. The page did not tell you that. The spec even says the home page names this ping ('That is why the home page names it'), but the drafted words do not.",
+      "whats_wrong": "Release Health sends a small ping on every page load, including `/`: Next loads instrumentation-client on every route, and Sentry's docs say browser SDKs track sessions by default. 'Crash statistics' reads as 'numbers about crashes'. §3.4 (lines 279-281) and Known limits (line 382) both claim the copy discloses the every-visit ping; it does not.",
+      "evidence_quotes": [
+        "sends anonymous crash statistics, and an error report when it",
+        "a small ping on every visit, not only on a crash.",
+        "The home-page copy says so."
+      ],
+      "before_after": [
+        {
+          "where": "§3.4, home-page After text",
+          "lines": "265-267",
+          "before": "After:                        …and play along. Your scores never leave this device. The player\n                              sends anonymous crash statistics, and an error report when it\n                              breaks — never your file, its name, or what's in it.",
+          "after": "After:                        …and play along. Your scores never leave this device. This site\n                              counts visits and crashes anonymously, and sends an error report\n                              when something goes wrong. Neither includes your file, its name,\n                              or what's in it."
+        },
+        {
+          "where": "§3.4, the paragraph under the copy",
+          "lines": "279-281",
+          "before": "\"Crash statistics\" is Release Health (S4): a small ping on every visit, not only on a crash. It\ncarries the release, the environment and whether the visit crashed — no file data. That is why the\nhome page names it.",
+          "after": "\"Counts visits\" is Release Health (S4): a small ping on every visit, not only on a crash. It\ncarries the release, the environment and whether the visit ended in an error — no file data. That\nis why the home page names it.",
+          "note": "F-4 edits the same paragraph — compose once."
+        },
+        {
+          "where": "OUTSIDE the spec — docs/decisions/decision-changelog.md, the 2026-10-03 NH-124 entry, S4 bullet",
+          "lines": "changelog 38-40",
+          "before": "- **S4 — Release Health on**, the crash-free share of visits per release, as the interim health\n  number \"until we move to AWS burn rates\" (leocaseiro). It pings on every visit, so the home page\n  names it: \"anonymous crash statistics\".",
+          "after": "- **S4 — Release Health on**, as the interim health number \"until we move to AWS burn rates\"\n  (leocaseiro). It pings on every visit, so the home page names it: \"counts visits and crashes\n  anonymously\".",
+          "note": "F-4 also changes this bullet (\"the crash-free share of visits per release\") — compose once."
+        }
+      ],
+      "proposed_fix": "Use design-lens's wording (above), or your own — it must say a ping goes out on every visit.",
+      "why_it_works": "The copy then describes what actually happens on every page, which is what the spec says it does.",
+      "notes": [
+        "The new text is 276 characters, against 245 for the spec's current After and 119 today — see FYI-1.",
+        "'Counts visits' puts visit counting into public copy. S2 rejected counting attempts (usage), not visits, and S4 already counts visits — no conflict, but read them together."
+      ],
+      "drop_consequence": "Discard it. The home page under-describes what is sent, while the spec claims it discloses the per-visit ping.",
+      "basis": "Release Health pings from every route, including `/`; \"crash statistics\" does not say so.",
+      "disposition_hint": "PICKER — user-facing copy you approved; your words matter. Offer: apply this wording / write my own (Other) / Skip — decide later / Drop.",
+      "verification": "pass",
+      "severity_meaning": "should fix before planning — something would ship broken, or a promise in the spec would be false",
+      "triage": {
+        "round": "round 2 (picker)",
+        "decision": "Apply — the reworded home copy as proposed (leocaseiro, picker)",
+        "applied": true,
+        "notes": "§3.4 After copy and note ('Counts visits'); changelog S4 bullet quotes the new words. Known limits' last bullet now holds as written."
+      }
+    },
+    {
+      "id": "F-6",
+      "severity": "P1",
+      "confidence": 75,
+      "route": "Proposed fix",
+      "autofix_class": "gated_auto",
+      "reviewers": ["product-lens"],
+      "section": "§5 Setup — done by leocaseiro, by hand",
+      "title": "Nothing tells you when a new error arrives",
+      "scenario": "The Sentry work ships. Two weeks later a release breaks file opening in Firefox: every attempt ends in an E102 warning. Sentry has every report — but you don't open the Sentry dashboard every day, and no email arrives. The alert you clicked through at setup, 'Alert me on high priority issues', skips warnings, because Sentry ranks a warning as medium priority. You find out a month later, from a visitor.",
+      "whats_wrong": "§5 never sets up an alert. Sentry's project-creation form offers only 'Alert me on high priority issues' (the default), a threshold rule, or 'I'll create my own alerts later'. Warning-level events get Medium priority, so the default never fires for E101/E102/E103, E602 or E601/E603 — including the E103 that setup step 5 waits for. The free Developer plan includes alerts by email.",
+      "evidence_quotes": [
+        "nothing tells us a failure happened unless the visitor writes to us",
+        "Create a Sentry account on the free Developer plan, and a project with the platform **Next.js**."
+      ],
+      "before_after": [
+        {
+          "where": "§5, a new step 2 after line 316 (steps 2-5 become 3-6; line 302 still points at step 1 for the slugs)",
+          "lines": null,
+          "before": "(absent — nothing there today)",
+          "after": "2. At project creation, choose **\"I'll create my own alerts later\"**. Then create one issue alert:\n   trigger **\"A new issue is created\"**, no level filter, action **\"Notify on preferred channel →\n   Member: leocaseiro\"** (on the Developer plan it arrives by email). Each new kind of error or\n   warning then sends one email."
+        }
+      ],
+      "options": [
+        {
+          "label": "1️⃣ New issues only",
+          "what": "The step above, one trigger.",
+          "pros": "Simplest; one email per new kind of problem.",
+          "cons": "A bug you fixed that comes back, or an archived issue that spikes, sends nothing."
+        },
+        {
+          "label": "2️⃣ New + regressed + escalating (Recommended)",
+          "what": "The same rule with three triggers (\"any of\"): \"A new issue is created\", \"A resolved issue regresses\", \"An issue escalates\".",
+          "pros": "Also tells you when a fixed bug returns — the case a solo maintainer most wants to hear about.",
+          "cons": "Two more lines in one setup step."
+        }
+      ],
+      "recommendation": "2️⃣ — the extra triggers fire rarely and catch a returning bug; flip to 1️⃣ if you want the step as short as possible.",
+      "proposed_fix": "Add the alert step to §5.",
+      "why_it_works": "One email per new (or returning) problem: little noise, nothing missed, no cost.",
+      "drop_consequence": "Discard it. Reports pile up in a dashboard nobody opens; no warning ever notifies anyone.",
+      "basis": "The project-creation default alerts only on high priority, and Sentry ranks warnings medium.",
+      "spike": "Public Sentry docs (verify-C), form wording as of 2026-10-03. The form cannot create this rule itself — hence \"I'll create my own alerts later\" first.",
+      "disposition_hint": "PICKER — a new setup step in your own workflow (two options).",
+      "verification": "pass",
+      "severity_meaning": "should fix before planning — something would ship broken, or a promise in the spec would be false",
+      "triage": {
+        "round": "round 2 (picker)",
+        "decision": "Apply — option 2️⃣: one alert, three triggers (new, regressed, escalating) (leocaseiro, picker)",
+        "applied": true,
+        "notes": "§5 new step 2; steps 2-5 became 3-6; step 6 also proves the alert. Deferred question Q1 (data region) is still open — ask it in a later round."
       }
     }
   ]

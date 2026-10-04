@@ -35,9 +35,9 @@ aren't".
   a warning.
 - **S3 — errors only.** No performance tracing, no Session Replay: replay would record the score
   drawn on screen.
-- **S4 — Release Health on**, the crash-free share of visits per release, as the interim health
-  number "until we move to AWS burn rates" (leocaseiro). It pings on every visit, so the home page
-  names it: "anonymous crash statistics".
+- **S4 — Release Health on**, the share of visits per release that ended without an unhandled
+  error, as the interim health number "until we move to AWS burn rates" (leocaseiro). It pings on
+  every visit, so the home page names it: "counts visits and crashes anonymously".
 - **D1 — `@sentry/nextjs`, browser part only.** `web/` has no runtime server code. Rejected:
   `@sentry/react` plus our own upload script (we would own the step that keeps source maps off the
   public site) and Sentry's Loader Script (third-party code on every visit).
@@ -49,6 +49,25 @@ aren't".
   applies: the repository is public. Sentry's default — upload, then delete from the deploy —
   needs no configuration, so it stays. Hiding the code inside Sentry would protect nothing.
 - **D5 — production only.** Preview deployments do not report.
+
+**Changed by the spec review, lap 1** — each approved by leocaseiro in the triage, 2026-10-03/04:
+
+- **S4's number** now counts visits that ended without an _unhandled_ error. Sentry 11 marks a
+  broken browser visit "unhandled", never "crashed", and a report our own code catches is
+  "handled", so a crash-free share could not move. The error pages (E901) and the player failures
+  (E201–E204) report as unhandled. Chosen over the error pages alone, because a health number
+  should drop when the player cannot play; a failed font download on a bad connection lowers it
+  too.
+- **S1's home-page copy** said "anonymous crash statistics", which hid the ping sent on every
+  visit. It now reads "This site counts visits and crashes anonymously, and sends an error report
+  when something goes wrong."
+- **D2 holds by removing a Sentry default.** Sentry 11's `BrowserApiErrors` wraps the engine's
+  worker listeners and adds a frame from our bundle, so the "every frame in the engine bundle" rule
+  would stop matching. It is removed, with the `Console` integration.
+- **Page addresses are cut at `?` or `#`** before sending. Sentry 11's `dataCollection` does not
+  cover the page address or navigation breadcrumbs, so tracking codes such as `fbclid` would leak.
+- **An email alert** fires on a new issue, a regression or an escalation. Sentry's default alert
+  skips warnings, and every file problem is a warning.
 
 **Registry:** L11-sentry points at the spec; L11-srcmap reworded (D4); L11-envsecret ⛔ superseded
 and F7-sentry rewritten, because the source-map upload runs inside Vercel's build rather than a
