@@ -78,12 +78,14 @@
         "F-24",
         "F-25",
         "F-23",
-        "F-22"
+        "F-22",
+        "F-28",
+        "F-29"
       ],
-      "undecided": ["F-28", "F-29"],
+      "undecided": [],
       "pending_apply": []
     },
-    "triage_status": "PAUSED AT THE CAP — triage invocation 1 decided 12 findings: the auto-resolve batch (F-20, F-21, F-26, F-27, F-30, AMB-5..8), round 1 (F-17, F-18, F-19; R25 listed) and round 2 (F-22, F-23, F-24, F-25; ADD-3), all applied. NEXT (triage invocation 2, entry rule step 4): round 3 (F-28, F-29), round 4 (FYI-9..14, two multi-select cards), then the wrap-up — spec frontmatter lap: 2 / last_applied: P1, mark this file triaged, the changelog list 'Changed by the spec review, lap 2', commit, PR body, push — and step 7, the lap decision (a P1 was applied this lap, so expect a re-lap: lap 3's review half, in a new session).",
+    "triage_status": "Round 3 applied (F-28 option 1, F-29 option 1, ADD-4). Every finding is decided. NEXT: round 4 (FYI-9..14, two multi-select cards), then the wrap-up — spec frontmatter lap: 2 / last_applied: P1, mark this file triaged, the changelog list 'Changed by the spec review, lap 2', commit, PR body, push — and step 7, the lap decision.",
     "added_in_triage": [
       {
         "id": "R25",
@@ -99,6 +101,14 @@
         "raised_as": "the F-25 spike, scenario xi: the player unmounts on a client-side navigation to `/`, and `sample` (or the last song's value) stayed set, so a report from the home page would say `sample`",
         "decision": "Applied without asking, as the completion of leocaseiro's F-25 choice, and reported: `clearInstruments()` runs when the player unmounts; an open still running then changes nothing. Without it, home-page errors would be counted as errors on the bundled beat.",
         "round": "round 2 (2026-10-05)",
+        "applied": true
+      },
+      {
+        "id": "ADD-4",
+        "title": "Section 1 lists the PlayerShell.tsx tests",
+        "raised_as": "an omission from round 2, found while applying F-28: round 2 added two §6 bullets of cases in web/app/play/PlayerShell.test.tsx, and §1's sentence on tests beside their source never named the file",
+        "decision": "Applied without asking, as a completeness fix (lap 1 decided §1's file lists are complete), and reported: the sentence names web/app/play/PlayerShell.tsx.",
+        "round": "round 3 (2026-10-05)",
         "applied": true
       }
     ]
@@ -253,188 +263,7 @@
       "status": "applied without asking in the auto-resolve commit (lap 2 triage, invocation 1)"
     }
   ],
-  "undecided_findings": [
-    {
-      "id": "F-28",
-      "severity": "P2",
-      "severity_meaning": "should fix — a real gap an implementer will hit",
-      "confidence": 75,
-      "route": "Proposed fix",
-      "autofix_class": "gated_auto",
-      "recommended_action": "Apply",
-      "reviewers": ["design-lens"],
-      "promotion": "none",
-      "section": "§2.4 (Read, then open); §6; §1 Changed files",
-      "title": "After E105 the \"Loading the player\" bar keeps pulsing — a bug that already exists today",
-      "scenario": "You drop song.gp on the player; the file is read and parsed, and then our own code throws. The E105 toast tells you to try again, but the \"Loading the player\" bar keeps pulsing beside it, because nothing lowers the opening state on that path. It pulses until your next successful open or a reload, and the Open button leaves it the same way.",
-      "whats_wrong": "PlayerShell raises the opening state at line 862 and lowers it only on the not-a-score return (873) and on success (913). Any throw after 862 — the steps after the parse that pause the player and clear its selection — leaves the bar pulsing beside the error until the next successful open or a reload. This exists today: the same throw now shows E102. E105 only relabels it. The repo's own e2e comments call a bar that pulses forever a defect.",
-      "evidence_quotes": [
-        "a failure after it is our own code (E105, an error)",
-        "song.gp could not be opened. Something went wrong on our side, not with your file. Try again, or"
-      ],
-      "before_after": [
-        {
-          "option": "only",
-          "lines_at_78e35627": "223",
-          "before": "**Failures that never throw** — an event, a timer, or a state change:",
-          "after": "**An E105 also ends the opening state.** Every exit of `requestNotation` lowers it: its `finally`\ncalls `setOpening(false)` beside the `openInFlight` release, so the \"Loading the player\" bar stops\nafter an E105 from the picker or a drop. Today a throw after `setOpening(true)`\n(`web/app/play/PlayerShell.tsx:862`) skips both calls that lower it (`:873` and `:913`), and the\nbar keeps pulsing beside the error until the next open.\n\n**Failures that never throw** — an event, a timer, or a state change:"
-        },
-        {
-          "option": "only",
-          "lines_at_78e35627": "470",
-          "before": "- **Lint canary:** `tooling/silent-catch-fence.test.sh`, a sibling of",
-          "after": "- **The opening state**, a case in `web/app/play/PlayerShell.test.tsx`: with the player ready, an\n  open that throws after the parse shows E105 and leaves no \"Loading the player\" bar.\n- **Lint canary:** `tooling/silent-catch-fence.test.sh`, a sibling of"
-        },
-        {
-          "option": "only",
-          "lines_at_78e35627": "107",
-          "before": "- `shared/src/error-codes.ts` and `docs/reference/error-codes.md` — the new E105 (section 2.4).",
-          "after": "- `web/app/play/PlayerShell.test.tsx` — one case for the opening state after an E105 (section 6).\n- `shared/src/error-codes.ts` and `docs/reference/error-codes.md` — the new E105 (section 2.4)."
-        }
-      ],
-      "proposed_fix": "`requestNotation`'s finally calls `setOpening(false)` beside the openInFlight release (a no-op where it was already lowered); a PlayerShell.test.tsx case with the player ready: an open that throws after the parse shows E105 and no loading bar; §1 lists the test.",
-      "why_it_works": "Every exit of the open request lowers the bar, so the new E105 message never sits next to a loader that will not stop.",
-      "drop_consequence": "Discard it. The new E105 copy (\"Try again, or reload the page\") sits next to a loading bar that never stops.",
-      "basis": "One raise, two lowerings, and a finally that releases only the in-flight guard.",
-      "spike": {
-        "status": "run",
-        "what": "A call-order trace of runRequestNotation and requestNotation (grep and read): every raise and lowering of `opening`, and every exit between them. Not run in a browser.",
-        "result": "One raise (:862), two lowerings (:873, :913). Any throw from :863-867 or :892-912 leaves `opening` true until the next successful open or a reload. The same exit exists today: those throws reach the same two catches and show E102 with the bar equally stuck. A throw before :862 (around the replace prompt) is also E105 but leaves no bar."
-      },
-      "verification": {
-        "verdict": "pass-with-correction",
-        "verifier": "verify-C.json",
-        "checks": {
-          "section_exists": "§2.4 \"Every handled failure in `web/`\" (196), its \"Read, then open\" paragraph (214-221), and §6 Testing (442) exist.",
-          "quotes": "2/2 verbatim (spec lines 217, 218).",
-          "fix_consistent": "Consistent. The drafted paragraph is inserted before line 223, so it does not overlap AMB-7, which rewrites 218-221. A PlayerShell test case needs web/app/play/PlayerShell.test.tsx (it exists) added to §1's changed files, which the draft does before line 107."
-        },
-        "central_claim": {
-          "status": "confirmed",
-          "key_evidence": [
-            "web/app/play/PlayerShell.tsx:172 — `const [opening, setOpening] = useState(false);` It is read only at :502 and :515.",
-            "web/app/play/PlayerShell.tsx:862 — `flushSync(() => setOpening(true));`, raised after the engine wait (800-817) and the replace prompt (831-850).",
-            "web/app/play/PlayerShell.tsx:873 and :913 — the only two `setOpening(false)` calls: the E103 catch and the success path."
-          ],
-          "full_evidence": "verify-C.json"
-        },
-        "corrections": "Not new with this spec: today the same throw is caught by the same two catches and shown as E102, with the bar equally stuck; E105 only relabels it. Not every E105 sticks the bar — only a throw after line 862. The finding's quote is from player.e2e.ts:2587 (its comment is about \"No playback\", the same principle)."
-      },
-      "notes_for_triage": "Small, safe fix: `setOpening(false)` in the finally is a no-op on paths that already lowered it, and the early return for a second open sits outside the `try`, so it cannot clear an open in progress. Test pitfall: the PlayerShell.test.tsx harness has no api, so the bar shows from the start; the case must deliver `playerReady` first or \"no bar\" proves nothing. Composes with AMB-7 (same paragraph area; this draft is its own paragraph). Drop leaves a pre-existing bug that the new E105 copy now sits next to.",
-      "disposition_hint": "PICKER — round 3. Pre-existing, so normally out of scope — but the new E105 message sits next to it, and the fix is one line in code this spec already changes. Recommend applying it here; the alternative is a separate ticket. Test pitfall: deliver `playerReady` first, or \"no bar\" proves nothing.",
-      "raw_reviewer_findings": [
-        {
-          "raw_id": "DES-1",
-          "reviewer": "design-lens",
-          "title": "A failed open (E105) leaves the loading bar running",
-          "severity": "P2",
-          "confidence": 75,
-          "autofix_class": "gated_auto"
-        }
-      ],
-      "triage": null
-    },
-    {
-      "id": "F-29",
-      "severity": "P2",
-      "severity_meaning": "should fix — a real gap an implementer will hit",
-      "confidence": 75,
-      "route": "Proposed fix",
-      "autofix_class": "gated_auto",
-      "recommended_action": "Apply (option 1)",
-      "reviewers": ["adversarial"],
-      "promotion": "none",
-      "section": "§2.4 Failures that never throw (E204); §6; §1",
-      "title": "A player opened in a background tab reports a font failure that never happened",
-      "scenario": "You Cmd-click Play on the home page, so the player opens in a background tab, and you keep reading for two minutes. At 60 seconds that hidden tab sends Sentry an unhandled E204, \"the music font did not arrive within 60 seconds\", although nothing failed: the owner gets a new-issue email and your visit counts against the health number. When you switch to the tab, the score draws within a moment.",
-      "whats_wrong": "The E204 backstop (NotationSurface.tsx:125-130) raises \"the music font did not arrive within 60 seconds\" when no `renderFinished` arrives in 60 seconds; it does not watch the font. AlphaTab 1.8.4 starts its first render from an animation frame, and browsers run none in a hidden tab, while the timer keeps counting. The spec now sends E204 as an unhandled error, so a /play page opened in a background tab and left for a minute sends a false one: it lowers the health number, uses quota and emails the owner. Spike: with animation frames held back, the font downloaded but nothing rendered in 5 s while a 3 s timer fired; releasing them drew the score 31 ms later. (Headless Chromium keeps every page visible, so the hidden tab was emulated.)",
-      "evidence_quotes": [
-        "the music font did not arrive within 60 seconds",
-        "release that ended without an unhandled error — is the interim front-end health number."
-      ],
-      "before_after": [
-        {
-          "option": "1 (recommended by the reviewer)",
-          "lines_at_78e35627": "230",
-          "before": "| `web/app/play/PlayerShell.tsx`, both restore paths | saved settings or transport repaired, or unreadable | E601/E603 | warning          |",
-          "after": "| `web/app/play/PlayerShell.tsx`, both restore paths | saved settings or transport repaired, or unreadable | E601/E603 | warning          |\n\n**E204 counts visible time only.** AlphaTab 1.8.4 starts its first render from an animation\nframe, and a browser runs none in a hidden tab, so a player opened in a background tab draws\nnothing there while a plain timer keeps counting. The 60 seconds therefore run only while\n`document.visibilityState` is `visible`: the clock stops on `visibilitychange` to `hidden`,\ncontinues with the time left when the page is visible again, and stops for good at the first\n`renderFinished`. Without this, a background tab left for a minute sends an unhandled E204 that\nlowers the health number although nothing failed."
-        },
-        {
-          "option": "2",
-          "lines_at_78e35627": "230",
-          "before": "| `web/app/play/PlayerShell.tsx`, both restore paths | saved settings or transport repaired, or unreadable | E601/E603 | warning          |",
-          "after": "| `web/app/play/PlayerShell.tsx`, both restore paths | saved settings or transport repaired, or unreadable | E601/E603 | warning          |\n\n**E204 counts visible time only.** AlphaTab 1.8.4 starts its first render from an animation\nframe, and a browser runs none in a hidden tab, so a player opened in a background tab draws\nnothing there while a plain timer keeps counting. The clock is therefore cleared whenever the page\nis hidden and started again from 60 seconds each time it becomes visible, until the first\n`renderFinished` stops it for good. Without this, a background tab left for a minute sends an\nunhandled E204 that lowers the health number although nothing failed."
-        },
-        {
-          "option": "only (with either option; optional)",
-          "lines_at_78e35627": "474",
-          "before": "- **End to end (Playwright, in the existing `web` job):**",
-          "after": "- **The font clock**, a test beside `web/app/play/NotationSurface.tsx`, with fake timers and a\n  stubbed `document.visibilityState`: two hidden minutes raise no E204, and 60 visible seconds\n  with no render raise one. The end-to-end lane cannot cover this: headless Chromium keeps every\n  page visible.\n- **End to end (Playwright, in the existing `web` job):**"
-        },
-        {
-          "option": "only (goes with the test above)",
-          "lines_at_78e35627": "92-93",
-          "before": "Each `lib/monitoring` file has its unit test beside it, and so do the three error pages and\n`web/app/play/OpenFileControl.tsx` (section 6).",
-          "after": "Each `lib/monitoring` file has its unit test beside it, and so do the three error pages,\n`web/app/play/OpenFileControl.tsx` and `web/app/play/NotationSurface.tsx` (section 6)."
-        }
-      ],
-      "proposed_fix": "Option 1, and with either option the clock stops for good at the first `renderFinished`. Optional: a unit test beside NotationSurface.tsx with fake timers and a stubbed visibility state (two hidden minutes raise no E204; 60 visible seconds with no render raise one), and §1 lists it.",
-      "why_it_works": "E204 then means a visible page waited a full minute for a first render — a real failure — so its unhandled flag keeps meaning what S4 counts.",
-      "drop_consequence": "Discard it. Background-tab visits keep sending unhandled E204s: false alert emails, used quota and a lower health number.",
-      "basis": "The first render waits for an animation frame; hidden tabs run none.",
-      "spike": {
-        "status": "run",
-        "what": "Playwright 1.61.1 with Chromium 149 (headless shell and new headless). First, four ways to hide a page — a second page brought to front, a CDP background target, a CDP hidden target, a minimised window — all stayed `visible`, so a real hidden tab could not be made. Then an emulation: a page loads the installed minified AlphaTab 1.8.4 laid out as web/scripts/vendor-alphatab.mjs serves it, with c…",
-        "result": "Control run: scoreLoaded at 81 ms, renderFinished at 112 ms. Held run: the font was requested, but the score was never fetched and neither scoreLoaded nor renderFinished fired in 5 s, while the 3 s timer fired at 3033 ms. Releasing the held callbacks (\"showing the tab\"): scoreLoaded +19 ms, renderFinished +31 ms. Limit: holding requestAnimationFrame alone let AlphaTab's ResizeObserver path fire an empty-score renderFinished at 92 ms; a hidden page defers both."
-      },
-      "verification": {
-        "verdict": "pass",
-        "verifier": "verify-C.json",
-        "checks": {
-          "section_exists": "§2.4 \"Failures that never throw\" (223-230, the E204 row at 228) and Non-goals (19-24, the health number) exist.",
-          "quotes": "2/2 verbatim (spec lines 228, 24).",
-          "fix_consistent": "Consistent. The E204 row text and the banner message can stay: the visitor still meets \"did not arrive within 60 seconds\" when it fires. The existing case \"a music font that arrives after the 60 s backstop clears the error\" (web/e2e/player.e2e.ts:230-258) runs on a visible page with page.clock, so both options keep it green. Lap-1's decision that E201-E204 report as unhandled is not touched; this only stops a false E204."
-        },
-        "central_claim": {
-          "status": "confirmed",
-          "key_evidence": [
-            "web/app/play/NotationSurface.tsx:105-136 — the backstop is armed in an effect keyed on [api]: :125-130 `globalThis.setTimeout(..., 60_000)` raises E204 through setFontError. It waits for any `renderFinished`, which clears it at :155-156 (or the effect cleanup, :134). It does not watch the font itself.",
-            "@coderline/alphatab@1.8.4:dist/alphaTab.core.mjs:45577-45579 — the AlphaTabApi constructor ends `this.uiFacade.beginInvoke(() => { this.uiFacade.initialRender(); })`.",
-            "@coderline/alphatab@1.8.4:dist/alphaTab.core.mjs:41289-41293 — BrowserUiFacade.beginInvoke is `window.requestAnimationFrame(() => { action(); })`."
-          ],
-          "full_evidence": "verify-C.json"
-        },
-        "corrections": "None to the claim. Precision: the backstop waits for any renderFinished, not for the font; the font itself downloads in a hidden tab (seen in the spike). What stalls is AlphaTab's first render."
-      },
-      "notes_for_triage": "Option 1 (pause and resume) keeps the full 60 visible seconds; option 2 (restart at every return to the tab) is less code, but a visitor who switches tabs often gets E204 later. Pitfall for both: the clock must stop for good at the first renderFinished — a visibility listener that re-arms it afterwards would raise a false E204 a minute after any tab switch. The test bullet is optional and needs a new web/app/play/NotationSurface.test.tsx (hence the §1 line 92-93 change). Drop: background-tab visits keep sending unhandled E204s, using quota, lowering the health number, and emailing the owner on the first one.",
-      "disposition_hint": "PICKER — round 3. It changes NotationSurface's timer, beyond the catch-site wiring. Recommend option 1. Pitfall for both: a visibility listener must not re-arm the clock after the first render.",
-      "raw_reviewer_findings": [
-        {
-          "raw_id": "ADV-6",
-          "reviewer": "adversarial",
-          "title": "E204 fires in background tabs and marks visits unhandled",
-          "severity": "P2",
-          "confidence": 75,
-          "autofix_class": "gated_auto"
-        }
-      ],
-      "triage": null,
-      "options": [
-        {
-          "option": "1 (recommended — the reviewer)",
-          "what": "Pause the 60-second clock while the page is hidden and continue with the time left when it is visible again.",
-          "pros": "Keeps the full 60 visible seconds.",
-          "cons": "A little more code."
-        },
-        {
-          "option": "2",
-          "what": "Restart from 60 seconds each time the page becomes visible.",
-          "pros": "Less code.",
-          "cons": "A visitor who switches tabs often waits longer for a real E204."
-        }
-      ]
-    }
-  ],
+  "undecided_findings": [],
   "fyi_observations": [
     {
       "id": "FYI-9",
@@ -754,7 +583,9 @@
     "A shell handler that reads React state inside AlphaTab's score-loaded event sees the previous render's state (NotationSurface.tsx:96-102 records the same trap) — read `api.score` or a ref (verify-B, F-25).",
     "Instruments tag (round 2): implement Design A from lap-2/spike-F25-F23.md — six call sites, the counter inside report.ts, the swap's tag set just BEFORE setNotation (a throw while computing the value then counts as before the swap; reasoned, not run).",
     "Instruments tag: a hung open (the engine import never settles) keeps the counter above 0, so the tag stays off for the rest of the visit — never wrong, only absent (reasoned, not run).",
-    "Aside from the spike, out of scope: SettingsPopover.tsx reads the stylesheet from the score-loaded ARGUMENT with no api.score guard; it ends right in the late-sample race only because it subscribes before NotationSurface (reasoned from effect order, not asserted)."
+    "Aside from the spike, out of scope: SettingsPopover.tsx reads the stylesheet from the score-loaded ARGUMENT with no api.score guard; it ends right in the late-sample race only because it subscribes before NotationSurface (reasoned from effect order, not asserted).",
+    "F-28: the PlayerShell.test.tsx harness has no api, so the loading bar shows from the start; deliver playerReady before the open, or 'no bar' proves nothing.",
+    "F-29: arm the clock only while visible (a tab opened hidden starts it when first shown), keep the time left across a hide, and have the first renderFinished remove the visibilitychange listener as well as clear the timer — a listener left behind re-arms it a minute after any tab switch."
   ],
   "triage_plan": {
     "auto_resolve_first": "One commit, reported in one short list (the owner's standing rule: confident fixes and test improvements without asking, always reported): F-20 (option 1), F-26, F-27, F-30, AMB-5, AMB-6, AMB-7 (option 1), AMB-8. F-21 is decided here too, but applied in round 2's commit (shared §1 bullet); F-27's §1 bullet edit likewise.",
@@ -2152,6 +1983,196 @@
         "notes": "Its optional test change is applied as a test improvement: e2e case 4 holds the bundled sample back, as the late-sample test in player.e2e.ts does, and expects `instruments: 025`, not `sample`."
       },
       "depends_on": "F-25 — if F-25 is applied, no handler sets the tag and this fix is not needed"
+    },
+    {
+      "id": "F-28",
+      "severity": "P2",
+      "severity_meaning": "should fix — a real gap an implementer will hit",
+      "confidence": 75,
+      "route": "Proposed fix",
+      "autofix_class": "gated_auto",
+      "recommended_action": "Apply",
+      "reviewers": ["design-lens"],
+      "promotion": "none",
+      "section": "§2.4 (Read, then open); §6; §1 Changed files",
+      "title": "After E105 the \"Loading the player\" bar keeps pulsing — a bug that already exists today",
+      "scenario": "You drop song.gp on the player; the file is read and parsed, and then our own code throws. The E105 toast tells you to try again, but the \"Loading the player\" bar keeps pulsing beside it, because nothing lowers the opening state on that path. It pulses until your next successful open or a reload, and the Open button leaves it the same way.",
+      "whats_wrong": "PlayerShell raises the opening state at line 862 and lowers it only on the not-a-score return (873) and on success (913). Any throw after 862 — the steps after the parse that pause the player and clear its selection — leaves the bar pulsing beside the error until the next successful open or a reload. This exists today: the same throw now shows E102. E105 only relabels it. The repo's own e2e comments call a bar that pulses forever a defect.",
+      "evidence_quotes": [
+        "a failure after it is our own code (E105, an error)",
+        "song.gp could not be opened. Something went wrong on our side, not with your file. Try again, or"
+      ],
+      "before_after": [
+        {
+          "option": "only",
+          "lines_at_78e35627": "223",
+          "before": "**Failures that never throw** — an event, a timer, or a state change:",
+          "after": "**An E105 also ends the opening state.** Every exit of `requestNotation` lowers it: its `finally`\ncalls `setOpening(false)` beside the `openInFlight` release, so the \"Loading the player\" bar stops\nafter an E105 from the picker or a drop. Today a throw after `setOpening(true)`\n(`web/app/play/PlayerShell.tsx:862`) skips both calls that lower it (`:873` and `:913`), and the\nbar keeps pulsing beside the error until the next open.\n\n**Failures that never throw** — an event, a timer, or a state change:"
+        },
+        {
+          "option": "only",
+          "lines_at_78e35627": "470",
+          "before": "- **Lint canary:** `tooling/silent-catch-fence.test.sh`, a sibling of",
+          "after": "- **The opening state**, a case in `web/app/play/PlayerShell.test.tsx`: with the player ready, an\n  open that throws after the parse shows E105 and leaves no \"Loading the player\" bar.\n- **Lint canary:** `tooling/silent-catch-fence.test.sh`, a sibling of"
+        },
+        {
+          "option": "only",
+          "lines_at_78e35627": "107",
+          "before": "- `shared/src/error-codes.ts` and `docs/reference/error-codes.md` — the new E105 (section 2.4).",
+          "after": "- `web/app/play/PlayerShell.test.tsx` — one case for the opening state after an E105 (section 6).\n- `shared/src/error-codes.ts` and `docs/reference/error-codes.md` — the new E105 (section 2.4)."
+        }
+      ],
+      "proposed_fix": "`requestNotation`'s finally calls `setOpening(false)` beside the openInFlight release (a no-op where it was already lowered); a PlayerShell.test.tsx case with the player ready: an open that throws after the parse shows E105 and no loading bar; §1 lists the test.",
+      "why_it_works": "Every exit of the open request lowers the bar, so the new E105 message never sits next to a loader that will not stop.",
+      "drop_consequence": "Discard it. The new E105 copy (\"Try again, or reload the page\") sits next to a loading bar that never stops.",
+      "basis": "One raise, two lowerings, and a finally that releases only the in-flight guard.",
+      "spike": {
+        "status": "run",
+        "what": "A call-order trace of runRequestNotation and requestNotation (grep and read): every raise and lowering of `opening`, and every exit between them. Not run in a browser.",
+        "result": "One raise (:862), two lowerings (:873, :913). Any throw from :863-867 or :892-912 leaves `opening` true until the next successful open or a reload. The same exit exists today: those throws reach the same two catches and show E102 with the bar equally stuck. A throw before :862 (around the replace prompt) is also E105 but leaves no bar."
+      },
+      "verification": {
+        "verdict": "pass-with-correction",
+        "verifier": "verify-C.json",
+        "checks": {
+          "section_exists": "§2.4 \"Every handled failure in `web/`\" (196), its \"Read, then open\" paragraph (214-221), and §6 Testing (442) exist.",
+          "quotes": "2/2 verbatim (spec lines 217, 218).",
+          "fix_consistent": "Consistent. The drafted paragraph is inserted before line 223, so it does not overlap AMB-7, which rewrites 218-221. A PlayerShell test case needs web/app/play/PlayerShell.test.tsx (it exists) added to §1's changed files, which the draft does before line 107."
+        },
+        "central_claim": {
+          "status": "confirmed",
+          "key_evidence": [
+            "web/app/play/PlayerShell.tsx:172 — `const [opening, setOpening] = useState(false);` It is read only at :502 and :515.",
+            "web/app/play/PlayerShell.tsx:862 — `flushSync(() => setOpening(true));`, raised after the engine wait (800-817) and the replace prompt (831-850).",
+            "web/app/play/PlayerShell.tsx:873 and :913 — the only two `setOpening(false)` calls: the E103 catch and the success path."
+          ],
+          "full_evidence": "verify-C.json"
+        },
+        "corrections": "Not new with this spec: today the same throw is caught by the same two catches and shown as E102, with the bar equally stuck; E105 only relabels it. Not every E105 sticks the bar — only a throw after line 862. The finding's quote is from player.e2e.ts:2587 (its comment is about \"No playback\", the same principle)."
+      },
+      "notes_for_triage": "Small, safe fix: `setOpening(false)` in the finally is a no-op on paths that already lowered it, and the early return for a second open sits outside the `try`, so it cannot clear an open in progress. Test pitfall: the PlayerShell.test.tsx harness has no api, so the bar shows from the start; the case must deliver `playerReady` first or \"no bar\" proves nothing. Composes with AMB-7 (same paragraph area; this draft is its own paragraph). Drop leaves a pre-existing bug that the new E105 copy now sits next to.",
+      "disposition_hint": "PICKER — round 3. Pre-existing, so normally out of scope — but the new E105 message sits next to it, and the fix is one line in code this spec already changes. Recommend applying it here; the alternative is a separate ticket. Test pitfall: deliver `playerReady` first, or \"no bar\" proves nothing.",
+      "raw_reviewer_findings": [
+        {
+          "raw_id": "DES-1",
+          "reviewer": "design-lens",
+          "title": "A failed open (E105) leaves the loading bar running",
+          "severity": "P2",
+          "confidence": 75,
+          "autofix_class": "gated_auto"
+        }
+      ],
+      "triage": {
+        "round": "round 3 (2026-10-05)",
+        "decision": "Apply — option 1 (fix it in this PR, recommended), chosen by leocaseiro",
+        "applied": true,
+        "notes": "§2.4 gains 'An E105 also ends the opening state': requestNotation's finally calls setOpening(false) beside the openInFlight release; the early return for a second open stays outside the try. §6 gains 'The opening state' (PlayerShell.test.tsx, with the player ready). The finding's own §1 bullet was not needed: ADD-4 lists PlayerShell.tsx in §1's test sentence. Checked before the picker: OpenFileControl.tsx:80 and the drop path (PlayerShell.tsx:971) already dismiss the 'notation-load' toast, so the bar was the only state left behind."
+      }
+    },
+    {
+      "id": "F-29",
+      "severity": "P2",
+      "severity_meaning": "should fix — a real gap an implementer will hit",
+      "confidence": 75,
+      "route": "Proposed fix",
+      "autofix_class": "gated_auto",
+      "recommended_action": "Apply (option 1)",
+      "reviewers": ["adversarial"],
+      "promotion": "none",
+      "section": "§2.4 Failures that never throw (E204); §6; §1",
+      "title": "A player opened in a background tab reports a font failure that never happened",
+      "scenario": "You Cmd-click Play on the home page, so the player opens in a background tab, and you keep reading for two minutes. At 60 seconds that hidden tab sends Sentry an unhandled E204, \"the music font did not arrive within 60 seconds\", although nothing failed: the owner gets a new-issue email and your visit counts against the health number. When you switch to the tab, the score draws within a moment.",
+      "whats_wrong": "The E204 backstop (NotationSurface.tsx:125-130) raises \"the music font did not arrive within 60 seconds\" when no `renderFinished` arrives in 60 seconds; it does not watch the font. AlphaTab 1.8.4 starts its first render from an animation frame, and browsers run none in a hidden tab, while the timer keeps counting. The spec now sends E204 as an unhandled error, so a /play page opened in a background tab and left for a minute sends a false one: it lowers the health number, uses quota and emails the owner. Spike: with animation frames held back, the font downloaded but nothing rendered in 5 s while a 3 s timer fired; releasing them drew the score 31 ms later. (Headless Chromium keeps every page visible, so the hidden tab was emulated.)",
+      "evidence_quotes": [
+        "the music font did not arrive within 60 seconds",
+        "release that ended without an unhandled error — is the interim front-end health number."
+      ],
+      "before_after": [
+        {
+          "option": "1 (recommended by the reviewer)",
+          "lines_at_78e35627": "230",
+          "before": "| `web/app/play/PlayerShell.tsx`, both restore paths | saved settings or transport repaired, or unreadable | E601/E603 | warning          |",
+          "after": "| `web/app/play/PlayerShell.tsx`, both restore paths | saved settings or transport repaired, or unreadable | E601/E603 | warning          |\n\n**E204 counts visible time only.** AlphaTab 1.8.4 starts its first render from an animation\nframe, and a browser runs none in a hidden tab, so a player opened in a background tab draws\nnothing there while a plain timer keeps counting. The 60 seconds therefore run only while\n`document.visibilityState` is `visible`: the clock stops on `visibilitychange` to `hidden`,\ncontinues with the time left when the page is visible again, and stops for good at the first\n`renderFinished`. Without this, a background tab left for a minute sends an unhandled E204 that\nlowers the health number although nothing failed."
+        },
+        {
+          "option": "2",
+          "lines_at_78e35627": "230",
+          "before": "| `web/app/play/PlayerShell.tsx`, both restore paths | saved settings or transport repaired, or unreadable | E601/E603 | warning          |",
+          "after": "| `web/app/play/PlayerShell.tsx`, both restore paths | saved settings or transport repaired, or unreadable | E601/E603 | warning          |\n\n**E204 counts visible time only.** AlphaTab 1.8.4 starts its first render from an animation\nframe, and a browser runs none in a hidden tab, so a player opened in a background tab draws\nnothing there while a plain timer keeps counting. The clock is therefore cleared whenever the page\nis hidden and started again from 60 seconds each time it becomes visible, until the first\n`renderFinished` stops it for good. Without this, a background tab left for a minute sends an\nunhandled E204 that lowers the health number although nothing failed."
+        },
+        {
+          "option": "only (with either option; optional)",
+          "lines_at_78e35627": "474",
+          "before": "- **End to end (Playwright, in the existing `web` job):**",
+          "after": "- **The font clock**, a test beside `web/app/play/NotationSurface.tsx`, with fake timers and a\n  stubbed `document.visibilityState`: two hidden minutes raise no E204, and 60 visible seconds\n  with no render raise one. The end-to-end lane cannot cover this: headless Chromium keeps every\n  page visible.\n- **End to end (Playwright, in the existing `web` job):**"
+        },
+        {
+          "option": "only (goes with the test above)",
+          "lines_at_78e35627": "92-93",
+          "before": "Each `lib/monitoring` file has its unit test beside it, and so do the three error pages and\n`web/app/play/OpenFileControl.tsx` (section 6).",
+          "after": "Each `lib/monitoring` file has its unit test beside it, and so do the three error pages,\n`web/app/play/OpenFileControl.tsx` and `web/app/play/NotationSurface.tsx` (section 6)."
+        }
+      ],
+      "proposed_fix": "Option 1, and with either option the clock stops for good at the first `renderFinished`. Optional: a unit test beside NotationSurface.tsx with fake timers and a stubbed visibility state (two hidden minutes raise no E204; 60 visible seconds with no render raise one), and §1 lists it.",
+      "why_it_works": "E204 then means a visible page waited a full minute for a first render — a real failure — so its unhandled flag keeps meaning what S4 counts.",
+      "drop_consequence": "Discard it. Background-tab visits keep sending unhandled E204s: false alert emails, used quota and a lower health number.",
+      "basis": "The first render waits for an animation frame; hidden tabs run none.",
+      "spike": {
+        "status": "run",
+        "what": "Playwright 1.61.1 with Chromium 149 (headless shell and new headless). First, four ways to hide a page — a second page brought to front, a CDP background target, a CDP hidden target, a minimised window — all stayed `visible`, so a real hidden tab could not be made. Then an emulation: a page loads the installed minified AlphaTab 1.8.4 laid out as web/scripts/vendor-alphatab.mjs serves it, with c…",
+        "result": "Control run: scoreLoaded at 81 ms, renderFinished at 112 ms. Held run: the font was requested, but the score was never fetched and neither scoreLoaded nor renderFinished fired in 5 s, while the 3 s timer fired at 3033 ms. Releasing the held callbacks (\"showing the tab\"): scoreLoaded +19 ms, renderFinished +31 ms. Limit: holding requestAnimationFrame alone let AlphaTab's ResizeObserver path fire an empty-score renderFinished at 92 ms; a hidden page defers both."
+      },
+      "verification": {
+        "verdict": "pass",
+        "verifier": "verify-C.json",
+        "checks": {
+          "section_exists": "§2.4 \"Failures that never throw\" (223-230, the E204 row at 228) and Non-goals (19-24, the health number) exist.",
+          "quotes": "2/2 verbatim (spec lines 228, 24).",
+          "fix_consistent": "Consistent. The E204 row text and the banner message can stay: the visitor still meets \"did not arrive within 60 seconds\" when it fires. The existing case \"a music font that arrives after the 60 s backstop clears the error\" (web/e2e/player.e2e.ts:230-258) runs on a visible page with page.clock, so both options keep it green. Lap-1's decision that E201-E204 report as unhandled is not touched; this only stops a false E204."
+        },
+        "central_claim": {
+          "status": "confirmed",
+          "key_evidence": [
+            "web/app/play/NotationSurface.tsx:105-136 — the backstop is armed in an effect keyed on [api]: :125-130 `globalThis.setTimeout(..., 60_000)` raises E204 through setFontError. It waits for any `renderFinished`, which clears it at :155-156 (or the effect cleanup, :134). It does not watch the font itself.",
+            "@coderline/alphatab@1.8.4:dist/alphaTab.core.mjs:45577-45579 — the AlphaTabApi constructor ends `this.uiFacade.beginInvoke(() => { this.uiFacade.initialRender(); })`.",
+            "@coderline/alphatab@1.8.4:dist/alphaTab.core.mjs:41289-41293 — BrowserUiFacade.beginInvoke is `window.requestAnimationFrame(() => { action(); })`."
+          ],
+          "full_evidence": "verify-C.json"
+        },
+        "corrections": "None to the claim. Precision: the backstop waits for any renderFinished, not for the font; the font itself downloads in a hidden tab (seen in the spike). What stalls is AlphaTab's first render."
+      },
+      "notes_for_triage": "Option 1 (pause and resume) keeps the full 60 visible seconds; option 2 (restart at every return to the tab) is less code, but a visitor who switches tabs often gets E204 later. Pitfall for both: the clock must stop for good at the first renderFinished — a visibility listener that re-arms it afterwards would raise a false E204 a minute after any tab switch. The test bullet is optional and needs a new web/app/play/NotationSurface.test.tsx (hence the §1 line 92-93 change). Drop: background-tab visits keep sending unhandled E204s, using quota, lowering the health number, and emailing the owner on the first one.",
+      "disposition_hint": "PICKER — round 3. It changes NotationSurface's timer, beyond the catch-site wiring. Recommend option 1. Pitfall for both: a visibility listener must not re-arm the clock after the first render.",
+      "raw_reviewer_findings": [
+        {
+          "raw_id": "ADV-6",
+          "reviewer": "adversarial",
+          "title": "E204 fires in background tabs and marks visits unhandled",
+          "severity": "P2",
+          "confidence": 75,
+          "autofix_class": "gated_auto"
+        }
+      ],
+      "triage": {
+        "round": "round 3 (2026-10-05)",
+        "decision": "Apply — option 1 (pause and resume, recommended), chosen by leocaseiro",
+        "applied": true,
+        "notes": "§2.4 gains 'E204 counts visible time only' after the never-throw table. One clause was added for clarity beyond the shown draft, reported: a player opened in a background tab starts the clock when the tab is first shown. §6 gains 'The font clock' (the optional test, added under the owner's standing rule for tests): its middle case (40 visible s, a hidden minute, 20 more visible s raise one) is what tells pause-and-resume from restart. §1's test sentence gains NotationSurface.tsx."
+      },
+      "options": [
+        {
+          "option": "1 (recommended — the reviewer)",
+          "what": "Pause the 60-second clock while the page is hidden and continue with the time left when it is visible again.",
+          "pros": "Keeps the full 60 visible seconds.",
+          "cons": "A little more code."
+        },
+        {
+          "option": "2",
+          "what": "Restart from 60 seconds each time the page becomes visible.",
+          "pros": "Less code.",
+          "cons": "A visitor who switches tabs often waits longer for a real E204."
+        }
+      ]
     }
   ]
 }

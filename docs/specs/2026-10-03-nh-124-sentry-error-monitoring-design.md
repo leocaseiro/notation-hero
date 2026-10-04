@@ -90,8 +90,9 @@ whatever pnpm resolves under the 7-day `minimumReleaseAge` gate; the plan record
 | `web/e2e/sentry-envelopes.ts`              | The shared fixture: routes the fake DSN host, answers it, and records each envelope (section 6).                                                                    |
 | `tooling/silent-catch-fence.test.sh`       | The lint canary: a silent `catch { }` and a silent `.catch(() => null)` must both fail ESLint (section 6).                                                          |
 
-Each `lib/monitoring` file has its unit test beside it, and so do the three error pages and
-`web/app/play/OpenFileControl.tsx` (section 6).
+Each `lib/monitoring` file has its unit test beside it, and so do the three error pages,
+`web/app/play/OpenFileControl.tsx`, `web/app/play/PlayerShell.tsx` and
+`web/app/play/NotationSurface.tsx` (section 6).
 
 **Changed files:** `web/next.config.ts` (the `withSentryConfig` wrapper), both `error.tsx` files, the
 16 catch sites and 4 failure paths listed in section 2.4, `web/app/page.tsx` (copy),
@@ -259,6 +260,14 @@ does for E101 and E102; the picker does not, because `OpenFileControl` receives 
 E105 is a new row in `shared/src/error-codes.ts` and `docs/reference/error-codes.md`: "The file
 was read, but loading it into the player failed — a bug in our code, not the file."
 
+**An E105 also ends the opening state.** Every exit of `requestNotation` lowers it: its `finally`
+calls `setOpening(false)` beside the `openInFlight` release, so the "Loading the player" bar stops
+after an E105 from the picker or a drop. The early return for a second open stays outside the
+`try`, so it never lowers the bar of the open still running. This gap predates the spec: a throw
+after `setOpening(true)` (`web/app/play/PlayerShell.tsx:862`) skips both calls that lower it
+(`:873` and `:913`), so today the bar keeps pulsing beside an E102 until another open lowers it or
+the page is reloaded.
+
 **Failures that never throw** — an event, a timer, or a state change:
 
 | Where                                              | What fails                                          | Code      | Sends            |
@@ -267,6 +276,15 @@ was read, but loading it into the player failed — a bug in our code, not the f
 | `web/app/play/NotationSurface.tsx:126`             | the music font did not arrive within 60 seconds     | E204      | error, unhandled |
 | `web/app/play/NotationSurface.tsx:141`             | AlphaTab's `error` event, for example the SoundFont | E202      | error, unhandled |
 | `web/app/play/PlayerShell.tsx`, both restore paths | saved settings or transport repaired, or unreadable | E601/E603 | warning          |
+
+**E204 counts visible time only.** AlphaTab 1.8.4 starts its first render from an animation
+frame, and a browser runs none in a hidden tab, so a player opened in a background tab draws
+nothing there while a plain timer keeps counting. The 60 seconds therefore run only while
+`document.visibilityState` is `visible`: a player opened in a background tab starts the clock when
+the tab is first shown, a `visibilitychange` to `hidden` stops it, it continues with the time left
+when the page is visible again, and the first `renderFinished` stops it for good, so a later tab
+switch never starts it again. Without this, a background tab left for a minute sends an unhandled
+E204 that lowers the health number although nothing failed.
 
 **Blocked is not corrupt.** Storage the browser _blocks_ is the visitor's environment: a breadcrumb
 (S2b). Saved data that is _corrupt_ means our own code wrote something bad, or an update changed which
@@ -544,6 +562,13 @@ secret. The upload now runs inside Vercel's build, so neither GitHub mechanism a
   `drums,030`, and so does Cancel on the prompt to replace it; an E105 thrown just after the swap
   leaves the new score's value; and when the bundled sample's score-loaded event arrives after the
   visitor's file, the tag keeps the file's value.
+- **The opening state**, a case in `web/app/play/PlayerShell.test.tsx`: with the player ready, an
+  open that throws after the parse shows E105 and leaves no "Loading the player" bar.
+- **The font clock**, a test beside `web/app/play/NotationSurface.tsx`, with fake timers and a
+  stubbed `document.visibilityState`: two hidden minutes raise no E204; 40 visible seconds, a hidden
+  minute, then 20 more visible seconds raise one; and once a render has finished, hiding and showing
+  the tab raises none a minute later. The end-to-end lane cannot cover this: headless Chromium keeps
+  every page visible.
 - **Lint canary:** `tooling/silent-catch-fence.test.sh`, a sibling of
   `tooling/alphatab-import-fence.test.sh` — its `expect_rejected` helper over the same
   `no-restricted-syntax` list, already run in the `quality` job — expects both a silent `catch { }`
