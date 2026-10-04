@@ -83,7 +83,7 @@ whatever pnpm resolves under the 7-day `minimumReleaseAge` gate; the plan record
 | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `web/instrumentation-client.ts`            | Starts Sentry before the page becomes interactive. With no DSN the SDK sends nothing — which is the state in `pnpm dev`, in unit tests, and on preview deployments. |
 | `web/app/global-error.tsx`                 | Catches a crash in the root layout itself. Today there is none, so a root-layout crash shows Next's bare default page.                                              |
-| `web/lib/monitoring/report.ts`             | `reportError()`, `noteError()`, `tagInstruments()` and `isStorageRefusal()`. Apart from `instrumentation-client.ts`, the only file that imports Sentry.             |
+| `web/lib/monitoring/report.ts`             | `reportError()`, `noteError()`, `isStorageRefusal()` and the tag functions (2.3). Apart from `instrumentation-client.ts`, the only file that imports Sentry.        |
 | `web/lib/monitoring/scrub.ts`              | The privacy filter (section 3): names out of error messages, page addresses cut at `?` or `#`.                                                                      |
 | `web/lib/monitoring/known-engine-noise.ts` | The known AlphaTab throws, shared by the Sentry filter and `web/e2e/page-errors.ts` (section 2.6).                                                                  |
 | `web/e2e/error-reporting.e2e.ts`           | The end-to-end reporting and privacy cases (section 6).                                                                                                             |
@@ -100,9 +100,13 @@ screenshot baseline, `web/README.md` (the environment variables), `web/playwrigh
 (a fake DSN), `cspell.json`, and the decision registry and changelog. Also:
 
 - `web/app/play/OpenFileControl.tsx` and `web/app/play/PlayerShell.tsx`, beyond their catch sites:
-  picking or dropping a file remembers its name (3.2) and clears the `instruments` tag (2.3); the
-  score-loaded handler remembers the score's names and sets the tag; `readNotation` and
-  `LoadedNotation` carry the file's extension (2.3).
+  picking or dropping a file remembers its name (3.2) and takes the `instruments` tag off until the
+  open ends (2.3); `requestNotation` remembers the score's names as soon as the file parses (3.2)
+  and sets the tag just before the opened score replaces the open one; the player sets the tag to
+  `sample` when it mounts and removes it when it unmounts; `readNotation` and `LoadedNotation`
+  carry the file's extension (2.3). The function that turns a file name into that type lives in
+  `OpenFileControl.tsx`, beside the `ACCEPT` list it checks, and is exported like `readNotation`,
+  so the drop path in `PlayerShell.tsx` uses the same list.
 - `web/e2e/player.e2e.ts` — one assertion each on the font and SoundFont failures it already
   forces (section 6).
 - `shared/src/error-codes.ts` and `docs/reference/error-codes.md` — the new E105 (section 2.4).
@@ -162,8 +166,22 @@ export function reportError(
 /** A breadcrumb: never sent alone; it travels inside the next real report. Costs no quota. */
 export function noteError(error: unknown, what: string): void;
 
-/** The score's kinds of instrument, as the Sentry tag `instruments`; an empty list clears it. */
-export function tagInstruments(tracks: readonly { program: number; isPercussion: boolean }[]): void;
+/** The `instruments` value for these tracks: `drums` first, then each program in three digits. */
+export function instrumentsValue(
+  tracks: readonly { program: number; isPercussion: boolean }[],
+): string;
+
+/** Sets the Sentry tag `instruments` for the score on screen: `sample` or `instrumentsValue()`. */
+export function tagInstruments(value: string): void;
+
+/** A file was picked or dropped: no report carries the tag until that open ends. */
+export function suspendInstruments(): void;
+
+/** In a `finally`, when that open ends: the tag holds the value for the score on screen again. */
+export function restoreInstruments(): void;
+
+/** The player unmounted: the tag is removed, and an open still running changes nothing. */
+export function clearInstruments(): void;
 ```
 
 - `level` defaults to `error`.
@@ -184,16 +202,33 @@ export function tagInstruments(tracks: readonly { program: number; isPercussion:
   `gp`, `gp3`, `gp4`, `gp5`, `gpx`, `musicxml`, `mxl`, `xml`, `capx`, `atex`, `alphatex`); any
   other, or none, becomes `other`. It says what kind of file it is, never what it is called.
 - **E105 keeps its message.** It is our own code failing after the file was read, so the message
-  describes our bug, not the file. The names filter (section 3.2) still runs over it.
+  describes our bug, not the file. The names filter (section 3.2) still runs over it, and it already
+  holds the new score's names: they are remembered as soon as the file parses.
 - **`instruments`** is a Sentry tag naming the open score's kinds of instrument, so an issue's
-  Tags panel shows when its reports cluster on one instrument. Each kind appears once: `drums` for
-  a percussion track (a staff marked percussion, read as `web/lib/alphatab/mixer-tracks.ts`
-  already does), otherwise the track's General MIDI program as the engine stores it
-  (`playbackInfo.program`, 0–127, counted from 0, so `30` is Distortion Guitar). `drums` comes
-  first, then the numbers in ascending order, joined by `,` — `Punk.gp` gives `drums,30`. No name
-  table: the engine's own list is internal, and the number is enough. The tag is set when a score
-  loads, and cleared as soon as another file is picked or dropped, before it is read, so a failure
-  while opening it never carries the last song's instruments.
+  Tags panel shows which sets of instruments its reports came from. Sentry counts each whole value
+  as one entry, so `drums,030` and `drums,029,030,033` are two entries; to find every report with
+  one instrument, search for its number between wildcards: `instruments:*030*`. Each kind appears
+  once: `drums` for a percussion track (a staff marked percussion, read as
+  `web/lib/alphatab/mixer-tracks.ts` already does), otherwise the track's General MIDI program as
+  the engine stores it (`playbackInfo.program`, 0–127, counted from 0, so `30` is Distortion
+  Guitar), written with three digits so that a search for one number never matches another (`25`
+  becomes `025`, which `125` does not contain). `drums` comes first, then the numbers in ascending
+  order, joined by `,` — `Punk.gp` gives `drums,030`. No name table: the engine's own list is
+  internal, and the number is enough.
+- **When the tag changes.** `report.ts` keeps one value, the one for the score on screen, and the
+  functions above change it. When the player mounts it is `sample`: the bundled one-track beat that
+  AlphaTab loads on every visit to `/play` has its own value, so errors while only that beat is on
+  screen are found with `instruments:sample`, apart from a visitor's own drum chart.
+  `requestNotation` sets the opened score's value just before that score replaces the open one.
+  Picking or dropping a file calls `suspendInstruments()` before the file is read, and a `finally`
+  calls `restoreInstruments()` when that open ends. While an open runs, no report carries the tag,
+  so a failure while opening a file (E101, E102, E103, or E105 before or after the swap) never
+  carries the last song's instruments. Afterwards the tag holds the remembered value again: the
+  previous score's after a cancelled or failed open, the new score's after a successful one.
+  `report.ts` counts the opens still running, so the tag comes back only when the last one ends.
+  When the player unmounts, `clearInstruments()` removes the tag: a report from `/` carries none,
+  and an open still running then changes nothing. AlphaTab's score-loaded event never sets the
+  tag: it also fires for the bundled beat, sometimes after the visitor's file.
 
 ### 2.4 Every handled failure in `web/`
 
@@ -297,7 +332,7 @@ and XHR callbacks, is lost; those errors still arrive through the same global ha
 | track names, title, artist, album              | **Verified in Sentry's source** (`packages/browser-utils/src/htmlTreeAsString.ts:156`): click breadcrumbs record each element's `aria-label`, `type`, `name`, `title` and `alt`. The Solo, Mute and Render buttons are labelled `` `Solo ${name}` `` (`client/src/components/ui/TrackRow/TrackRow.tsx:247`). An error's message could quote one too: none does today, but reading a value by a track name off a missing object gives `Cannot read properties of undefined (reading 'Lead Guitar')`. | click breadcrumbs are off (`dom: false`, 3.3), so no label is recorded; the names filter (3.2) replaces a name in an error's message with `[file]`                   |
 | the file name                                  | any error message that quotes it — none does today                                                                                                                                                                                                                                                                                                                                                                                                                                                  | the same filter                                                                                                                                                      |
 | the score's contents — notes, lyrics, alphaTex | AlphaTab's console logs, and its parse messages, can quote a broken alphaTex line                                                                                                                                                                                                                                                                                                                                                                                                                   | console breadcrumbs are off: the default `Console` integration is removed (3.3), since Sentry 11 has no `console` switch; E101–E103 drop the exception message (2.3) |
-| kinds of instrument                            | the `instruments` tag (2.3) — sent on purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                       | only `drums` and the General MIDI numbers 0–127 can be sent, never text from the file, so no name can reach the tag                                                  |
+| kinds of instrument                            | the `instruments` tag (2.3) — sent on purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                       | only `drums`, `sample` and the General MIDI numbers 000–127 can be sent, never text from the file, so no name can reach the tag                                      |
 | the file's type and size                       | `FileFacts` (2.3) on E101–E103 and E105 — sent on purpose                                                                                                                                                                                                                                                                                                                                                                                                                                           | only an extension the open-file picker accepts, or `other`, and a size in bytes; never the file name                                                                 |
 | IP address, cookies, the Referer header        | collected by Sentry's defaults                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | `dataCollection` turns off each one — the Referer is sent as `[Filtered]` — **and** the project setting "Prevent Storing of IP Addresses" is on (section 5)          |
 | the browser's user-agent string                | the `User-Agent` header on each report, and the Release Health ping on every visit (S4) — sent on purpose                                                                                                                                                                                                                                                                                                                                                                                           | it names the browser, its version and the operating system, which Sentry shows on each issue; it holds no IP address and nothing from the file                       |
@@ -325,6 +360,10 @@ export function rememberScore(score: ScoreFacts): void; // title, subtitle, arti
   (`beforeSend`), the filter runs over each exception's value and the event's `message`, and over
   nothing else. The breadcrumb is made after `beforeSend`, so it repeats the cleaned text.
 - **The list never forgets** within a tab. An error about file A can be sent after file B opens.
+- **Remembered as soon as a file parses.** `requestNotation` calls `rememberScore` right after
+  `loadScoreFromBytes` returns, before the new score replaces the open one. Two reports can be sent
+  before AlphaTab's score-loaded event: an E105 thrown after the parse, and a crash while the header
+  draws the new title (E901). Both keep their message, so the names must be on the list by then.
 - **Stored trimmed.** Each string is trimmed before it is stored — the form the mixer shows — and
   the 3-character minimum applies after trimming.
 - **Strings shorter than 3 characters are skipped**, so a track named `1` does not rewrite unrelated
@@ -396,7 +435,7 @@ the release, the environment, the browser's user-agent string and whether the vi
 unhandled error — no file data. That is why the home page names it.
 
 "The kinds of instrument" is the `instruments` tag (2.3): `drums` and General MIDI numbers, never
-a name.
+a name. Until the visitor opens a file it reads `sample`, which names the bundled beat, not theirs.
 
 "The file's type and size" is `FileFacts` (2.3): an extension the open-file picker accepts, or
 `other`, and a size in bytes. Only E101–E103 and E105 send them.
@@ -476,8 +515,12 @@ secret. The upload now runs inside Vercel's build, so neither GitHub mechanism a
     navigation breadcrumb;
   - `reportError`: the default level, the `code` tag, and E101–E103 dropping the message, also from
     the event's `message`;
-  - `tagInstruments`: a percussion track and a Distortion Guitar track (program 30) give
-    `drums,30`; two tracks on the same program give one number; an empty list clears the tag;
+  - `instrumentsValue`: a percussion track and a Distortion Guitar track (program 30) give
+    `drums,030`; program 5 gives `005`; two tracks on the same program give one number;
+  - the tag's lifecycle: `suspendInstruments` takes the tag off and `restoreInstruments` puts the
+    remembered value back; `tagInstruments` while an open runs changes only the remembered value;
+    with two opens running, the tag comes back only when the second one ends; after
+    `clearInstruments`, no call changes the tag;
   - `isStorageRefusal`: `SecurityError`, `QuotaExceededError` and `NS_ERROR_DOM_QUOTA_REACHED` count
     as refused storage; a `TypeError` from our own reader does not;
   - known engine noise: a throw whose frames all sit in the engine bundle is dropped; the same
@@ -489,9 +532,18 @@ secret. The upload now runs inside Vercel's build, so neither GitHub mechanism a
   warning, `<html>` inside a `<div>`; it does not fail the test.)
 - **The open-file catches**, a test beside `web/app/play/OpenFileControl.tsx`: a read that fails
   shows E102 and reports a warning without the message; an `onNotation` that fails shows E105 and
-  reports an error that keeps its message; picking a file clears the `instruments` tag before the
-  file is read; and the file type: `Song.GP5` gives `gp5`, while `notes.txt` and a name with no
-  extension give `other`.
+  reports an error that keeps its message; neither report carries the `instruments` tag, and once
+  the open ends the tag is back to the value for the score on screen; and the file type:
+  `Song.GP5` gives `gp5`, while `notes.txt` and a name with no extension give `other`.
+- **The names arrive before the swap**, a case in `web/app/play/PlayerShell.test.tsx`: open
+  `Punk.gp` and make the step after the parse throw with a message that quotes `Distortion Guitar`;
+  once filtered, the E105 report's message reads `[file]` where it quoted the name.
+- **The tag follows the score on screen**, cases in `web/app/play/PlayerShell.test.tsx`: the tag
+  is `sample` once the player mounts and gone once it unmounts; opening `Punk.gp` sets `drums,030`;
+  with `Punk.gp` open, a file that is not a score sends an E103 without the tag and leaves
+  `drums,030`, and so does Cancel on the prompt to replace it; an E105 thrown just after the swap
+  leaves the new score's value; and when the bundled sample's score-loaded event arrives after the
+  visitor's file, the tag keeps the file's value.
 - **Lint canary:** `tooling/silent-catch-fence.test.sh`, a sibling of
   `tooling/alphatab-import-fence.test.sh` — its `expect_rejected` helper over the same
   `no-restricted-syntax` list, already run in the `quality` job — expects both a silent `catch { }`
@@ -507,16 +559,20 @@ secret. The upload now runs inside Vercel's build, so neither GitHub mechanism a
     (`web/e2e/player.e2e.ts:267`) E202. No case in `player.e2e.ts` aborts the engine module, so
     E201 gets a case of its own (case 8 below).
   - **New cases in `web/e2e/error-reporting.e2e.ts`:**
-    1. A throw the test schedules with `setTimeout` inside `page.evaluate` sends an `error`. (A
-       direct throw only rejects the `evaluate` call; it never reaches the page.)
+    1. On `/play`, once the bundled sample is drawn and before any file is opened, a throw the test
+       schedules with `setTimeout` inside `page.evaluate` sends an `error` that carries the tag
+       `instruments: sample`. (A direct throw only rejects the `evaluate` call; it never reaches
+       the page.)
     2. Opening a file that is not a score sends an E103 `warning` with its type and size, and no name.
     3. Open a sample whose name, title and track names are known, click Solo, log a marker string
        with `console.error`, then throw an error whose message quotes the Solo track's name: the
        envelope holds no click breadcrumb, its message reads `[file]` where the name was, and the
        raw envelope contains none of those strings, and not the marker.
-    4. Open `guitar-no-percussion.gp` (an NH-335 file). Once a page error with the NH-335 message
-       has been seen, the test throws a sentinel error: the sentinel is the only error event sent,
-       and it carries the tag `instruments: 25` (the file's one track, an acoustic guitar).
+    4. Open `guitar-no-percussion.gp` (an NH-335 file) while the bundled sample is held back, as
+       the late-sample test in `web/e2e/player.e2e.ts` already does. Once a page error with the
+       NH-335 message has been seen and the sample has arrived, the test throws a sentinel error:
+       the sentinel is the only error event sent, and it carries the tag `instruments: 025` (the
+       file's one track, an acoustic guitar), not `sample`.
     5. With storage blocked by an init script that throws `DOMException('…', 'SecurityError')`, as
        browsers do, no event is sent until a real error, and that report carries the storage
        breadcrumb.
@@ -590,3 +646,5 @@ Each is a claim this design rests on but no one has run yet:
 - What argument AlphaTab's `error` event passes — an `Error` or a string.
 - That Vercel never builds a fork's pull request with Production variables.
 - That Playwright can route a request to the `.invalid` host before any DNS lookup.
+- How Sentry 11 removes a tag: that `Sentry.setTag('instruments', undefined)` leaves no
+  `instruments` key in the report that is sent.

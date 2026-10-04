@@ -55,7 +55,8 @@
       "verify-A.json",
       "verify-B.json",
       "verify-C.json",
-      "findings.json"
+      "findings.json",
+      "spike-F25-F23.md — the round-2 spike (Design A for the instruments tag): path map, 11 scenarios, the throwaway patch and tests, run on master at 2f837529"
     ],
     "triaged": false,
     "triage_cap": "12 findings or 5 picker rounds, whichever comes first (shared review-loop rule). 14 findings > 12, so expect two triage invocations — see triage_plan.",
@@ -65,14 +66,24 @@
       "P3": "worth fixing — small, cheap"
     },
     "triage_progress": {
-      "decided": ["F-20", "F-26", "F-27", "F-30", "F-21", "F-17", "F-18", "F-19"],
-      "undecided": ["F-22", "F-23", "F-24", "F-25", "F-28", "F-29"],
-      "pending_apply": [
-        "F-21 — all four rows, with round 2's commit",
-        "F-27 — the §1 bullet (lines 101-104 at 78e35627), with round 2's commit"
-      ]
+      "decided": [
+        "F-20",
+        "F-26",
+        "F-27",
+        "F-30",
+        "F-21",
+        "F-17",
+        "F-18",
+        "F-19",
+        "F-24",
+        "F-25",
+        "F-23",
+        "F-22"
+      ],
+      "undecided": ["F-28", "F-29"],
+      "pending_apply": []
     },
-    "triage_status": "IN PROGRESS — triage invocation 1. Auto-resolve batch applied; round 1 applied (F-17 option 1, F-18 option 1, F-19 option 1, R25 option 1). Next: round 2 (F-25, F-23, F-24; then F-22 and F-21).",
+    "triage_status": "PAUSED AT THE CAP — triage invocation 1 decided 12 findings: the auto-resolve batch (F-20, F-21, F-26, F-27, F-30, AMB-5..8), round 1 (F-17, F-18, F-19; R25 listed) and round 2 (F-22, F-23, F-24, F-25; ADD-3), all applied. NEXT (triage invocation 2, entry rule step 4): round 3 (F-28, F-29), round 4 (FYI-9..14, two multi-select cards), then the wrap-up — spec frontmatter lap: 2 / last_applied: P1, mark this file triaged, the changelog list 'Changed by the spec review, lap 2', commit, PR body, push — and step 7, the lap decision (a P1 was applied this lap, so expect a re-lap: lap 3's review half, in a new session).",
     "added_in_triage": [
       {
         "id": "R25",
@@ -80,6 +91,14 @@
         "raised_as": "a residual concern beside F-18 (the adversarial reviewer): Sentry 11's default CultureContext integration adds the locale, time zone and calendar to every event, and §3.1 did not list them",
         "decision": "Option 1, chosen by leocaseiro (the recommendation was option 2, stop sending them): keep Sentry's default and list them. §3.1 gains the row 'the visitor's locale and time zone'.",
         "round": "round 1 (2026-10-05)",
+        "applied": true
+      },
+      {
+        "id": "ADD-3",
+        "title": "Remove the instruments tag when the player unmounts",
+        "raised_as": "the F-25 spike, scenario xi: the player unmounts on a client-side navigation to `/`, and `sample` (or the last song's value) stayed set, so a report from the home page would say `sample`",
+        "decision": "Applied without asking, as the completion of leocaseiro's F-25 choice, and reported: `clearInstruments()` runs when the player unmounts; an open still running then changes nothing. Without it, home-page errors would be counted as errors on the bundled beat.",
+        "round": "round 2 (2026-10-05)",
         "applied": true
       }
     ]
@@ -235,450 +254,6 @@
     }
   ],
   "undecided_findings": [
-    {
-      "id": "F-22",
-      "severity": "P2",
-      "severity_meaning": "should fix — a real gap an implementer will hit",
-      "confidence": 100,
-      "route": "Proposed fix",
-      "autofix_class": "gated_auto",
-      "recommended_action": "Apply only if F-25 is dropped",
-      "reviewers": ["adversarial", "feasibility"],
-      "promotion": "75 → 100: two reviewers (adversarial P2, feasibility P3)",
-      "section": "§2.3 (instruments); §1 Changed files; §6 e2e case 4",
-      "title": "A late load of the bundled drum beat can leave its `drums` tag on the visitor's own score",
-      "scenario": "You open `guitar-no-percussion.gp` on `/play` before the bundled drum beat has finished downloading. Your guitar file stays on screen, but the beat's late load reaches the tag last, so every report from the rest of your visit says `instruments: drums`. In Sentry, a bug in a guitar-only file is filed under drums.",
-      "whats_wrong": "The player loads a bundled one-track drum beat on every visit. If a visitor opens a file before the beat finishes downloading, NotationSurface draws the visitor's file again from inside the beat's own score-loaded event, so a handler that subscribed after NotationSurface's receives the visitor's score first and the beat last. A handler that trusts the event's argument therefore ends on `drums`. Spike (AlphaTab 1.8.4, listeners in the app's order): the event's argument gives `drums`; `api.score` gives `25`.",
-      "evidence_quotes": [
-        "score-loaded handler remembers the score's names and sets the tag; `readNotation` and",
-        "and it carries the tag `instruments: 25` (the file's one track, an acoustic guitar).",
-        "score-loaded handler remembers the score's names and sets the tag",
-        "table: the engine's own list is internal, and the number is enough. The tag is set when a score"
-      ],
-      "before_after": [
-        {
-          "option": "only",
-          "lines_at_78e35627": "101-104",
-          "before": "- `web/app/play/OpenFileControl.tsx` and `web/app/play/PlayerShell.tsx`, beyond their catch sites:\n  picking or dropping a file remembers its name (3.2) and clears the `instruments` tag (2.3); the\n  score-loaded handler remembers the score's names and sets the tag; `readNotation` and\n  `LoadedNotation` carry the file's extension (2.3).",
-          "after": "- `web/app/play/OpenFileControl.tsx` and `web/app/play/PlayerShell.tsx`, beyond their catch sites:\n  picking or dropping a file remembers its name (3.2) and clears the `instruments` tag (2.3); the\n  score-loaded handler remembers the score's names and sets the tag from the score on screen\n  (`api.score`, never the event's argument); `readNotation` and `LoadedNotation` carry the file's\n  extension (2.3)."
-        },
-        {
-          "option": "only",
-          "lines_at_78e35627": "192-194",
-          "before": "  table: the engine's own list is internal, and the number is enough. The tag is set when a score\n  loads, and cleared as soon as another file is picked or dropped, before it is read, so a failure\n  while opening it never carries the last song's instruments.",
-          "after": "  table: the engine's own list is internal, and the number is enough. The tag is set when a score\n  loads, from the score on screen (`api.score`), never from the event's argument. When the bundled\n  sample arrives after a visitor's file, NotationSurface draws the file again from inside the\n  sample's event, so the shell's handler, which subscribes last, receives the file and then the\n  sample. The tag is cleared as soon as another file is picked or dropped, before it is read, so a\n  failure while opening it never carries the last song's instruments."
-        },
-        {
-          "option": "only (optional test)",
-          "lines_at_78e35627": "491-493",
-          "before": "    4. Open `guitar-no-percussion.gp` (an NH-335 file). Once a page error with the NH-335 message\n       has been seen, the test throws a sentinel error: the sentinel is the only error event sent,\n       and it carries the tag `instruments: 25` (the file's one track, an acoustic guitar).",
-          "after": "    4. Open `guitar-no-percussion.gp` (an NH-335 file) while the bundled sample is held back, as\n       the late-sample test in `web/e2e/player.e2e.ts` already does. Once a page error with the\n       NH-335 message has been seen and the sample has arrived, the test throws a sentinel error:\n       the sentinel is the only error event sent, and it carries the tag `instruments: 25` (the\n       file's one track, an acoustic guitar)."
-        }
-      ],
-      "proposed_fix": "If the tag stays in the score-loaded handler, it reads the score on screen (`api.score`), never the event's argument. Optional: hold the sample back in e2e case 4, as the existing late-sample test does, so the race is tested on every run.",
-      "why_it_works": "`api.score` is set before the event fires, so in the nested case it is always the score on screen.",
-      "drop_consequence": "Discard it (with F-25 also dropped). A visitor who opens a file in the first moments of a visit can carry `drums` on every report, and case 4 is flaky.",
-      "basis": "AlphaTab sets the score before it fires score-loaded; NotationSurface's re-assert guard nests the visitor's event inside the sample's.",
-      "spike": {
-        "status": "run",
-        "what": "A Node script that builds the installed AlphaTab 1.8.4 AlphaTabApiBase with a minimal UI facade (player off; `render` and `loadMidiForScore` stubbed, both run after the event), registers listeners in the app's order (NotationSurface's guard, TracksPopover's guard, then a tag handler that reads the event's argument and one that reads `api.score`), renders guitar-no-percussion.gp as the visitor's…",
-        "result": "The nested dispatch happened as described: the guard re-rendered the visitor's file inside the sample's event, and the tag handlers saw the visitor's score (nested call) and then the sample (outer call). Final tag: `drums` from the handler that reads the event's argument, `25` from the one that reads `api.score`. `api.score` ended as the visitor's file, TracksPopover's guard returned on the outer call, and AlphaTab's DOM events fired in the order visitor, visitor, sample."
-      },
-      "verification": {
-        "verdict": "pass-with-correction",
-        "verifier": "verify-B.json",
-        "checks": {
-          "section_exists": "Yes: §2.3 (lines 149-194), §1 Changed files (95-107) and §6 e2e case 4 (491-493).",
-          "quotes": "4/4 verbatim (spec lines 103, 493, 103, 192)",
-          "fix_consistent": "Consistent. It changes §1 line 103 and §2.3 lines 192-194; nothing else contradicts it. If F-25 is applied with its draft (the tag set in requestNotation), this text is superseded: no handler sets the tag, so the late sample cannot reach it."
-        },
-        "central_claim": {
-          "status": "confirmed",
-          "key_evidence": [
-            "web/app/play/PlayerShell.tsx:85-88 and :271 — the bundled sample `/notation/1-beat.gp` is `settings.core.file` and loads on every visit.",
-            "@coderline/alphatab@1.8.4:dist/alphaTab.core.mjs:41018-41020 — the browser facade fetches it with loadScoreAsync and calls `api.renderScore(s, …)` whenever the request finishes.",
-            "@coderline/alphatab@1.8.4:dist/alphaTab.core.mjs:45836-45845 — `_internalRenderTracks` sets `this._score = score` before `_onScoreLoaded(score)`; 48025-48027 — `_onScoreLoaded` calls `scoreLoaded.trigger(score)`; 24735-24737 — `EventEmitterOfT.trigger` calls every listener in turn with the same argument."
-          ],
-          "full_evidence": "verify-B.json"
-        },
-        "corrections": "ADV-3 says e2e case 4 'would read drums'. It can, not would: that needs the bundled sample to land after the file opens. openFirstScore makes that possible and the existing late-sample test (web/e2e/player.e2e.ts:586) forces it, so case 4 as written would be flaky rather than always wrong. FEA-3's account is accurate."
-      },
-      "notes_for_triage": "If F-25 is applied with its draft, this fix is not needed: no score-loaded handler sets the tag. If F-25 is dropped, apply this one, or a visitor who opens a file in the first moments of a visit can carry `drums` on every report. The optional case-4 change holds the sample back so the race is tested on every run. A Drop of both F-22 and F-25 leaves the wrong tag in that race and a flaky case 4.",
-      "disposition_hint": "DISSOLVES if F-25 is applied (the tag moves out of the handler). If F-25 is dropped, AUTO-RESOLVE. Either way, the optional case-4 change is a test improvement.",
-      "raw_reviewer_findings": [
-        {
-          "raw_id": "ADV-3",
-          "reviewer": "adversarial",
-          "title": "Bundled-sample race leaves the tag on the drum beat",
-          "severity": "P2",
-          "confidence": 75,
-          "autofix_class": "gated_auto"
-        },
-        {
-          "raw_id": "FEA-3",
-          "reviewer": "feasibility",
-          "title": "A late bundled-sample load can overwrite the instruments tag",
-          "severity": "P3",
-          "confidence": 75,
-          "autofix_class": "gated_auto"
-        }
-      ],
-      "triage": null,
-      "depends_on": "F-25 — if F-25 is applied, no handler sets the tag and this fix is not needed"
-    },
-    {
-      "id": "F-23",
-      "severity": "P2",
-      "severity_meaning": "should fix — a real gap an implementer will hit",
-      "confidence": 100,
-      "route": "Decision",
-      "autofix_class": "manual",
-      "recommended_action": "Apply (option 1)",
-      "reviewers": ["feasibility", "product-lens", "adversarial"],
-      "promotion": "75 → 100: three reviewers (feasibility, product-lens, adversarial)",
-      "section": "§2.3 (instruments); §6 (the open-file test; the reportError unit case)",
-      "title": "After a cancelled or failed open, the song still playing reports with no instruments",
-      "scenario": "You have `Punk.gp` open and pick `notes.txt` by mistake. You see E103, and `Punk.gp` stays on screen and keeps playing, but the pick has already cleared the tag. Every report from `Punk.gp` after that, until you open another file, reaches Sentry with no `instruments` tag.",
-      "whats_wrong": "The tag is cleared when a file is picked or dropped, and only a successful load sets it again. Cancel on the \"Replace …?\" prompt, E101, E102, E103 and an E105 thrown before the swap all leave the previous score on screen and playing — but untagged for the rest of the visit. Verification found two more ways: an E105 thrown after the swap is queued, and a second pick that the one-open-at-a-time guard drops after it already cleared the tag.",
-      "evidence_quotes": [
-        "loads, and cleared as soon as another file is picked or dropped, before it is read, so a failure",
-        "is a Sentry tag naming the open score's kinds of instrument",
-        "while opening it never carries the last song's instruments.",
-        "picking a file clears the `instruments` tag before",
-        "is a Sentry tag naming the open score's kinds of instrument, so an issue's"
-      ],
-      "before_after": [
-        {
-          "option": "1 (recommended by feasibility and adversarial)",
-          "lines_at_78e35627": "101-104",
-          "before": "- `web/app/play/OpenFileControl.tsx` and `web/app/play/PlayerShell.tsx`, beyond their catch sites:\n  picking or dropping a file remembers its name (3.2) and clears the `instruments` tag (2.3); the\n  score-loaded handler remembers the score's names and sets the tag; `readNotation` and\n  `LoadedNotation` carry the file's extension (2.3).",
-          "after": "- `web/app/play/OpenFileControl.tsx` and `web/app/play/PlayerShell.tsx`, beyond their catch sites:\n  picking or dropping a file remembers its name (3.2); the score-loaded handler remembers the\n  score's names and sets the `instruments` tag (2.3); `readNotation` and `LoadedNotation` carry the\n  file's extension (2.3)."
-        },
-        {
-          "option": "1 (recommended by feasibility and adversarial)",
-          "lines_at_78e35627": "192-194",
-          "before": "  table: the engine's own list is internal, and the number is enough. The tag is set when a score\n  loads, and cleared as soon as another file is picked or dropped, before it is read, so a failure\n  while opening it never carries the last song's instruments.",
-          "after": "  table: the engine's own list is internal, and the number is enough. The tag is set when a score\n  loads and is never cleared, so it names the score on screen, also when a cancelled or failed open\n  leaves the previous score there. A report of a failed open (E101, E102, E103 or E105, the reports\n  with `file`) is sent without it, so it never carries the last song's instruments: `reportError`\n  adds `instruments: undefined` to that one report's `captureContext` tags, and the scope keeps the\n  tag for the next report."
-        },
-        {
-          "option": "1 (recommended by feasibility and adversarial)",
-          "lines_at_78e35627": "453",
-          "before": "  - `reportError`: the default level, the `code` tag, and E101–E103 dropping the message;",
-          "after": "  - `reportError`: the default level, the `code` tag, E101–E103 dropping the message, and a report\n    with `file` sent without the `instruments` tag while the next report still carries it;"
-        },
-        {
-          "option": "1 (recommended by feasibility and adversarial)",
-          "lines_at_78e35627": "466-469",
-          "before": "- **The open-file catches**, a test beside `web/app/play/OpenFileControl.tsx`: a read that fails\n  shows E102 and reports a warning without the message; an `onNotation` that fails shows E105 and\n  reports an error that keeps its message; and picking a file clears the `instruments` tag before\n  the file is read.",
-          "after": "- **The open-file catches**, a test beside `web/app/play/OpenFileControl.tsx`: a read that fails\n  shows E102 and reports a warning without the message; and an `onNotation` that fails shows E105\n  and reports an error that keeps its message."
-        },
-        {
-          "option": "2 (recommended by product-lens)",
-          "lines_at_78e35627": "192-194",
-          "before": "  table: the engine's own list is internal, and the number is enough. The tag is set when a score\n  loads, and cleared as soon as another file is picked or dropped, before it is read, so a failure\n  while opening it never carries the last song's instruments.",
-          "after": "  table: the engine's own list is internal, and the number is enough. The tag is set when a score\n  loads, and cleared as soon as another file is picked or dropped, before it is read, so a failure\n  while opening it never carries the last song's instruments. When the open ends with the previous\n  score still on screen (Cancel on the prompt to replace it, E101, E102, E103, or an E105 thrown\n  before the swap), the tag is set again from that score."
-        },
-        {
-          "option": "2 (recommended by product-lens)",
-          "lines_at_78e35627": "466-469",
-          "before": "- **The open-file catches**, a test beside `web/app/play/OpenFileControl.tsx`: a read that fails\n  shows E102 and reports a warning without the message; an `onNotation` that fails shows E105 and\n  reports an error that keeps its message; and picking a file clears the `instruments` tag before\n  the file is read.",
-          "after": "- **The open-file catches**, a test beside `web/app/play/OpenFileControl.tsx`: a read that fails\n  shows E102 and reports a warning without the message; an `onNotation` that fails shows E105 and\n  reports an error that keeps its message; picking a file clears the `instruments` tag before the\n  file is read; and after the failed read the tag holds the open score's instruments again. A case\n  in `web/app/play/PlayerShell.test.tsx` checks the same after Cancel on the prompt to replace it."
-        }
-      ],
-      "proposed_fix": "Option 1: the tag is set when a score loads (or, with F-25, when an opened file replaces the open score) and never cleared; `reportError` leaves it off the reports that carry `file`; §6's unit case checks that such a report has no tag while the next one does.",
-      "why_it_works": "The scope tag always describes the score on screen, and the owner's lap-1 rule — a failed open never carries the last song's instruments — still holds, through one rule in one place.",
-      "drop_consequence": "Discard it. After any cancelled or failed open, every later report from the song still playing arrives without its instruments, for the rest of the visit.",
-      "basis": "Every failed-open path returns before the swap, and AlphaTab fires score-loaded only when the score changes.",
-      "spike": {
-        "status": "run",
-        "what": "Option 1's mechanism end to end in Sentry 11.0.0: the core source from the mirror (twelve core files on the capture path diffed identical to the 11.0.0 tag), bundled with the repo's installed esbuild into a Node script with a stub client and transport. `setTag('instruments', '025')` (the isolation scope), then three captureException calls; the middle one passes `captureContext: { tags: { code: …",
-        "result": "beforeSend saw the middle report's `instruments` as a key holding `undefined`; its serialized envelope had no `instruments` at all; the reports before and after carried `instruments: 025`. The path: getsentry/sentry-javascript@11.0.0:packages/core/src/utils/prepareEvent.ts (getFinalScope clones the current scope and calls update(captureContext)) → packages/core/src/scope.ts update() (`this._tags = { ...this._tags, ...tags }`) → packages/core/src/utils/scopeData.ts getCombinedScopeData (global, then isolation, then this final scope; packages/core/src/utils/merge.ts lets an undefined value overwrite) → applyDataToEvent (`event.tags = { ...tags, ...event.tags }`) → packages/core/src/utils/envelope.ts serializeEnvelope (JSON.stringify drops it). `Primitive` includes undefined (packages/core/src/types/misc.ts:65), so the call type-checks."
-      },
-      "verification": {
-        "verdict": "pass",
-        "verifier": "verify-B.json",
-        "checks": {
-          "section_exists": "Yes: §2.3 (lines 186-194), §1 (101-104) and the §6 open-file catches test (466-469).",
-          "quotes": "7/7 verbatim (spec lines 193, 186, 193, 194, 468, 193, 186)",
-          "fix_consistent": "Option 1 changes how lap 1's ADD-1 rule is carried out ('cleared when another file is picked'), while keeping its stated goal (a failure while opening a file never carries the last song's instruments); the owner should confirm that. With option 1, also change §1 line 102, §2.3 lines 192-194, §6 line 453 and §6 lines 466-469. Line 172 shows only the unhandled call (E901, E201–E204) and needs no change; the drafted §2.3 text says how a report with `file` drops the tag. Option 2 keeps ADD-1's rule and adds a restore step; it changes §2.3 and §6 only. Neither contradicts another section."
-        },
-        "central_claim": {
-          "status": "confirmed",
-          "key_evidence": [
-            "web/app/play/PlayerShell.tsx:839-849 — Cancel on the 'Replace …?' prompt returns before the swap at :912.",
-            "web/app/play/PlayerShell.tsx:870-889 — E103 returns before the swap.",
-            "web/app/play/OpenFileControl.tsx:74-75 and web/app/play/PlayerShell.tsx:968-969 — E101 and E102 are thrown by readNotation before requestNotation runs."
-          ],
-          "full_evidence": "verify-B.json"
-        },
-        "corrections": "Nothing wrong; three additions. (1) E105 does not always end without a swap: a throw at PlayerShell.tsx:913-923 comes after setNotation, so the new score still replaces the old one. (2) A further way to lose the tag: a second pick during an open is dropped by the one-open-at-a-time guard (:943) after it has cleared the tag. (3) E205 also returns before the swap, but only when the engine failed, so no score is on screen then."
-      },
-      "notes_for_triage": "Option 1 is simpler: one rule in reportError (a report that carries `file` drops the tag), no restore path, and it also covers the dropped second pick. Option 2 needs the still-open score on five paths; OpenFileControl's catch has no api, so report.ts would have to keep the last tag it set, and an E105 thrown after the swap must not put the old tag back. Option 2 also conflicts with F-25's placement (the tag set at the swap): there its catch would restore the old tag over the new score. One related choice neither reviewer raised: an E105 is about the new file, whose instruments are known once it parses; both options send it with no tag, which is the safe reading of the owner's rule. A Drop leaves every report after a cancelled or failed open, for the rest of the visit, without the tag.",
-      "disposition_hint": "PICKER — round 2, with F-24 and F-25 (decide the tag together). Recommend option 1: simpler, covers more paths, and fits F-25. Flip to option 2 only if the owner prefers the smallest change to lap 1's wording over coverage.",
-      "raw_reviewer_findings": [
-        {
-          "raw_id": "FEA-1",
-          "reviewer": "feasibility",
-          "title": "Failed or cancelled open leaves the score untagged",
-          "severity": "P2",
-          "confidence": 75,
-          "autofix_class": "manual"
-        },
-        {
-          "raw_id": "PRO-4",
-          "reviewer": "product-lens",
-          "title": "The tag stays cleared after a cancelled or failed open",
-          "severity": "P2",
-          "confidence": 75,
-          "autofix_class": "gated_auto"
-        },
-        {
-          "raw_id": "ADV-8",
-          "reviewer": "adversarial",
-          "title": "Clearing on pick leaves the still-open score untagged",
-          "severity": "P3",
-          "confidence": 75,
-          "autofix_class": "manual"
-        }
-      ],
-      "triage": null,
-      "options": [
-        {
-          "option": "1 (recommended — feasibility, adversarial)",
-          "what": "Never clear the tag: it always names the score on screen. A report of a failed open (E101–E103, E105 — the reports that carry `file`) is sent without it: `reportError` sets `instruments: undefined` in that one report's `captureContext` tags.",
-          "pros": "One rule in one place; covers every path, including the dropped second pick; fits F-25.",
-          "cons": "An E105 about a new file is sent with no tag, though that file's instruments are known once it parses (the safe reading of the owner's rule).",
-          "spike": "Sentry 11.0.0 built from the mirror: the tag disappears from that one envelope, and the next report still carries it."
-        },
-        {
-          "option": "2 (product-lens)",
-          "what": "Keep clearing the tag at pick; set it again from the still-open score when an open ends without a swap.",
-          "pros": "Smallest change to lap 1's wording.",
-          "cons": "Needs the old score on five paths; OpenFileControl's catch has no player api, so report.ts would keep the last tag; after an E105 thrown after the swap it would put the old tag back over the new score; conflicts with F-25."
-        }
-      ],
-      "conflict": "feasibility and adversarial recommend option 1; product-lens recommends option 2. Agent recommendation: option 1."
-    },
-    {
-      "id": "F-24",
-      "severity": "P2",
-      "severity_meaning": "should fix — a real gap an implementer will hit",
-      "confidence": 100,
-      "route": "Decision",
-      "autofix_class": "manual",
-      "recommended_action": "Apply (option 1)",
-      "reviewers": ["product-lens", "adversarial"],
-      "promotion": "product-lens at 75, the clustering half of an adversarial FYI (50) → 100 (+1 anchor)",
-      "section": "§2.3 (instruments); §6 (the tagInstruments unit case; e2e case 4)",
-      "title": "One combined tag value cannot show a spike on one instrument",
-      "scenario": "You open an issue in Sentry to check whether its reports come from the acoustic guitar (program 25). The Tags panel lists `25`, `drums,25`, `drums,25,33` and `25,33` as four separate entries, so no single bar stands out. A search for `instruments:*25*` to gather them also returns scores that only use program 125.",
-      "whats_wrong": "§2.3 says the tag lets \"an issue's Tags panel show when its reports cluster on one instrument\" — the owner's own reason for it (\"we might find some unusual spikes on a particular instrument\"). But Sentry counts each whole tag value as one entry: `drums,30` and `drums,29,30,33` are separate, so a bug tied to program 30 spreads over many line-ups and never forms one bar. A search can gather one instrument (`instruments:*30*`), but unpadded numbers over-match: 28 of the 128 programs also match others (`*25*` matches 125; `*3*` matches 21 others).",
-      "evidence_quotes": [
-        "Tags panel shows when its reports cluster on one instrument.",
-        "first, then the numbers in ascending order, joined by `,` — `Punk.gp` gives `drums,30`.",
-        "Tags panel shows when its reports cluster on one instrument. Each kind appears once: `drums` for",
-        "first, then the numbers in ascending order, joined by `,` — `Punk.gp` gives `drums,30`. No name"
-      ],
-      "before_after": [
-        {
-          "option": "1 (recommended by product-lens)",
-          "lines_at_78e35627": "186-194",
-          "before": "- **`instruments`** is a Sentry tag naming the open score's kinds of instrument, so an issue's\n  Tags panel shows when its reports cluster on one instrument. Each kind appears once: `drums` for\n  a percussion track (a staff marked percussion, read as `web/lib/alphatab/mixer-tracks.ts`\n  already does), otherwise the track's General MIDI program as the engine stores it\n  (`playbackInfo.program`, 0–127, counted from 0, so `30` is Distortion Guitar). `drums` comes\n  first, then the numbers in ascending order, joined by `,` — `Punk.gp` gives `drums,30`. No name\n  table: the engine's own list is internal, and the number is enough. The tag is set when a score\n  loads, and cleared as soon as another file is picked or dropped, before it is read, so a failure\n  while opening it never carries the last song's instruments.",
-          "after": "- **`instruments`** is a Sentry tag naming the open score's kinds of instrument, so an issue's\n  Tags panel shows which sets of instruments its reports came from. Sentry counts each whole value\n  as one entry, so `drums,030` and `drums,029,030,033` are two entries; to find every report with\n  one instrument, search for its number between wildcards: `instruments:*030*`. Each kind appears\n  once: `drums` for a percussion track (a staff marked percussion, read as\n  `web/lib/alphatab/mixer-tracks.ts` already does), otherwise the track's General MIDI program as\n  the engine stores it (`playbackInfo.program`, 0–127, counted from 0, so `30` is Distortion\n  Guitar), written with three digits so that a search for one number never matches another (`25`\n  becomes `025`, which `125` does not contain). `drums` comes first, then the numbers in ascending\n  order, joined by `,` — `Punk.gp` gives `drums,030`. No name table: the engine's own list is\n  internal, and the number is enough. The tag is set when a score loads, and cleared as soon as\n  another file is picked or dropped, before it is read, so a failure while opening it never carries\n  the last song's instruments."
-        },
-        {
-          "option": "1 (recommended by product-lens)",
-          "lines_at_78e35627": "455-456",
-          "before": "  - `tagInstruments`: a percussion track and a Distortion Guitar track (program 30) give\n    `drums,30`; two tracks on the same program give one number; an empty list clears the tag;",
-          "after": "  - `tagInstruments`: a percussion track and a Distortion Guitar track (program 30) give\n    `drums,030`; program 5 gives `005`; two tracks on the same program give one number; an empty\n    list clears the tag;"
-        },
-        {
-          "option": "1 (recommended by product-lens)",
-          "lines_at_78e35627": "493",
-          "before": "       and it carries the tag `instruments: 25` (the file's one track, an acoustic guitar).",
-          "after": "       and it carries the tag `instruments: 025` (the file's one track, an acoustic guitar)."
-        },
-        {
-          "option": "2 (adversarial: correct the claim, keep the format)",
-          "lines_at_78e35627": "186-194",
-          "before": "- **`instruments`** is a Sentry tag naming the open score's kinds of instrument, so an issue's\n  Tags panel shows when its reports cluster on one instrument. Each kind appears once: `drums` for\n  a percussion track (a staff marked percussion, read as `web/lib/alphatab/mixer-tracks.ts`\n  already does), otherwise the track's General MIDI program as the engine stores it\n  (`playbackInfo.program`, 0–127, counted from 0, so `30` is Distortion Guitar). `drums` comes\n  first, then the numbers in ascending order, joined by `,` — `Punk.gp` gives `drums,30`. No name\n  table: the engine's own list is internal, and the number is enough. The tag is set when a score\n  loads, and cleared as soon as another file is picked or dropped, before it is read, so a failure\n  while opening it never carries the last song's instruments.",
-          "after": "- **`instruments`** is a Sentry tag naming the open score's kinds of instrument, so an issue's\n  Tags panel shows which sets of instruments its reports came from. Sentry counts each whole value\n  as one entry: `drums,30` and `drums,29,30,33` are two entries, even though both hold `30`. Each\n  kind appears once: `drums` for a percussion track (a staff marked percussion, read as\n  `web/lib/alphatab/mixer-tracks.ts` already does), otherwise the track's General MIDI program as\n  the engine stores it (`playbackInfo.program`, 0–127, counted from 0, so `30` is Distortion\n  Guitar). `drums` comes first, then the numbers in ascending order, joined by `,` — `Punk.gp`\n  gives `drums,30`. No name table: the engine's own list is internal, and the number is enough.\n  The tag is set when a score loads, and cleared as soon as another file is picked or dropped,\n  before it is read, so a failure while opening it never carries the last song's instruments."
-        }
-      ],
-      "proposed_fix": "Option 1: three-digit programs, the reworded purpose sentence with the `instruments:*030*` search, the padded unit case, and case 4's `025`.",
-      "why_it_works": "With fixed-width numbers, one search finds every report with one instrument, whatever else the score holds — the spike the owner wants to see.",
-      "drop_consequence": "Discard it. §2.3 keeps promising a view the Tags panel cannot give, and a search for one instrument also returns others.",
-      "basis": "Sentry's tag summary counts distinct whole values; its search supports `*` anywhere in a value.",
-      "spike": {
-        "status": "run",
-        "what": "A Node script that parses all 17 fixture and bundled files with the installed AlphaTab and prints the tag in the current format and with 3-digit padding; a count of wildcard over-matches across programs 0–127; a length check against the 200-character value limit.",
-        "result": "Values as listed above, matching the product-lens reviewer (Punk.gp → drums,30; guitar-no-percussion.gp → 25; the sample → drums). Without padding, 28 of the 128 programs have a `*N*` search that also matches other programs (`*25*` matches 125; `*3*` matches 21 others). With three digits there are none, including across the comma between two numbers. `drums` plus 48 padded programs fits in 200 characters (197); beyond that Relay cuts the value."
-      },
-      "verification": {
-        "verdict": "pass",
-        "verifier": "verify-B.json",
-        "checks": {
-          "section_exists": "Yes: §2.3's `instruments` bullet (lines 186-194).",
-          "quotes": "4/4 verbatim (spec lines 187, 191, 187, 191)",
-          "fix_consistent": "Option 1 also changes §6 unit lines 455-456 (`drums,030`) and e2e case 4 line 493 (`instruments: 025`). §3.1's row (line 296) and §3.4 (381-382) stay true: only `drums` and the numbers 0–127 are sent, now with three digits. Lap 1's changelog gives the owner's goal ('so that errors clustering on one instrument stand out'); option 1 keeps it reachable by search, option 2 records that the panel cannot show it."
-        },
-        "central_claim": {
-          "status": "confirmed",
-          "key_evidence": [
-            "docs.sentry.io/product/issues/issue-details — the issue's tag summary is 'a summary of all tag values for all events included in the issue'; docs.sentry.io/api/events/retrieve-tag-details — a tag's details give `uniqueValues` and `topValues`, each one distinct value with its own `count`. A tag holds one string per e…",
-            "docs.sentry.io/concepts/search — 'Search supports the wildcard character `*` as a placeholder for specific characters and strings', with `*` shown at the end and at the start. getsentry/sentry:src/sentry/api/event_search.py — translate_wildcard turns `*` anywhere into `.*` in an anchored pattern, and the search bar'…",
-            "Limits: getsentry/relay:relay-event-schema/src/protocol/tags.rs — a key is at most 200 characters from `a-zA-Z0-9_.:-`, a value at most 200 characters with no newline (Sentry's Next.js tags page says the same); getsentry/relay:relay-event-normalization/src/trimming.rs (test_too_long_tags) — a longer value is cut to …"
-          ],
-          "full_evidence": "verify-B.json"
-        },
-        "corrections": "PRO-3: the issue page shows a preview of the most common values, but the full list is one click away (the tag details page; the API returns up to 1,000 values), so 'shows only the most common ones' is too strong. ADV-10: 'nothing records which instruments were open during visits that did not fail' is true by design (S2: no counting of attempts), not a defect of this tag."
-      },
-      "notes_for_triage": "A third option was considered: one tag per kind of instrument (for example `instrument.drums` and `instrument.030`, each `yes`). It gives an exact search (`has:instrument.030`) without padding, but the Tags panel shows each key on its own at 100 % `yes`, so it still compares nothing across instruments; it adds one tag per kind to every report, up to 129 keys in the project, and clearing means removing every key set before. Not recommended. F-24 and F-25 edit the same bullet: F-25 makes `drums` mean the visitor's own file, F-24 option 1 changes the format. The combined wording in F-21's notes keeps the bullet as it is up to 'the number is enough.', so option 1's purpose and format sentences replace that part and the combined tail stays. A Drop leaves §2.3 promising a view the panel cannot give.",
-      "disposition_hint": "PICKER — round 2. Recommend option 1: the only option that answers the owner's stated question with one search. Flip to option 2 if the owner prefers readable values over exact search.",
-      "raw_reviewer_findings": [
-        {
-          "raw_id": "PRO-3",
-          "reviewer": "product-lens",
-          "title": "The instruments tag groups whole line-ups, not instruments",
-          "severity": "P2",
-          "confidence": 75,
-          "autofix_class": "manual"
-        },
-        {
-          "raw_id": "ADV-10",
-          "reviewer": "adversarial",
-          "title": "One combined tag value cannot show clustering on one instrument",
-          "severity": "P3",
-          "confidence": 50,
-          "autofix_class": "manual"
-        }
-      ],
-      "triage": null,
-      "options": [
-        {
-          "option": "1 (recommended — product-lens)",
-          "what": "Write each program with three digits (`drums,030`, `025`); reword §2.3 to say what the panel shows (one entry per set of instruments) and give the per-instrument search `instruments:*030*`; e2e case 4 expects `025`.",
-          "pros": "One exact search finds every report with one instrument — the owner's question.",
-          "cons": "Values read `030` instead of `30`.",
-          "spike": "With padding no program over-matches; `drums` plus 48 padded programs fits the 200-character tag limit (197)."
-        },
-        {
-          "option": "2 (adversarial)",
-          "what": "Keep the format; correct the claim only (the panel shows sets of instruments).",
-          "pros": "Smallest change; readable values.",
-          "cons": "A search for one instrument still over-matches for 28 programs."
-        },
-        {
-          "option": "considered, not recommended (verify-B)",
-          "what": "One tag per kind of instrument (`instrument.030: yes`).",
-          "cons": "The panel shows each key alone at 100 % `yes`, so it compares nothing; up to 129 keys in the project; clearing means removing every key set before."
-        }
-      ]
-    },
-    {
-      "id": "F-25",
-      "severity": "P2",
-      "severity_meaning": "should fix — a real gap an implementer will hit",
-      "confidence": 75,
-      "route": "Decision",
-      "autofix_class": "manual",
-      "recommended_action": "Apply",
-      "reviewers": ["product-lens", "adversarial"],
-      "promotion": "50 → 75: two reviewers (product-lens, adversarial) — lifted out of FYI",
-      "section": "§2.3 (instruments); §1 Changed files",
-      "title": "The bundled drum beat is tagged `drums`, the same as a visitor's own drum chart",
-      "scenario": "You see in Sentry that most reports in an issue carry `instruments: drums`, and you start testing drum charts. In fact many of those visits may never have opened a file: AlphaTab loads the bundled one-track beat `1-beat.gp` on every visit to `/play`, and it is tagged `drums` exactly like a visitor's own drum chart.",
-      "whats_wrong": "AlphaTab loads `web/public/notation/1-beat.gp` (one percussion track) on every visit to /play, and it fires the same score-loaded event as a visitor's file, so it is tagged `drums` — the same value as a visitor's drum chart. Visits that never open a file are not counted (S2), so the product's main instrument is the one value whose spikes cannot stand out.",
-      "evidence_quotes": [
-        "The tag is set when a score",
-        "score-loaded handler remembers the score's names and sets the tag",
-        "Tags panel shows when its reports cluster on one instrument. Each kind appears once: `drums` for",
-        "first, then the numbers in ascending order, joined by `,` — `Punk.gp` gives `drums,30`. No name"
-      ],
-      "before_after": [
-        {
-          "option": "only",
-          "lines_at_78e35627": "101-104",
-          "before": "- `web/app/play/OpenFileControl.tsx` and `web/app/play/PlayerShell.tsx`, beyond their catch sites:\n  picking or dropping a file remembers its name (3.2) and clears the `instruments` tag (2.3); the\n  score-loaded handler remembers the score's names and sets the tag; `readNotation` and\n  `LoadedNotation` carry the file's extension (2.3).",
-          "after": "- `web/app/play/OpenFileControl.tsx` and `web/app/play/PlayerShell.tsx`, beyond their catch sites:\n  picking or dropping a file remembers its name (3.2) and clears the `instruments` tag (2.3); the\n  score-loaded handler remembers the score's names; `requestNotation` sets the tag when an opened\n  file replaces the open score, never for the bundled sample; `readNotation` and `LoadedNotation`\n  carry the file's extension (2.3)."
-        },
-        {
-          "option": "only",
-          "lines_at_78e35627": "192-194",
-          "before": "  table: the engine's own list is internal, and the number is enough. The tag is set when a score\n  loads, and cleared as soon as another file is picked or dropped, before it is read, so a failure\n  while opening it never carries the last song's instruments.",
-          "after": "  table: the engine's own list is internal, and the number is enough. The tag is set only from a\n  score the visitor opened, when it replaces the open score, never from the bundled sample that\n  AlphaTab loads on every visit to `/play`. So `drums` means the visitor's own drum chart, and a\n  report without the tag means the visitor had not opened a file of their own, or that an open had\n  failed or was still running. The tag is cleared as soon as another file is picked or dropped,\n  before it is read, so a failure while opening it never carries the last song's instruments."
-        },
-        {
-          "option": "only (optional test)",
-          "lines_at_78e35627": "484-485",
-          "before": "    1. A throw the test schedules with `setTimeout` inside `page.evaluate` sends an `error`. (A\n       direct throw only rejects the `evaluate` call; it never reaches the page.)",
-          "after": "    1. On `/play`, once the bundled sample is drawn and before any file is opened, a throw the test\n       schedules with `setTimeout` inside `page.evaluate` sends an `error` with no `instruments`\n       tag. (A direct throw only rejects the `evaluate` call; it never reaches the page.)"
-        }
-      ],
-      "proposed_fix": "Option 1: set the tag in `requestNotation` at the swap, never for the bundled sample, and say what a report without the tag means.",
-      "why_it_works": "`drums` then means a visitor's own drum file, and the race with the late sample (F-22) disappears, because no handler sets the tag.",
-      "drop_consequence": "Discard it. `drums` keeps meaning two different things, and the most common value cannot show a spike.",
-      "basis": "The sample is `settings.core.file`; AlphaTab renders it through the same path as a visitor's file.",
-      "spike": {
-        "status": "run",
-        "what": "Shared with F-22 and F-24: the bundled sample parsed with the installed AlphaTab, and the F-22 dispatch script, in which the sample's late event reaches every listener.",
-        "result": "The sample gives `drums` (one percussion track). In the dispatch script its event reached the tag handlers last, after the visitor's file."
-      },
-      "verification": {
-        "verdict": "pass",
-        "verifier": "verify-B.json",
-        "checks": {
-          "section_exists": "Yes: §2.3 (lines 186-194) and §1 (101-104).",
-          "quotes": "4/4 verbatim (spec lines 192, 103, 187, 191)",
-          "fix_consistent": "Consistent with §3.1 (line 296), §3.4's copy (line 362, 'only the kinds of instrument it uses': 'it' is the visitor's file, which this makes exactly true) and §6 case 4 (a file the visitor opens). It narrows lap 1's ADD-1 ('set on score load') to scores the visitor opened; the owner should confirm. It changes §1 line 103 and §2.3 lines 192-194, and optionally §6 case 1 (484-485)."
-        },
-        "central_claim": {
-          "status": "confirmed",
-          "key_evidence": [
-            "web/app/play/PlayerShell.tsx:80-88 and :271 — SAMPLE_NOTATION = '/notation/1-beat.gp' is `settings.core.file`, and 'Today this one ALWAYS loads'.",
-            "web/app/play/PlayerShell.tsx:824-827 and web/app/play/NotationSurface.tsx:22-24 — nothing in the app calls setNotation for the sample; AlphaTab loads it itself.",
-            "@coderline/alphatab@1.8.4:dist/alphaTab.core.mjs:40900 and 41018-41020 — the facade keeps `settings.core.file` and renders it with api.renderScore when the request finishes; 45836-45845 and 48025-48027 — the same `_internalRenderTracks` → `scoreLoaded.trigger` path as a visitor's file."
-          ],
-          "full_evidence": "verify-B.json"
-        },
-        "corrections": "PRO-5's 'the most common value will probably be drums' is a fair expectation (every visit to /play loads the sample, and many visits may never open a file), but it is not measured."
-      },
-      "notes_for_triage": "The draft sets the tag in requestNotation when an opened file replaces the open score, not in the score-loaded handler. That also closes F-22, and it avoids a stale `notation` in the handler: when NotationSurface's effect fires scoreLoaded, the shell's handler still holds the previous render's state (NotationSurface.tsx:96-102 records the same trap), so a handler that checked `notation` would skip the file just opened. A handler-based version would need a ref written in requestNotation. With F-23 option 1, a report without the tag can also come from a failed open; the draft already says so. A Drop leaves `drums` meaning two different things.",
-      "disposition_hint": "PICKER — round 2. Recommend option 1 (it also closes F-22). Flip to option 2 if the owner wants errors on the bundled sample to stay findable on their own.",
-      "raw_reviewer_findings": [
-        {
-          "raw_id": "PRO-5",
-          "reviewer": "product-lens",
-          "title": "The bundled sample is tagged drums like a visitor's file",
-          "severity": "P2",
-          "confidence": 50,
-          "autofix_class": "manual"
-        },
-        {
-          "raw_id": "ADV-10",
-          "reviewer": "adversarial",
-          "title": "One combined tag value cannot show clustering on one instrument",
-          "severity": "P3",
-          "confidence": 50,
-          "autofix_class": "manual"
-        }
-      ],
-      "triage": null,
-      "options": [
-        {
-          "option": "1 (recommended — product-lens, adversarial)",
-          "what": "`requestNotation` sets the tag when an opened file replaces the open score — never from the bundled sample. A report without the tag means the visitor had no file of their own open, or an open failed or was still running.",
-          "pros": "`drums` means a visitor's own drum chart; makes F-22 unnecessary; keeps monitoring code out of the score-loaded handler (a throw there during the sample's load would show the E202 banner).",
-          "cons": "Errors on the bundled sample carry no tag."
-        },
-        {
-          "option": "2 (proposed by no reviewer; not drafted)",
-          "what": "Tag the bundled sample with its own value, for example `sample`.",
-          "pros": "Sample errors stay findable and apart from visitors' drum charts.",
-          "cons": "Adds a third kind of value; §3.1's \"only `drums` and the General MIDI numbers\" would change."
-        }
-      ]
-    },
     {
       "id": "F-28",
       "severity": "P2",
@@ -1176,7 +751,10 @@
     "During the bundled sample's load, AlphaTab's own loader catches a throw from any score-loaded listener and raises it as its error event — the E202 banner \"The player engine could not start\". Keep monitoring code out of that handler (verify-B, F-21 and F-25).",
     "Sentry's crawler and old-browser inbound filters need the User-Agent on error events; sessions are filtered either way (verify-A, F-18).",
     "`bundleSizeOptimizations.excludeTracing` and Sentry's other tree-shaking options are webpack-only; `next build` uses Turbopack (verify-A, FYI-9).",
-    "A shell handler that reads React state inside AlphaTab's score-loaded event sees the previous render's state (NotationSurface.tsx:96-102 records the same trap) — read `api.score` or a ref (verify-B, F-25)."
+    "A shell handler that reads React state inside AlphaTab's score-loaded event sees the previous render's state (NotationSurface.tsx:96-102 records the same trap) — read `api.score` or a ref (verify-B, F-25).",
+    "Instruments tag (round 2): implement Design A from lap-2/spike-F25-F23.md — six call sites, the counter inside report.ts, the swap's tag set just BEFORE setNotation (a throw while computing the value then counts as before the swap; reasoned, not run).",
+    "Instruments tag: a hung open (the engine import never settles) keeps the counter above 0, so the tag stays off for the rest of the visit — never wrong, only absent (reasoned, not run).",
+    "Aside from the spike, out of scope: SettingsPopover.tsx reads the stylesheet from the score-loaded ARGUMENT with no api.score guard; it ends right in the late-sample race only because it subscribes before NotationSurface (reasoned from effect order, not asserted)."
   ],
   "triage_plan": {
     "auto_resolve_first": "One commit, reported in one short list (the owner's standing rule: confident fixes and test improvements without asking, always reported): F-20 (option 1), F-26, F-27, F-30, AMB-5, AMB-6, AMB-7 (option 1), AMB-8. F-21 is decided here too, but applied in round 2's commit (shared §1 bullet); F-27's §1 bullet edit likewise.",
@@ -1189,7 +767,10 @@
     "cap_note": "The auto-resolve batch plus rounds 1 and 2 decide 12 findings (F-20, F-21, F-26, F-27, F-30; F-17, F-18, F-19; F-22, F-23, F-24, F-25): the cap. Expect round 3, the FYI round and the wrap-up in a second triage invocation.",
     "finally": "Write the spec frontmatter (lap: 2, last_applied: the highest severity applied), mark this file triaged, add the approved changes to the NH-124 changelog entry (a 'Changed by the spec review, lap 2' list), commit, write the PR body, push. Then step 7, the lap decision.",
     "next_invocation": [
-      "Lap 2 TRIAGE half: run spec-triage-loop:doc-review-loop on the spec. This file is not marked triaged, so the entry rule starts at step 4."
+      "Lap 2 TRIAGE half, invocation 2: run spec-triage-loop:doc-review-loop on the spec. This file is not marked triaged, so the entry rule starts at step 4, on undecided_findings (F-28, F-29) and the six fyi_observations.",
+      "Round 3: F-28 (pre-existing: fix here or file a ticket) and F-29 (option 1 recommended) (+ Q-add). F-28's new §6 bullet goes after the open-file catches bullet, which round 2 rewrote — merge by matching text.",
+      "Round 4: FYI-9..14 as two multi-select cards (unchecked = left open, never dropped). FYI-10 edits the rememberScore comment in §3.2; FYI-13 notes case 4, which round 2 rewrote (it now holds the sample back and expects `instruments: 025`).",
+      "Then the wrap-up and step 7 (see triage_plan.finally)."
     ]
   },
   "notes": [
@@ -1199,11 +780,12 @@
     "Every draft passed Prettier, markdownlint and cspell on a scratch copy; re-run the linters after merging drafts."
   ],
   "resume": {
-    "triage_half": "NEXT: lap 2 triage half — run spec-triage-loop:doc-review-loop on the spec (spec_path_from_root, prefixed with your repo root). The entry rule starts at step 4.",
-    "spec_permalink": "https://github.com/leocaseiro/notation-hero/blob/78e35627c49d9e8b9ef9cd58395ae453cebafc98/docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md",
+    "triage_half": "NEXT: lap 2 triage half, invocation 2 — run spec-triage-loop:doc-review-loop on the spec (spec_path_from_root, prefixed with your repo root). The entry rule starts at step 4: F-28, F-29 and the six FYIs remain.",
+    "spec_permalink": "https://github.com/leocaseiro/notation-hero/blob/claude/sentry-error-monitoring-89abc2/docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md",
     "spec_path_from_root": ".claude/worktrees/nh-320-vr-spec-lap-4-92e22a/docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md",
     "artifact_path_from_root": ".claude/worktrees/nh-320-vr-spec-lap-4-92e22a/.spec-triage-loop/2026-10-03-nh-124-sentry-error-monitoring-design/lap-2/findings.json",
-    "paths_note": "Repo-root-relative, because this file is tracked in a public repo. Chat prints the absolute form, built from the reader's own repo root."
+    "paths_note": "Repo-root-relative, because this file is tracked in a public repo. Chat prints the absolute form, built from the reader's own repo root.",
+    "permalink_note": "A branch link, because this file cannot name the sha of its own commit; the hand-over message carries links pinned to the pushed sha."
   },
   "decided_findings": [
     {
@@ -1521,8 +1103,8 @@
       "triage": {
         "round": "auto-resolve (before round 1)",
         "decision": "Apply — auto-resolved (a confident fix: applied without asking, reported)",
-        "applied": "partly",
-        "notes": "Applied in the auto-resolve commit: the report.ts row lists `isStorageRefusal()`; the file-type unit case moved from the lib/monitoring bullet to the open-file test bullet. The §1 bullet edit (where the type mapping lives, lines 101-104 at 78e35627) is applied with round 2's commit, because F-21, F-22, F-23 and F-25 rewrite the same bullet."
+        "applied": true,
+        "notes": "Applied in the auto-resolve commit: the report.ts row lists `isStorageRefusal()`; the file-type unit case moved from the lib/monitoring bullet to the open-file test bullet. The §1 bullet edit (where the type mapping lives, lines 101-104 at 78e35627) is applied with round 2's commit, because F-21, F-22, F-23 and F-25 rewrite the same bullet. The §1 sentence landed in round 2's commit."
       }
     },
     {
@@ -1705,8 +1287,8 @@
       "triage": {
         "round": "auto-resolve (before round 1)",
         "decision": "Apply — auto-resolved (a confident fix: applied without asking, reported)",
-        "applied": false,
-        "notes": "Decided with the batch; applied with round 2's commit, because it shares the §1 bullet and the §2.3 instruments bullet with F-22, F-23 and F-25 (verify-B's combined wording)."
+        "applied": true,
+        "notes": "Applied in round 2's commit: `requestNotation` calls `rememberScore` as soon as the file parses (§1 bullet, §2.3 E105 bullet, a new §3.2 bullet), and a PlayerShell.test.tsx case. With F-25's design the score-loaded handler gets no monitoring code at all."
       }
     },
     {
@@ -2106,6 +1688,470 @@
           "what": "\"…nor the music in it leaves the device. Reports carry only the kinds of instrument it uses.\""
         }
       ]
+    },
+    {
+      "id": "F-24",
+      "severity": "P2",
+      "severity_meaning": "should fix — a real gap an implementer will hit",
+      "confidence": 100,
+      "route": "Decision",
+      "autofix_class": "manual",
+      "recommended_action": "Apply (option 1)",
+      "reviewers": ["product-lens", "adversarial"],
+      "promotion": "product-lens at 75, the clustering half of an adversarial FYI (50) → 100 (+1 anchor)",
+      "section": "§2.3 (instruments); §6 (the tagInstruments unit case; e2e case 4)",
+      "title": "One combined tag value cannot show a spike on one instrument",
+      "scenario": "You open an issue in Sentry to check whether its reports come from the acoustic guitar (program 25). The Tags panel lists `25`, `drums,25`, `drums,25,33` and `25,33` as four separate entries, so no single bar stands out. A search for `instruments:*25*` to gather them also returns scores that only use program 125.",
+      "whats_wrong": "§2.3 says the tag lets \"an issue's Tags panel show when its reports cluster on one instrument\" — the owner's own reason for it (\"we might find some unusual spikes on a particular instrument\"). But Sentry counts each whole tag value as one entry: `drums,30` and `drums,29,30,33` are separate, so a bug tied to program 30 spreads over many line-ups and never forms one bar. A search can gather one instrument (`instruments:*30*`), but unpadded numbers over-match: 28 of the 128 programs also match others (`*25*` matches 125; `*3*` matches 21 others).",
+      "evidence_quotes": [
+        "Tags panel shows when its reports cluster on one instrument.",
+        "first, then the numbers in ascending order, joined by `,` — `Punk.gp` gives `drums,30`.",
+        "Tags panel shows when its reports cluster on one instrument. Each kind appears once: `drums` for",
+        "first, then the numbers in ascending order, joined by `,` — `Punk.gp` gives `drums,30`. No name"
+      ],
+      "before_after": [
+        {
+          "option": "1 (recommended by product-lens)",
+          "lines_at_78e35627": "186-194",
+          "before": "- **`instruments`** is a Sentry tag naming the open score's kinds of instrument, so an issue's\n  Tags panel shows when its reports cluster on one instrument. Each kind appears once: `drums` for\n  a percussion track (a staff marked percussion, read as `web/lib/alphatab/mixer-tracks.ts`\n  already does), otherwise the track's General MIDI program as the engine stores it\n  (`playbackInfo.program`, 0–127, counted from 0, so `30` is Distortion Guitar). `drums` comes\n  first, then the numbers in ascending order, joined by `,` — `Punk.gp` gives `drums,30`. No name\n  table: the engine's own list is internal, and the number is enough. The tag is set when a score\n  loads, and cleared as soon as another file is picked or dropped, before it is read, so a failure\n  while opening it never carries the last song's instruments.",
+          "after": "- **`instruments`** is a Sentry tag naming the open score's kinds of instrument, so an issue's\n  Tags panel shows which sets of instruments its reports came from. Sentry counts each whole value\n  as one entry, so `drums,030` and `drums,029,030,033` are two entries; to find every report with\n  one instrument, search for its number between wildcards: `instruments:*030*`. Each kind appears\n  once: `drums` for a percussion track (a staff marked percussion, read as\n  `web/lib/alphatab/mixer-tracks.ts` already does), otherwise the track's General MIDI program as\n  the engine stores it (`playbackInfo.program`, 0–127, counted from 0, so `30` is Distortion\n  Guitar), written with three digits so that a search for one number never matches another (`25`\n  becomes `025`, which `125` does not contain). `drums` comes first, then the numbers in ascending\n  order, joined by `,` — `Punk.gp` gives `drums,030`. No name table: the engine's own list is\n  internal, and the number is enough. The tag is set when a score loads, and cleared as soon as\n  another file is picked or dropped, before it is read, so a failure while opening it never carries\n  the last song's instruments."
+        },
+        {
+          "option": "1 (recommended by product-lens)",
+          "lines_at_78e35627": "455-456",
+          "before": "  - `tagInstruments`: a percussion track and a Distortion Guitar track (program 30) give\n    `drums,30`; two tracks on the same program give one number; an empty list clears the tag;",
+          "after": "  - `tagInstruments`: a percussion track and a Distortion Guitar track (program 30) give\n    `drums,030`; program 5 gives `005`; two tracks on the same program give one number; an empty\n    list clears the tag;"
+        },
+        {
+          "option": "1 (recommended by product-lens)",
+          "lines_at_78e35627": "493",
+          "before": "       and it carries the tag `instruments: 25` (the file's one track, an acoustic guitar).",
+          "after": "       and it carries the tag `instruments: 025` (the file's one track, an acoustic guitar)."
+        },
+        {
+          "option": "2 (adversarial: correct the claim, keep the format)",
+          "lines_at_78e35627": "186-194",
+          "before": "- **`instruments`** is a Sentry tag naming the open score's kinds of instrument, so an issue's\n  Tags panel shows when its reports cluster on one instrument. Each kind appears once: `drums` for\n  a percussion track (a staff marked percussion, read as `web/lib/alphatab/mixer-tracks.ts`\n  already does), otherwise the track's General MIDI program as the engine stores it\n  (`playbackInfo.program`, 0–127, counted from 0, so `30` is Distortion Guitar). `drums` comes\n  first, then the numbers in ascending order, joined by `,` — `Punk.gp` gives `drums,30`. No name\n  table: the engine's own list is internal, and the number is enough. The tag is set when a score\n  loads, and cleared as soon as another file is picked or dropped, before it is read, so a failure\n  while opening it never carries the last song's instruments.",
+          "after": "- **`instruments`** is a Sentry tag naming the open score's kinds of instrument, so an issue's\n  Tags panel shows which sets of instruments its reports came from. Sentry counts each whole value\n  as one entry: `drums,30` and `drums,29,30,33` are two entries, even though both hold `30`. Each\n  kind appears once: `drums` for a percussion track (a staff marked percussion, read as\n  `web/lib/alphatab/mixer-tracks.ts` already does), otherwise the track's General MIDI program as\n  the engine stores it (`playbackInfo.program`, 0–127, counted from 0, so `30` is Distortion\n  Guitar). `drums` comes first, then the numbers in ascending order, joined by `,` — `Punk.gp`\n  gives `drums,30`. No name table: the engine's own list is internal, and the number is enough.\n  The tag is set when a score loads, and cleared as soon as another file is picked or dropped,\n  before it is read, so a failure while opening it never carries the last song's instruments."
+        }
+      ],
+      "proposed_fix": "Option 1: three-digit programs, the reworded purpose sentence with the `instruments:*030*` search, the padded unit case, and case 4's `025`.",
+      "why_it_works": "With fixed-width numbers, one search finds every report with one instrument, whatever else the score holds — the spike the owner wants to see.",
+      "drop_consequence": "Discard it. §2.3 keeps promising a view the Tags panel cannot give, and a search for one instrument also returns others.",
+      "basis": "Sentry's tag summary counts distinct whole values; its search supports `*` anywhere in a value.",
+      "spike": {
+        "status": "run",
+        "what": "A Node script that parses all 17 fixture and bundled files with the installed AlphaTab and prints the tag in the current format and with 3-digit padding; a count of wildcard over-matches across programs 0–127; a length check against the 200-character value limit.",
+        "result": "Values as listed above, matching the product-lens reviewer (Punk.gp → drums,30; guitar-no-percussion.gp → 25; the sample → drums). Without padding, 28 of the 128 programs have a `*N*` search that also matches other programs (`*25*` matches 125; `*3*` matches 21 others). With three digits there are none, including across the comma between two numbers. `drums` plus 48 padded programs fits in 200 characters (197); beyond that Relay cuts the value."
+      },
+      "verification": {
+        "verdict": "pass",
+        "verifier": "verify-B.json",
+        "checks": {
+          "section_exists": "Yes: §2.3's `instruments` bullet (lines 186-194).",
+          "quotes": "4/4 verbatim (spec lines 187, 191, 187, 191)",
+          "fix_consistent": "Option 1 also changes §6 unit lines 455-456 (`drums,030`) and e2e case 4 line 493 (`instruments: 025`). §3.1's row (line 296) and §3.4 (381-382) stay true: only `drums` and the numbers 0–127 are sent, now with three digits. Lap 1's changelog gives the owner's goal ('so that errors clustering on one instrument stand out'); option 1 keeps it reachable by search, option 2 records that the panel cannot show it."
+        },
+        "central_claim": {
+          "status": "confirmed",
+          "key_evidence": [
+            "docs.sentry.io/product/issues/issue-details — the issue's tag summary is 'a summary of all tag values for all events included in the issue'; docs.sentry.io/api/events/retrieve-tag-details — a tag's details give `uniqueValues` and `topValues`, each one distinct value with its own `count`. A tag holds one string per e…",
+            "docs.sentry.io/concepts/search — 'Search supports the wildcard character `*` as a placeholder for specific characters and strings', with `*` shown at the end and at the start. getsentry/sentry:src/sentry/api/event_search.py — translate_wildcard turns `*` anywhere into `.*` in an anchored pattern, and the search bar'…",
+            "Limits: getsentry/relay:relay-event-schema/src/protocol/tags.rs — a key is at most 200 characters from `a-zA-Z0-9_.:-`, a value at most 200 characters with no newline (Sentry's Next.js tags page says the same); getsentry/relay:relay-event-normalization/src/trimming.rs (test_too_long_tags) — a longer value is cut to …"
+          ],
+          "full_evidence": "verify-B.json"
+        },
+        "corrections": "PRO-3: the issue page shows a preview of the most common values, but the full list is one click away (the tag details page; the API returns up to 1,000 values), so 'shows only the most common ones' is too strong. ADV-10: 'nothing records which instruments were open during visits that did not fail' is true by design (S2: no counting of attempts), not a defect of this tag."
+      },
+      "notes_for_triage": "A third option was considered: one tag per kind of instrument (for example `instrument.drums` and `instrument.030`, each `yes`). It gives an exact search (`has:instrument.030`) without padding, but the Tags panel shows each key on its own at 100 % `yes`, so it still compares nothing across instruments; it adds one tag per kind to every report, up to 129 keys in the project, and clearing means removing every key set before. Not recommended. F-24 and F-25 edit the same bullet: F-25 makes `drums` mean the visitor's own file, F-24 option 1 changes the format. The combined wording in F-21's notes keeps the bullet as it is up to 'the number is enough.', so option 1's purpose and format sentences replace that part and the combined tail stays. A Drop leaves §2.3 promising a view the panel cannot give.",
+      "disposition_hint": "PICKER — round 2. Recommend option 1: the only option that answers the owner's stated question with one search. Flip to option 2 if the owner prefers readable values over exact search.",
+      "raw_reviewer_findings": [
+        {
+          "raw_id": "PRO-3",
+          "reviewer": "product-lens",
+          "title": "The instruments tag groups whole line-ups, not instruments",
+          "severity": "P2",
+          "confidence": 75,
+          "autofix_class": "manual"
+        },
+        {
+          "raw_id": "ADV-10",
+          "reviewer": "adversarial",
+          "title": "One combined tag value cannot show clustering on one instrument",
+          "severity": "P3",
+          "confidence": 50,
+          "autofix_class": "manual"
+        }
+      ],
+      "triage": {
+        "round": "round 2 (2026-10-05)",
+        "decision": "Apply — option 1 (recommended), chosen by leocaseiro",
+        "applied": true,
+        "notes": "Programs written with three digits (`drums,030`, `025`); §2.3 says the Tags panel shows sets of instruments and gives the search `instruments:*030*`; the unit case adds `005`; e2e case 4 expects `025`; §3.1's row reads 000–127."
+      },
+      "options": [
+        {
+          "option": "1 (recommended — product-lens)",
+          "what": "Write each program with three digits (`drums,030`, `025`); reword §2.3 to say what the panel shows (one entry per set of instruments) and give the per-instrument search `instruments:*030*`; e2e case 4 expects `025`.",
+          "pros": "One exact search finds every report with one instrument — the owner's question.",
+          "cons": "Values read `030` instead of `30`.",
+          "spike": "With padding no program over-matches; `drums` plus 48 padded programs fits the 200-character tag limit (197)."
+        },
+        {
+          "option": "2 (adversarial)",
+          "what": "Keep the format; correct the claim only (the panel shows sets of instruments).",
+          "pros": "Smallest change; readable values.",
+          "cons": "A search for one instrument still over-matches for 28 programs."
+        },
+        {
+          "option": "considered, not recommended (verify-B)",
+          "what": "One tag per kind of instrument (`instrument.030: yes`).",
+          "cons": "The panel shows each key alone at 100 % `yes`, so it compares nothing; up to 129 keys in the project; clearing means removing every key set before."
+        }
+      ]
+    },
+    {
+      "id": "F-25",
+      "severity": "P2",
+      "severity_meaning": "should fix — a real gap an implementer will hit",
+      "confidence": 75,
+      "route": "Decision",
+      "autofix_class": "manual",
+      "recommended_action": "Apply",
+      "reviewers": ["product-lens", "adversarial"],
+      "promotion": "50 → 75: two reviewers (product-lens, adversarial) — lifted out of FYI",
+      "section": "§2.3 (instruments); §1 Changed files",
+      "title": "The bundled drum beat is tagged `drums`, the same as a visitor's own drum chart",
+      "scenario": "You see in Sentry that most reports in an issue carry `instruments: drums`, and you start testing drum charts. In fact many of those visits may never have opened a file: AlphaTab loads the bundled one-track beat `1-beat.gp` on every visit to `/play`, and it is tagged `drums` exactly like a visitor's own drum chart.",
+      "whats_wrong": "AlphaTab loads `web/public/notation/1-beat.gp` (one percussion track) on every visit to /play, and it fires the same score-loaded event as a visitor's file, so it is tagged `drums` — the same value as a visitor's drum chart. Visits that never open a file are not counted (S2), so the product's main instrument is the one value whose spikes cannot stand out.",
+      "evidence_quotes": [
+        "The tag is set when a score",
+        "score-loaded handler remembers the score's names and sets the tag",
+        "Tags panel shows when its reports cluster on one instrument. Each kind appears once: `drums` for",
+        "first, then the numbers in ascending order, joined by `,` — `Punk.gp` gives `drums,30`. No name"
+      ],
+      "before_after": [
+        {
+          "option": "only",
+          "lines_at_78e35627": "101-104",
+          "before": "- `web/app/play/OpenFileControl.tsx` and `web/app/play/PlayerShell.tsx`, beyond their catch sites:\n  picking or dropping a file remembers its name (3.2) and clears the `instruments` tag (2.3); the\n  score-loaded handler remembers the score's names and sets the tag; `readNotation` and\n  `LoadedNotation` carry the file's extension (2.3).",
+          "after": "- `web/app/play/OpenFileControl.tsx` and `web/app/play/PlayerShell.tsx`, beyond their catch sites:\n  picking or dropping a file remembers its name (3.2) and clears the `instruments` tag (2.3); the\n  score-loaded handler remembers the score's names; `requestNotation` sets the tag when an opened\n  file replaces the open score, never for the bundled sample; `readNotation` and `LoadedNotation`\n  carry the file's extension (2.3)."
+        },
+        {
+          "option": "only",
+          "lines_at_78e35627": "192-194",
+          "before": "  table: the engine's own list is internal, and the number is enough. The tag is set when a score\n  loads, and cleared as soon as another file is picked or dropped, before it is read, so a failure\n  while opening it never carries the last song's instruments.",
+          "after": "  table: the engine's own list is internal, and the number is enough. The tag is set only from a\n  score the visitor opened, when it replaces the open score, never from the bundled sample that\n  AlphaTab loads on every visit to `/play`. So `drums` means the visitor's own drum chart, and a\n  report without the tag means the visitor had not opened a file of their own, or that an open had\n  failed or was still running. The tag is cleared as soon as another file is picked or dropped,\n  before it is read, so a failure while opening it never carries the last song's instruments."
+        },
+        {
+          "option": "only (optional test)",
+          "lines_at_78e35627": "484-485",
+          "before": "    1. A throw the test schedules with `setTimeout` inside `page.evaluate` sends an `error`. (A\n       direct throw only rejects the `evaluate` call; it never reaches the page.)",
+          "after": "    1. On `/play`, once the bundled sample is drawn and before any file is opened, a throw the test\n       schedules with `setTimeout` inside `page.evaluate` sends an `error` with no `instruments`\n       tag. (A direct throw only rejects the `evaluate` call; it never reaches the page.)"
+        }
+      ],
+      "proposed_fix": "Option 1: set the tag in `requestNotation` at the swap, never for the bundled sample, and say what a report without the tag means.",
+      "why_it_works": "`drums` then means a visitor's own drum file, and the race with the late sample (F-22) disappears, because no handler sets the tag.",
+      "drop_consequence": "Discard it. `drums` keeps meaning two different things, and the most common value cannot show a spike.",
+      "basis": "The sample is `settings.core.file`; AlphaTab renders it through the same path as a visitor's file.",
+      "spike": {
+        "status": "run",
+        "what": "Shared with F-22 and F-24: the bundled sample parsed with the installed AlphaTab, and the F-22 dispatch script, in which the sample's late event reaches every listener.",
+        "result": "The sample gives `drums` (one percussion track). In the dispatch script its event reached the tag handlers last, after the visitor's file."
+      },
+      "verification": {
+        "verdict": "pass",
+        "verifier": "verify-B.json",
+        "checks": {
+          "section_exists": "Yes: §2.3 (lines 186-194) and §1 (101-104).",
+          "quotes": "4/4 verbatim (spec lines 192, 103, 187, 191)",
+          "fix_consistent": "Consistent with §3.1 (line 296), §3.4's copy (line 362, 'only the kinds of instrument it uses': 'it' is the visitor's file, which this makes exactly true) and §6 case 4 (a file the visitor opens). It narrows lap 1's ADD-1 ('set on score load') to scores the visitor opened; the owner should confirm. It changes §1 line 103 and §2.3 lines 192-194, and optionally §6 case 1 (484-485)."
+        },
+        "central_claim": {
+          "status": "confirmed",
+          "key_evidence": [
+            "web/app/play/PlayerShell.tsx:80-88 and :271 — SAMPLE_NOTATION = '/notation/1-beat.gp' is `settings.core.file`, and 'Today this one ALWAYS loads'.",
+            "web/app/play/PlayerShell.tsx:824-827 and web/app/play/NotationSurface.tsx:22-24 — nothing in the app calls setNotation for the sample; AlphaTab loads it itself.",
+            "@coderline/alphatab@1.8.4:dist/alphaTab.core.mjs:40900 and 41018-41020 — the facade keeps `settings.core.file` and renders it with api.renderScore when the request finishes; 45836-45845 and 48025-48027 — the same `_internalRenderTracks` → `scoreLoaded.trigger` path as a visitor's file."
+          ],
+          "full_evidence": "verify-B.json"
+        },
+        "corrections": "PRO-5's 'the most common value will probably be drums' is a fair expectation (every visit to /play loads the sample, and many visits may never open a file), but it is not measured."
+      },
+      "notes_for_triage": "The draft sets the tag in requestNotation when an opened file replaces the open score, not in the score-loaded handler. That also closes F-22, and it avoids a stale `notation` in the handler: when NotationSurface's effect fires scoreLoaded, the shell's handler still holds the previous render's state (NotationSurface.tsx:96-102 records the same trap), so a handler that checked `notation` would skip the file just opened. A handler-based version would need a ref written in requestNotation. With F-23 option 1, a report without the tag can also come from a failed open; the draft already says so. A Drop leaves `drums` meaning two different things.",
+      "disposition_hint": "PICKER — round 2. Recommend option 1 (it also closes F-22). Flip to option 2 if the owner wants errors on the bundled sample to stay findable on their own.",
+      "raw_reviewer_findings": [
+        {
+          "raw_id": "PRO-5",
+          "reviewer": "product-lens",
+          "title": "The bundled sample is tagged drums like a visitor's file",
+          "severity": "P2",
+          "confidence": 50,
+          "autofix_class": "manual"
+        },
+        {
+          "raw_id": "ADV-10",
+          "reviewer": "adversarial",
+          "title": "One combined tag value cannot show clustering on one instrument",
+          "severity": "P3",
+          "confidence": 50,
+          "autofix_class": "manual"
+        }
+      ],
+      "triage": {
+        "round": "round 2 (2026-10-05)",
+        "decision": "Apply — option 2, chosen by leocaseiro: 'spike and tag sample if works'. The spike passed, so it was applied without a second picker.",
+        "applied": true,
+        "notes": "leocaseiro, on the same picker: 'sample errors should also be investigated' — so the bundled beat gets its own value, `sample`, found with `instruments:sample`. Spike (lap-2/spike-F25-F23.md, run in an isolated worktree on master at 2f837529, Sentry stubbed): 'Design A' — report.ts keeps one remembered value; `tagInstruments('sample')` when the player mounts; `tagInstruments(instrumentsValue(score))` in requestNotation just before setNotation; `suspendInstruments()` before the read and `restoreInstruments()` in a `finally`, in OpenFileControl.accept and acceptDropped; a counter of opens still running. Six call sites, no `swapped` flag, no score-loaded listener. 11 scenarios pass through the real PlayerShell and OpenFileControl in jsdom (29/29 spike tests, 146/146 web tests); without the counter three overlap cases fail. Added as a completion of this choice (ADD-3): `clearInstruments()` when the player unmounts, so reports from `/` never say `sample`."
+      },
+      "options": [
+        {
+          "option": "1 (recommended — product-lens, adversarial)",
+          "what": "`requestNotation` sets the tag when an opened file replaces the open score — never from the bundled sample. A report without the tag means the visitor had no file of their own open, or an open failed or was still running.",
+          "pros": "`drums` means a visitor's own drum chart; makes F-22 unnecessary; keeps monitoring code out of the score-loaded handler (a throw there during the sample's load would show the E202 banner).",
+          "cons": "Errors on the bundled sample carry no tag."
+        },
+        {
+          "option": "2 (proposed by no reviewer; not drafted)",
+          "what": "Tag the bundled sample with its own value, for example `sample`.",
+          "pros": "Sample errors stay findable and apart from visitors' drum charts.",
+          "cons": "Adds a third kind of value; §3.1's \"only `drums` and the General MIDI numbers\" would change."
+        }
+      ]
+    },
+    {
+      "id": "F-23",
+      "severity": "P2",
+      "severity_meaning": "should fix — a real gap an implementer will hit",
+      "confidence": 100,
+      "route": "Decision",
+      "autofix_class": "manual",
+      "recommended_action": "Apply (option 1)",
+      "reviewers": ["feasibility", "product-lens", "adversarial"],
+      "promotion": "75 → 100: three reviewers (feasibility, product-lens, adversarial)",
+      "section": "§2.3 (instruments); §6 (the open-file test; the reportError unit case)",
+      "title": "After a cancelled or failed open, the song still playing reports with no instruments",
+      "scenario": "You have `Punk.gp` open and pick `notes.txt` by mistake. You see E103, and `Punk.gp` stays on screen and keeps playing, but the pick has already cleared the tag. Every report from `Punk.gp` after that, until you open another file, reaches Sentry with no `instruments` tag.",
+      "whats_wrong": "The tag is cleared when a file is picked or dropped, and only a successful load sets it again. Cancel on the \"Replace …?\" prompt, E101, E102, E103 and an E105 thrown before the swap all leave the previous score on screen and playing — but untagged for the rest of the visit. Verification found two more ways: an E105 thrown after the swap is queued, and a second pick that the one-open-at-a-time guard drops after it already cleared the tag.",
+      "evidence_quotes": [
+        "loads, and cleared as soon as another file is picked or dropped, before it is read, so a failure",
+        "is a Sentry tag naming the open score's kinds of instrument",
+        "while opening it never carries the last song's instruments.",
+        "picking a file clears the `instruments` tag before",
+        "is a Sentry tag naming the open score's kinds of instrument, so an issue's"
+      ],
+      "before_after": [
+        {
+          "option": "1 (recommended by feasibility and adversarial)",
+          "lines_at_78e35627": "101-104",
+          "before": "- `web/app/play/OpenFileControl.tsx` and `web/app/play/PlayerShell.tsx`, beyond their catch sites:\n  picking or dropping a file remembers its name (3.2) and clears the `instruments` tag (2.3); the\n  score-loaded handler remembers the score's names and sets the tag; `readNotation` and\n  `LoadedNotation` carry the file's extension (2.3).",
+          "after": "- `web/app/play/OpenFileControl.tsx` and `web/app/play/PlayerShell.tsx`, beyond their catch sites:\n  picking or dropping a file remembers its name (3.2); the score-loaded handler remembers the\n  score's names and sets the `instruments` tag (2.3); `readNotation` and `LoadedNotation` carry the\n  file's extension (2.3)."
+        },
+        {
+          "option": "1 (recommended by feasibility and adversarial)",
+          "lines_at_78e35627": "192-194",
+          "before": "  table: the engine's own list is internal, and the number is enough. The tag is set when a score\n  loads, and cleared as soon as another file is picked or dropped, before it is read, so a failure\n  while opening it never carries the last song's instruments.",
+          "after": "  table: the engine's own list is internal, and the number is enough. The tag is set when a score\n  loads and is never cleared, so it names the score on screen, also when a cancelled or failed open\n  leaves the previous score there. A report of a failed open (E101, E102, E103 or E105, the reports\n  with `file`) is sent without it, so it never carries the last song's instruments: `reportError`\n  adds `instruments: undefined` to that one report's `captureContext` tags, and the scope keeps the\n  tag for the next report."
+        },
+        {
+          "option": "1 (recommended by feasibility and adversarial)",
+          "lines_at_78e35627": "453",
+          "before": "  - `reportError`: the default level, the `code` tag, and E101–E103 dropping the message;",
+          "after": "  - `reportError`: the default level, the `code` tag, E101–E103 dropping the message, and a report\n    with `file` sent without the `instruments` tag while the next report still carries it;"
+        },
+        {
+          "option": "1 (recommended by feasibility and adversarial)",
+          "lines_at_78e35627": "466-469",
+          "before": "- **The open-file catches**, a test beside `web/app/play/OpenFileControl.tsx`: a read that fails\n  shows E102 and reports a warning without the message; an `onNotation` that fails shows E105 and\n  reports an error that keeps its message; and picking a file clears the `instruments` tag before\n  the file is read.",
+          "after": "- **The open-file catches**, a test beside `web/app/play/OpenFileControl.tsx`: a read that fails\n  shows E102 and reports a warning without the message; and an `onNotation` that fails shows E105\n  and reports an error that keeps its message."
+        },
+        {
+          "option": "2 (recommended by product-lens)",
+          "lines_at_78e35627": "192-194",
+          "before": "  table: the engine's own list is internal, and the number is enough. The tag is set when a score\n  loads, and cleared as soon as another file is picked or dropped, before it is read, so a failure\n  while opening it never carries the last song's instruments.",
+          "after": "  table: the engine's own list is internal, and the number is enough. The tag is set when a score\n  loads, and cleared as soon as another file is picked or dropped, before it is read, so a failure\n  while opening it never carries the last song's instruments. When the open ends with the previous\n  score still on screen (Cancel on the prompt to replace it, E101, E102, E103, or an E105 thrown\n  before the swap), the tag is set again from that score."
+        },
+        {
+          "option": "2 (recommended by product-lens)",
+          "lines_at_78e35627": "466-469",
+          "before": "- **The open-file catches**, a test beside `web/app/play/OpenFileControl.tsx`: a read that fails\n  shows E102 and reports a warning without the message; an `onNotation` that fails shows E105 and\n  reports an error that keeps its message; and picking a file clears the `instruments` tag before\n  the file is read.",
+          "after": "- **The open-file catches**, a test beside `web/app/play/OpenFileControl.tsx`: a read that fails\n  shows E102 and reports a warning without the message; an `onNotation` that fails shows E105 and\n  reports an error that keeps its message; picking a file clears the `instruments` tag before the\n  file is read; and after the failed read the tag holds the open score's instruments again. A case\n  in `web/app/play/PlayerShell.test.tsx` checks the same after Cancel on the prompt to replace it."
+        }
+      ],
+      "proposed_fix": "Option 1: the tag is set when a score loads (or, with F-25, when an opened file replaces the open score) and never cleared; `reportError` leaves it off the reports that carry `file`; §6's unit case checks that such a report has no tag while the next one does.",
+      "why_it_works": "The scope tag always describes the score on screen, and the owner's lap-1 rule — a failed open never carries the last song's instruments — still holds, through one rule in one place.",
+      "drop_consequence": "Discard it. After any cancelled or failed open, every later report from the song still playing arrives without its instruments, for the rest of the visit.",
+      "basis": "Every failed-open path returns before the swap, and AlphaTab fires score-loaded only when the score changes.",
+      "spike": {
+        "status": "run",
+        "what": "Option 1's mechanism end to end in Sentry 11.0.0: the core source from the mirror (twelve core files on the capture path diffed identical to the 11.0.0 tag), bundled with the repo's installed esbuild into a Node script with a stub client and transport. `setTag('instruments', '025')` (the isolation scope), then three captureException calls; the middle one passes `captureContext: { tags: { code: …",
+        "result": "beforeSend saw the middle report's `instruments` as a key holding `undefined`; its serialized envelope had no `instruments` at all; the reports before and after carried `instruments: 025`. The path: getsentry/sentry-javascript@11.0.0:packages/core/src/utils/prepareEvent.ts (getFinalScope clones the current scope and calls update(captureContext)) → packages/core/src/scope.ts update() (`this._tags = { ...this._tags, ...tags }`) → packages/core/src/utils/scopeData.ts getCombinedScopeData (global, then isolation, then this final scope; packages/core/src/utils/merge.ts lets an undefined value overwrite) → applyDataToEvent (`event.tags = { ...tags, ...event.tags }`) → packages/core/src/utils/envelope.ts serializeEnvelope (JSON.stringify drops it). `Primitive` includes undefined (packages/core/src/types/misc.ts:65), so the call type-checks."
+      },
+      "verification": {
+        "verdict": "pass",
+        "verifier": "verify-B.json",
+        "checks": {
+          "section_exists": "Yes: §2.3 (lines 186-194), §1 (101-104) and the §6 open-file catches test (466-469).",
+          "quotes": "7/7 verbatim (spec lines 193, 186, 193, 194, 468, 193, 186)",
+          "fix_consistent": "Option 1 changes how lap 1's ADD-1 rule is carried out ('cleared when another file is picked'), while keeping its stated goal (a failure while opening a file never carries the last song's instruments); the owner should confirm that. With option 1, also change §1 line 102, §2.3 lines 192-194, §6 line 453 and §6 lines 466-469. Line 172 shows only the unhandled call (E901, E201–E204) and needs no change; the drafted §2.3 text says how a report with `file` drops the tag. Option 2 keeps ADD-1's rule and adds a restore step; it changes §2.3 and §6 only. Neither contradicts another section."
+        },
+        "central_claim": {
+          "status": "confirmed",
+          "key_evidence": [
+            "web/app/play/PlayerShell.tsx:839-849 — Cancel on the 'Replace …?' prompt returns before the swap at :912.",
+            "web/app/play/PlayerShell.tsx:870-889 — E103 returns before the swap.",
+            "web/app/play/OpenFileControl.tsx:74-75 and web/app/play/PlayerShell.tsx:968-969 — E101 and E102 are thrown by readNotation before requestNotation runs."
+          ],
+          "full_evidence": "verify-B.json"
+        },
+        "corrections": "Nothing wrong; three additions. (1) E105 does not always end without a swap: a throw at PlayerShell.tsx:913-923 comes after setNotation, so the new score still replaces the old one. (2) A further way to lose the tag: a second pick during an open is dropped by the one-open-at-a-time guard (:943) after it has cleared the tag. (3) E205 also returns before the swap, but only when the engine failed, so no score is on screen then."
+      },
+      "notes_for_triage": "Option 1 is simpler: one rule in reportError (a report that carries `file` drops the tag), no restore path, and it also covers the dropped second pick. Option 2 needs the still-open score on five paths; OpenFileControl's catch has no api, so report.ts would have to keep the last tag it set, and an E105 thrown after the swap must not put the old tag back. Option 2 also conflicts with F-25's placement (the tag set at the swap): there its catch would restore the old tag over the new score. One related choice neither reviewer raised: an E105 is about the new file, whose instruments are known once it parses; both options send it with no tag, which is the safe reading of the owner's rule. A Drop leaves every report after a cancelled or failed open, for the rest of the visit, without the tag.",
+      "disposition_hint": "PICKER — round 2, with F-24 and F-25 (decide the tag together). Recommend option 1: simpler, covers more paths, and fits F-25. Flip to option 2 only if the owner prefers the smallest change to lap 1's wording over coverage.",
+      "raw_reviewer_findings": [
+        {
+          "raw_id": "FEA-1",
+          "reviewer": "feasibility",
+          "title": "Failed or cancelled open leaves the score untagged",
+          "severity": "P2",
+          "confidence": 75,
+          "autofix_class": "manual"
+        },
+        {
+          "raw_id": "PRO-4",
+          "reviewer": "product-lens",
+          "title": "The tag stays cleared after a cancelled or failed open",
+          "severity": "P2",
+          "confidence": 75,
+          "autofix_class": "gated_auto"
+        },
+        {
+          "raw_id": "ADV-8",
+          "reviewer": "adversarial",
+          "title": "Clearing on pick leaves the still-open score untagged",
+          "severity": "P3",
+          "confidence": 75,
+          "autofix_class": "manual"
+        }
+      ],
+      "triage": {
+        "round": "round 2 (2026-10-05)",
+        "decision": "Apply — option 2 (clear at pick, restore when the open ends), chosen by leocaseiro",
+        "applied": true,
+        "notes": "Built as Design A (see F-25): suspend at pick or drop, restore in a `finally` to the remembered value, so Cancel, E101, E102, E103 and an E105 before the swap all end on the score still on screen, and a successful open (or an E105 after the swap) ends on the new score's value. The counter of opens still running keeps the tag off until the last one ends (spike scenario x). With the counter, an E105 thrown after the swap is reported with no tag: the safe reading of the lap-1 rule. The conflict named at the picker (option 2 against setting the tag at the swap) is resolved by the single remembered value, which the swap overwrites."
+      },
+      "options": [
+        {
+          "option": "1 (recommended — feasibility, adversarial)",
+          "what": "Never clear the tag: it always names the score on screen. A report of a failed open (E101–E103, E105 — the reports that carry `file`) is sent without it: `reportError` sets `instruments: undefined` in that one report's `captureContext` tags.",
+          "pros": "One rule in one place; covers every path, including the dropped second pick; fits F-25.",
+          "cons": "An E105 about a new file is sent with no tag, though that file's instruments are known once it parses (the safe reading of the owner's rule).",
+          "spike": "Sentry 11.0.0 built from the mirror: the tag disappears from that one envelope, and the next report still carries it."
+        },
+        {
+          "option": "2 (product-lens)",
+          "what": "Keep clearing the tag at pick; set it again from the still-open score when an open ends without a swap.",
+          "pros": "Smallest change to lap 1's wording.",
+          "cons": "Needs the old score on five paths; OpenFileControl's catch has no player api, so report.ts would keep the last tag; after an E105 thrown after the swap it would put the old tag back over the new score; conflicts with F-25."
+        }
+      ],
+      "conflict": "feasibility and adversarial recommend option 1; product-lens recommends option 2. Agent recommendation: option 1."
+    },
+    {
+      "id": "F-22",
+      "severity": "P2",
+      "severity_meaning": "should fix — a real gap an implementer will hit",
+      "confidence": 100,
+      "route": "Proposed fix",
+      "autofix_class": "gated_auto",
+      "recommended_action": "Apply only if F-25 is dropped",
+      "reviewers": ["adversarial", "feasibility"],
+      "promotion": "75 → 100: two reviewers (adversarial P2, feasibility P3)",
+      "section": "§2.3 (instruments); §1 Changed files; §6 e2e case 4",
+      "title": "A late load of the bundled drum beat can leave its `drums` tag on the visitor's own score",
+      "scenario": "You open `guitar-no-percussion.gp` on `/play` before the bundled drum beat has finished downloading. Your guitar file stays on screen, but the beat's late load reaches the tag last, so every report from the rest of your visit says `instruments: drums`. In Sentry, a bug in a guitar-only file is filed under drums.",
+      "whats_wrong": "The player loads a bundled one-track drum beat on every visit. If a visitor opens a file before the beat finishes downloading, NotationSurface draws the visitor's file again from inside the beat's own score-loaded event, so a handler that subscribed after NotationSurface's receives the visitor's score first and the beat last. A handler that trusts the event's argument therefore ends on `drums`. Spike (AlphaTab 1.8.4, listeners in the app's order): the event's argument gives `drums`; `api.score` gives `25`.",
+      "evidence_quotes": [
+        "score-loaded handler remembers the score's names and sets the tag; `readNotation` and",
+        "and it carries the tag `instruments: 25` (the file's one track, an acoustic guitar).",
+        "score-loaded handler remembers the score's names and sets the tag",
+        "table: the engine's own list is internal, and the number is enough. The tag is set when a score"
+      ],
+      "before_after": [
+        {
+          "option": "only",
+          "lines_at_78e35627": "101-104",
+          "before": "- `web/app/play/OpenFileControl.tsx` and `web/app/play/PlayerShell.tsx`, beyond their catch sites:\n  picking or dropping a file remembers its name (3.2) and clears the `instruments` tag (2.3); the\n  score-loaded handler remembers the score's names and sets the tag; `readNotation` and\n  `LoadedNotation` carry the file's extension (2.3).",
+          "after": "- `web/app/play/OpenFileControl.tsx` and `web/app/play/PlayerShell.tsx`, beyond their catch sites:\n  picking or dropping a file remembers its name (3.2) and clears the `instruments` tag (2.3); the\n  score-loaded handler remembers the score's names and sets the tag from the score on screen\n  (`api.score`, never the event's argument); `readNotation` and `LoadedNotation` carry the file's\n  extension (2.3)."
+        },
+        {
+          "option": "only",
+          "lines_at_78e35627": "192-194",
+          "before": "  table: the engine's own list is internal, and the number is enough. The tag is set when a score\n  loads, and cleared as soon as another file is picked or dropped, before it is read, so a failure\n  while opening it never carries the last song's instruments.",
+          "after": "  table: the engine's own list is internal, and the number is enough. The tag is set when a score\n  loads, from the score on screen (`api.score`), never from the event's argument. When the bundled\n  sample arrives after a visitor's file, NotationSurface draws the file again from inside the\n  sample's event, so the shell's handler, which subscribes last, receives the file and then the\n  sample. The tag is cleared as soon as another file is picked or dropped, before it is read, so a\n  failure while opening it never carries the last song's instruments."
+        },
+        {
+          "option": "only (optional test)",
+          "lines_at_78e35627": "491-493",
+          "before": "    4. Open `guitar-no-percussion.gp` (an NH-335 file). Once a page error with the NH-335 message\n       has been seen, the test throws a sentinel error: the sentinel is the only error event sent,\n       and it carries the tag `instruments: 25` (the file's one track, an acoustic guitar).",
+          "after": "    4. Open `guitar-no-percussion.gp` (an NH-335 file) while the bundled sample is held back, as\n       the late-sample test in `web/e2e/player.e2e.ts` already does. Once a page error with the\n       NH-335 message has been seen and the sample has arrived, the test throws a sentinel error:\n       the sentinel is the only error event sent, and it carries the tag `instruments: 25` (the\n       file's one track, an acoustic guitar)."
+        }
+      ],
+      "proposed_fix": "If the tag stays in the score-loaded handler, it reads the score on screen (`api.score`), never the event's argument. Optional: hold the sample back in e2e case 4, as the existing late-sample test does, so the race is tested on every run.",
+      "why_it_works": "`api.score` is set before the event fires, so in the nested case it is always the score on screen.",
+      "drop_consequence": "Discard it (with F-25 also dropped). A visitor who opens a file in the first moments of a visit can carry `drums` on every report, and case 4 is flaky.",
+      "basis": "AlphaTab sets the score before it fires score-loaded; NotationSurface's re-assert guard nests the visitor's event inside the sample's.",
+      "spike": {
+        "status": "run",
+        "what": "A Node script that builds the installed AlphaTab 1.8.4 AlphaTabApiBase with a minimal UI facade (player off; `render` and `loadMidiForScore` stubbed, both run after the event), registers listeners in the app's order (NotationSurface's guard, TracksPopover's guard, then a tag handler that reads the event's argument and one that reads `api.score`), renders guitar-no-percussion.gp as the visitor's…",
+        "result": "The nested dispatch happened as described: the guard re-rendered the visitor's file inside the sample's event, and the tag handlers saw the visitor's score (nested call) and then the sample (outer call). Final tag: `drums` from the handler that reads the event's argument, `25` from the one that reads `api.score`. `api.score` ended as the visitor's file, TracksPopover's guard returned on the outer call, and AlphaTab's DOM events fired in the order visitor, visitor, sample."
+      },
+      "verification": {
+        "verdict": "pass-with-correction",
+        "verifier": "verify-B.json",
+        "checks": {
+          "section_exists": "Yes: §2.3 (lines 149-194), §1 Changed files (95-107) and §6 e2e case 4 (491-493).",
+          "quotes": "4/4 verbatim (spec lines 103, 493, 103, 192)",
+          "fix_consistent": "Consistent. It changes §1 line 103 and §2.3 lines 192-194; nothing else contradicts it. If F-25 is applied with its draft (the tag set in requestNotation), this text is superseded: no handler sets the tag, so the late sample cannot reach it."
+        },
+        "central_claim": {
+          "status": "confirmed",
+          "key_evidence": [
+            "web/app/play/PlayerShell.tsx:85-88 and :271 — the bundled sample `/notation/1-beat.gp` is `settings.core.file` and loads on every visit.",
+            "@coderline/alphatab@1.8.4:dist/alphaTab.core.mjs:41018-41020 — the browser facade fetches it with loadScoreAsync and calls `api.renderScore(s, …)` whenever the request finishes.",
+            "@coderline/alphatab@1.8.4:dist/alphaTab.core.mjs:45836-45845 — `_internalRenderTracks` sets `this._score = score` before `_onScoreLoaded(score)`; 48025-48027 — `_onScoreLoaded` calls `scoreLoaded.trigger(score)`; 24735-24737 — `EventEmitterOfT.trigger` calls every listener in turn with the same argument."
+          ],
+          "full_evidence": "verify-B.json"
+        },
+        "corrections": "ADV-3 says e2e case 4 'would read drums'. It can, not would: that needs the bundled sample to land after the file opens. openFirstScore makes that possible and the existing late-sample test (web/e2e/player.e2e.ts:586) forces it, so case 4 as written would be flaky rather than always wrong. FEA-3's account is accurate."
+      },
+      "notes_for_triage": "If F-25 is applied with its draft, this fix is not needed: no score-loaded handler sets the tag. If F-25 is dropped, apply this one, or a visitor who opens a file in the first moments of a visit can carry `drums` on every report. The optional case-4 change holds the sample back so the race is tested on every run. A Drop of both F-22 and F-25 leaves the wrong tag in that race and a flaky case 4.",
+      "disposition_hint": "DISSOLVES if F-25 is applied (the tag moves out of the handler). If F-25 is dropped, AUTO-RESOLVE. Either way, the optional case-4 change is a test improvement.",
+      "raw_reviewer_findings": [
+        {
+          "raw_id": "ADV-3",
+          "reviewer": "adversarial",
+          "title": "Bundled-sample race leaves the tag on the drum beat",
+          "severity": "P2",
+          "confidence": 75,
+          "autofix_class": "gated_auto"
+        },
+        {
+          "raw_id": "FEA-3",
+          "reviewer": "feasibility",
+          "title": "A late bundled-sample load can overwrite the instruments tag",
+          "severity": "P3",
+          "confidence": 75,
+          "autofix_class": "gated_auto"
+        }
+      ],
+      "triage": {
+        "round": "round 2 (2026-10-05)",
+        "decision": "Dissolved — F-25's design keeps the tag out of every score-loaded listener (spike scenario ix: the race ran, the tag stayed the visitor's value)",
+        "applied": "test change only",
+        "notes": "Its optional test change is applied as a test improvement: e2e case 4 holds the bundled sample back, as the late-sample test in player.e2e.ts does, and expects `instruments: 025`, not `sample`."
+      },
+      "depends_on": "F-25 — if F-25 is applied, no handler sets the tag and this fix is not needed"
     }
   ]
 }
