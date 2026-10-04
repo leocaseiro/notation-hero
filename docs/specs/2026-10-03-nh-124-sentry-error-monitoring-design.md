@@ -153,23 +153,35 @@ export function noteError(error: unknown, what: string): void;
   Sentry search.
 - **E101, E102 and E103 drop the exception message** and keep its type, its stack, and the file's
   type and size. The engine's parse message can quote text from inside the file (section 3.1).
+- **E105 keeps its message.** It is our own code failing after the file was read, so the message
+  describes our bug, not the file. The names filter (section 3.2) still runs over it.
 
 ### 2.4 Every handled failure in `web/`
 
 **Inside try/catch — all 16:**
 
-| Where                                                                                          | What fails                                    | Code      | Sends                                                 |
-| ---------------------------------------------------------------------------------------------- | --------------------------------------------- | --------- | ----------------------------------------------------- |
-| `web/lib/alphatab/AlphaTabEngineContext.tsx:35`                                                | the player engine did not load                | E201      | error, unhandled                                      |
-| `web/app/play/PlayerShell.tsx:805`                                                             | the same failure, met when a file is opened   | E205      | breadcrumb — E201 has already reported the cause      |
-| `web/app/play/PlayerShell.tsx:309`                                                             | stored settings cannot be applied at start    | —         | error                                                 |
-| `web/app/play/PlayerShell.tsx:743` and `:761`                                                  | MIDI and Guitar Pro export                    | E401      | error                                                 |
-| `web/lib/alphatab/live-settings.ts:165`                                                        | the engine refused a value our checks allowed | E602      | warning                                               |
-| `web/app/play/PlayerShell.tsx:872`                                                             | the file is not a score                       | E103      | warning, with file type and size                      |
-| `web/app/play/OpenFileControl.tsx:75`, `web/app/play/PlayerShell.tsx:969`                      | the file is too large, or cannot be read      | E101/E102 | warning, with file type and size                      |
-| `web/lib/alphatab/settings-storage.ts:195`                                                     | the saved settings are not valid JSON         | (E603)    | a lint opt-out with a reason: its caller reports E603 |
-| `web/app/play/PlayerShell.tsx:190`, `web/lib/alphatab/transport-storage.ts:129`                | storage blocked while reading                 | —         | breadcrumb                                            |
-| `web/app/play/PlayerShell.tsx:220`, `:594`, `:722`, `web/app/play/useRestoredTransport.ts:114` | storage blocked or full while writing         | —         | breadcrumb                                            |
+| Where                                                                                          | What fails                                                      | Code       | Sends                                                                                                                               |
+| ---------------------------------------------------------------------------------------------- | --------------------------------------------------------------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `web/lib/alphatab/AlphaTabEngineContext.tsx:35`                                                | the player engine did not load                                  | E201       | error, unhandled                                                                                                                    |
+| `web/app/play/PlayerShell.tsx:805`                                                             | the same failure, met when a file is opened                     | E205       | breadcrumb — E201 has already reported the cause                                                                                    |
+| `web/app/play/PlayerShell.tsx:309`                                                             | stored settings cannot be applied at start                      | —          | error                                                                                                                               |
+| `web/app/play/PlayerShell.tsx:743` and `:761`                                                  | MIDI and Guitar Pro export                                      | E401       | error                                                                                                                               |
+| `web/lib/alphatab/live-settings.ts:165`                                                        | the engine refused a value our checks allowed                   | E602       | warning                                                                                                                             |
+| `web/app/play/PlayerShell.tsx:872`                                                             | the file is not a score                                         | E103       | warning, with file type and size                                                                                                    |
+| `web/app/play/OpenFileControl.tsx:75`, `web/app/play/PlayerShell.tsx:969`                      | the file is too large, or cannot be read                        | E101/E102  | warning, with file type and size                                                                                                    |
+| the same two catches, after the file was read                                                  | our own code failed while loading the score into the player     | E105 (new) | error, message kept, with file type and size                                                                                        |
+| `web/lib/alphatab/settings-storage.ts:195`                                                     | the saved settings are not valid JSON                           | (E603)     | a lint opt-out with a reason: its caller reports E603                                                                               |
+| `web/app/play/PlayerShell.tsx:190`, `web/lib/alphatab/transport-storage.ts:129`                | storage blocked while reading, or our reader failed             | —          | breadcrumb if the browser refused (`SecurityError`); anything else: error                                                           |
+| `web/app/play/PlayerShell.tsx:220`, `:594`, `:722`, `web/app/play/useRestoredTransport.ts:114` | storage blocked or full while writing, or our serializer failed | —          | breadcrumb if refused or full (`SecurityError`, `QuotaExceededError`, Firefox's `NS_ERROR_DOM_QUOTA_REACHED`); anything else: error |
+
+**Read, then open.** The two open-file catches set a flag between their two steps —
+`const loaded = await readNotation(file); read = true; await onNotation(loaded);`
+(`requestNotation` in the drop path) — so a failure before it is the visitor's file (E101 or E102,
+a warning) and a failure after it is our own code (E105, an error). For E105 the visitor sees
+"song.gp could not be opened. Something went wrong on our side, not with your file. Try again, or
+reload the page. (Error E105)", and the screen-reader announcement names the same code. E105 is a
+new row in `shared/src/error-codes.ts` and `docs/reference/error-codes.md`: "The file was read, but
+loading it into the player failed — a bug in our code, not the file."
 
 **Failures that never throw** — an event, a timer, or a state change:
 
@@ -182,7 +194,10 @@ export function noteError(error: unknown, what: string): void;
 
 **Blocked is not corrupt.** Storage the browser _blocks_ is the visitor's environment: a breadcrumb
 (S2b). Saved data that is _corrupt_ means our own code wrote something bad, or an update changed which
-values are valid. That is a bug signal, so it sends a warning.
+values are valid. That is a bug signal, so it sends a warning. A throw from our own reader or
+serializer inside those same catches is neither: it is a bug, and it sends an error. Each catch
+tells the two apart in place — `if (isStorageRefusal(error)) noteError(…); else reportError(error);`
+— because the lint rule (section 2.5) flags a shared helper that hides the call.
 
 ### 2.5 The lint rule
 
@@ -367,6 +382,8 @@ secret. The upload now runs inside Vercel's build, so neither GitHub mechanism a
   - the address scrub: `/play?fbclid=abc#x` comes out as `/play`, in the event's address and in a
     navigation breadcrumb;
   - `reportError`: the default level, the `code` tag, and E101–E103 dropping the message;
+  - `isStorageRefusal`: `SecurityError`, `QuotaExceededError` and `NS_ERROR_DOM_QUOTA_REACHED` count
+    as refused storage; a `TypeError` from our own reader does not;
   - known engine noise: a throw whose frames all sit in the engine bundle is dropped; the same
     message with one frame from our code is kept.
 - **The three error pages** (`web/app/error.tsx`, `web/app/play/error.tsx`,
@@ -374,6 +391,9 @@ secret. The upload now runs inside Vercel's build, so neither GitHub mechanism a
   section 3.4 sentence and "Error E901", its Try again calls `reset`, and `reportError` is called
   once with the stub error and code E901. (Rendering `global-error.tsx` prints one development
   warning, `<html>` inside a `<div>`; it does not fail the test.)
+- **The open-file catches**, a test beside `web/app/play/OpenFileControl.tsx`: a read that fails
+  shows E102 and reports a warning without the message; an `onNotation` that fails shows E105 and
+  reports an error that keeps its message.
 - **Lint canary:** a test runs ESLint over a silent `catch { }` and expects it to fail, so the rule
   cannot stop working quietly — the same idea as `tooling/check-core-purity-canary.sh`.
 - **End to end (Playwright, in the existing `web` job):**
@@ -392,8 +412,9 @@ secret. The upload now runs inside Vercel's build, so neither GitHub mechanism a
        with `console.error`, then cause an error: the raw envelope contains none of those strings,
        and not the marker.
     4. Opening `guitar-no-percussion.gp` (the NH-335 file) sends no error.
-    5. With storage blocked by an init script, nothing is sent until a real error, and that report
-       carries the storage breadcrumb.
+    5. With storage blocked by an init script that throws `DOMException('…', 'SecurityError')`, as
+       browsers do, nothing is sent until a real error, and that report carries the storage
+       breadcrumb.
     6. Play then Pause quickly, repeated until a page error with the NH-338 message has been
        seen (at most 20 tries): no event envelope carries that message.
     7. Open `/?fbclid=probe123#frag` and cause an error there, then click Play and cause another:
@@ -410,6 +431,7 @@ secret. The upload now runs inside Vercel's build, so neither GitHub mechanism a
   L11-envsecret superseded; F7-sentry rewritten for Vercel. Flips to ✅ happen in the implementation
   PR.
 - `web/README.md` — the Deploy section names both environment variables.
+- `shared/src/error-codes.ts` and `docs/reference/error-codes.md` — the new E105 (section 2.4).
 - **Jira, at implementation:** the two NH-298 checklist items "Sentry integration" and "Test the
   'Nothing you open leaves this device' claim" change. The second's future same-origin test must now
   allow exactly the Sentry ingest host — and only once this ships.

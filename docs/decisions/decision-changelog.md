@@ -68,6 +68,12 @@ aren't".
   cover the page address or navigation breadcrumbs, so tracking codes such as `fbclid` would leak.
 - **An email alert** fires on a new issue, a regression or an escalation. Sentry's default alert
   skips warnings, and every file problem is a warning.
+- **Our own failures in the open-file catches get a new code, E105** — an error that keeps its
+  message — instead of hiding behind the visitor's E102. Chosen over tagging them E102 at error
+  level, so each code keeps one meaning and the visitor learns the fault is ours.
+- **S2b is refined, not reversed.** Only storage the browser refuses (`SecurityError`, or full)
+  leaves a breadcrumb; a throw from our own reader or serializer inside the same catch sends an
+  error.
 
 **Registry:** L11-sentry points at the spec; L11-srcmap reworded (D4); L11-envsecret ⛔ superseded
 and F7-sentry rewritten, because the source-map upload runs inside Vercel's build rather than a

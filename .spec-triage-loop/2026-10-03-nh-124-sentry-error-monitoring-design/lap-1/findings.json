@@ -50,11 +50,25 @@
       "P3": "worth fixing — small, cheap"
     },
     "triage_progress": {
-      "decided": ["F-1", "F-7", "F-12", "F-15", "F-16", "F-2", "F-3", "F-4", "F-5", "F-6"],
-      "undecided": ["F-8", "F-9", "F-10", "F-11", "F-13", "F-14"]
+      "decided": [
+        "F-1",
+        "F-7",
+        "F-12",
+        "F-15",
+        "F-16",
+        "F-2",
+        "F-3",
+        "F-4",
+        "F-5",
+        "F-6",
+        "F-8",
+        "F-9"
+      ],
+      "undecided": ["F-10", "F-11", "F-13", "F-14"]
     },
-    "picker_rounds_used": 2,
-    "changelog_note": "docs/decisions/decision-changelog.md: the NH-124 entry's S4 bullet is corrected in place, and a 'Changed by the spec review, lap 1' list records each approved change (F-2, F-3, F-4, F-5, F-6 so far). Add F-8/F-9/F-10 outcomes there too."
+    "picker_rounds_used": 3,
+    "changelog_note": "docs/decisions/decision-changelog.md: the NH-124 entry's S4 bullet is corrected in place, and a 'Changed by the spec review, lap 1' list records each approved change (F-2, F-3, F-4, F-5, F-6 so far). Add F-8/F-9/F-10 outcomes there too.",
+    "triage_status": "PAUSED AT THE CAP after triage invocation 1: 12 of 16 findings decided (5 auto-resolved, 7 by picker in 3 rounds). Partial state — the lap is NOT bumped and this file is NOT marked triaged, so the entry rule resumes at step 4 on the 4 undecided findings."
   },
   "already_applied": [],
   "ambiguity_fixes": [
@@ -133,112 +147,6 @@
     }
   ],
   "undecided_findings": [
-    {
-      "id": "F-8",
-      "severity": "P2",
-      "confidence": 75,
-      "route": "Proposed fix",
-      "autofix_class": "gated_auto",
-      "reviewers": ["feasibility"],
-      "section": "§2.4 (the OpenFileControl / drag-and-drop row); §2.3; §6 unit",
-      "title": "A bug in our open-file code would be filed as the visitor's unreadable file",
-      "scenario": "A future change breaks something that runs after a score is parsed — say a playback call now fails on every open. Every visitor who opens a file sees '(Error E102)', and Sentry receives a stream of E102 warnings with the error message removed. You read 'file could not be read' and think: people have odd files. The real bug, in our code, hides behind the code meant for the visitor's own file — without its message.",
-      "whats_wrong": "§2.4 files the catches at OpenFileControl.tsx:75 and PlayerShell.tsx:969 as 'the file is too large, or cannot be read'. Both wrap `await onNotation(await readNotation(file))` — the whole open flow, including engine calls after a successful parse (PlayerShell.tsx:892, :897, :902). `openFailureCode()` returns E102 for anything under the size cap, and the comment at OpenFileControl.tsx:76-77 says a throw mid-open lands in that catch.",
-      "evidence_quotes": [
-        "`web/app/play/OpenFileControl.tsx:75`, `web/app/play/PlayerShell.tsx:969`",
-        "the file is too large, or cannot be read",
-        "E101, E102 and E103 drop the exception message"
-      ],
-      "fix_core": "In both catch sites set a flag between the two awaits — `const loaded = await readNotation(file); read = true; await onNotation(loaded);`. Only a failure before the flag is the visitor's file: an E101/E102 warning without its message. A throw after it is our bug: an error that keeps its message.",
-      "options": [
-        {
-          "label": "1️⃣ Keep E102 for the visitor (Recommended)",
-          "what": "The visitor still sees '(Error E102)'. The post-read report is tagged E102 at level `error` with its message kept. §2.3's rule changes from 'by code' to 'when the read or the parse failed'.",
-          "pros": "No visitor-facing change; a visitor's quoted E102 still finds the report.",
-          "cons": "E102 now means two things in Sentry (tell them apart by level).",
-          "before_after": [
-            {
-              "where": "§2.4 row",
-              "lines": "159",
-              "before": "| `web/app/play/OpenFileControl.tsx:75`, `web/app/play/PlayerShell.tsx:969`                      | the file is too large, or cannot be read      | E101/E102 | warning, with file type and size                      |",
-              "after": "| `web/app/play/OpenFileControl.tsx:75`, `web/app/play/PlayerShell.tsx:969` | the file is too large or cannot be read — or our open code failed after the read | E101/E102 | the read failed: warning, with file type and size; after the read: error, message kept |"
-            },
-            {
-              "where": "§2.3",
-              "lines": "144-145",
-              "before": "- **E101, E102 and E103 drop the exception message** and keep its type, its stack, and the file's\n  type and size. The engine's parse message can quote text from inside the file (section 3.1).",
-              "after": "- **When the read or the parse failed, the exception message is dropped** (E101, E102, E103); its\n  type, its stack, and the file's type and size are kept. The engine's parse message can quote text\n  from inside the file (section 3.1). A failure after the read keeps its message."
-            },
-            {
-              "where": "§6 unit",
-              "lines": "334",
-              "before": "  - `reportError`: the default level, the `code` tag, and E101–E103 dropping the message;",
-              "after": "  - `reportError`: the default level, the `code` tag, and the message dropped when the read or parse\n    failed — kept when the open failed after the read;"
-            }
-          ]
-        },
-        {
-          "label": "2️⃣ A new code for the post-read failure",
-          "what": "The visitor sees a new code (for example 'something broke while opening'); it needs a row in shared/src/error-codes.ts and docs/reference/error-codes.md (checked by check:error-codes).",
-          "pros": "Honest to the visitor; one meaning per code.",
-          "cons": "Changes visitor-facing text and the error registry — more scope for a reporting ticket."
-        }
-      ],
-      "recommendation": "1️⃣ — this ticket is about reporting, and 1️⃣ fixes the report without changing what visitors see. Flip to 2️⃣ if the visitor should be told the truth too.",
-      "proposed_fix": "Split read failures from post-read failures with a flag; report post-read failures as errors with their message.",
-      "why_it_works": "The visitor-file code then only ever carries visitor-file problems, and our own bugs arrive as errors with their message.",
-      "drop_consequence": "Discard it. Bugs in our open code reach Sentry as 'visitor's unreadable file' warnings with no message.",
-      "basis": "Both catches wrap the whole open flow, and every non-size failure becomes E102 with its message dropped.",
-      "spike": "Code read (verify-B). Not run.",
-      "disposition_hint": "PICKER — two options.",
-      "verification": "pass",
-      "severity_meaning": "should fix — a real gap an implementer will hit"
-    },
-    {
-      "id": "F-9",
-      "severity": "P2",
-      "confidence": 75,
-      "route": "Proposed fix",
-      "autofix_class": "gated_auto",
-      "reviewers": ["adversarial"],
-      "section": "§2.4 (the two storage rows; \"Blocked is not corrupt\")",
-      "title": "The 'storage blocked' catches would also hide bugs in our own settings reader",
-      "terms_first": "Breadcrumb only (decision S2b): when the browser refuses storage — a private window — we keep a note but send nothing, because that is the visitor's setup, not a bug.",
-      "scenario": "A future update changes which settings values are valid, and our reader now throws on a value it used to accept. Every returning visitor silently gets the default settings — no message — and their next change overwrites what they had saved. Sentry gets only a breadcrumb that says 'storage blocked', the label meant for a private window. You never learn that every returning visitor just lost their settings.",
-      "whats_wrong": "§2.4 files all six storage catches as 'storage blocked' → breadcrumb only. But the read catches wrap our whole reader: PlayerShell.tsx:181-196 runs `loadStoredSettings` (merge, option, bounds and text checks) inside the try, and transport-storage.ts:127-134 does the same with `loadStoredTransport`; the four write sites serialize inside their try. The spec's own rule says a fault in our code is a bug signal ('Blocked is not corrupt'). No code in web/ checks DOMException names today.",
-      "evidence_quotes": [
-        "storage blocked while reading",
-        "storage blocked or full while writing",
-        "Saved data that is _corrupt_ means our own code wrote something bad, or an update changed which values are valid. That is a bug signal, so it sends a warning."
-      ],
-      "before_after": [
-        {
-          "where": "§2.4, the two storage rows — \"Sends\" cells",
-          "lines": "161-162",
-          "before": "| `web/app/play/PlayerShell.tsx:190`, `web/lib/alphatab/transport-storage.ts:129`                | storage blocked while reading                 | —         | breadcrumb                                            |\n| `web/app/play/PlayerShell.tsx:220`, `:594`, `:722`, `web/app/play/useRestoredTransport.ts:114` | storage blocked or full while writing         | —         | breadcrumb                                            |",
-          "after": "reading row, Sends: breadcrumb if the browser refused (`SecurityError`); anything else: error\nwriting row, Sends: breadcrumb if refused or full (`SecurityError`, `QuotaExceededError`, Firefox's `NS_ERROR_DOM_QUOTA_REACHED`); anything else: error",
-          "note": "prettier re-pads the table"
-        },
-        {
-          "where": "§2.4, end of \"Blocked is not corrupt\" (after line 175)",
-          "lines": null,
-          "before": "(absent — nothing there today)",
-          "after": "A throw from our own reader or serializer inside those same catches is neither: it is a bug, and\nit sends an error."
-        }
-      ],
-      "plan_notes": [
-        "Each catch calls reportError/noteError directly — `isStorageRefusal(e) ? noteError(e, '…') : reportError(e)` — because §2.5's lint selector flags a shared helper that hides the call.",
-        "E2E case 5's init script must throw `new DOMException('…', 'SecurityError')`, as browsers do; a plain Error would now be reported as a bug."
-      ],
-      "proposed_fix": "Each storage catch tells a refused store from our own failure: refused → breadcrumb (S2b), anything else → error.",
-      "why_it_works": "S2b keeps meaning exactly what was decided — a refused store — and our own bugs become errors.",
-      "drop_consequence": "Discard it. A bug in our settings or transport reader looks exactly like a private window, and returning visitors lose their settings silently.",
-      "basis": "The \"blocked\" catches wrap the whole reader and serializer, not just the storage call.",
-      "spike": "Code read (verify-B). Browser error names reasoned, not measured.",
-      "disposition_hint": "PICKER — changes what gets reported (refines S2b, does not reverse it).",
-      "verification": "pass",
-      "severity_meaning": "should fix — a real gap an implementer will hit"
-    },
     {
       "id": "F-10",
       "severity": "P2",
@@ -520,7 +428,12 @@
     "Write the PR body BEFORE every push (a body edit cancels a running CI).",
     "Apply as you go: one commit per picker round (and one for the auto-resolves), each revertable.",
     "Dependabot alert #93 is separate work — keep it out of this PR.",
-    "Decision governance: when leocaseiro approves a change that revises an approved decision's detail (F-4 for S4, F-9 for S2b, F-10 for the S1 mechanism, F-5 for the S1 copy), record it in docs/decisions/decision-changelog.md. The NH-124 2026-10-03 entry is in this same unmerged PR: correct its bullets in place AND add a short \"Revised in the spec review, lap 1\" list to that entry, with the reasons."
+    "Decision governance: when leocaseiro approves a change that revises an approved decision's detail (F-4 for S4, F-9 for S2b, F-10 for the S1 mechanism, F-5 for the S1 copy), record it in docs/decisions/decision-changelog.md. The NH-124 2026-10-03 entry is in this same unmerged PR: correct its bullets in place AND add a short \"Revised in the spec review, lap 1\" list to that entry, with the reasons.",
+    "F-10 must weigh a case the review did not score: F-8 (decided, option 2) made E105 an error that KEEPS its message, and the names filter also runs over exception messages at beforeSend (§3.2 \"Both ends\"). An engine error thrown after the parse could quote a title or track name. F-10 options 2️⃣/3️⃣ delete or narrow the filter — say what would then protect E105 (and any other kept message), and re-score F-10 with that in view.",
+    "F-14 composes with the edits already made: e2e case 3 now carries F-1's console marker; case 5 now says the init script throws DOMException(…, \"SecurityError\") (F-9); cases 6 and 7 exist (F-2, F-3). Number new cases after 7.",
+    "F-3 left §3.2 without a word on the address cut (scrub.ts also cuts addresses at ? or #). Add it when F-10 rewrites §3.2 — under every F-10 option scrub.ts stays alive for the address cut.",
+    "AMB-4 (the §1 changed-files list, last) must also name shared/src/error-codes.ts and docs/reference/error-codes.md (E105, F-8) besides the files the finding already lists.",
+    "Deferred question Q1 (Sentry data region, US or EU — chosen at organization creation, cannot change later) is still unasked. Ask it in the FYI round, as its own card; if answered, add it to §5 step 1."
   ],
   "residual_concerns": [
     "R1 (security-lens): the DSN is public and the free plan has no spike protection — set the project's \"Allowed Domains\" to the production host (cheap partial guard); §5 has no rotation or expiry note for SENTRY_AUTH_TOKEN.",
@@ -558,14 +471,19 @@
       "Round 5 — optional: the 8 FYIs as two multi-select cards (unchecked = left open, never dropped)."
     ],
     "finally": "AMB-4 (complete the §1 list), write the spec frontmatter (lap: 1, last_applied), mark this file triaged, commit, write the PR body, push. A P1 will have been applied, so the lap decision is RE-LAP: lap 2 starts as a NEW review-half invocation.",
-    "cap_note": "16 findings exceed the 12-finding cap. Suggested split — triage invocation 1: auto-resolves + rounds 1-2 (10 findings); invocation 2: rounds 3-5 + finally. Stopping at the cap writes partial state and does NOT bump the lap."
+    "cap_note": "16 findings exceed the 12-finding cap. Suggested split — triage invocation 1: auto-resolves + rounds 1-2 (10 findings); invocation 2: rounds 3-5 + finally. Stopping at the cap writes partial state and does NOT bump the lap.",
+    "next_invocation": [
+      "Round 4 — F-10 (names filter: fix it, or click breadcrumbs off) with the F-8/E105 consideration above; then F-11 and F-13 auto-resolve if 1️⃣ (they dissolve otherwise); then F-14 auto-resolves with the right case 3 (+ its case-5 wording). That is 4 findings: the next invocation stays under the cap.",
+      "Round 5 — the 8 FYIs as two multi-select cards (unchecked = left open, never dropped) + Q1 (data region) on its own card.",
+      "Finally — AMB-4; the spec frontmatter (lap: 1, last_applied: P1); mark this file triaged (header.triaged: true); commit; write the PR body; push. P1s were applied, so the lap decision is RE-LAP: lap 2 starts as a NEW review-half invocation."
+    ]
   },
   "notes": [
     "Read ONLY this file in the triage half (plus verify-A/B/C.json if a detail is missing) — never the spec: every finding carries its scenario and Before → After.",
     "Chunks for the person: scenario first, then What's wrong, Before → After, Proposed fix, Why it works; expand every id (F-N, P1, S4, E102…) in plain words; quote, never cite."
   ],
   "resume": {
-    "triage_half": "Run spec-triage-loop:doc-review-loop on the spec (spec_path_from_root below, prefixed with your repo root). The entry rule finds this un-triaged artifact and starts at step 4, on its undecided findings only.",
+    "triage_half": "Run spec-triage-loop:doc-review-loop on the spec (spec_path_from_root below, prefixed with your repo root). The entry rule finds this un-triaged artifact and resumes at step 4 on its 4 undecided findings: follow triage_plan.next_invocation.",
     "spec_permalink": "https://github.com/leocaseiro/notation-hero/blob/cea5a76d2781ae1c4f4accd451858efff70957ab/docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md",
     "spec_path_from_root": ".claude/worktrees/nh-320-vr-spec-lap-4-92e22a/docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md",
     "artifact_path_from_root": ".claude/worktrees/nh-320-vr-spec-lap-4-92e22a/.spec-triage-loop/2026-10-03-nh-124-sentry-error-monitoring-design/lap-1/findings.json",
@@ -1101,6 +1019,124 @@
         "decision": "Apply — option 2️⃣: one alert, three triggers (new, regressed, escalating) (leocaseiro, picker)",
         "applied": true,
         "notes": "§5 new step 2; steps 2-5 became 3-6; step 6 also proves the alert. Deferred question Q1 (data region) is still open — ask it in a later round."
+      }
+    },
+    {
+      "id": "F-8",
+      "severity": "P2",
+      "confidence": 75,
+      "route": "Proposed fix",
+      "autofix_class": "gated_auto",
+      "reviewers": ["feasibility"],
+      "section": "§2.4 (the OpenFileControl / drag-and-drop row); §2.3; §6 unit",
+      "title": "A bug in our open-file code would be filed as the visitor's unreadable file",
+      "scenario": "A future change breaks something that runs after a score is parsed — say a playback call now fails on every open. Every visitor who opens a file sees '(Error E102)', and Sentry receives a stream of E102 warnings with the error message removed. You read 'file could not be read' and think: people have odd files. The real bug, in our code, hides behind the code meant for the visitor's own file — without its message.",
+      "whats_wrong": "§2.4 files the catches at OpenFileControl.tsx:75 and PlayerShell.tsx:969 as 'the file is too large, or cannot be read'. Both wrap `await onNotation(await readNotation(file))` — the whole open flow, including engine calls after a successful parse (PlayerShell.tsx:892, :897, :902). `openFailureCode()` returns E102 for anything under the size cap, and the comment at OpenFileControl.tsx:76-77 says a throw mid-open lands in that catch.",
+      "evidence_quotes": [
+        "`web/app/play/OpenFileControl.tsx:75`, `web/app/play/PlayerShell.tsx:969`",
+        "the file is too large, or cannot be read",
+        "E101, E102 and E103 drop the exception message"
+      ],
+      "fix_core": "In both catch sites set a flag between the two awaits — `const loaded = await readNotation(file); read = true; await onNotation(loaded);`. Only a failure before the flag is the visitor's file: an E101/E102 warning without its message. A throw after it is our bug: an error that keeps its message.",
+      "options": [
+        {
+          "label": "1️⃣ Keep E102 for the visitor (Recommended)",
+          "what": "The visitor still sees '(Error E102)'. The post-read report is tagged E102 at level `error` with its message kept. §2.3's rule changes from 'by code' to 'when the read or the parse failed'.",
+          "pros": "No visitor-facing change; a visitor's quoted E102 still finds the report.",
+          "cons": "E102 now means two things in Sentry (tell them apart by level).",
+          "before_after": [
+            {
+              "where": "§2.4 row",
+              "lines": "159",
+              "before": "| `web/app/play/OpenFileControl.tsx:75`, `web/app/play/PlayerShell.tsx:969`                      | the file is too large, or cannot be read      | E101/E102 | warning, with file type and size                      |",
+              "after": "| `web/app/play/OpenFileControl.tsx:75`, `web/app/play/PlayerShell.tsx:969` | the file is too large or cannot be read — or our open code failed after the read | E101/E102 | the read failed: warning, with file type and size; after the read: error, message kept |"
+            },
+            {
+              "where": "§2.3",
+              "lines": "144-145",
+              "before": "- **E101, E102 and E103 drop the exception message** and keep its type, its stack, and the file's\n  type and size. The engine's parse message can quote text from inside the file (section 3.1).",
+              "after": "- **When the read or the parse failed, the exception message is dropped** (E101, E102, E103); its\n  type, its stack, and the file's type and size are kept. The engine's parse message can quote text\n  from inside the file (section 3.1). A failure after the read keeps its message."
+            },
+            {
+              "where": "§6 unit",
+              "lines": "334",
+              "before": "  - `reportError`: the default level, the `code` tag, and E101–E103 dropping the message;",
+              "after": "  - `reportError`: the default level, the `code` tag, and the message dropped when the read or parse\n    failed — kept when the open failed after the read;"
+            }
+          ]
+        },
+        {
+          "label": "2️⃣ A new code for the post-read failure",
+          "what": "The visitor sees a new code (for example 'something broke while opening'); it needs a row in shared/src/error-codes.ts and docs/reference/error-codes.md (checked by check:error-codes).",
+          "pros": "Honest to the visitor; one meaning per code.",
+          "cons": "Changes visitor-facing text and the error registry — more scope for a reporting ticket."
+        }
+      ],
+      "recommendation": "1️⃣ — this ticket is about reporting, and 1️⃣ fixes the report without changing what visitors see. Flip to 2️⃣ if the visitor should be told the truth too.",
+      "proposed_fix": "Split read failures from post-read failures with a flag; report post-read failures as errors with their message.",
+      "why_it_works": "The visitor-file code then only ever carries visitor-file problems, and our own bugs arrive as errors with their message.",
+      "drop_consequence": "Discard it. Bugs in our open code reach Sentry as 'visitor's unreadable file' warnings with no message.",
+      "basis": "Both catches wrap the whole open flow, and every non-size failure becomes E102 with its message dropped.",
+      "spike": "Code read (verify-B). Not run.",
+      "disposition_hint": "PICKER — two options.",
+      "verification": "pass",
+      "severity_meaning": "should fix — a real gap an implementer will hit",
+      "triage": {
+        "round": "round 3 (picker)",
+        "decision": "Apply — option 2️⃣: a new error code for our own failures after the read (leocaseiro, picker)",
+        "applied": true,
+        "notes": "E104 is reserved (cachedScoreUnavailable), so the new code is E105 — the picker's 'e.g. E104' was corrected at apply time. §2.4: a new row + a 'Read, then open' paragraph (the flag between readNotation and onNotation/requestNotation; the drafted visitor copy 'song.gp could not be opened. Something went wrong on our side, not with your file. Try again, or reload the page. (Error E105)', modelled on the E102 toast — leocaseiro may reword it); §2.3: 'E105 keeps its message' (approved with the fix core: a failure after the read is an error that keeps its message); §6: an open-file test beside OpenFileControl.tsx; §7: the registry and its docs page gain E105. E101–E103 keep dropping their message, unchanged."
+      }
+    },
+    {
+      "id": "F-9",
+      "severity": "P2",
+      "confidence": 75,
+      "route": "Proposed fix",
+      "autofix_class": "gated_auto",
+      "reviewers": ["adversarial"],
+      "section": "§2.4 (the two storage rows; \"Blocked is not corrupt\")",
+      "title": "The 'storage blocked' catches would also hide bugs in our own settings reader",
+      "terms_first": "Breadcrumb only (decision S2b): when the browser refuses storage — a private window — we keep a note but send nothing, because that is the visitor's setup, not a bug.",
+      "scenario": "A future update changes which settings values are valid, and our reader now throws on a value it used to accept. Every returning visitor silently gets the default settings — no message — and their next change overwrites what they had saved. Sentry gets only a breadcrumb that says 'storage blocked', the label meant for a private window. You never learn that every returning visitor just lost their settings.",
+      "whats_wrong": "§2.4 files all six storage catches as 'storage blocked' → breadcrumb only. But the read catches wrap our whole reader: PlayerShell.tsx:181-196 runs `loadStoredSettings` (merge, option, bounds and text checks) inside the try, and transport-storage.ts:127-134 does the same with `loadStoredTransport`; the four write sites serialize inside their try. The spec's own rule says a fault in our code is a bug signal ('Blocked is not corrupt'). No code in web/ checks DOMException names today.",
+      "evidence_quotes": [
+        "storage blocked while reading",
+        "storage blocked or full while writing",
+        "Saved data that is _corrupt_ means our own code wrote something bad, or an update changed which values are valid. That is a bug signal, so it sends a warning."
+      ],
+      "before_after": [
+        {
+          "where": "§2.4, the two storage rows — \"Sends\" cells",
+          "lines": "161-162",
+          "before": "| `web/app/play/PlayerShell.tsx:190`, `web/lib/alphatab/transport-storage.ts:129`                | storage blocked while reading                 | —         | breadcrumb                                            |\n| `web/app/play/PlayerShell.tsx:220`, `:594`, `:722`, `web/app/play/useRestoredTransport.ts:114` | storage blocked or full while writing         | —         | breadcrumb                                            |",
+          "after": "reading row, Sends: breadcrumb if the browser refused (`SecurityError`); anything else: error\nwriting row, Sends: breadcrumb if refused or full (`SecurityError`, `QuotaExceededError`, Firefox's `NS_ERROR_DOM_QUOTA_REACHED`); anything else: error",
+          "note": "prettier re-pads the table"
+        },
+        {
+          "where": "§2.4, end of \"Blocked is not corrupt\" (after line 175)",
+          "lines": null,
+          "before": "(absent — nothing there today)",
+          "after": "A throw from our own reader or serializer inside those same catches is neither: it is a bug, and\nit sends an error."
+        }
+      ],
+      "plan_notes": [
+        "Each catch calls reportError/noteError directly — `isStorageRefusal(e) ? noteError(e, '…') : reportError(e)` — because §2.5's lint selector flags a shared helper that hides the call.",
+        "E2E case 5's init script must throw `new DOMException('…', 'SecurityError')`, as browsers do; a plain Error would now be reported as a bug."
+      ],
+      "proposed_fix": "Each storage catch tells a refused store from our own failure: refused → breadcrumb (S2b), anything else → error.",
+      "why_it_works": "S2b keeps meaning exactly what was decided — a refused store — and our own bugs become errors.",
+      "drop_consequence": "Discard it. A bug in our settings or transport reader looks exactly like a private window, and returning visitors lose their settings silently.",
+      "basis": "The \"blocked\" catches wrap the whole reader and serializer, not just the storage call.",
+      "spike": "Code read (verify-B). Browser error names reasoned, not measured.",
+      "disposition_hint": "PICKER — changes what gets reported (refines S2b, does not reverse it).",
+      "verification": "pass",
+      "severity_meaning": "should fix — a real gap an implementer will hit",
+      "triage": {
+        "round": "round 3 (picker)",
+        "decision": "Apply (leocaseiro, picker)",
+        "applied": true,
+        "notes": "§2.4 storage rows: What fails + Sends cells; 'Blocked is not corrupt' gains the third case and the in-place if/else (lint-safe); §6 unit: isStorageRefusal; e2e case 5's init script throws DOMException('…','SecurityError'). Refines S2b; recorded in the changelog."
       }
     }
   ]
