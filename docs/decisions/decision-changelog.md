@@ -97,6 +97,44 @@ aren't".
   through, the EU is the stricter fallback. Chosen over the US (closer to Australia, and Sentry's
   default).
 
+**Changed by the spec review, lap 2** — each approved by leocaseiro in the triage, 2026-10-05,
+unless marked as applied without asking:
+
+- **The privacy promise names the file's type and size.** A failed open (E101–E103, E105) sends
+  them, so the home copy now ends "— only the file's type and size, and the kinds of instrument it
+  uses", and the Goal says the same. Chosen over no longer sending them, the one clue to which
+  files fail.
+- **Reports send the `User-Agent` header**, so each issue shows its browser and system; the Release
+  Health ping already carries it. IP address and cookies stay off, and the Referer goes as
+  `[Filtered]`. Chosen over sending no headers.
+- **The visitor's locale and time zone stay in the reports**, from Sentry's default culture
+  context, and section 3.1 now lists them: leocaseiro's choice, against the recommendation to stop
+  sending them.
+- **The `instruments` tag.** Programs are written with three digits (`drums,030`), so one
+  instrument is found with a search such as `instruments:*030*` — chosen over only correcting the
+  claim. The bundled beat that every visit to `/play` loads is tagged `sample`, apart from a
+  visitor's own drum chart: leocaseiro's idea, applied after a spike passed. While a file opens no
+  report carries the tag, and when the open ends it is back to the score on screen — the previous
+  score's after a cancelled or failed open — chosen over never clearing it. The player removes the
+  tag when it unmounts (applied without asking, to complete the `sample` choice).
+- **An E105 also ends the "Loading the player" bar.** A throw after a file parses left the bar
+  pulsing beside the error, a bug that predates the spec. Fixed here, chosen over a separate
+  ticket, because the new E105 message would sit beside it.
+- **E204's 60 seconds count only while the page is visible.** AlphaTab draws nothing in a hidden
+  tab, so a player opened in a background tab sent a false, unhandled E204. Chosen over restarting
+  the clock at each return, which could leave a real hang unreported.
+- **A build check keeps the Sentry auth token out of the page:** the build fails when the token's
+  value is in any file a browser downloads. Raised by leocaseiro; chosen over writing the reasoning
+  down only.
+- **Six smaller changes:** Sentry's tracing integration is filtered out (S3); the names filter also
+  learns a score's instructions and notices; builds without the token print no Sentry warnings; the
+  environment comes from the SDK's default; section 2.6 names the two end-to-end cases that change
+  when NH-335 or NH-338 is fixed; setup step 3 sets Allowed Domains to the production domain.
+- **Applied without asking, each reported:** the names filter also runs over an event's `message`;
+  the names are remembered as soon as a file parses; e2e case 8 covers E201; setup step 6 checks our
+  own frame, and the engine's frames stay minified (a new known limit); and the file lists are
+  complete again.
+
 **Registry:** L11-sentry points at the spec; L11-srcmap reworded (D4); L11-envsecret ⛔ superseded
 and F7-sentry rewritten, because the source-map upload runs inside Vercel's build rather than a
 GitHub Actions job.
