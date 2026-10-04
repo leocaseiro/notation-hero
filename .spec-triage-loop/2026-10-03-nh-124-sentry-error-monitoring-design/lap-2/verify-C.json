@@ -1,0 +1,489 @@
+{
+  "area": "C",
+  "spec_commit": "78e35627",
+  "method": "Read the whole spec at commit 78e35627, the brief, the lap-2 review context, and the lap-1 outcomes in docs/decisions/decision-changelog.md. Checked all 22 evidence quotes with the shared quote script (22/22 verbatim). Read the cited app code: web/e2e/player-states.ts, player.e2e.ts, a11y.e2e.ts, pages.vr.ts, page-errors.ts, web/playwright.e2e.config.ts, web/app/play/PlayerShell.tsx, OpenFileControl.tsx, NotationSurface.tsx, PlayerShell.test.tsx, web/app/page.tsx, web/lib/alphatab/AlphaTabEngineContext.tsx, engine.ts, useAlphaTab.ts, web/scripts/vendor-alphatab.mjs, eslint.config.base.mjs and package.json; the installed AlphaTab 1.8.4 dist (alphaTab.core.mjs and alphaTab.core.min.mjs), react-dom 19.2.7, Next.js 16.3.6, Sonner 2.0.7 (via client/), and the Sentry 11.0.0 mirror (browser and nextjs). Ran: grep traces of every helper caller, setOpening call and setAnnouncement call; a Node script over the real ACCEPT list; Node runs of the minified AlphaTab parser over 175 failing loads at stack limits 10 and 50; a jsdom run of React 19.2.7 with an effect throw and a click throw under an error boundary; and Playwright 1.61.1 with Chromium 149, which could not hide a page in four tries, so the background-tab case was emulated by holding back animation-frame and observer callbacks around the installed AlphaTab. Tables were re-padded the way Prettier does after checking that the current tables round-trip byte for byte. No repository file was changed apart from this output.",
+  "items": [
+    {
+      "id": "F-26",
+      "verdict": "pass",
+      "checks": {
+        "section_exists": "§1 \"Packages and files\" (line 74; the bullet at 105-106) and §6 \"Testing\", End to end (line 474; the bullet at 480-482) both exist.",
+        "quotes": "4/4 verbatim (spec lines 105, 481, 481, 105; two quotes are shared by both reviewers).",
+        "fix_consistent": "Consistent. The new case expects an envelope, so the \"every case that expects nothing ends with a sentinel\" bullet (501-506) does not apply to it, and the engine-module abort raises no uncaught page error (the import rejection is caught at web/lib/alphatab/AlphaTabEngineContext.tsx:35), so \"error-reporting.e2e.ts does not install failOnUnexpectedPageErrors\" (505-506) still holds. The §1 new-files row for error-reporting.e2e.ts (88) already covers a new case. Nothing else in the spec names player-states.ts."
+      },
+      "central_claim": {
+        "status": "confirmed",
+        "evidence": [
+          "web/e2e/player-states.ts:5-11 — the file header: \"The navigation that REACHES each state the two web/ browser lanes share — the goto, the clicks and the file-picks, and nothing else.\"",
+          "web/e2e/player-states.ts:50-60 — 50-51 end stallEngine; 53-57 are abortEngine (53 its doc comment, 55 `page.route(ENGINE_MODULE, (route) => route.abort())`, 56 `page.goto('/play')`); 59-60 open the doc comment of pressEveryTransportToggle. Line 55 is inside a helper, not a test.",
+          "Every caller of abortEngine (grep over web/e2e): web/e2e/a11y.e2e.ts:309, in the axe case \"player has no axe violations when the engine fails to load\" (308), and web/e2e/pages.vr.ts:410, in the pixel shot \"the destructive panel when the engine module fails to load\" (409). No other caller.",
+          "web/playwright.e2e.config.ts:29-52 — *.e2e.ts and *.vr.ts are two projects over one build, so an assertion inside the helper would run in the pixel project too.",
+          "web/e2e/player.e2e.ts — no case aborts the engine module and none asserts E201. Its only route on alphaTab.mjs (:1381, in \"a disabled transport toggle still opens its tooltip under the mouse\", 1379) stalls the module 8 s and then continues it.",
+          "web/e2e/player.e2e.ts:215-223 — a real test, \"a failed music-font download shows the engine error, not an endless Skeleton\": the abort is :218 and it asserts \"Error E203\" at :221.",
+          "web/e2e/player.e2e.ts:266-282 — a real test, \"opening a new file clears a stale engine-error banner\": the SoundFont abort is :267 and it asserts \"Error E202\" at :270. (:289 is a second SoundFont abort, in the dismiss case.)"
+        ]
+      },
+      "spike": {
+        "status": "run",
+        "what": "grep of every abortEngine caller and every route on the engine module across web/e2e, and a read of the Playwright project split.",
+        "result": "Two callers only (a11y.e2e.ts:309, pages.vr.ts:410); player.e2e.ts has no engine-module abort. A Playwright fixture is set up before the test body, so a new case that uses the envelope fixture and then calls abortEngine has the route in place before the helper's page.goto — the timing FEA-4 warns about is met without extra code."
+      },
+      "before": [
+        {
+          "lines": "105-106",
+          "text": "- `web/e2e/player-states.ts` and `web/e2e/player.e2e.ts` — one assertion each on the failures they\n  already force (section 6)."
+        },
+        {
+          "lines": "480-482",
+          "text": "  - **Cases that already force a failure** get one extra assertion each: the engine-module abort\n    (`web/e2e/player-states.ts:55`) must produce E201, the font abort (`web/e2e/player.e2e.ts:218`)\n    E203, and the SoundFont abort (`web/e2e/player.e2e.ts:267`) E202."
+        },
+        {
+          "lines": "499-500",
+          "text": "    7. Open `/?fbclid=probe123#frag` and cause an error there, then click Play and cause another:\n       neither envelope contains `probe123` or `frag`."
+        }
+      ],
+      "after_draft": [
+        {
+          "replaces_lines": "105-106",
+          "option": "only",
+          "text": "- `web/e2e/player.e2e.ts` — one assertion each on the font and SoundFont failures it already\n  forces (section 6)."
+        },
+        {
+          "replaces_lines": "480-482",
+          "option": "only",
+          "text": "  - **Cases that already force a failure** get one extra assertion each: the font abort\n    (`web/e2e/player.e2e.ts:218`) must produce E203, and the SoundFont abort\n    (`web/e2e/player.e2e.ts:267`) E202. No case in `player.e2e.ts` aborts the engine module, so\n    E201 gets a case of its own (case 8 below)."
+        },
+        {
+          "replaces_lines": "499-500",
+          "option": "only",
+          "text": "    7. Open `/?fbclid=probe123#frag` and cause an error there, then click Play and cause another:\n       neither envelope contains `probe123` or `frag`.\n    8. Abort the engine module with the existing `abortEngine` helper\n       (`web/e2e/player-states.ts`, navigation only): one E201 `error` is sent, marked unhandled.\n       The envelope fixture is set up before the helper's `page.goto`, because the import fails\n       during that first load."
+        }
+      ],
+      "scenario": "You build the plan and open web/e2e/player-states.ts:55 to add the E201 check. You find abortEngine, a helper whose header allows \"the goto, the clicks and the file-picks, and nothing else\", called only by the axe case and the pixel shot of the engine-error panel. Put the check inside it and both of those lanes start waiting for Sentry envelopes; leave it out and E201 has no end-to-end test at all.",
+      "corrections": "None to the claim. One precision: the timing risk FEA-4 names (the recorder must be routing before the helper's page.goto) is met automatically when the case uses the shared fixture, because Playwright sets fixtures up before the test body.",
+      "notes_for_triage": "This narrows a lap-1 wording fix (AMB-4, applied without asking), not an owner decision: AMB-4 added player-states.ts to §1 as the home of the E201 check. Case 8 is a new number; if other lap-2 items add end-to-end cases, renumber at apply. Drop leaves E201 pinned to a helper: either the axe and pixel lanes gain envelope waits, or E201 has no end-to-end check."
+    },
+    {
+      "id": "F-27",
+      "verdict": "pass",
+      "checks": {
+        "section_exists": "§1 New files (79-90), §2.3 The reporting functions (149) and §6 Unit (444-460) all exist.",
+        "quotes": "3/3 verbatim (spec lines 85, 457, 454).",
+        "fix_consistent": "Consistent. §2.3 (178-183) already places ACCEPT in web/app/play/OpenFileControl.tsx and says the type is read \"when the file is read\", which is readNotation in that file; §1 (92-93) already gives OpenFileControl.tsx its own test file. The §1 report.ts row stays inside the table's current column width (151 < 163 characters), so only that row changes. Line 454 moves; nothing else cites it."
+      },
+      "central_claim": {
+        "status": "confirmed",
+        "evidence": [
+          "Spec: isStorageRefusal appears only at lines 236 (§2.4) and 457 (§6); the file-type mapping only at 178-183 (§2.3) and 454 (§6). §1 (85-90) names a file for neither.",
+          "web/app/play/OpenFileControl.tsx:15 — `const ACCEPT = '.gp,.gp3,.gp4,.gp5,.gpx,.musicxml,.mxl,.xml,.capx,.atex,.alphatex';` (11 extensions, not exported).",
+          "web/app/play/OpenFileControl.tsx:35-43 — `export async function readNotation(file: File)`, the place where the spec says the type is read.",
+          "web/app/play/OpenFileControl.tsx:3-7 — imports @notation-hero/client, @notation-hero/shared/error-codes, react, and `import type { LoadedNotation } from './PlayerShell'` (type only).",
+          "web/app/play/PlayerShell.tsx:46-51 — a value import of OpenFileControl, openFailureCode, readFailureMessage and readNotation from ./OpenFileControl.",
+          "Spec §2.4 row 208: the catch at OpenFileControl.tsx:75 reports, so OpenFileControl.tsx will value-import report.ts. A report.ts that imports ACCEPT back makes report.ts and OpenFileControl.tsx import each other at run time.",
+          "eslint.config.base.mjs:51 — `'import/no-cycle': 'off', // dependency-cruiser owns cycles`, and package.json:17 — `depcruise server/src`: nothing scans web/, so that loop would go unreported. No file under web/lib imports from web/app today."
+        ]
+      },
+      "spike": {
+        "status": "run",
+        "what": "A Node script read ACCEPT out of OpenFileControl.tsx, built a mapping on it (the lower-case text after the last dot when ACCEPT holds it, otherwise `other`), ran the §6 examples, and listed the import edges of both files.",
+        "result": "Song.GP5 -> gp5, notes.txt -> other, README -> other (also Punk.MXL -> mxl, archive.tar.gz -> other). ACCEPT is not exported today. OpenFileControl.tsx imports PlayerShell as a type only, and PlayerShell value-imports OpenFileControl, so a mapping beside ACCEPT adds no loop."
+      },
+      "before": [
+        {
+          "lines": "85",
+          "text": "| `web/lib/monitoring/report.ts`             | `reportError()`, `noteError()` and `tagInstruments()`. Apart from `instrumentation-client.ts`, the only file that imports Sentry.                                   |"
+        },
+        {
+          "lines": "101-104",
+          "text": "- `web/app/play/OpenFileControl.tsx` and `web/app/play/PlayerShell.tsx`, beyond their catch sites:\n  picking or dropping a file remembers its name (3.2) and clears the `instruments` tag (2.3); the\n  score-loaded handler remembers the score's names and sets the tag; `readNotation` and\n  `LoadedNotation` carry the file's extension (2.3)."
+        },
+        {
+          "lines": "454",
+          "text": "  - the file type: `Song.GP5` gives `gp5`; `notes.txt` and a name with no extension give `other`;"
+        },
+        {
+          "lines": "466-469",
+          "text": "- **The open-file catches**, a test beside `web/app/play/OpenFileControl.tsx`: a read that fails\n  shows E102 and reports a warning without the message; an `onNotation` that fails shows E105 and\n  reports an error that keeps its message; and picking a file clears the `instruments` tag before\n  the file is read."
+        }
+      ],
+      "after_draft": [
+        {
+          "replaces_lines": "85",
+          "option": "only",
+          "text": "| `web/lib/monitoring/report.ts`             | `reportError()`, `noteError()`, `tagInstruments()` and `isStorageRefusal()`. Apart from `instrumentation-client.ts`, the only file that imports Sentry.             |"
+        },
+        {
+          "replaces_lines": "101-104",
+          "option": "only",
+          "text": "- `web/app/play/OpenFileControl.tsx` and `web/app/play/PlayerShell.tsx`, beyond their catch sites:\n  picking or dropping a file remembers its name (3.2) and clears the `instruments` tag (2.3); the\n  score-loaded handler remembers the score's names and sets the tag; `readNotation` and\n  `LoadedNotation` carry the file's extension (2.3). The function that turns a file name into that\n  type lives in `OpenFileControl.tsx`, beside the `ACCEPT` list it checks, and is exported like\n  `readNotation`, so the drop path in `PlayerShell.tsx` uses the same list."
+        },
+        {
+          "replaces_lines": "454",
+          "option": "only",
+          "text": ""
+        },
+        {
+          "replaces_lines": "466-469",
+          "option": "only",
+          "text": "- **The open-file catches**, a test beside `web/app/play/OpenFileControl.tsx`: a read that fails\n  shows E102 and reports a warning without the message; an `onNotation` that fails shows E105 and\n  reports an error that keeps its message; picking a file clears the `instruments` tag before the\n  file is read; and the file type: `Song.GP5` gives `gp5`, while `notes.txt` and a name with no\n  extension give `other`."
+        }
+      ],
+      "scenario": "You work down §6's unit list and write the file-type case beside web/lib/monitoring/report.ts. The mapping needs the 11 extensions in ACCEPT, a private constant in web/app/play/OpenFileControl.tsx — a file that will itself import reportError from report.ts. So you either copy the 11 extensions into a second list that can drift, or export ACCEPT and make the two files import each other, which no check in web/ reports.",
+      "corrections": "None to the claim. Precision: ACCEPT is private today (OpenFileControl.tsx:15), so \"exported like readNotation\" applies to the new mapping function, and ACCEPT can stay private. The replacement for line 454 is an empty text: the line is deleted.",
+      "notes_for_triage": "Area B items F-21 and F-23 also edit the §1 bullet at 101-104, and F-23 the §6 open-file bullet at 466-469; F-28 inserts a new §6 bullet before line 470. Merge them at apply. A third home (moving ACCEPT into web/lib) was not drafted: more files change and nothing is gained. Drop leaves both helpers without a named file, and the file-type test listed under lib/monitoring, where ACCEPT is not reachable without a copy or a loop."
+    },
+    {
+      "id": "F-28",
+      "verdict": "pass-with-correction",
+      "checks": {
+        "section_exists": "§2.4 \"Every handled failure in `web/`\" (196), its \"Read, then open\" paragraph (214-221), and §6 Testing (442) exist.",
+        "quotes": "2/2 verbatim (spec lines 217, 218).",
+        "fix_consistent": "Consistent. The drafted paragraph is inserted before line 223, so it does not overlap AMB-7, which rewrites 218-221. A PlayerShell test case needs web/app/play/PlayerShell.test.tsx (it exists) added to §1's changed files, which the draft does before line 107."
+      },
+      "central_claim": {
+        "status": "confirmed",
+        "evidence": [
+          "web/app/play/PlayerShell.tsx:172 — `const [opening, setOpening] = useState(false);` It is read only at :502 and :515.",
+          "web/app/play/PlayerShell.tsx:862 — `flushSync(() => setOpening(true));`, raised after the engine wait (800-817) and the replace prompt (831-850).",
+          "web/app/play/PlayerShell.tsx:873 and :913 — the only two `setOpening(false)` calls: the E103 catch and the success path.",
+          "web/app/play/PlayerShell.tsx:892-912 — the steps after the parse that can throw (`api?.pause()`, `setAlphaTabValue(api, 'playbackRange', null)`, `dropPlaybackSelection(api)`): a throw there skips :913.",
+          "web/app/play/PlayerShell.tsx:941-952 — requestNotation's `finally` releases only `openInFlight`; both entry paths reach it (`<OpenFileControl onNotation={requestNotation} />` at :1109, and acceptDropped at :968).",
+          "web/app/play/PlayerShell.tsx:502, :515, :1052-1053 — `loadingPlayer = !failed && ((!playerReady && !noPlayerComing) || opening)`; with `opening` set the bar is indeterminate (`barValue = null`), and it is labelled \"Loading the player\".",
+          "web/app/play/OpenFileControl.tsx:29-33 and 75-82 — the picker's props hold only onNotation and its catch only toasts; it cannot reach setOpening. The drop catch (PlayerShell.tsx:969-974) does not lower it either.",
+          "web/e2e/player.e2e.ts:2586-2587 — \"The page must say so and stay usable, not pulse a loading bar forever beside a dead Play button.\" Also web/app/play/PlayerShell.tsx:167-168 — \"so the bar must stop rather than pulse forever beside the error message.\""
+        ]
+      },
+      "spike": {
+        "status": "run",
+        "what": "A call-order trace of runRequestNotation and requestNotation (grep and read): every raise and lowering of `opening`, and every exit between them. Not run in a browser.",
+        "result": "One raise (:862), two lowerings (:873, :913). Any throw from :863-867 or :892-912 leaves `opening` true until the next successful open or a reload. The same exit exists today: those throws reach the same two catches and show E102 with the bar equally stuck. A throw before :862 (around the replace prompt) is also E105 but leaves no bar."
+      },
+      "before": [
+        {
+          "lines": "107",
+          "text": "- `shared/src/error-codes.ts` and `docs/reference/error-codes.md` — the new E105 (section 2.4)."
+        },
+        {
+          "lines": "223",
+          "text": "**Failures that never throw** — an event, a timer, or a state change:"
+        },
+        {
+          "lines": "470",
+          "text": "- **Lint canary:** `tooling/silent-catch-fence.test.sh`, a sibling of"
+        }
+      ],
+      "after_draft": [
+        {
+          "replaces_lines": "223",
+          "option": "only",
+          "text": "**An E105 also ends the opening state.** Every exit of `requestNotation` lowers it: its `finally`\ncalls `setOpening(false)` beside the `openInFlight` release, so the \"Loading the player\" bar stops\nafter an E105 from the picker or a drop. Today a throw after `setOpening(true)`\n(`web/app/play/PlayerShell.tsx:862`) skips both calls that lower it (`:873` and `:913`), and the\nbar keeps pulsing beside the error until the next open.\n\n**Failures that never throw** — an event, a timer, or a state change:"
+        },
+        {
+          "replaces_lines": "470",
+          "option": "only",
+          "text": "- **The opening state**, a case in `web/app/play/PlayerShell.test.tsx`: with the player ready, an\n  open that throws after the parse shows E105 and leaves no \"Loading the player\" bar.\n- **Lint canary:** `tooling/silent-catch-fence.test.sh`, a sibling of"
+        },
+        {
+          "replaces_lines": "107",
+          "option": "only",
+          "text": "- `web/app/play/PlayerShell.test.tsx` — one case for the opening state after an E105 (section 6).\n- `shared/src/error-codes.ts` and `docs/reference/error-codes.md` — the new E105 (section 2.4)."
+        }
+      ],
+      "scenario": "You drop song.gp on the player; the file is read and parsed, and then our own code throws. The E105 toast tells you to try again, but the \"Loading the player\" bar keeps pulsing beside it, because nothing lowers the opening state on that path. It pulses until your next successful open or a reload, and the Open button leaves it the same way.",
+      "corrections": "Not new with this spec: today the same throw is caught by the same two catches and shown as E102, with the bar equally stuck; E105 only relabels it. Not every E105 sticks the bar — only a throw after line 862. The finding's quote is from player.e2e.ts:2587 (its comment is about \"No playback\", the same principle).",
+      "notes_for_triage": "Small, safe fix: `setOpening(false)` in the finally is a no-op on paths that already lowered it, and the early return for a second open sits outside the `try`, so it cannot clear an open in progress. Test pitfall: the PlayerShell.test.tsx harness has no api, so the bar shows from the start; the case must deliver `playerReady` first or \"no bar\" proves nothing. Composes with AMB-7 (same paragraph area; this draft is its own paragraph). Drop leaves a pre-existing bug that the new E105 copy now sits next to."
+    },
+    {
+      "id": "F-29",
+      "verdict": "pass",
+      "checks": {
+        "section_exists": "§2.4 \"Failures that never throw\" (223-230, the E204 row at 228) and Non-goals (19-24, the health number) exist.",
+        "quotes": "2/2 verbatim (spec lines 228, 24).",
+        "fix_consistent": "Consistent. The E204 row text and the banner message can stay: the visitor still meets \"did not arrive within 60 seconds\" when it fires. The existing case \"a music font that arrives after the 60 s backstop clears the error\" (web/e2e/player.e2e.ts:230-258) runs on a visible page with page.clock, so both options keep it green. Lap-1's decision that E201-E204 report as unhandled is not touched; this only stops a false E204."
+      },
+      "central_claim": {
+        "status": "confirmed",
+        "evidence": [
+          "web/app/play/NotationSurface.tsx:105-136 — the backstop is armed in an effect keyed on [api]: :125-130 `globalThis.setTimeout(..., 60_000)` raises E204 through setFontError. It waits for any `renderFinished`, which clears it at :155-156 (or the effect cleanup, :134). It does not watch the font itself.",
+          "@coderline/alphatab@1.8.4:dist/alphaTab.core.mjs:45577-45579 — the AlphaTabApi constructor ends `this.uiFacade.beginInvoke(() => { this.uiFacade.initialRender(); })`.",
+          "@coderline/alphatab@1.8.4:dist/alphaTab.core.mjs:41289-41293 — BrowserUiFacade.beginInvoke is `window.requestAnimationFrame(() => { action(); })`.",
+          "@coderline/alphatab@1.8.4:dist/alphaTab.core.mjs:41006-41027 — initialRender is what loads settings.core.file (the bundled beat, web/app/play/PlayerShell.tsx:271) and renders it. The container's other render trigger is a ResizeObserver (HtmlElementContainer, from :30269), another callback of the browser's rendering step.",
+          "web/e2e/player.e2e.ts:225-226 — \"the font can win LATE — the slow link the timeout is explicitly sized for, or a throttled background tab.\" Also web/lib/alphatab/useAlphaTab.ts: \"the window is widest on a backgrounded tab, where requestAnimationFrame is throttled.\"",
+          "Spec line 228 (E204: error, unhandled) with Non-goals 23-24 (the health number counts visits with an unhandled error); web/app/page.tsx:19 — Play is a Link to /play, so a Cmd-click or middle-click opens the player in a background tab."
+        ]
+      },
+      "spike": {
+        "status": "run",
+        "what": "Playwright 1.61.1 with Chromium 149 (headless shell and new headless). First, four ways to hide a page — a second page brought to front, a CDP background target, a CDP hidden target, a minimised window — all stayed `visible`, so a real hidden tab could not be made. Then an emulation: a page loads the installed minified AlphaTab 1.8.4 laid out as web/scripts/vendor-alphatab.mjs serves it, with core.file = /notation/1-beat.gp, while requestAnimationFrame, ResizeObserver and IntersectionObserver callbacks are held back (the \"update the rendering\" work a hidden page has no opportunity to run) and a 3 s timer stands in for the 60 s one.",
+        "result": "Control run: scoreLoaded at 81 ms, renderFinished at 112 ms. Held run: the font was requested, but the score was never fetched and neither scoreLoaded nor renderFinished fired in 5 s, while the 3 s timer fired at 3033 ms. Releasing the held callbacks (\"showing the tab\"): scoreLoaded +19 ms, renderFinished +31 ms. Limit: holding requestAnimationFrame alone let AlphaTab's ResizeObserver path fire an empty-score renderFinished at 92 ms; a hidden page defers both."
+      },
+      "before": [
+        {
+          "lines": "230",
+          "text": "| `web/app/play/PlayerShell.tsx`, both restore paths | saved settings or transport repaired, or unreadable | E601/E603 | warning          |"
+        },
+        {
+          "lines": "92-93",
+          "text": "Each `lib/monitoring` file has its unit test beside it, and so do the three error pages and\n`web/app/play/OpenFileControl.tsx` (section 6)."
+        },
+        {
+          "lines": "474",
+          "text": "- **End to end (Playwright, in the existing `web` job):**"
+        }
+      ],
+      "after_draft": [
+        {
+          "replaces_lines": "230",
+          "option": "1 (recommended by the reviewer)",
+          "text": "| `web/app/play/PlayerShell.tsx`, both restore paths | saved settings or transport repaired, or unreadable | E601/E603 | warning          |\n\n**E204 counts visible time only.** AlphaTab 1.8.4 starts its first render from an animation\nframe, and a browser runs none in a hidden tab, so a player opened in a background tab draws\nnothing there while a plain timer keeps counting. The 60 seconds therefore run only while\n`document.visibilityState` is `visible`: the clock stops on `visibilitychange` to `hidden`,\ncontinues with the time left when the page is visible again, and stops for good at the first\n`renderFinished`. Without this, a background tab left for a minute sends an unhandled E204 that\nlowers the health number although nothing failed."
+        },
+        {
+          "replaces_lines": "230",
+          "option": "2",
+          "text": "| `web/app/play/PlayerShell.tsx`, both restore paths | saved settings or transport repaired, or unreadable | E601/E603 | warning          |\n\n**E204 counts visible time only.** AlphaTab 1.8.4 starts its first render from an animation\nframe, and a browser runs none in a hidden tab, so a player opened in a background tab draws\nnothing there while a plain timer keeps counting. The clock is therefore cleared whenever the page\nis hidden and started again from 60 seconds each time it becomes visible, until the first\n`renderFinished` stops it for good. Without this, a background tab left for a minute sends an\nunhandled E204 that lowers the health number although nothing failed."
+        },
+        {
+          "replaces_lines": "474",
+          "option": "only (with either option; optional)",
+          "text": "- **The font clock**, a test beside `web/app/play/NotationSurface.tsx`, with fake timers and a\n  stubbed `document.visibilityState`: two hidden minutes raise no E204, and 60 visible seconds\n  with no render raise one. The end-to-end lane cannot cover this: headless Chromium keeps every\n  page visible.\n- **End to end (Playwright, in the existing `web` job):**"
+        },
+        {
+          "replaces_lines": "92-93",
+          "option": "only (goes with the test above)",
+          "text": "Each `lib/monitoring` file has its unit test beside it, and so do the three error pages,\n`web/app/play/OpenFileControl.tsx` and `web/app/play/NotationSurface.tsx` (section 6)."
+        }
+      ],
+      "scenario": "You Cmd-click Play on the home page, so the player opens in a background tab, and you keep reading for two minutes. At 60 seconds that hidden tab sends Sentry an unhandled E204, \"the music font did not arrive within 60 seconds\", although nothing failed: the owner gets a new-issue email and your visit counts against the health number. When you switch to the tab, the score draws within a moment.",
+      "corrections": "None to the claim. Precision: the backstop waits for any renderFinished, not for the font; the font itself downloads in a hidden tab (seen in the spike). What stalls is AlphaTab's first render.",
+      "notes_for_triage": "Option 1 (pause and resume) keeps the full 60 visible seconds; option 2 (restart at every return to the tab) is less code, but a visitor who switches tabs often gets E204 later. Pitfall for both: the clock must stop for good at the first renderFinished — a visibility listener that re-arms it afterwards would raise a false E204 a minute after any tab switch. The test bullet is optional and needs a new web/app/play/NotationSurface.test.tsx (hence the §1 line 92-93 change). Drop: background-tab visits keep sending unhandled E204s, using quota, lowering the health number, and emailing the owner on the first one."
+    },
+    {
+      "id": "F-30",
+      "verdict": "pass-with-correction",
+      "checks": {
+        "section_exists": "§5 Setup, step 6 (432-436) and \"Known limits\" (525-541) exist.",
+        "quotes": "2/2 verbatim (spec lines 434, 432).",
+        "fix_consistent": "Consistent, and closer to lap-1 FYI-7 as approved (\"the E103 event's stack shows our file names (e.g. PlayerShell.tsx)\"). D4 (Sentry shows the code around our frames) is untouched. No other section claims engine frames are readable."
+      },
+      "central_claim": {
+        "status": "confirmed",
+        "evidence": [
+          "web/scripts/vendor-alphatab.mjs:23-32 — VENDOR_FILES copies `alphaTab.core.min.mjs` to `esm/alphaTab.core.mjs` (:25); no source-map file is listed.",
+          "@coderline/alphatab@1.8.4:dist — the package holds no .map file, and no `sourceMappingURL` comment in alphaTab.core.min.mjs, alphaTab.min.mjs or alphaTab.core.mjs.",
+          "@coderline/alphatab@1.8.4:dist/alphaTab.core.min.mjs — a 50-line licence header, then the whole engine on line 51 (1,116,979 characters).",
+          "@coderline/alphatab@1.8.4:dist/alphaTab.core.mjs:30209-30234 (the unminified twin) — loadScoreFromBytes throws `UnsupportedFormatError(\"No compatible importer found for file\")` itself, or rethrows an importer's unexpected error.",
+          "getsentry/sentry-javascript@11.0.0:packages/browser/src/integrations/globalhandlers.ts:35-37 — `setupOnce() { Error.stackTraceLimit = 50; }`; the spec keeps this default integration."
+        ]
+      },
+      "spike": {
+        "status": "run",
+        "what": "Node 24 (V8, the same frame format as Chrome) loaded the installed alphaTab.core.min.mjs and called importer.ScoreLoader.loadScoreFromBytes from a stand-in for our frame: six synthetic non-score files (PDF, JPEG and ZIP headers, random bytes, 100-byte and 5-byte text) and 12 fixtures cut at 5% steps, 175 failing loads, at stack limits 10 and 50.",
+        "result": "Most non-score files (PDF, image, ZIP, random, text over about 30 bytes): `at Fi.loadScoreFromBytes (alphaTab.core.mjs:51:469500)`, then our frame. A tiny or empty file, or a truncated score: `at Le.yi (alphaTab.core.mjs:51:217498)`, `at Le.read` or `Le.readByte`, then minified importer frames (`ks.gpReadStringByteLength`, `ys.readVersion`, `je.gn`, `Ye.vn` ...), up to 12 engine frames above ours. With Sentry's limit of 50, our frame is present in 175 of 175 loads; with V8's default of 10 it is missing in 61 of 175 (truncated .gp, .mxl and .gp5 files)."
+      },
+      "before": [
+        {
+          "lines": "432-436",
+          "text": "6. After the first production deploy, open a file that is not a score. An E103 warning appearing in\n   Sentry, with the file's type and size and without its name, proves the whole path — and its\n   email (step 2) proves the alert. Its stack must show readable file and function names with the\n   code around each line, which proves the source maps, and its release must equal the version in\n   the wordmark's tooltip."
+        },
+        {
+          "lines": "527-528",
+          "text": "- **AudioWorklet errors.** A throw inside AlphaTab's sound thread is reported only if AlphaTab\n  forwards it through its `error` event. Untested."
+        }
+      ],
+      "after_draft": [
+        {
+          "replaces_lines": "432-436",
+          "option": "only",
+          "text": "6. After the first production deploy, open a file that is not a score. An E103 warning appearing in\n   Sentry, with the file's type and size and without its name, proves the whole path — and its\n   email (step 2) proves the alert. Its stack must show our own frame, the `PlayerShell.tsx` line\n   that calls `loadScoreFromBytes`, with readable names and the code around it, which proves the\n   source maps; the frames above it are AlphaTab's and stay minified (see \"Known limits\"). Its\n   release must equal the version in the wordmark's tooltip."
+        },
+        {
+          "replaces_lines": "527-528",
+          "option": "only",
+          "text": "- **AudioWorklet errors.** A throw inside AlphaTab's sound thread is reported only if AlphaTab\n  forwards it through its `error` event. Untested.\n- **Engine frames stay minified.** The vendored `alphaTab.core.mjs` is AlphaTab's minified build,\n  the whole engine on one 1.1 MB line, and the package ships no source map. Every frame inside it\n  reads like `Fi.loadScoreFromBytes` at line 51; only our own frames are mapped. Every E103 starts\n  there."
+        }
+      ],
+      "scenario": "After the first production deploy you open a text file on /play, as step 6 says, and the E103 warning reaches Sentry. Its top frame reads Fi.loadScoreFromBytes in alphaTab.core.mjs, line 51, column 469500 — one minified line of 1.1 MB — so \"readable file and function names with the code around each line\" fails, and you start debugging a source-map upload that works. Only the PlayerShell.tsx frame below it is ours, and that one is readable.",
+      "corrections": "The suggested step-6 text says \"the frame above it\"; it is frames, plural: one for most non-score files, six or more for a tiny file or a truncated score (measured up to 12). Both quoted frame names are right: Fi.loadScoreFromBytes for most files, Le.yi for a truncated one (and for a file of a few bytes).",
+      "notes_for_triage": "Our frame is present only because Sentry 11's default GlobalHandlers raises Error.stackTraceLimit to 50, and the spec keeps that integration; removing it would hide our frame from a third of the measured E103 stacks. Vendoring the unminified alphaTab.core.mjs (2.3 MB) would make engine frames readable, but vendor-alphatab.mjs:19-21 chose the 1.1 MB minified file on purpose; not proposed. Drop: the owner's one acceptance check for source maps reads as a failure on a working upload."
+    },
+    {
+      "id": "AMB-6",
+      "verdict": "pass",
+      "checks": {
+        "section_exists": "§2.4 \"Failures that never throw\" table (225-230) exists; the E202 row is 229.",
+        "quotes": "1/1 verbatim (spec line 229).",
+        "fix_consistent": "Consistent: 139 and 141 have the same width, so only that row changes. The E203 (117) and E204 (126) rows already point at their raise lines, and the first table's E201 row points at the catch that handles it (AlphaTabEngineContext.tsx:35)."
+      },
+      "central_claim": {
+        "status": "confirmed",
+        "evidence": [
+          "web/app/play/NotationSurface.tsx:115-121 — onFontError; :117 `setFontError(`Error ${ERROR.musicFontFailed}: ...`)` raises E203 (shared/src/error-codes.ts:30).",
+          "web/app/play/NotationSurface.tsx:123-130 — the backstop; :125 arms the timer and :126 `setFontError(` raises E204 (the message on :127 uses musicFontTimeout, shared/src/error-codes.ts:32).",
+          "web/app/play/NotationSurface.tsx:138-139 — a two-line comment; :140 `useAlphaTabEvent(api, 'error', (cause) => {`; :141 `setRuntimeError(`Error ${ERROR.engineRuntime}: ${String(cause)}`)` raises E202 (shared/src/error-codes.ts:28); :142 `setDismissed(false)`."
+        ]
+      },
+      "spike": {
+        "status": "run",
+        "what": "Read NotationSurface.tsx:115-145 and re-padded the table the way Prettier does (the current table round-trips byte for byte).",
+        "result": "Raise lines: E203 117, E204 126, E202 141. Only row 229 changes."
+      },
+      "before": [
+        {
+          "lines": "229",
+          "text": "| `web/app/play/NotationSurface.tsx:139`             | AlphaTab's `error` event, for example the SoundFont | E202      | error, unhandled |"
+        }
+      ],
+      "after_draft": [
+        {
+          "replaces_lines": "229",
+          "option": "only",
+          "text": "| `web/app/play/NotationSurface.tsx:141`             | AlphaTab's `error` event, for example the SoundFont | E202      | error, unhandled |"
+        }
+      ],
+      "scenario": "You work down the §2.4 table and open web/app/play/NotationSurface.tsx:139 to add the E202 report. Line 139 is the end of a comment; the error event is subscribed on line 140 and E202 is raised on line 141. The E203 and E204 rows point straight at their raise lines, 117 and 126.",
+      "corrections": "none",
+      "notes_for_triage": "A pure pointer fix. Drop leaves an implementer one comment line off."
+    },
+    {
+      "id": "AMB-7",
+      "verdict": "pass-with-correction",
+      "checks": {
+        "section_exists": "§2.4 \"Read, then open\" (214-221) and the §1 bullet (101-104) exist.",
+        "quotes": "2/2 verbatim (spec lines 219, 102).",
+        "fix_consistent": "Option 1 contradicts nothing. Option 2 adds a prop to OpenFileControl, so §1 (the OpenFileControl bullet) and §6 (the open-file test) would also need a line each. Either option composes with F-28, whose paragraph is inserted before line 223."
+      },
+      "central_claim": {
+        "status": "confirmed",
+        "evidence": [
+          "web/app/play/PlayerShell.tsx:133 — `const [announcement, setAnnouncement] = useState('');`, rendered at :1266-1268 as `<p aria-live=\"polite\" className=\"sr-only\">`.",
+          "setAnnouncement is called at PlayerShell.tsx:885 (E103), :918 (a successful open) and :973 (the drop catch, E101/E102 today): the drop path can name a failure code, the picker cannot.",
+          "web/app/play/OpenFileControl.tsx:29-33 — its props hold only onNotation; :75-82 — its catch calls only `toast.dismiss` and `toast.error`.",
+          "sonner@2.0.7:dist/index.mjs:1080-1087 — the Toaster always renders `<section aria-live=\"polite\" aria-relevant=\"additions text\" aria-atomic=\"false\">` around the toast list, so a new toast is read aloud. Sonner is not in web/node_modules: web/ gets it through @notation-hero/client (client/src/components/ui/Sonner/Sonner.tsx:3), mounted at web/app/layout.tsx:26.",
+          "client/src/components/ui/Sonner/Sonner.tsx:70-72 — \"It is announced too: the count lands inside sonner's own live region\"."
+        ]
+      },
+      "spike": {
+        "status": "run",
+        "what": "grep of every setAnnouncement call and of the live-region attributes in the installed Sonner.",
+        "result": "The player's announcement is written on the drop path, the E103 branch and success only; the picker path only toasts, and that toast is inside Sonner's polite live region."
+      },
+      "before": [
+        {
+          "lines": "218-221",
+          "text": "\"song.gp could not be opened. Something went wrong on our side, not with your file. Try again, or\nreload the page. (Error E105)\", and the screen-reader announcement names the same code. E105 is a\nnew row in `shared/src/error-codes.ts` and `docs/reference/error-codes.md`: \"The file was read, but\nloading it into the player failed — a bug in our code, not the file.\""
+        }
+      ],
+      "after_draft": [
+        {
+          "replaces_lines": "218-221",
+          "option": "1 (matches the code; the reviewer gave no fix)",
+          "text": "\"song.gp could not be opened. Something went wrong on our side, not with your file. Try again, or\nreload the page. (Error E105)\". A screen reader reads that toast, because Sonner's toaster is a\npolite live region. A drop also writes the code into the player's own announcement, as it already\ndoes for E101 and E102; the picker does not, because `OpenFileControl` receives only `onNotation`.\nE105 is a new row in `shared/src/error-codes.ts` and `docs/reference/error-codes.md`: \"The file\nwas read, but loading it into the player failed — a bug in our code, not the file.\""
+        },
+        {
+          "replaces_lines": "218-221",
+          "option": "2 (changes the code)",
+          "text": "\"song.gp could not be opened. Something went wrong on our side, not with your file. Try again, or\nreload the page. (Error E105)\", and the player's screen-reader announcement names the same code on\nboth paths: `OpenFileControl` gains an `onOpenFailed(message)` prop that `PlayerShell` wires to\nthe announcement, so a picked file is announced the way a dropped one already is, E101 and E102\nincluded. E105 is a new row in `shared/src/error-codes.ts` and `docs/reference/error-codes.md`:\n\"The file was read, but loading it into the player failed — a bug in our code, not the file.\""
+        }
+      ],
+      "scenario": "You use a screen reader and open song.gp with the Open button, and our code fails after the read. Sonner's live region reads the E105 toast to you, but the player's own announcement — which the spec says names the code — stays empty, because only a dropped file can write to it. The next implementer reads \"the screen-reader announcement names the same code\" and has to choose between a new prop and leaving the picker as it is.",
+      "corrections": "The finding says the announcement is written \"only by the drop handler and the E103 branch\"; a successful open writes it too (PlayerShell.tsx:918). Its point stands: no failure on the picker path can write it.",
+      "notes_for_triage": "Option 1 only corrects the text; option 2 is an accessibility improvement that also changes E101 and E102 on the picker, and needs a §1 line and a §6 case. Drop leaves a sentence that is true for one of the two entry paths."
+    },
+    {
+      "id": "AMB-8",
+      "verdict": "pass",
+      "checks": {
+        "section_exists": "§2.1 \"Errors nobody catches\" (121-129) exists.",
+        "quotes": "2/2 verbatim (spec line 125; \"a React render crash\" occurs at 114 and 129).",
+        "fix_consistent": "Consistent. §2.2 (133-147) already routes what the boundary catches to reportError with E901. The diagram at 114 (\"a React render crash ─► error.tsx / global-error.tsx\") is a summary and can stay. The drafted cell \"a React render crash or a `throw` in an effect\" is 46 characters, the column's current width, so only rows 125 and 129 change (the suggested \"a React render crash, or a throw in an effect\" is 45 and would re-pad all seven rows)."
+      },
+      "central_claim": {
+        "status": "confirmed",
+        "evidence": [
+          "react-dom@19.2.7:cjs/react-dom-client.production.js:8571-8592 — commitHookEffectListMount wraps every effect in try/catch and calls `captureCommitPhaseError(finishedWork, finishedWork.return, error)`.",
+          "react-dom@19.2.7:cjs/react-dom-client.production.js:11792-11826 — captureCommitPhaseError walks up to the nearest class with getDerivedStateFromError or componentDidCatch (an error boundary); only with none does it reach the root.",
+          "react-dom@19.2.7:cjs/react-dom-client.production.js:5888-5893 — defaultOnUncaughtError calls reportGlobalError (window.reportError, the global handler); defaultOnCaughtError calls console.error.",
+          "react-dom@19.2.7:cjs/react-dom-client.production.js:12272-12298 — event handlers run in try/catch with `reportGlobalError(error)`, so row 1 is right for event handlers.",
+          "next@16.3.6:dist/client/app-index.js:238-240 — the App Router passes its own onCaughtError and onUncaughtError to hydrateRoot.",
+          "next@16.3.6:dist/client/react-client-callbacks/error-boundary-callbacks.js:35-79 — an error caught by an explicit boundary (an error.tsx, or the app's own global-error.tsx) is only `console.error`-ed in production (:77); only Next's built-in global error is forwarded to onUncaughtError (:42-55).",
+          "getsentry/sentry-javascript@11.0.0:packages/nextjs/src/client — no onCaughtError hook, so a caught error reaches Sentry only through the error page's own call (the spec's reportError, E901)."
+        ]
+      },
+      "spike": {
+        "status": "run",
+        "what": "Node with the installed jsdom, React 19.2.7 and react-dom/client (production build): a class error boundary around a child whose useEffect throws, and a button whose onClick throws.",
+        "result": "The effect throw: the boundary rendered its fallback, the root's onCaughtError received it, and no window `error` event fired. The click throw: a window `error` event fired. Next's onCaughtError was read, not run."
+      },
+      "before": [
+        {
+          "lines": "125",
+          "text": "| a `throw` in an event handler, timer or effect | Sentry's global `error` handler — automatic                                                                                                                                                                                                                                           |"
+        },
+        {
+          "lines": "129",
+          "text": "| a React render crash                           | The error pages, which swallow it today — section 2.2.                                                                                                                                                                                                                                |"
+        }
+      ],
+      "after_draft": [
+        {
+          "replaces_lines": "125",
+          "option": "only",
+          "text": "| a `throw` in an event handler or timer         | Sentry's global `error` handler — automatic                                                                                                                                                                                                                                           |"
+        },
+        {
+          "replaces_lines": "129",
+          "option": "only",
+          "text": "| a React render crash or a `throw` in an effect | The error pages, which swallow it today — section 2.2.                                                                                                                                                                                                                                |"
+        }
+      ],
+      "scenario": "You read §2.1 to learn how a throw inside a useEffect on /play reaches Sentry, and it says the global error handler. In React 19.2.7 that throw goes to the nearest error boundary, web/app/play/error.tsx, and Next.js 16.3.6 only logs it to the console; it reaches Sentry as E901 from the error page. A test written from §2.1, expecting a global-handler event with no code tag, fails.",
+      "corrections": "The suggested text \"a React render crash, or a throw in an effect\" works but shrinks the column by one character, so Prettier would re-pad all seven rows; the draft keeps the width with \"a React render crash or a `throw` in an effect\".",
+      "notes_for_triage": "A throw inside a callback that an effect schedules (a timer, a promise) still reaches the global handlers, so rows 1 and 2 cover it. Drop leaves the table sending effect throws to the wrong channel."
+    },
+    {
+      "id": "FYI-13",
+      "verdict": "pass-with-correction",
+      "checks": {
+        "section_exists": "§2.6 Known engine noise (262-285) and §6 End to end, cases 4 and 6 (491-498), exist.",
+        "quotes": "3/3 verbatim (spec lines 278, 491, 497).",
+        "fix_consistent": "Option 1 is consistent. Option 2 (the reviewer's) deletes case 4, the only end-to-end check that the `instruments` tag reaches an envelope (line 493), which §2.3 relies on."
+      },
+      "central_claim": {
+        "status": "confirmed",
+        "evidence": [
+          "Spec 491-493 — case 4 continues only \"Once a page error with the NH-335 message has been seen\"; with NH-335 fixed it waits until it times out.",
+          "Spec 497-498 — case 6 repeats \"until a page error with the NH-338 message has been seen (at most 20 tries)\"; with NH-338 fixed that never happens, so the case fails, or, if written to give up quietly, passes without testing anything — which the sentinel rule at 501-503 exists to prevent.",
+          "Spec 276-278 — the only maintenance step named is removing the list entry, which \"updates both\" the e2e gate and the Sentry filter.",
+          "web/e2e/page-errors.ts:24-69 — both entries exist only because AlphaTab 1.8.4 throws them; :66 \"Remove this entry when it lands.\"",
+          "Spec §6 cases 1-7 — the `instruments` tag is asserted only in case 4 (493)."
+        ]
+      },
+      "spike": {
+        "status": "run",
+        "what": "Read cases 4 and 6 against §2.6 and against page-errors.ts; grep of the instruments tag across §6.",
+        "result": "Both cases depend on the bug happening; only case 4's wait does, not its instruments check."
+      },
+      "before": [
+        {
+          "lines": "276-278",
+          "text": "fail. That list moves to `web/lib/monitoring/known-engine-noise.ts`. The e2e gate reads it from a\nstack string and the Sentry filter reads it from Sentry's structured frames, so removing one entry\nwhen NH-335 or NH-338 is fixed updates both."
+        }
+      ],
+      "after_draft": [
+        {
+          "replaces_lines": "276-278",
+          "option": "1 (corrected)",
+          "text": "fail. That list moves to `web/lib/monitoring/known-engine-noise.ts`. The e2e gate reads it from a\nstack string and the Sentry filter reads it from Sentry's structured frames, so removing one entry\nwhen NH-335 or NH-338 is fixed updates both. Two end-to-end cases need the bugs to happen and\nchange in the same step (section 6): when NH-335 is fixed, case 4 stops waiting for its page error\nand keeps its `instruments` check; when NH-338 is fixed, case 6 is deleted."
+        },
+        {
+          "replaces_lines": "276-278",
+          "option": "2 (the reviewer's suggestion)",
+          "text": "fail. That list moves to `web/lib/monitoring/known-engine-noise.ts`. The e2e gate reads it from a\nstack string and the Sentry filter reads it from Sentry's structured frames, so removing one entry\nwhen NH-335 or NH-338 is fixed updates both, and deletes its end-to-end case (4 for NH-335, 6 for\nNH-338), which can only run while the bug exists."
+        }
+      ],
+      "scenario": "A year from now you upgrade AlphaTab and NH-335 is fixed. CI turns red on end-to-end case 4, which waits for an NH-335 page error that never comes, and §2.6 only told you to remove the list entry. Case 6 fails the same way once NH-338 is fixed.",
+      "corrections": "Deleting case 4 whole, as suggested, also deletes the only end-to-end check of the instruments tag; only its wait for the NH-335 page error depends on the bug. Case 6 does depend on its bug entirely.",
+      "notes_for_triage": "F-22 (area B) also edits case 4. Nothing breaks today; the cost lands at the AlphaTab upgrade that fixes NH-335 or NH-338. Drop leaves that upgrade with a red CI run and no hint in the spec."
+    }
+  ]
+}
