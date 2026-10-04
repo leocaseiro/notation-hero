@@ -92,6 +92,10 @@ aren't".
 - **The home copy is split in two.** The tagline keeps its two lines, and the privacy sentences get
   their own smaller paragraph below the Play button: as one paragraph the copy would have grown
   from 119 to 318 characters.
+- **Reports are stored in the EU (Frankfurt).** Sentry has no Australian region, and the choice
+  cannot be changed later. Reports carry no personal data; should a bug ever let something
+  through, the EU is the stricter fallback. Chosen over the US (closer to Australia, and Sentry's
+  default).
 
 **Registry:** L11-sentry points at the spec; L11-srcmap reworded (D4); L11-envsecret ⛔ superseded
 and F7-sentry rewritten, because the source-map upload runs inside Vercel's build rather than a

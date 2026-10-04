@@ -1,3 +1,8 @@
+---
+lap: 1
+last_applied: P1
+---
+
 # Sentry error monitoring for `web/` — NH-124
 
 Date: 2026-10-03
@@ -81,14 +86,25 @@ whatever pnpm resolves under the 7-day `minimumReleaseAge` gate; the plan record
 | `web/lib/monitoring/scrub.ts`              | The privacy filter (section 3): names out of error messages, page addresses cut at `?` or `#`.                                                                      |
 | `web/lib/monitoring/known-engine-noise.ts` | The known AlphaTab throws, shared by the Sentry filter and `web/e2e/page-errors.ts` (section 2.6).                                                                  |
 | `web/e2e/error-reporting.e2e.ts`           | The end-to-end reporting and privacy cases (section 6).                                                                                                             |
+| `web/e2e/sentry-envelopes.ts`              | The shared fixture: routes the fake DSN host, answers it, and records each envelope (section 6).                                                                    |
+| `tooling/silent-catch-fence.test.sh`       | The lint canary: a silent `catch { }` and a silent `.catch(() => null)` must both fail ESLint (section 6).                                                          |
 
-Each `lib/monitoring` file has its unit test beside it.
+Each `lib/monitoring` file has its unit test beside it, and so do the three error pages and
+`web/app/play/OpenFileControl.tsx` (section 6).
 
 **Changed files:** `web/next.config.ts` (the `withSentryConfig` wrapper), both `error.tsx` files, the
 16 catch sites and 4 failure paths listed in section 2.4, `web/app/page.tsx` (copy),
 `web/eslint.config.mjs` (the rule), `web/e2e/page-errors.ts` (reads the shared list), the `/`
 screenshot baseline, `web/README.md` (the environment variables), `web/playwright.e2e.config.ts`
-(a fake DSN), `cspell.json`, and the decision registry and changelog.
+(a fake DSN), `cspell.json`, and the decision registry and changelog. Also:
+
+- `web/app/play/OpenFileControl.tsx` and `web/app/play/PlayerShell.tsx`, beyond their catch sites:
+  picking or dropping a file remembers its name (3.2) and clears the `instruments` tag (2.3); the
+  score-loaded handler remembers the score's names and sets the tag; `readNotation` and
+  `LoadedNotation` carry the file's extension (2.3).
+- `web/e2e/player-states.ts` and `web/e2e/player.e2e.ts` — one assertion each on the failures they
+  already force (section 6).
+- `shared/src/error-codes.ts` and `docs/reference/error-codes.md` — the new E105 (section 2.4).
 
 ## 2. How each error reaches Sentry
 
@@ -397,8 +413,11 @@ export default withSentryConfig(nextConfig, {
 
 An agent may not create accounts or handle the token.
 
-1. Create a Sentry account on the free Developer plan, and a project with the platform **Next.js**.
-   Note the organization and project slugs for `next.config.ts`.
+1. Create a Sentry account on the free Developer plan, with the data storage location **EU
+   (Frankfurt)**. Sentry asks once, at sign-up, and the choice cannot be changed later. There is no
+   Australian region; the EU keeps error events under GDPR, the stricter fallback should anything
+   personal ever slip through. Then create a project with the platform **Next.js**, and note the
+   organization and project slugs for `next.config.ts`.
 2. At project creation, choose **"I'll create my own alerts later"**: the default alert fires on
    high-priority issues only, and Sentry ranks a warning as medium. Then create one issue alert that
    fires when **any** of these happens: **"A new issue is created"**, **"A resolved issue
@@ -530,6 +549,8 @@ Each is a claim this design rests on but no one has run yet:
   back to `@sentry/react` plus our own upload script.
 - The exact shape of `dataCollection` in the installed version.
 - That the browser SDK sends Release Health sessions by default.
+- That the source-map upload reaches the EU region with the organization auth token alone, or needs
+  the region's address set as well.
 - Which Release Health figure shows "visits with no unhandled error" under Sentry 11.
 - That `NEXT_PUBLIC_VERCEL_ENV` is exposed on Vercel for this project.
 - What argument AlphaTab's `error` event passes — an `Error` or a string.

@@ -11,7 +11,7 @@
     "lap": 1,
     "review_skill": "compound-engineering:ce-doc-review",
     "review_mode": "mode:headless",
-    "state_store": "the spec's own YAML frontmatter (lap, last_applied). NOT written yet: the spec has no frontmatter. The triage half adds it at step 6, once every finding is decided.",
+    "state_store": "the spec's own YAML frontmatter: lap: 1, last_applied: P1 — written in the wrap-up commit.",
     "document_type": "plan — a design spec (file lists, code, a test plan). The task-by-task implementation plan is a separate document, written after this review.",
     "review_baseline_commit": "cea5a76d",
     "reviewers_dispatched": {
@@ -42,7 +42,7 @@
     "exit_signal_raw": "NOT CLEAN — the headless envelope carries a Proposed fixes section (14) and a Decisions section (2). See engine-envelope.txt.",
     "silent_autofixes_by_engine": "none — no finding was safe_auto at anchor 100 (every one is gated_auto or manual), so the engine applied nothing. The spec is byte-identical to cea5a76d.",
     "verification": "Three dispatched subagents, by area: verify-A.json (SDK and privacy, 8), verify-B.json (catch sites and tests, 9), verify-C.json (pages, copy, setup, 7). Every cited section exists; every evidence quote matched VERBATIM (fixed-string, whitespace collapsed only); no central claim was refuted. Sentry source was read first-hand at tag 11.0.0 (commit 3e02c87c). Spikes RUN: F-1 and F-10 model type-check; F-16 ESLint 9.39.4; F-14 Playwright throw-in-evaluate and worker-throw (Chromium 149); F-15 Testing Library render of an <html><body> component; FYI-1 character counts. NOT run (no install allowed in review): F-2, F-3 and F-4 at runtime — marked (untested at runtime).",
-    "triaged": false,
+    "triaged": true,
     "triage_cap": "12 findings or 5 picker rounds, whichever comes first (shared review-loop rule). 16 findings > 12, so expect two triage invocations — see triage_plan.",
     "severity_scale": {
       "P1": "should fix before planning — something would ship broken, or a promise in the spec would be false",
@@ -72,8 +72,8 @@
     },
     "picker_rounds_used": 3,
     "changelog_note": "docs/decisions/decision-changelog.md, NH-124 entry: S4 and S1 bullets corrected in place; the 'Changed by the spec review, lap 1' list records F-2, F-3, F-4, F-5, F-6, F-8, F-9, F-10, the instruments tag and NH-349.",
-    "triage_status": "Invocation 2: round 4 and round 5 applied; every finding and observation is decided. Q1 (data region) asked again with the Australia answer. Next: Q1 into setup step 1, AMB-4, the frontmatter, mark triaged.",
-    "picker_rounds_used_invocation_2": 3,
+    "triage_status": "COMPLETE. Every finding (16), observation (8) and ambiguity fix (4) is decided and applied; Q1 answered (EU). Triage invocation 1: auto-resolves + rounds 1-3. Invocation 2: round 4 (F-10 + F-11, F-13, F-14 + the instruments tag + NH-349), a confirmation round, round 5 (FYI-1..8), the Q1 follow-up, then AMB-4 and the frontmatter.",
+    "picker_rounds_used_invocation_2": 4,
     "added_in_triage": [
       {
         "id": "ADD-1",
@@ -91,7 +91,8 @@
         "decision": "Filed as NH-349 (Story under NH-180, relates to NH-124); the spec's Non-goals names it.",
         "applied": true
       }
-    ]
+    ],
+    "lap_decision": "RE-LAP. Bound: lap 1 of 5, and lap 1 never trips the no-progress rule. P1 findings were applied (F-2, F-3, F-4, F-5, F-6), so lap 2 starts as a NEW review-half invocation, never by continuing this one."
   },
   "already_applied": [],
   "ambiguity_fixes": [
@@ -166,7 +167,7 @@
         }
       ],
       "apply": "LAST, after all decisions, so the list reflects them; silently; report in one line",
-      "status": "pending — applied LAST, after every decision"
+      "status": "applied LAST, in the wrap-up commit: two new-files rows (web/e2e/sentry-envelopes.ts, tooling/silent-catch-fence.test.sh), the tests beside the error pages and OpenFileControl, and a changed-files list naming the name and instrument feeds in OpenFileControl/PlayerShell, the two e2e files with extra assertions, and the E105 registry pair."
     }
   ],
   "undecided_findings": [],
@@ -347,7 +348,7 @@
     "R18 (security-lens): if tracing is ever turned on, INP and web-vital spans are named with the same aria-labels and bypass beforeSend/beforeBreadcrumb — a beforeSendSpan would be needed."
   ],
   "deferred_questions": [
-    "Q1 (security-lens) — fold into §5 step 1 at triage? Which data storage region (US or EU) should the Sentry organization use? Sentry asks at organization creation and the choice cannot be changed later.",
+    "Q1 ANSWERED in triage invocation 2 (after leocaseiro asked which suits Australia): EU (Frankfurt). No Australian region exists; the EU is the stricter privacy fallback. Written into setup step 1; the plan verifies the source-map upload reaches the EU region.",
     "Q2 (security-lens): pnpm's build-script approval (allowBuilds) will need an entry for any install script in @sentry/nextjs 11's dependency tree (e.g. a CLI binary); Vercel's production install runs with SENTRY_AUTH_TOKEN in its environment — approve those scripts or leave them blocked? (plan)",
     "Q3 (feasibility, adversarial): only 11.0.0 is past the 7-day release-age gate today (11.1-11.4 published 2026-09-28 to 10-02). The plan should re-check the Console integration, BrowserApiErrors wrapping and \"unhandled\" sessions against the exact version it resolves, and read the browser sections of the v11 MIGRATION.md (attachStacktrace now true, the \"page\" session lifecycle, permissive dataCollection defaults for unset keys). (plan)",
     "Q4 (product-lens): does Sentry email the account owner when the 5,000-error monthly quota runs out? Monitoring stops for the rest of that month."
@@ -364,9 +365,7 @@
     "finally": "AMB-4 (complete the §1 list), write the spec frontmatter (lap: 1, last_applied), mark this file triaged, commit, write the PR body, push. A P1 will have been applied, so the lap decision is RE-LAP: lap 2 starts as a NEW review-half invocation.",
     "cap_note": "16 findings exceed the 12-finding cap. Suggested split — triage invocation 1: auto-resolves + rounds 1-2 (10 findings); invocation 2: rounds 3-5 + finally. Stopping at the cap writes partial state and does NOT bump the lap.",
     "next_invocation": [
-      "Round 4 — F-10 (names filter: fix it, or click breadcrumbs off) with the F-8/E105 consideration above; then F-11 and F-13 auto-resolve if 1️⃣ (they dissolve otherwise); then F-14 auto-resolves with the right case 3 (+ its case-5 wording). That is 4 findings: the next invocation stays under the cap.",
-      "Round 5 — the 8 FYIs as two multi-select cards (unchecked = left open, never dropped) + Q1 (data region) on its own card.",
-      "Finally — AMB-4; the spec frontmatter (lap: 1, last_applied: P1); mark this file triaged (header.triaged: true); commit; write the PR body; push. P1s were applied, so the lap decision is RE-LAP: lap 2 starts as a NEW review-half invocation."
+      "Lap 2 REVIEW half: run spec-triage-loop:doc-review-loop on the spec. No un-triaged findings file exists, so the entry rule starts at step 1 and writes lap-2/findings.json."
     ]
   },
   "notes": [
@@ -374,7 +373,7 @@
     "Chunks for the person: scenario first, then What's wrong, Before → After, Proposed fix, Why it works; expand every id (F-N, P1, S4, E102…) in plain words; quote, never cite."
   ],
   "resume": {
-    "triage_half": "Run spec-triage-loop:doc-review-loop on the spec (spec_path_from_root below, prefixed with your repo root). The entry rule finds this un-triaged artifact and resumes at step 4 on its 4 undecided findings: follow triage_plan.next_invocation.",
+    "triage_half": "DONE for lap 1. Next: lap 2 review half — run spec-triage-loop:doc-review-loop on the spec (spec_path_from_root, prefixed with your repo root).",
     "spec_permalink": "https://github.com/leocaseiro/notation-hero/blob/cea5a76d2781ae1c4f4accd451858efff70957ab/docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md",
     "spec_path_from_root": ".claude/worktrees/nh-320-vr-spec-lap-4-92e22a/docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md",
     "artifact_path_from_root": ".claude/worktrees/nh-320-vr-spec-lap-4-92e22a/.spec-triage-loop/2026-10-03-nh-124-sentry-error-monitoring-design/lap-1/findings.json",
