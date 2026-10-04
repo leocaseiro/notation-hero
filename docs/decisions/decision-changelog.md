@@ -20,10 +20,11 @@ Goal, in leocaseiro's words: every error monitored, "both under try/catch, and t
 aren't".
 
 - **S1 — report every error, never the file.** The home page promised "Nothing you open leaves this
-  device" and both error pages "Nothing you opened was sent anywhere". Reports now go out, with the
-  file name, title and track names replaced by `[file]` before sending, and the copy is reworded to
-  say so. Rejected: an opt-in switch (few people turn it on, which defeats the goal) and sending
-  file names (breaks shipped copy; the ticket itself said "strip filenames").
+  device" and both error pages "Nothing you opened was sent anywhere". Reports now go out without
+  the file name, title or track names — click breadcrumbs, whose labels carry track names, are off,
+  and a name quoted in an error's message becomes `[file]` before sending — and the copy is
+  reworded to say so. Rejected: an opt-in switch (few people turn it on, which defeats the goal) and
+  sending file names (breaks shipped copy; the ticket itself said "strip filenames").
 - **S2 — Sentry carries errors and warnings only.** leocaseiro wants burn rates but judged that
   Sentry should not carry them. A rate needs every attempt counted, which is usage tracking, and
   the free plan's 5,000-a-month error cap would flatten the failure count on the worst day. Burn
@@ -74,6 +75,20 @@ aren't".
 - **S2b is refined, not reversed.** Only storage the browser refuses (`SecurityError`, or full)
   leaves a breadcrumb; a throw from our own reader or serializer inside the same catch sends an
   error.
+- **S1 holds by collecting less.** Sentry's click breadcrumbs record each button's label, and the
+  Solo, Mute and Render labels carry the track name — the one place a name reached Sentry. Click
+  breadcrumbs are now off (`dom: false`), and the names filter runs over error messages only:
+  E105, E901 and E201–E204 keep their message, and a future bug can quote a name (V8 writes the key
+  it failed to read into the message). Chosen over keeping the filter on both ends (a click trail,
+  but a list that must catch every name on every click; the review found three ways it missed)
+  and over deleting it (the least code, but nothing would clean an error's message).
+- **Reports carry the score's kinds of instrument**, asked for by leocaseiro in the triage so that
+  errors clustering on one instrument stand out: a Sentry tag `instruments` holding `drums` and
+  General MIDI program numbers, never text from the file. The S1 copy follows: "or what's in it"
+  becomes "or the music in it — only the kinds of instrument it uses" on the home page, and "or the
+  music in it" on the error pages.
+- **A visitor's choice of what to send** — reject all, accept all, errors only — is a follow-up,
+  [NH-349](https://leocaseiro.atlassian.net/browse/NH-349), not part of NH-124.
 
 **Registry:** L11-sentry points at the spec; L11-srcmap reworded (D4); L11-envsecret ⛔ superseded
 and F7-sentry rewritten, because the source-map upload runs inside Vercel's build rather than a

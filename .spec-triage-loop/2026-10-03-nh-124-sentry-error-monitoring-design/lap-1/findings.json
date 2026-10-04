@@ -62,13 +62,36 @@
         "F-5",
         "F-6",
         "F-8",
-        "F-9"
+        "F-9",
+        "F-10",
+        "F-11",
+        "F-13",
+        "F-14"
       ],
-      "undecided": ["F-10", "F-11", "F-13", "F-14"]
+      "undecided": []
     },
     "picker_rounds_used": 3,
-    "changelog_note": "docs/decisions/decision-changelog.md: the NH-124 entry's S4 bullet is corrected in place, and a 'Changed by the spec review, lap 1' list records each approved change (F-2, F-3, F-4, F-5, F-6 so far). Add F-8/F-9/F-10 outcomes there too.",
-    "triage_status": "PAUSED AT THE CAP after triage invocation 1: 12 of 16 findings decided (5 auto-resolved, 7 by picker in 3 rounds). Partial state — the lap is NOT bumped and this file is NOT marked triaged, so the entry rule resumes at step 4 on the 4 undecided findings."
+    "changelog_note": "docs/decisions/decision-changelog.md, NH-124 entry: S4 and S1 bullets corrected in place; the 'Changed by the spec review, lap 1' list records F-2, F-3, F-4, F-5, F-6, F-8, F-9, F-10, the instruments tag and NH-349.",
+    "triage_status": "Invocation 2: round 4 applied (F-10 + F-11, F-13, F-14 + the instruments tag + NH-349). Next: round 5 (the 8 FYIs + Q1), then AMB-4, the frontmatter, mark triaged.",
+    "picker_rounds_used_invocation_2": 2,
+    "added_in_triage": [
+      {
+        "id": "ADD-1",
+        "title": "The instruments tag",
+        "requested_by": "leocaseiro, in the F-10 answer: 'can we get at least what type of instrument is? We might find some unusual spikes on a particular instrument'",
+        "decision": "Add it now (recommended option). One Sentry tag, 'instruments': 'drums' for a percussion track, otherwise the General MIDI program number as the engine stores it (playbackInfo.program, 0-127, from 0), each once, drums first then ascending, joined by ','. No name table (leocaseiro: send the number; the engine's GeneralMidi list is internal). Set on score load, cleared when another file is picked or dropped. Copy: home 'or what's in it' -> 'or the music in it — only the kinds of instrument it uses'; error pages 'or the music in it'.",
+        "spike": "RUN (alphaTab 1.8.4, five sample files): every track carries playbackInfo.program and a percussion flag; Punk.gp -> drums + 30; guitar-no-percussion.gp -> 25.",
+        "correction": "The chunk claimed NH-335 happens on files with no drum track. False: web/e2e/page-errors.ts records CI reaching it on drum-only fixtures, and 'a missing instrument' was ruled out. Corrected in chat; the spec does not cite NH-335 as the reason.",
+        "applied": true
+      },
+      {
+        "id": "ADD-2",
+        "title": "A visitor's choice of what to send (reject all / accept all / errors only)",
+        "requested_by": "leocaseiro, as a later improvement",
+        "decision": "Filed as NH-349 (Story under NH-180, relates to NH-124); the spec's Non-goals names it.",
+        "applied": true
+      }
+    ]
   },
   "already_applied": [],
   "ambiguity_fixes": [
@@ -146,187 +169,7 @@
       "status": "pending — applied LAST, after every decision"
     }
   ],
-  "undecided_findings": [
-    {
-      "id": "F-10",
-      "severity": "P2",
-      "confidence": 75,
-      "route": "Decision",
-      "autofix_class": "manual",
-      "reviewers": ["scope-guardian"],
-      "section": "§3.1 (track-names row); §3.2 The names filter",
-      "title": "The names filter mostly protects click notes — keep it, or switch click notes off?",
-      "terms_first": "Names filter (§3.2) = a list that remembers the open file's name, its title and its track names, and replaces them with `[file]` in anything sent. Click breadcrumb = Sentry's note of which element was clicked; it includes the element's label.",
-      "scenario": "You build §3.2: a list of names that never forgets, filled from two places, two scrub hooks, a 3-character rule, and their tests. This review already found three ways it can still leak — a name with spaces at its ends (F-11), a short name inside a longer one (F-13), a name containing a `\"` mark. Meanwhile the only place a name reaches Sentry today is the click note: the Solo, Mute and Render buttons carry the track name in their labels. One setting would close that channel completely.",
-      "whats_wrong": "Verified: on /play only track names reach a label Sentry records (TrackRow: Render, Solo, Mute, volume, Transpose, 'More controls for', staff toggles). The title is plain text, artist and album are not shown, the file name is in no recorded label, and no error message quotes the file name. `breadcrumbsIntegration({ dom: false })` is valid in Sentry 11.",
-      "evidence_quotes": [
-        "click breadcrumbs record each element's `aria-label`, `type`, `name`, `title` and `alt`",
-        "any error message that quotes it — none does today",
-        "**The list never forgets** within a tab."
-      ],
-      "options": [
-        {
-          "label": "1️⃣ Keep the names filter, fix its holes",
-          "what": "§3.2 stays as designed; F-11 (trim) and F-13 (longest first) apply, and the replace stays a plain substring replace (quote-safe).",
-          "pros": "Full click trail ('Solo [file]' still tells you which button); also scrubs a future error message that quotes a title.",
-          "cons": "The most code; a deny-list that every new label or channel must keep up with — three holes found in one review.",
-          "example": "label `Solo Lead Guitar` → `Solo [file]`"
-        },
-        {
-          "label": "2️⃣ Switch click notes off, delete the names filter (Recommended)",
-          "what": "`breadcrumbsIntegration({ dom: false })` joins the `integrations` function; delete rememberOpenFile, rememberScore, ScoreFacts, the names passes in scrubBreadcrumb/scrubEvent, the 3-character rule and their tests. Keep beforeSend for known noise and the address scrub (F-3), keep the E101–E103 message drop, keep e2e case 3 as the guard.",
-          "pros": "Closes the one verified channel, with no list to get wrong; least code.",
-          "cons": "No record of what was clicked before an error; no cover if a future error message quotes a name.",
-          "example": "integrations: (defaults) => [\n  ...defaults.filter((i) => !['Console', 'BrowserApiErrors', 'Breadcrumbs'].includes(i.name)),\n  breadcrumbsIntegration({ dom: false }),\n],"
-        },
-        {
-          "label": "3️⃣ Keep click notes, strip their labels",
-          "what": "`beforeBreadcrumb` rewrites every `ui.*` breadcrumb, dropping the `[aria-label=\"…\"]`, `[title=\"…\"]`, `[alt=\"…\"]`, `[name=\"…\"]` parts; no names list.",
-          "pros": "A click trail with no names in it.",
-          "cons": "A label-free trail rarely says which button (`button.toggle` for Solo and Mute alike); the rewrite must be quote-safe (a naive regex breaks on `14\" Crash` — rebuild from the clicked element instead); no cover for a future error message.",
-          "example": "div.row > button.toggle[aria-label=\"Solo Lead Guitar\"] → div.row > button.toggle"
-        }
-      ],
-      "comparison_table": "| Option | Pros | Cons | Best when |\n|---|---|---|---|\n| 1️⃣ Keep filter | full click trail; covers future messages | most code; deny-list holes | knowing what was clicked matters most |\n| 2️⃣ dom: false | channel closed, nothing to keep in step | no click trail | privacy + least code matter most |\n| 3️⃣ Strip labels | trail without names | trail says little; tricky rewrite | you want a trail but no list |",
-      "matrix": "Criteria (weight): privacy with nothing to keep in step (×3), debugging value (×2), simplicity (×2). 1️⃣: 3→9, 5→10, 2→4 = 23. 2️⃣: 5→15, 1→2, 5→10 = 27 ← best. 3️⃣: 4→12, 3→6, 3→6 = 24.",
-      "trade_off": "A click trail for debugging vs a privacy measure with no list to get wrong.",
-      "recommendation": "2️⃣ — the one channel that leaks today closes for good, and this ticket's goal (every error reaches Sentry) does not need click notes: each handled failure already carries its E-code. Flip to 1️⃣ if knowing what was clicked before an error matters more to you than a smaller design with no list.",
-      "not_reopening": "S1 stays: names are still never sent. This changes HOW (do not collect vs collect then remove).",
-      "dependents": "F-11 and F-13 apply only with 1️⃣ — with 2️⃣ or 3️⃣ they dissolve. F-3's address scrub keeps scrub.ts alive under every option. F-14's case-3 `[file]` assertion applies only with 1️⃣ (with 2️⃣/3️⃣ case 3 asserts the Solo label text is absent).",
-      "doc_changes_for_2": [
-        "§2 diagram (line 98)",
-        "§3.1 rows (lines 219-220)",
-        "§3.2 (lines 227-243) removed",
-        "§3.3 beforeBreadcrumb/beforeSend (lines 254-255)",
-        "§6 names-filter bullet (lines 332-333)",
-        "§6 e2e case 3 (lines 349-350)",
-        "§1 new-files table (scrub.ts job)"
-      ],
-      "drop_consequence": "Discard it: §3.2 stays exactly as written — then F-11 and F-13 still need deciding.",
-      "basis": "Only track names reach a recorded attribute; dom:false closes that channel without a names list.",
-      "spike": "RUN: model type-check — `breadcrumbsIntegration({ dom: false })` compiles against the 11.0.0 declarations. Code greps (verify-A).",
-      "disposition_hint": "PICKER — a real decision, three options. Ask it BEFORE F-11 and F-13.",
-      "verification": "pass",
-      "severity_meaning": "should fix — a real gap an implementer will hit"
-    },
-    {
-      "id": "F-11",
-      "severity": "P2",
-      "confidence": 100,
-      "route": "Proposed fix",
-      "autofix_class": "gated_auto",
-      "reviewers": ["security-lens", "adversarial"],
-      "promotion": "75 → 100: two separately dispatched reviewers (+1 anchor)",
-      "section": "§3.2 The names filter; §6 unit",
-      "title": "The names filter would miss track names that have spaces at the ends",
-      "depends_on": "F-10 option 1️⃣ (keep the names filter). Dissolves with 2️⃣ or 3️⃣.",
-      "scenario": "You open a Guitar Pro file whose lead track was saved as 'Lead Guitar ' — with a trailing space, which Guitar Pro 3-5 files keep. The mixer trims it and labels the button 'Solo Lead Guitar'. You click Solo, then an error happens. The filter remembered 'Lead Guitar ' with its space, which is not inside 'Solo Lead Guitar' — so the label goes to Sentry with the track name in it.",
-      "whats_wrong": "§3.2 does not say stored strings are trimmed. `trackName()` trims (web/lib/alphatab/mixer-tracks.ts:53-58) and TrackRow uses it for every label; the engine keeps the spaces in Guitar Pro 3-5 track names (alphaTab.core.mjs:18137, :18837-18843).",
-      "evidence_quotes": [
-        "// music, copyright, tab author, and every track's name and short name",
-        "The Solo, Mute and Render buttons are labelled `` `Solo ${name}` ``"
-      ],
-      "before_after": [
-        {
-          "where": "§3.2, a new bullet after line 239",
-          "lines": null,
-          "before": "(absent — nothing there today)",
-          "after": "- **Stored trimmed.** Each string is trimmed before it is stored — the form the mixer shows — and\n  the 3-character floor applies after trimming."
-        },
-        {
-          "where": "§6 unit, names-filter bullet",
-          "lines": "332-333",
-          "before": "  - the names filter: the file name, the title and every track name become `[file]`; strings shorter\n    than 3 characters are left alone; stack frames are untouched;",
-          "after": "same bullet, plus: a track named `Lead Guitar ` (trailing space) whose label `Solo Lead Guitar`\n    comes out as `Solo [file]`;"
-        }
-      ],
-      "proposed_fix": "Trim before storing; apply the 3-character floor after trimming; add the unit case.",
-      "why_it_works": "The filter then holds exactly the strings the page shows.",
-      "drop_consequence": "Discard it. Any track name with spaces at its ends reaches Sentry whole.",
-      "basis": "Labels use the trimmed name; the filter would store the raw one.",
-      "spike": "Code + engine bundle read (verify-A). Not run.",
-      "disposition_hint": "AUTO-RESOLVE if F-10 = 1️⃣ (makes the filter match what the page shows; verified). Otherwise it dissolves.",
-      "verification": "pass",
-      "severity_meaning": "should fix — a real gap an implementer will hit"
-    },
-    {
-      "id": "F-13",
-      "severity": "P2",
-      "confidence": 75,
-      "route": "Proposed fix",
-      "autofix_class": "gated_auto",
-      "reviewers": ["security-lens"],
-      "section": "§3.2 The names filter; §6 unit",
-      "title": "The names filter can leave part of a name behind when one name sits inside another",
-      "depends_on": "F-10 option 1️⃣ (keep the names filter). Dissolves with 2️⃣ or 3️⃣.",
-      "scenario": "You open a file with a drum track named 'Drums (Left Kit)' and no short name. The engine makes one from its first 10 characters: 'Drums (Lef'. The filter remembers both. You click Solo; if the short name is replaced first, the label 'Solo Drums (Left Kit)' goes to Sentry as 'Solo [file]t Kit)' — part of the track name.",
-      "whats_wrong": "§3.2 sets no replacement order, and the list never forgets, so overlaps are routine: the engine's automatic short name is a prefix of the name (alphaTab.core.mjs:12591, :12676-12680), a title can begin a track name, and an earlier file's 'Drums' sits inside a later 'Drums (Left Kit)'. The planned unit tests check one name at a time, so an insertion-order loop passes them and still leaks.",
-      "evidence_quotes": [
-        "**The list never forgets** within a tab.",
-        "the names filter: the file name, the title and every track name become `[file]`"
-      ],
-      "before_after": [
-        {
-          "where": "§3.2, a new bullet",
-          "lines": null,
-          "before": "(absent — nothing there today)",
-          "after": "- **Longest first.** Remembered strings are replaced longest first, so a name that contains a\n  shorter remembered string is removed whole."
-        },
-        {
-          "where": "§6 unit, names-filter bullet",
-          "lines": "332-333",
-          "before": "  - the names filter: the file name, the title and every track name become `[file]`; strings shorter\n    than 3 characters are left alone; stack frames are untouched;",
-          "after": "same bullet, plus: remembered `Drums` and `Drums (Left Kit)`, and a track longer than 10\n    characters with no short name: `Solo Drums (Left Kit)` comes out as `Solo [file]`;"
-        }
-      ],
-      "proposed_fix": "Replace longest first; add the overlap unit case.",
-      "why_it_works": "The longest match goes first, so no shorter remembered string can split a longer one.",
-      "drop_consequence": "Discard it. Overlapping names — routine, because the engine makes short names from the first 10 characters — leak in pieces.",
-      "basis": "No replacement order + a list that never forgets + automatic prefix short names.",
-      "spike": "Engine bundle read (verify-A). Not run.",
-      "disposition_hint": "AUTO-RESOLVE if F-10 = 1️⃣. Otherwise it dissolves.",
-      "verification": "pass",
-      "severity_meaning": "should fix — a real gap an implementer will hit"
-    },
-    {
-      "id": "F-14",
-      "severity": "P2",
-      "confidence": 75,
-      "route": "Proposed fix",
-      "autofix_class": "gated_auto",
-      "reviewers": ["adversarial"],
-      "section": "§6 Testing — the new e2e cases 1, 3, 4, 5",
-      "title": "Some new end-to-end tests can pass without testing anything, and two cannot pass as written",
-      "scenario": "Months from now the Sentry build quietly stops sending anything — a renamed variable, a broken route. Every 'sends no error' test still passes: nothing was sent, so nothing bad was found. And case 1 never works at all: a throw inside `page.evaluate` is handed back to the test and never reaches the page's error handler, so 'sends an error' fails on day one.",
-      "whats_wrong": "Cases 3, 4 and 5 only check that something is absent, so they pass when the recorder captured nothing — the trap page-errors.ts already records from NH-291 (page-errors.ts:112-117). Case 5's 'nothing is sent' cannot pass literally: S4 sends a session ping on every visit. Case 4 must wait for NH-335, which fires only after the score is drawn. Spike (Chromium 149): a direct throw in `page.evaluate` reaches neither window.onerror nor Playwright's pageerror; a throw scheduled with setTimeout reaches both.",
-      "evidence_quotes": [
-        "1. A throw injected by the test (`page.evaluate`) sends an `error`.",
-        "4. Opening `guitar-no-percussion.gp` (the NH-335 file) sends no error.",
-        "5. With storage blocked by an init script, nothing is sent until a real error, and that report carries the storage breadcrumb."
-      ],
-      "before_after": [
-        {
-          "where": "§6 new cases",
-          "lines": "347-353",
-          "before": "    1. A throw injected by the test (`page.evaluate`) sends an `error`.\n    2. Opening a file that is not a score sends an E103 `warning` with its type and size, and no name.\n    3. Open a sample whose name, title and track names are known, click Solo, then cause an error:\n       the raw envelope contains none of those strings.\n    4. Opening `guitar-no-percussion.gp` (the NH-335 file) sends no error.\n    5. With storage blocked by an init script, nothing is sent until a real error, and that report\n       carries the storage breadcrumb.",
-          "after": "    1. A throw the test schedules with `setTimeout` inside `page.evaluate` sends an `error` (a direct\n       throw only rejects the call; it never reaches the page).\n    2. (unchanged)\n    3. Open a sample whose name, title and track names are known, click Solo, then cause an error:\n       the envelope contains `[file]` — the Solo label was recorded and scrubbed — and none of those\n       strings.\n    4. Open `guitar-no-percussion.gp` (the NH-335 file). Once a page error with the NH-335 message\n       has been seen, the test throws a sentinel error: the sentinel is the only error event sent.\n    5. With storage blocked by an init script, no event is sent until a real error, and that report\n       carries the storage breadcrumb.\n\n  Every \"sends no error\" case ends with a sentinel error the test waits for, and reads event\n  envelopes only — never the per-visit session envelope. The sentinel is never added to the shared\n  engine-noise list: the Sentry filter reads that list too, and would drop it.",
-          "note": "Case 3's `[file]` line applies only with F-10 1️⃣; F-1 adds the console marker to case 3 — compose once."
-        }
-      ],
-      "plan_notes": [
-        "error-reporting.e2e.ts must not install failOnUnexpectedPageErrors (only *.vr.ts files must — tooling/workflow-guards.test.mjs:352-358), or must allow the sentinel locally.",
-        "Case 3: make the button itself the click target (e.g. keyboard activation) — a click on the icon span can push the button past Sentry's 80-character ancestor budget, so its label is never recorded and the case passes without testing the filter (verify-A F-10 note)."
-      ],
-      "proposed_fix": "Give every negative case a positive control (a sentinel the test waits for), read event envelopes only, defer case 1's throw, and make case 4 wait for NH-335.",
-      "why_it_works": "Each case can now fail: an empty recorder no longer passes, and case 1 actually reaches the page.",
-      "drop_consequence": "Discard it. Case 1 fails on day one; cases 3–5 stay green even when nothing is being sent.",
-      "basis": "Absence-only assertions pass on an empty recorder; a throw inside page.evaluate never reaches the page (spiked).",
-      "spike": "RUN: scratchpad/verify-B/evaluate-throw-spike.mjs (Chromium 149): sync throw → rejected, unseen; setTimeout throw → window.onerror + pageerror.",
-      "disposition_hint": "AUTO-RESOLVE: makes the planned tests able to fail; spiked; a test improvement (your standing rule: test improvements without asking, always reported). Wait for F-10 before writing case 3.",
-      "verification": "pass",
-      "severity_meaning": "should fix — a real gap an implementer will hit"
-    }
-  ],
+  "undecided_findings": [],
   "fyi_observations": [
     {
       "id": "FYI-1",
@@ -1137,6 +980,209 @@
         "decision": "Apply (leocaseiro, picker)",
         "applied": true,
         "notes": "§2.4 storage rows: What fails + Sends cells; 'Blocked is not corrupt' gains the third case and the in-place if/else (lint-safe); §6 unit: isStorageRefusal; e2e case 5's init script throws DOMException('…','SecurityError'). Refines S2b; recorded in the changelog."
+      }
+    },
+    {
+      "id": "F-10",
+      "severity": "P2",
+      "confidence": 75,
+      "route": "Decision",
+      "autofix_class": "manual",
+      "reviewers": ["scope-guardian"],
+      "section": "§3.1 (track-names row); §3.2 The names filter",
+      "title": "The names filter mostly protects click notes — keep it, or switch click notes off?",
+      "terms_first": "Names filter (§3.2) = a list that remembers the open file's name, its title and its track names, and replaces them with `[file]` in anything sent. Click breadcrumb = Sentry's note of which element was clicked; it includes the element's label.",
+      "scenario": "You build §3.2: a list of names that never forgets, filled from two places, two scrub hooks, a 3-character rule, and their tests. This review already found three ways it can still leak — a name with spaces at its ends (F-11), a short name inside a longer one (F-13), a name containing a `\"` mark. Meanwhile the only place a name reaches Sentry today is the click note: the Solo, Mute and Render buttons carry the track name in their labels. One setting would close that channel completely.",
+      "whats_wrong": "Verified: on /play only track names reach a label Sentry records (TrackRow: Render, Solo, Mute, volume, Transpose, 'More controls for', staff toggles). The title is plain text, artist and album are not shown, the file name is in no recorded label, and no error message quotes the file name. `breadcrumbsIntegration({ dom: false })` is valid in Sentry 11.",
+      "evidence_quotes": [
+        "click breadcrumbs record each element's `aria-label`, `type`, `name`, `title` and `alt`",
+        "any error message that quotes it — none does today",
+        "**The list never forgets** within a tab."
+      ],
+      "options": [
+        {
+          "label": "1️⃣ Keep the names filter, fix its holes",
+          "what": "§3.2 stays as designed; F-11 (trim) and F-13 (longest first) apply, and the replace stays a plain substring replace (quote-safe).",
+          "pros": "Full click trail ('Solo [file]' still tells you which button); also scrubs a future error message that quotes a title.",
+          "cons": "The most code; a deny-list that every new label or channel must keep up with — three holes found in one review.",
+          "example": "label `Solo Lead Guitar` → `Solo [file]`"
+        },
+        {
+          "label": "2️⃣ Switch click notes off, delete the names filter (Recommended)",
+          "what": "`breadcrumbsIntegration({ dom: false })` joins the `integrations` function; delete rememberOpenFile, rememberScore, ScoreFacts, the names passes in scrubBreadcrumb/scrubEvent, the 3-character rule and their tests. Keep beforeSend for known noise and the address scrub (F-3), keep the E101–E103 message drop, keep e2e case 3 as the guard.",
+          "pros": "Closes the one verified channel, with no list to get wrong; least code.",
+          "cons": "No record of what was clicked before an error; no cover if a future error message quotes a name.",
+          "example": "integrations: (defaults) => [\n  ...defaults.filter((i) => !['Console', 'BrowserApiErrors', 'Breadcrumbs'].includes(i.name)),\n  breadcrumbsIntegration({ dom: false }),\n],"
+        },
+        {
+          "label": "3️⃣ Keep click notes, strip their labels",
+          "what": "`beforeBreadcrumb` rewrites every `ui.*` breadcrumb, dropping the `[aria-label=\"…\"]`, `[title=\"…\"]`, `[alt=\"…\"]`, `[name=\"…\"]` parts; no names list.",
+          "pros": "A click trail with no names in it.",
+          "cons": "A label-free trail rarely says which button (`button.toggle` for Solo and Mute alike); the rewrite must be quote-safe (a naive regex breaks on `14\" Crash` — rebuild from the clicked element instead); no cover for a future error message.",
+          "example": "div.row > button.toggle[aria-label=\"Solo Lead Guitar\"] → div.row > button.toggle"
+        }
+      ],
+      "comparison_table": "| Option | Pros | Cons | Best when |\n|---|---|---|---|\n| 1️⃣ Keep filter | full click trail; covers future messages | most code; deny-list holes | knowing what was clicked matters most |\n| 2️⃣ dom: false | channel closed, nothing to keep in step | no click trail | privacy + least code matter most |\n| 3️⃣ Strip labels | trail without names | trail says little; tricky rewrite | you want a trail but no list |",
+      "matrix": "Criteria (weight): privacy with nothing to keep in step (×3), debugging value (×2), simplicity (×2). 1️⃣: 3→9, 5→10, 2→4 = 23. 2️⃣: 5→15, 1→2, 5→10 = 27 ← best. 3️⃣: 4→12, 3→6, 3→6 = 24.",
+      "trade_off": "A click trail for debugging vs a privacy measure with no list to get wrong.",
+      "recommendation": "2️⃣ — the one channel that leaks today closes for good, and this ticket's goal (every error reaches Sentry) does not need click notes: each handled failure already carries its E-code. Flip to 1️⃣ if knowing what was clicked before an error matters more to you than a smaller design with no list.",
+      "not_reopening": "S1 stays: names are still never sent. This changes HOW (do not collect vs collect then remove).",
+      "dependents": "F-11 and F-13 apply only with 1️⃣ — with 2️⃣ or 3️⃣ they dissolve. F-3's address scrub keeps scrub.ts alive under every option. F-14's case-3 `[file]` assertion applies only with 1️⃣ (with 2️⃣/3️⃣ case 3 asserts the Solo label text is absent).",
+      "doc_changes_for_2": [
+        "§2 diagram (line 98)",
+        "§3.1 rows (lines 219-220)",
+        "§3.2 (lines 227-243) removed",
+        "§3.3 beforeBreadcrumb/beforeSend (lines 254-255)",
+        "§6 names-filter bullet (lines 332-333)",
+        "§6 e2e case 3 (lines 349-350)",
+        "§1 new-files table (scrub.ts job)"
+      ],
+      "drop_consequence": "Discard it: §3.2 stays exactly as written — then F-11 and F-13 still need deciding.",
+      "basis": "Only track names reach a recorded attribute; dom:false closes that channel without a names list.",
+      "spike": "RUN: model type-check — `breadcrumbsIntegration({ dom: false })` compiles against the 11.0.0 declarations. Code greps (verify-A).",
+      "disposition_hint": "PICKER — a real decision, three options. Ask it BEFORE F-11 and F-13.",
+      "verification": "pass",
+      "severity_meaning": "should fix — a real gap an implementer will hit",
+      "triage": {
+        "round": "4 (triage invocation 2). F-10 took two picker rounds (its first answer was ambiguous), so it counts as two against the finding cap.",
+        "decision": "A NEW option, offered after re-scoring with the E105 point: click breadcrumbs OFF (breadcrumbsIntegration({ dom: false }), the default 'Breadcrumbs' integration filtered out) AND the names filter KEPT, over exception messages only (beforeSend). Re-score with a new criterion, 'protects a future error message that quotes a name' (x2): this option 31, keep-both-ends 31, delete-the-filter 29; the review's strip-labels option 26, left off the card. Tie broken on exposure: a gap in the list leaks on every Solo click when the filter guards click labels, but only on a future bug when it guards messages.",
+        "applied": true,
+        "notes": "leocaseiro answered in Other: 'Agreed with both clicks and filters text off'. Read as the recommended option and shown back on a confirmation card; that card's Other box carried the instrument-table question instead, so the reading stands uncorrected. If the delete-the-filter option was meant, it is one revertable commit. Spike (Node 24 / V8): undefined['Lead Guitar'] -> \"Cannot read properties of undefined (reading 'Lead Guitar')\"; JSON.parse('Lead Guitar') quotes the input. Folded in: R8 (the filter touches exception messages only) and R16 (rememberOpenFile is fed from the pick AND the drop paths)."
+      }
+    },
+    {
+      "id": "F-11",
+      "severity": "P2",
+      "confidence": 100,
+      "route": "Proposed fix",
+      "autofix_class": "gated_auto",
+      "reviewers": ["security-lens", "adversarial"],
+      "promotion": "75 → 100: two separately dispatched reviewers (+1 anchor)",
+      "section": "§3.2 The names filter; §6 unit",
+      "title": "The names filter would miss track names that have spaces at the ends",
+      "depends_on": "F-10 option 1️⃣ (keep the names filter). Dissolves with 2️⃣ or 3️⃣.",
+      "scenario": "You open a Guitar Pro file whose lead track was saved as 'Lead Guitar ' — with a trailing space, which Guitar Pro 3-5 files keep. The mixer trims it and labels the button 'Solo Lead Guitar'. You click Solo, then an error happens. The filter remembered 'Lead Guitar ' with its space, which is not inside 'Solo Lead Guitar' — so the label goes to Sentry with the track name in it.",
+      "whats_wrong": "§3.2 does not say stored strings are trimmed. `trackName()` trims (web/lib/alphatab/mixer-tracks.ts:53-58) and TrackRow uses it for every label; the engine keeps the spaces in Guitar Pro 3-5 track names (alphaTab.core.mjs:18137, :18837-18843).",
+      "evidence_quotes": [
+        "// music, copyright, tab author, and every track's name and short name",
+        "The Solo, Mute and Render buttons are labelled `` `Solo ${name}` ``"
+      ],
+      "before_after": [
+        {
+          "where": "§3.2, a new bullet after line 239",
+          "lines": null,
+          "before": "(absent — nothing there today)",
+          "after": "- **Stored trimmed.** Each string is trimmed before it is stored — the form the mixer shows — and\n  the 3-character floor applies after trimming."
+        },
+        {
+          "where": "§6 unit, names-filter bullet",
+          "lines": "332-333",
+          "before": "  - the names filter: the file name, the title and every track name become `[file]`; strings shorter\n    than 3 characters are left alone; stack frames are untouched;",
+          "after": "same bullet, plus: a track named `Lead Guitar ` (trailing space) whose label `Solo Lead Guitar`\n    comes out as `Solo [file]`;"
+        }
+      ],
+      "proposed_fix": "Trim before storing; apply the 3-character floor after trimming; add the unit case.",
+      "why_it_works": "The filter then holds exactly the strings the page shows.",
+      "drop_consequence": "Discard it. Any track name with spaces at its ends reaches Sentry whole.",
+      "basis": "Labels use the trimmed name; the filter would store the raw one.",
+      "spike": "Code + engine bundle read (verify-A). Not run.",
+      "disposition_hint": "AUTO-RESOLVE if F-10 = 1️⃣ (makes the filter match what the page shows; verified). Otherwise it dissolves.",
+      "verification": "pass",
+      "severity_meaning": "should fix — a real gap an implementer will hit",
+      "triage": {
+        "round": "4 (triage invocation 2). F-10 took two picker rounds (its first answer was ambiguous), so it counts as two against the finding cap.",
+        "decision": "AUTO-RESOLVED (F-10 kept the filter): strings are trimmed before storing; the 3-character minimum applies after trimming. The unit case uses an exception message, not a Solo label.",
+        "applied": true,
+        "notes": "Reported in chat."
+      }
+    },
+    {
+      "id": "F-13",
+      "severity": "P2",
+      "confidence": 75,
+      "route": "Proposed fix",
+      "autofix_class": "gated_auto",
+      "reviewers": ["security-lens"],
+      "section": "§3.2 The names filter; §6 unit",
+      "title": "The names filter can leave part of a name behind when one name sits inside another",
+      "depends_on": "F-10 option 1️⃣ (keep the names filter). Dissolves with 2️⃣ or 3️⃣.",
+      "scenario": "You open a file with a drum track named 'Drums (Left Kit)' and no short name. The engine makes one from its first 10 characters: 'Drums (Lef'. The filter remembers both. You click Solo; if the short name is replaced first, the label 'Solo Drums (Left Kit)' goes to Sentry as 'Solo [file]t Kit)' — part of the track name.",
+      "whats_wrong": "§3.2 sets no replacement order, and the list never forgets, so overlaps are routine: the engine's automatic short name is a prefix of the name (alphaTab.core.mjs:12591, :12676-12680), a title can begin a track name, and an earlier file's 'Drums' sits inside a later 'Drums (Left Kit)'. The planned unit tests check one name at a time, so an insertion-order loop passes them and still leaks.",
+      "evidence_quotes": [
+        "**The list never forgets** within a tab.",
+        "the names filter: the file name, the title and every track name become `[file]`"
+      ],
+      "before_after": [
+        {
+          "where": "§3.2, a new bullet",
+          "lines": null,
+          "before": "(absent — nothing there today)",
+          "after": "- **Longest first.** Remembered strings are replaced longest first, so a name that contains a\n  shorter remembered string is removed whole."
+        },
+        {
+          "where": "§6 unit, names-filter bullet",
+          "lines": "332-333",
+          "before": "  - the names filter: the file name, the title and every track name become `[file]`; strings shorter\n    than 3 characters are left alone; stack frames are untouched;",
+          "after": "same bullet, plus: remembered `Drums` and `Drums (Left Kit)`, and a track longer than 10\n    characters with no short name: `Solo Drums (Left Kit)` comes out as `Solo [file]`;"
+        }
+      ],
+      "proposed_fix": "Replace longest first; add the overlap unit case.",
+      "why_it_works": "The longest match goes first, so no shorter remembered string can split a longer one.",
+      "drop_consequence": "Discard it. Overlapping names — routine, because the engine makes short names from the first 10 characters — leak in pieces.",
+      "basis": "No replacement order + a list that never forgets + automatic prefix short names.",
+      "spike": "Engine bundle read (verify-A). Not run.",
+      "disposition_hint": "AUTO-RESOLVE if F-10 = 1️⃣. Otherwise it dissolves.",
+      "verification": "pass",
+      "severity_meaning": "should fix — a real gap an implementer will hit",
+      "triage": {
+        "round": "4 (triage invocation 2). F-10 took two picker rounds (its first answer was ambiguous), so it counts as two against the finding cap.",
+        "decision": "AUTO-RESOLVED (F-10 kept the filter): remembered strings are replaced longest first, as plain text (no pattern, so a quote or a bracket needs no escaping). Unit case: the engine's automatic short name 'Drums (Lef' and 'Drums (Left Kit)'.",
+        "applied": true,
+        "notes": "Reported in chat."
+      }
+    },
+    {
+      "id": "F-14",
+      "severity": "P2",
+      "confidence": 75,
+      "route": "Proposed fix",
+      "autofix_class": "gated_auto",
+      "reviewers": ["adversarial"],
+      "section": "§6 Testing — the new e2e cases 1, 3, 4, 5",
+      "title": "Some new end-to-end tests can pass without testing anything, and two cannot pass as written",
+      "scenario": "Months from now the Sentry build quietly stops sending anything — a renamed variable, a broken route. Every 'sends no error' test still passes: nothing was sent, so nothing bad was found. And case 1 never works at all: a throw inside `page.evaluate` is handed back to the test and never reaches the page's error handler, so 'sends an error' fails on day one.",
+      "whats_wrong": "Cases 3, 4 and 5 only check that something is absent, so they pass when the recorder captured nothing — the trap page-errors.ts already records from NH-291 (page-errors.ts:112-117). Case 5's 'nothing is sent' cannot pass literally: S4 sends a session ping on every visit. Case 4 must wait for NH-335, which fires only after the score is drawn. Spike (Chromium 149): a direct throw in `page.evaluate` reaches neither window.onerror nor Playwright's pageerror; a throw scheduled with setTimeout reaches both.",
+      "evidence_quotes": [
+        "1. A throw injected by the test (`page.evaluate`) sends an `error`.",
+        "4. Opening `guitar-no-percussion.gp` (the NH-335 file) sends no error.",
+        "5. With storage blocked by an init script, nothing is sent until a real error, and that report carries the storage breadcrumb."
+      ],
+      "before_after": [
+        {
+          "where": "§6 new cases",
+          "lines": "347-353",
+          "before": "    1. A throw injected by the test (`page.evaluate`) sends an `error`.\n    2. Opening a file that is not a score sends an E103 `warning` with its type and size, and no name.\n    3. Open a sample whose name, title and track names are known, click Solo, then cause an error:\n       the raw envelope contains none of those strings.\n    4. Opening `guitar-no-percussion.gp` (the NH-335 file) sends no error.\n    5. With storage blocked by an init script, nothing is sent until a real error, and that report\n       carries the storage breadcrumb.",
+          "after": "    1. A throw the test schedules with `setTimeout` inside `page.evaluate` sends an `error` (a direct\n       throw only rejects the call; it never reaches the page).\n    2. (unchanged)\n    3. Open a sample whose name, title and track names are known, click Solo, then cause an error:\n       the envelope contains `[file]` — the Solo label was recorded and scrubbed — and none of those\n       strings.\n    4. Open `guitar-no-percussion.gp` (the NH-335 file). Once a page error with the NH-335 message\n       has been seen, the test throws a sentinel error: the sentinel is the only error event sent.\n    5. With storage blocked by an init script, no event is sent until a real error, and that report\n       carries the storage breadcrumb.\n\n  Every \"sends no error\" case ends with a sentinel error the test waits for, and reads event\n  envelopes only — never the per-visit session envelope. The sentinel is never added to the shared\n  engine-noise list: the Sentry filter reads that list too, and would drop it.",
+          "note": "Case 3's `[file]` line applies only with F-10 1️⃣; F-1 adds the console marker to case 3 — compose once."
+        }
+      ],
+      "plan_notes": [
+        "error-reporting.e2e.ts must not install failOnUnexpectedPageErrors (only *.vr.ts files must — tooling/workflow-guards.test.mjs:352-358), or must allow the sentinel locally.",
+        "Case 3: make the button itself the click target (e.g. keyboard activation) — a click on the icon span can push the button past Sentry's 80-character ancestor budget, so its label is never recorded and the case passes without testing the filter (verify-A F-10 note)."
+      ],
+      "proposed_fix": "Give every negative case a positive control (a sentinel the test waits for), read event envelopes only, defer case 1's throw, and make case 4 wait for NH-335.",
+      "why_it_works": "Each case can now fail: an empty recorder no longer passes, and case 1 actually reaches the page.",
+      "drop_consequence": "Discard it. Case 1 fails on day one; cases 3–5 stay green even when nothing is being sent.",
+      "basis": "Absence-only assertions pass on an empty recorder; a throw inside page.evaluate never reaches the page (spiked).",
+      "spike": "RUN: scratchpad/verify-B/evaluate-throw-spike.mjs (Chromium 149): sync throw → rejected, unseen; setTimeout throw → window.onerror + pageerror.",
+      "disposition_hint": "AUTO-RESOLVE: makes the planned tests able to fail; spiked; a test improvement (your standing rule: test improvements without asking, always reported). Wait for F-10 before writing case 3.",
+      "verification": "pass",
+      "severity_meaning": "should fix — a real gap an implementer will hit",
+      "triage": {
+        "round": "4 (triage invocation 2). F-10 took two picker rounds (its first answer was ambiguous), so it counts as two against the finding cap.",
+        "decision": "AUTO-RESOLVED (a test improvement): case 1 throws via setTimeout inside page.evaluate; case 3 asserts no click breadcrumb and a message reading [file] (its positive control), plus F-1's console marker; case 4 waits for the NH-335 page error, then a sentinel that is the only error event and carries 'instruments: 25'; case 5 says 'no event'; a new bullet: every expects-nothing case ends with a sentinel, reads event envelopes only, the sentinel never joins the noise list, and error-reporting.e2e.ts does not install failOnUnexpectedPageErrors.",
+        "applied": true,
+        "notes": "The click-target plan note (80-character ancestor budget) is moot: click breadcrumbs are off. Case 4 says 'an NH-335 file': page-errors.ts records that CI reaches NH-335 on several fixtures."
       }
     }
   ]

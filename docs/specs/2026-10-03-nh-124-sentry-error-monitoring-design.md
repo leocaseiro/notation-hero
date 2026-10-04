@@ -30,6 +30,9 @@ neither the score, nor its file name, nor anything in it leaves the device.
   block there (`client/src/components/About.tsx:65`) stays as it is.
 - **No size gate.** The bundle cost is measured and recorded, not enforced. A size gate is the
   separate pending decision L12-size.
+- **No choice popup yet.** A popup that lets a visitor choose what is sent — reject all, accept
+  all, or errors only — is [NH-349](https://leocaseiro.atlassian.net/browse/NH-349). Until it
+  ships, every production visit reports as this spec describes.
 
 ## Why this exists
 
@@ -74,8 +77,8 @@ whatever pnpm resolves under the 7-day `minimumReleaseAge` gate; the plan record
 | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `web/instrumentation-client.ts`            | Starts Sentry before the page becomes interactive. With no DSN the SDK sends nothing — which is the state in `pnpm dev`, in unit tests, and on preview deployments. |
 | `web/app/global-error.tsx`                 | Catches a crash in the root layout itself. Today there is none, so a root-layout crash shows Next's bare default page.                                              |
-| `web/lib/monitoring/report.ts`             | `reportError()` and `noteError()`. Apart from `instrumentation-client.ts`, the only file that imports Sentry.                                                       |
-| `web/lib/monitoring/scrub.ts`              | The privacy filter (section 3).                                                                                                                                     |
+| `web/lib/monitoring/report.ts`             | `reportError()`, `noteError()` and `tagInstruments()`. Apart from `instrumentation-client.ts`, the only file that imports Sentry.                                   |
+| `web/lib/monitoring/scrub.ts`              | The privacy filter (section 3): names out of error messages, page addresses cut at `?` or `#`.                                                                      |
 | `web/lib/monitoring/known-engine-noise.ts` | The known AlphaTab throws, shared by the Sentry filter and `web/e2e/page-errors.ts` (section 2.6).                                                                  |
 | `web/e2e/error-reporting.e2e.ts`           | The end-to-end reporting and privacy cases (section 6).                                                                                                             |
 
@@ -96,7 +99,7 @@ an error happens
  ├─ AlphaTab's 'error' event, a music-font failure ─► reportError() ─────────────────────┤
  └─ inside try/catch ─► reportError() (error or warning) / noteError() (breadcrumb) ─────┤
                                                                                          ▼
-                              scrub.ts (names → [file]; known engine noise dropped) ─► sentry.io
+                scrub.ts (names in error messages → [file]; known engine noise dropped) ─► sentry.io
 ```
 
 ### 2.1 Errors nobody catches
@@ -141,6 +144,9 @@ export function reportError(
 
 /** A breadcrumb: never sent alone; it travels inside the next real report. Costs no quota. */
 export function noteError(error: unknown, what: string): void;
+
+/** The score's kinds of instrument, as the Sentry tag `instruments`; an empty list clears it. */
+export function tagInstruments(tracks: readonly { program: number; isPercussion: boolean }[]): void;
 ```
 
 - `level` defaults to `error`.
@@ -155,6 +161,15 @@ export function noteError(error: unknown, what: string): void;
   type and size. The engine's parse message can quote text from inside the file (section 3.1).
 - **E105 keeps its message.** It is our own code failing after the file was read, so the message
   describes our bug, not the file. The names filter (section 3.2) still runs over it.
+- **`instruments`** is a Sentry tag naming the open score's kinds of instrument, so an issue's
+  Tags panel shows when its reports cluster on one instrument. Each kind appears once: `drums` for
+  a percussion track (a staff marked percussion, read as `web/lib/alphatab/mixer-tracks.ts`
+  already does), otherwise the track's General MIDI program as the engine stores it
+  (`playbackInfo.program`, 0–127, counted from 0, so `30` is Distortion Guitar). `drums` comes
+  first, then the numbers in ascending order, joined by `,` — `Punk.gp` gives `drums,30`. No name
+  table: the engine's own list is internal, and the number is enough. The tag is set when a score
+  loads, and cleared as soon as another file is picked or dropped, before it is read, so a failure
+  while opening it never carries the last song's instruments.
 
 ### 2.4 Every handled failure in `web/`
 
@@ -252,13 +267,14 @@ and XHR callbacks, is lost; those errors still arrive through the same global ha
 
 ### 3.1 What could leave the device, and what stops it
 
-| What                                           | How it would leak                                                                                                                                                                                                                                                                                            | What stops it                                                                                                                                                        |
-| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| track names, title, artist, album              | **Verified in Sentry's source** (`packages/browser-utils/src/htmlTreeAsString.ts:156`): click breadcrumbs record each element's `aria-label`, `type`, `name`, `title` and `alt`. The Solo, Mute and Render buttons are labelled `` `Solo ${name}` `` (`client/src/components/ui/TrackRow/TrackRow.tsx:247`). | the names filter (3.2) replaces them with `[file]`                                                                                                                   |
-| the file name                                  | any error message that quotes it — none does today                                                                                                                                                                                                                                                           | the same filter                                                                                                                                                      |
-| the score's contents — notes, lyrics, alphaTex | AlphaTab's console logs, and its parse messages, can quote a broken alphaTex line                                                                                                                                                                                                                            | console breadcrumbs are off: the default `Console` integration is removed (3.3), since Sentry 11 has no `console` switch; E101–E103 drop the exception message (2.3) |
-| IP address, cookies, headers                   | collected by Sentry's defaults                                                                                                                                                                                                                                                                               | `dataCollection` turns each one off, **and** the project setting "Prevent Storing of IP Addresses" is on (section 5)                                                 |
-| query strings and `#` fragments                | the event's page address, and the from/to of navigation breadcrumbs — Sentry 11's `dataCollection` covers neither                                                                                                                                                                                            | `scrub.ts` cuts each address at its first `?` or `#`: the event's `request.url`, navigation breadcrumbs' `from` and `to`, fetch and xhr breadcrumbs' `url`           |
+| What                                           | How it would leak                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | What stops it                                                                                                                                                        |
+| ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| track names, title, artist, album              | **Verified in Sentry's source** (`packages/browser-utils/src/htmlTreeAsString.ts:156`): click breadcrumbs record each element's `aria-label`, `type`, `name`, `title` and `alt`. The Solo, Mute and Render buttons are labelled `` `Solo ${name}` `` (`client/src/components/ui/TrackRow/TrackRow.tsx:247`). An error's message could quote one too: none does today, but reading a value by a track name off a missing object gives `Cannot read properties of undefined (reading 'Lead Guitar')`. | click breadcrumbs are off (`dom: false`, 3.3), so no label is recorded; the names filter (3.2) replaces a name in an error's message with `[file]`                   |
+| the file name                                  | any error message that quotes it — none does today                                                                                                                                                                                                                                                                                                                                                                                                                                                  | the same filter                                                                                                                                                      |
+| the score's contents — notes, lyrics, alphaTex | AlphaTab's console logs, and its parse messages, can quote a broken alphaTex line                                                                                                                                                                                                                                                                                                                                                                                                                   | console breadcrumbs are off: the default `Console` integration is removed (3.3), since Sentry 11 has no `console` switch; E101–E103 drop the exception message (2.3) |
+| kinds of instrument                            | the `instruments` tag (2.3) — sent on purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                       | only `drums` and the General MIDI numbers 0–127 can be sent, never text from the file, so no name can reach the tag                                                  |
+| IP address, cookies, headers                   | collected by Sentry's defaults                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | `dataCollection` turns each one off, **and** the project setting "Prevent Storing of IP Addresses" is on (section 5)                                                 |
+| query strings and `#` fragments                | the event's page address, and the from/to of navigation breadcrumbs — Sentry 11's `dataCollection` covers neither                                                                                                                                                                                                                                                                                                                                                                                   | `scrub.ts` cuts each address at its first `?` or `#`: the event's `request.url`, navigation breadcrumbs' `from` and `to`, fetch and xhr breadcrumbs' `url`           |
 
 The copy says "anonymous", so the IP address must be stopped on **both** sides: Sentry's docs warn
 that with `userInfo` off, an IP address can still arrive through headers, cookies or query strings.
@@ -267,19 +283,28 @@ that with `userInfo` off, an IP address can still arrive through headers, cookie
 
 ```ts
 // web/lib/monitoring/scrub.ts
-export function rememberOpenFile(fileName: string): void; // called when a file is picked
+export function rememberOpenFile(fileName: string): void; // called when a file is picked or dropped
 export function rememberScore(score: ScoreFacts): void; // title, subtitle, artist, album, words,
 // music, copyright, tab author, and every track's name and short name
 ```
 
-- **The list never forgets** within a tab. A breadcrumb about file A can still be in the trail after
-  file B opens.
+- **Error messages only.** Click breadcrumbs are off (section 3.3), so no button label — and no
+  track name in one — is ever recorded. What is left is an error's own message: none quotes a name
+  today, but a future bug could, and E105, E901 and E201–E204 keep their message. So when an event
+  is sent (`beforeSend`), the filter runs over each exception's message, and over nothing else.
+- **The list never forgets** within a tab. An error about file A can be sent after file B opens.
+- **Stored trimmed.** Each string is trimmed before it is stored — the form the mixer shows — and
+  the 3-character minimum applies after trimming.
 - **Strings shorter than 3 characters are skipped**, so a track named `1` does not rewrite unrelated
   text.
-- **Both ends:** breadcrumbs are filtered when they are recorded (`beforeBreadcrumb`), and the whole
-  event again when it is sent (`beforeSend`), which also covers names registered after a breadcrumb
-  was recorded.
+- **Longest first, as plain text.** Remembered strings are replaced longest first, so a name that
+  contains a shorter remembered string is removed whole. Each is matched as written, not as a
+  pattern, so a `"` or a `(` in a name needs no escaping.
 - **Stack frames are not touched.** File paths in frames are our code, not the visitor's.
+
+`scrub.ts` also cuts page addresses at their first `?` or `#` (section 3.1): the event's address
+when it is sent, and navigation, fetch and xhr breadcrumbs when they are recorded
+(`beforeBreadcrumb`).
 
 ### 3.3 SDK settings
 
@@ -289,14 +314,20 @@ Sentry.init({
   release: APP_VERSION,
   environment: process.env.NEXT_PUBLIC_VERCEL_ENV,
   dataCollection: { userInfo: false, cookies: false, httpHeaders: false, urlQueryParams: false },
-  integrations: (defaults) =>
-    defaults.filter((integration) => !['Console', 'BrowserApiErrors'].includes(integration.name)),
+  integrations: (defaults) => [
+    ...defaults.filter(
+      (integration) => !['Console', 'BrowserApiErrors', 'Breadcrumbs'].includes(integration.name),
+    ),
+    breadcrumbsIntegration({ dom: false }), // no click breadcrumbs: their labels hold track names
+  ],
   beforeBreadcrumb: scrubBreadcrumb,
   beforeSend: (event) => (isKnownEngineNoise(event) ? null : scrubEvent(event)),
 });
 ```
 
-The exact shape of `dataCollection` is confirmed against the installed types (see "To verify").
+`dom: false` turns off click and key-press breadcrumbs (section 3.2); navigation, fetch and xhr
+breadcrumbs stay. The exact shape of `dataCollection` is confirmed against the installed types
+(see "To verify").
 
 ### 3.4 The copy
 
@@ -305,13 +336,13 @@ Before (web/app/page.tsx:9):  …and play along. Nothing you open leaves this de
 After:                        …and play along. Your scores never leave this device. This site
                               counts visits and crashes anonymously, and sends an error report
                               when something goes wrong. Neither includes your file, its name,
-                              or what's in it.
+                              or the music in it — only the kinds of instrument it uses.
 
 Before (web/app/error.tsx:12 and web/app/play/error.tsx:12):
                               Nothing you opened was sent anywhere. Try again, or reload the page.
 After (both, and the new global-error.tsx):
                               Errors are reported automatically — without your file, its name, or
-                              what's in it. Try again, or reload the page.
+                              the music in it. Try again, or reload the page.
 ```
 
 The error pages deliberately do **not** say "a report was sent". An ad blocker may have stopped it,
@@ -320,6 +351,9 @@ and the page cannot know.
 "Counts visits" is Release Health (S4): a small ping on every visit, not only on a crash. It carries
 the release, the environment and whether the visit ended in an unhandled error — no file data.
 That is why the home page names it.
+
+"The kinds of instrument" is the `instruments` tag (2.3): `drums` and General MIDI numbers, never
+a name.
 
 ## 4. Releases, environments and source maps
 
@@ -377,11 +411,17 @@ secret. The upload now runs inside Vercel's build, so neither GitHub mechanism a
 ## 6. Testing
 
 - **Unit (Vitest), beside each `lib/monitoring` file:**
-  - the names filter: the file name, the title and every track name become `[file]`; strings shorter
-    than 3 characters are left alone; stack frames are untouched;
+  - the names filter, over an exception's message: the file name, the title and every track name
+    become `[file]`; strings shorter than 3 characters are left alone; stack frames are untouched;
+    a track named `"Lead Guitar "` (with a trailing space) is stored trimmed, so a message with
+    `(reading 'Lead Guitar')` comes out with `(reading '[file]')`; with `Drums (Lef` (the engine's
+    automatic short name) and `Drums (Left Kit)` both remembered, a message quoting
+    `Drums (Left Kit)` comes out with `[file]`, not `[file]t Kit)`;
   - the address scrub: `/play?fbclid=abc#x` comes out as `/play`, in the event's address and in a
     navigation breadcrumb;
   - `reportError`: the default level, the `code` tag, and E101–E103 dropping the message;
+  - `tagInstruments`: a percussion track and a Distortion Guitar track (program 30) give
+    `drums,30`; two tracks on the same program give one number; an empty list clears the tag;
   - `isStorageRefusal`: `SecurityError`, `QuotaExceededError` and `NS_ERROR_DOM_QUOTA_REACHED` count
     as refused storage; a `TypeError` from our own reader does not;
   - known engine noise: a throw whose frames all sit in the engine bundle is dropped; the same
@@ -393,7 +433,8 @@ secret. The upload now runs inside Vercel's build, so neither GitHub mechanism a
   warning, `<html>` inside a `<div>`; it does not fail the test.)
 - **The open-file catches**, a test beside `web/app/play/OpenFileControl.tsx`: a read that fails
   shows E102 and reports a warning without the message; an `onNotation` that fails shows E105 and
-  reports an error that keeps its message.
+  reports an error that keeps its message; and picking a file clears the `instruments` tag before
+  the file is read.
 - **Lint canary:** a test runs ESLint over a silent `catch { }` and expects it to fail, so the rule
   cannot stop working quietly — the same idea as `tooling/check-core-purity-canary.sh`.
 - **End to end (Playwright, in the existing `web` job):**
@@ -406,19 +447,29 @@ secret. The upload now runs inside Vercel's build, so neither GitHub mechanism a
     (`web/e2e/player-states.ts:55`) must produce E201, the font abort (`web/e2e/player.e2e.ts:218`)
     E203, and the SoundFont abort (`web/e2e/player.e2e.ts:267`) E202.
   - **New cases in `web/e2e/error-reporting.e2e.ts`:**
-    1. A throw injected by the test (`page.evaluate`) sends an `error`.
+    1. A throw the test schedules with `setTimeout` inside `page.evaluate` sends an `error`. (A
+       direct throw only rejects the `evaluate` call; it never reaches the page.)
     2. Opening a file that is not a score sends an E103 `warning` with its type and size, and no name.
     3. Open a sample whose name, title and track names are known, click Solo, log a marker string
-       with `console.error`, then cause an error: the raw envelope contains none of those strings,
-       and not the marker.
-    4. Opening `guitar-no-percussion.gp` (the NH-335 file) sends no error.
+       with `console.error`, then throw an error whose message quotes the Solo track's name: the
+       envelope holds no click breadcrumb, its message reads `[file]` where the name was, and the
+       raw envelope contains none of those strings, and not the marker.
+    4. Open `guitar-no-percussion.gp` (an NH-335 file). Once a page error with the NH-335 message
+       has been seen, the test throws a sentinel error: the sentinel is the only error event sent,
+       and it carries the tag `instruments: 25` (the file's one track, an acoustic guitar).
     5. With storage blocked by an init script that throws `DOMException('…', 'SecurityError')`, as
-       browsers do, nothing is sent until a real error, and that report carries the storage
+       browsers do, no event is sent until a real error, and that report carries the storage
        breadcrumb.
     6. Play then Pause quickly, repeated until a page error with the NH-338 message has been
        seen (at most 20 tries): no event envelope carries that message.
     7. Open `/?fbclid=probe123#frag` and cause an error there, then click Play and cause another:
        neither envelope contains `probe123` or `frag`.
+  - **Every case that expects nothing to be sent ends with a sentinel** — an error the test throws
+    and waits for — and reads event envelopes only, never the session envelope that Release Health
+    (S4) sends on every visit. Without the sentinel, a recorder that captured nothing would pass.
+    The sentinel is never added to the shared engine-noise list: the Sentry filter reads that list
+    too, and would drop it. `error-reporting.e2e.ts` does not install `failOnUnexpectedPageErrors`:
+    its cases throw on purpose, and only `*.vr.ts` files must.
 - **Screenshots:** the new home-page copy changes the `/` shot (`landing-chromium-linux.png`). Its
   baseline is regenerated in the Linux container (`pnpm test:web:docker:update`) and committed.
 - **Download size:** `/play`'s first-load JavaScript is measured before and after, and both numbers go
