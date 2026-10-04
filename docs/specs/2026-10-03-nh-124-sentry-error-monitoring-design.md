@@ -82,7 +82,7 @@ whatever pnpm resolves under the 7-day `minimumReleaseAge` gate; the plan record
 | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `web/instrumentation-client.ts`            | Starts Sentry before the page becomes interactive. With no DSN the SDK sends nothing — which is the state in `pnpm dev`, in unit tests, and on preview deployments. |
 | `web/app/global-error.tsx`                 | Catches a crash in the root layout itself. Today there is none, so a root-layout crash shows Next's bare default page.                                              |
-| `web/lib/monitoring/report.ts`             | `reportError()`, `noteError()` and `tagInstruments()`. Apart from `instrumentation-client.ts`, the only file that imports Sentry.                                   |
+| `web/lib/monitoring/report.ts`             | `reportError()`, `noteError()`, `tagInstruments()` and `isStorageRefusal()`. Apart from `instrumentation-client.ts`, the only file that imports Sentry.             |
 | `web/lib/monitoring/scrub.ts`              | The privacy filter (section 3): names out of error messages, page addresses cut at `?` or `#`.                                                                      |
 | `web/lib/monitoring/known-engine-noise.ts` | The known AlphaTab throws, shared by the Sentry filter and `web/e2e/page-errors.ts` (section 2.6).                                                                  |
 | `web/e2e/error-reporting.e2e.ts`           | The end-to-end reporting and privacy cases (section 6).                                                                                                             |
@@ -102,8 +102,8 @@ screenshot baseline, `web/README.md` (the environment variables), `web/playwrigh
   picking or dropping a file remembers its name (3.2) and clears the `instruments` tag (2.3); the
   score-loaded handler remembers the score's names and sets the tag; `readNotation` and
   `LoadedNotation` carry the file's extension (2.3).
-- `web/e2e/player-states.ts` and `web/e2e/player.e2e.ts` — one assertion each on the failures they
-  already force (section 6).
+- `web/e2e/player.e2e.ts` — one assertion each on the font and SoundFont failures it already
+  forces (section 6).
 - `shared/src/error-codes.ts` and `docs/reference/error-codes.md` — the new E105 (section 2.4).
 
 ## 2. How each error reaches Sentry
@@ -122,11 +122,11 @@ an error happens
 
 | Channel                                        | Caught by                                                                                                                                                                                                                                                                             |
 | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| a `throw` in an event handler, timer or effect | Sentry's global `error` handler — automatic                                                                                                                                                                                                                                           |
+| a `throw` in an event handler or timer         | Sentry's global `error` handler — automatic                                                                                                                                                                                                                                           |
 | a rejected promise nobody awaited              | Sentry's global `unhandledrejection` handler — automatic                                                                                                                                                                                                                              |
 | a throw inside AlphaTab's Web Worker           | It reaches the page's `error` handler. Evidence: a spike on 2026-10-03 (Chromium 149, worker served from the same origin) — a throw inside a module or classic worker reached `window.onerror` and Playwright's `pageerror`. NH-335 is not evidence: it is thrown on the main thread. |
 | a throw inside AlphaTab's AudioWorklet         | **Not caught.** A worklet error does not reach the page. Only what AlphaTab forwards through its own `error` event arrives. See "Known limits".                                                                                                                                       |
-| a React render crash                           | The error pages, which swallow it today — section 2.2.                                                                                                                                                                                                                                |
+| a React render crash or a `throw` in an effect | The error pages, which swallow it today — section 2.2.                                                                                                                                                                                                                                |
 
 ### 2.2 The error pages
 
@@ -173,8 +173,9 @@ export function tagInstruments(tracks: readonly { program: number; isPercussion:
   The shorter `{ tags, mechanism }` form fails the type-check and, forced through, stays handled.
 - `code` becomes the Sentry tag `code`, so a visitor who quotes "Error E203" maps straight to a
   Sentry search.
-- **E101, E102 and E103 drop the exception message** and keep its type, its stack, and the file's
-  type and size. The engine's parse message can quote text from inside the file (section 3.1).
+- **E101, E102 and E103 drop the exception message** — from the exception's value and from the
+  event's `message` — and keep its type, its stack, and the file's type and size. The engine's parse
+  message can quote text from inside the file (section 3.1).
 - **`FileFacts.type` is the file's extension**, lower-case, read from the name when the file is
   read and carried on `LoadedNotation`: browsers give `.gp`, `.gp5`, `.gpx` and `.atex` files an
   empty MIME type, and the code that reports E103 holds only the name and the bytes. Only an
@@ -216,9 +217,11 @@ export function tagInstruments(tracks: readonly { program: number; isPercussion:
 (`requestNotation` in the drop path) — so a failure before it is the visitor's file (E101 or E102,
 a warning) and a failure after it is our own code (E105, an error). For E105 the visitor sees
 "song.gp could not be opened. Something went wrong on our side, not with your file. Try again, or
-reload the page. (Error E105)", and the screen-reader announcement names the same code. E105 is a
-new row in `shared/src/error-codes.ts` and `docs/reference/error-codes.md`: "The file was read, but
-loading it into the player failed — a bug in our code, not the file."
+reload the page. (Error E105)". A screen reader reads that toast, because Sonner's toaster is a
+polite live region. A drop also writes the code into the player's own announcement, as it already
+does for E101 and E102; the picker does not, because `OpenFileControl` receives only `onNotation`.
+E105 is a new row in `shared/src/error-codes.ts` and `docs/reference/error-codes.md`: "The file
+was read, but loading it into the player failed — a bug in our code, not the file."
 
 **Failures that never throw** — an event, a timer, or a state change:
 
@@ -226,7 +229,7 @@ loading it into the player failed — a bug in our code, not the file."
 | -------------------------------------------------- | --------------------------------------------------- | --------- | ---------------- |
 | `web/app/play/NotationSurface.tsx:117`             | the music font failed to download                   | E203      | error, unhandled |
 | `web/app/play/NotationSurface.tsx:126`             | the music font did not arrive within 60 seconds     | E204      | error, unhandled |
-| `web/app/play/NotationSurface.tsx:139`             | AlphaTab's `error` event, for example the SoundFont | E202      | error, unhandled |
+| `web/app/play/NotationSurface.tsx:141`             | AlphaTab's `error` event, for example the SoundFont | E202      | error, unhandled |
 | `web/app/play/PlayerShell.tsx`, both restore paths | saved settings or transport repaired, or unreadable | E601/E603 | warning          |
 
 **Blocked is not corrupt.** Storage the browser _blocks_ is the visitor's environment: a breadcrumb
@@ -311,8 +314,12 @@ export function rememberScore(score: ScoreFacts): void; // title, subtitle, arti
 
 - **Error messages only.** Click breadcrumbs are off (section 3.3), so no button label — and no
   track name in one — is ever recorded. What is left is an error's own message: none quotes a name
-  today, but a future bug could, and E105, E901 and E201–E204 keep their message. So when an event
-  is sent (`beforeSend`), the filter runs over each exception's message, and over nothing else.
+  today, but a future bug could, and E105, E901 and E201–E204 keep their message. A thrown `Error`
+  puts its message in the exception's value. A string, or a Web Worker error that reaches the page
+  without an `Error` object, puts it in the event's `message` as well, and the breadcrumb Sentry
+  adds for each sent report repeats `message` in every later report. So when an event is sent
+  (`beforeSend`), the filter runs over each exception's value and the event's `message`, and over
+  nothing else. The breadcrumb is made after `beforeSend`, so it repeats the cleaned text.
 - **The list never forgets** within a tab. An error about file A can be sent after file B opens.
 - **Stored trimmed.** Each string is trimmed before it is stored — the form the mixer shows — and
   the 3-character minimum applies after trimming.
@@ -347,8 +354,8 @@ Sentry.init({
 ```
 
 `dom: false` turns off click and key-press breadcrumbs (section 3.2); navigation, fetch and xhr
-breadcrumbs stay. The exact shape of `dataCollection` is confirmed against the installed types
-(see "To verify").
+breadcrumbs stay. The shape of `dataCollection` matches the types of Sentry 11.0.0; the plan checks
+it again against the version pnpm installs (see "To verify").
 
 ### 3.4 The copy
 
@@ -431,9 +438,10 @@ An agent may not create accounts or handle the token.
    - `SENTRY_AUTH_TOKEN` — marked **Sensitive**. Never in chat, never in the repository.
 6. After the first production deploy, open a file that is not a score. An E103 warning appearing in
    Sentry, with the file's type and size and without its name, proves the whole path — and its
-   email (step 2) proves the alert. Its stack must show readable file and function names with the
-   code around each line, which proves the source maps, and its release must equal the version in
-   the wordmark's tooltip.
+   email (step 2) proves the alert. Its stack must show our own frame, the `PlayerShell.tsx` line
+   that calls `loadScoreFromBytes`, with readable names and the code around it, which proves the
+   source maps; the frames above it are AlphaTab's and stay minified (see "Known limits"). Its
+   release must equal the version in the wordmark's tooltip.
 
 This replaces two registry rows written for GitHub Actions: L11-envsecret required a `production-build`
 GitHub environment for the upload job, and F7-sentry required `SENTRY_AUTH_TOKEN` as a GitHub Actions
@@ -448,10 +456,13 @@ secret. The upload now runs inside Vercel's build, so neither GitHub mechanism a
     `(reading 'Lead Guitar')` comes out with `(reading '[file]')`; with `Drums (Lef` (the engine's
     automatic short name) and `Drums (Left Kit)` both remembered, a message quoting
     `Drums (Left Kit)` comes out with `[file]`, not `[file]t Kit)`;
+  - the names filter, over an event Sentry built from text (a string passed to `reportError`, or a
+    Web Worker error that reached the page without an `Error` object): a remembered track name in
+    the event's `message` and in its exception's value comes out as `[file]` in both;
   - the address scrub: `/play?fbclid=abc#x` comes out as `/play`, in the event's address and in a
     navigation breadcrumb;
-  - `reportError`: the default level, the `code` tag, and E101–E103 dropping the message;
-  - the file type: `Song.GP5` gives `gp5`; `notes.txt` and a name with no extension give `other`;
+  - `reportError`: the default level, the `code` tag, and E101–E103 dropping the message, also from
+    the event's `message`;
   - `tagInstruments`: a percussion track and a Distortion Guitar track (program 30) give
     `drums,30`; two tracks on the same program give one number; an empty list clears the tag;
   - `isStorageRefusal`: `SecurityError`, `QuotaExceededError` and `NS_ERROR_DOM_QUOTA_REACHED` count
@@ -465,8 +476,9 @@ secret. The upload now runs inside Vercel's build, so neither GitHub mechanism a
   warning, `<html>` inside a `<div>`; it does not fail the test.)
 - **The open-file catches**, a test beside `web/app/play/OpenFileControl.tsx`: a read that fails
   shows E102 and reports a warning without the message; an `onNotation` that fails shows E105 and
-  reports an error that keeps its message; and picking a file clears the `instruments` tag before
-  the file is read.
+  reports an error that keeps its message; picking a file clears the `instruments` tag before the
+  file is read; and the file type: `Song.GP5` gives `gp5`, while `notes.txt` and a name with no
+  extension give `other`.
 - **Lint canary:** `tooling/silent-catch-fence.test.sh`, a sibling of
   `tooling/alphatab-import-fence.test.sh` — its `expect_rejected` helper over the same
   `no-restricted-syntax` list, already run in the `quality` job — expects both a silent `catch { }`
@@ -477,9 +489,10 @@ secret. The upload now runs inside Vercel's build, so neither GitHub mechanism a
     beside `NEXT_PUBLIC_ALPHATAB_LOG_LEVEL`. One shared fixture routes every request to that host,
     answers it, and records the envelope, so nothing reaches the network and the real SDK is under
     test with no test code in the app.
-  - **Cases that already force a failure** get one extra assertion each: the engine-module abort
-    (`web/e2e/player-states.ts:55`) must produce E201, the font abort (`web/e2e/player.e2e.ts:218`)
-    E203, and the SoundFont abort (`web/e2e/player.e2e.ts:267`) E202.
+  - **Cases that already force a failure** get one extra assertion each: the font abort
+    (`web/e2e/player.e2e.ts:218`) must produce E203, and the SoundFont abort
+    (`web/e2e/player.e2e.ts:267`) E202. No case in `player.e2e.ts` aborts the engine module, so
+    E201 gets a case of its own (case 8 below).
   - **New cases in `web/e2e/error-reporting.e2e.ts`:**
     1. A throw the test schedules with `setTimeout` inside `page.evaluate` sends an `error`. (A
        direct throw only rejects the `evaluate` call; it never reaches the page.)
@@ -498,6 +511,10 @@ secret. The upload now runs inside Vercel's build, so neither GitHub mechanism a
        seen (at most 20 tries): no event envelope carries that message.
     7. Open `/?fbclid=probe123#frag` and cause an error there, then click Play and cause another:
        neither envelope contains `probe123` or `frag`.
+    8. Abort the engine module with the existing `abortEngine` helper
+       (`web/e2e/player-states.ts`, navigation only): one E201 `error` is sent, marked unhandled.
+       The envelope fixture is set up before the helper's `page.goto`, because the import fails
+       during that first load.
   - **Every case that expects nothing to be sent ends with a sentinel** — an error the test throws
     and waits for — and reads event envelopes only, never the session envelope that Release Health
     (S4) sends on every visit. Without the sentinel, a recorder that captured nothing would pass.
@@ -526,6 +543,10 @@ secret. The upload now runs inside Vercel's build, so neither GitHub mechanism a
 
 - **AudioWorklet errors.** A throw inside AlphaTab's sound thread is reported only if AlphaTab
   forwards it through its `error` event. Untested.
+- **Engine frames stay minified.** The vendored `alphaTab.core.mjs` is AlphaTab's minified build,
+  the whole engine on one 1.1 MB line, and the package ships no source map. Every frame inside it
+  reads like `Fi.loadScoreFromBytes` at line 51; only our own frames are mapped. Every E103 starts
+  there.
 - **Ad-blocked visitors.** Their reports never arrive (D3). How many are missed is not measured:
   this project counts no visits outside Sentry, and adding a counter is the usage tracking
   [NH-52](https://leocaseiro.atlassian.net/browse/NH-52) owns.
