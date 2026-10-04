@@ -89,13 +89,16 @@ whatever pnpm resolves under the 7-day `minimumReleaseAge` gate; the plan record
 | `web/e2e/error-reporting.e2e.ts`           | The end-to-end reporting and privacy cases (section 6).                                                                                                             |
 | `web/e2e/sentry-envelopes.ts`              | The shared fixture: routes the fake DSN host, answers it, and records each envelope (section 6).                                                                    |
 | `tooling/silent-catch-fence.test.sh`       | The lint canary: a silent `catch { }` and a silent `.catch(() => null)` must both fail ESLint (section 6).                                                          |
+| `web/scripts/assert-no-auth-token.mjs`     | Fails the build when `SENTRY_AUTH_TOKEN`'s value is in a file under `.next/static`, which browsers download (section 4).                                            |
+| `tooling/assert-no-auth-token.test.mjs`    | Its test, with a fake token: a leak fails, and the output never holds the value (section 6).                                                                        |
 
 Each `lib/monitoring` file has its unit test beside it, and so do the three error pages,
 `web/app/play/OpenFileControl.tsx`, `web/app/play/PlayerShell.tsx` and
 `web/app/play/NotationSurface.tsx` (section 6).
 
-**Changed files:** `web/next.config.ts` (the `withSentryConfig` wrapper), both `error.tsx` files, the
-16 catch sites and 4 failure paths listed in section 2.4, `web/app/page.tsx` (copy),
+**Changed files:** `web/next.config.ts` (the `withSentryConfig` wrapper), `web/package.json` (the
+dependency, and the token check at the end of its `build` script), both `error.tsx` files, the 16
+catch sites and 4 failure paths listed in section 2.4, `web/app/page.tsx` (copy),
 `web/eslint.config.mjs` (the rule), `web/e2e/page-errors.ts` (reads the shared list), the `/`
 screenshot baseline, `web/README.md` (the environment variables), `web/playwright.e2e.config.ts`
 (a fake DSN), `cspell.json`, and the decision registry and changelog. Also:
@@ -488,6 +491,14 @@ a name. Until the visitor opens a file it reads `sample`, which names the bundle
 - **No navigation-tracing prompt.** `suppressOnRouterTransitionStartWarning: true` stops the
   "ACTION REQUIRED … `onRouterTransitionStart`" line that the wrapper prints on every build. That
   hook is for navigation tracing, which S3 rules out.
+- **The token never reaches a browser file.** `web/scripts/assert-no-auth-token.mjs` runs at the end
+  of `web`'s `build` script, after the design-system CSS check, and fails the build when the token's
+  value appears in any file under `.next/static`, which browsers download. It prints the files,
+  never the value. Without the token (CI, previews, local builds) it has nothing to check, so only
+  the production build on Vercel runs it for real. The token is safe today without it — Next.js
+  copies only `NEXT_PUBLIC_…` variables into the page, the token is read only in `next.config.ts`,
+  and the wrapper adds only its own `_sentry*` values to the bundle — but nothing else would fail if
+  a later change put it there.
 - **The build plugin's own telemetry is off** (`telemetry: false`).
 
 ```ts
@@ -595,6 +606,10 @@ secret. The upload now runs inside Vercel's build, so neither GitHub mechanism a
   `tooling/alphatab-import-fence.test.sh` — its `expect_rejected` helper over the same
   `no-restricted-syntax` list, already run in the `quality` job — expects both a silent `catch { }`
   and a silent `.catch(() => null)` to fail, so neither selector can stop working quietly.
+- **The token check:** `tooling/assert-no-auth-token.test.mjs`, a sibling of
+  `tooling/assert-design-system-css.test.mjs` under `pnpm run test:tooling`. With a fake token, a
+  fake `.next/static` file that holds it fails the check, and the output names the file but never
+  the value; clean files pass, and so does a build with no token.
 - **End to end (Playwright, in the existing `web` job):**
   - Every build of the lane — CI, local, and the Docker baseline update — gets a fake DSN,
     `https://public@sentry.invalid/1`, from `webServer.env` in `web/playwright.e2e.config.ts`,

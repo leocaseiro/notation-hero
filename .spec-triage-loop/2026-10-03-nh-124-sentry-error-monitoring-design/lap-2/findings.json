@@ -85,7 +85,7 @@
       "undecided": [],
       "pending_apply": []
     },
-    "triage_status": "Round 4 applied (FYI-9..14, all approved). Every finding and observation is decided. NEXT: the owner's round-4 question (does SENTRY_AUTH_TOKEN stay out of CI and the browser?) is answered in chat, with a proposed build guard to decide; then the wrap-up — spec frontmatter lap: 2 / last_applied: P1, mark this file triaged, the changelog list 'Changed by the spec review, lap 2', commit, PR body, push — and step 7, the lap decision.",
+    "triage_status": "Rounds 3 and 4 applied, and ADD-5 (the token check, from the owner's round-4 question). Every finding and observation is decided. NEXT: the wrap-up — spec frontmatter lap: 2 / last_applied: P1, mark this file triaged, the changelog list 'Changed by the spec review, lap 2', commit, PR body, push — and step 7, the lap decision.",
     "added_in_triage": [
       {
         "id": "R25",
@@ -109,6 +109,16 @@
         "raised_as": "an omission from round 2, found while applying F-28: round 2 added two §6 bullets of cases in web/app/play/PlayerShell.test.tsx, and §1's sentence on tests beside their source never named the file",
         "decision": "Applied without asking, as a completeness fix (lap 1 decided §1's file lists are complete), and reported: the sentence names web/app/play/PlayerShell.tsx.",
         "round": "round 3 (2026-10-05)",
+        "applied": true
+      },
+      {
+        "id": "ADD-5",
+        "title": "A build check that the Sentry auth token never reaches a browser file",
+        "raised_as": "leocaseiro's question at round 4's catcher: confirm SENTRY_AUTH_TOKEN will not show in the pipeline or in the client",
+        "answer_given": "Yes by design, but not enforced. Browser: Next.js inlines only NEXT_PUBLIC_ variables (its bundled docs, environment-variables.md:156); the token is read only in web/next.config.ts, which has no `env` key; withSentryConfig adds only its own _sentry* values to the bundle (Sentry 11 buildTime.ts:36-80, verified in lap 2's FYI-12); uploaded maps describe browser files and are deleted after upload. Pipeline: never a GitHub secret (§5); on Vercel only Production holds it, marked Sensitive, so preview builds of PR code never receive it; the build plugin sends it only as a request header and does not log it while debug logging stays off. No check can read build logs.",
+        "decision": "Option 1 (add the check, recommended), chosen by leocaseiro over option 2 (write the reasoning only).",
+        "spike": "Run on a draft of the script with a fake token and a fake .next/static: no token → exit 0, nothing to check; token and clean files → exit 0; the token inside one file → exit 1, naming only that file — the fake token's value appeared 0 times in the output.",
+        "round": "round 4 (2026-10-05)",
         "applied": true
       }
     ]
@@ -615,7 +625,8 @@
     "Instruments tag: a hung open (the engine import never settles) keeps the counter above 0, so the tag stays off for the rest of the visit — never wrong, only absent (reasoned, not run).",
     "Aside from the spike, out of scope: SettingsPopover.tsx reads the stylesheet from the score-loaded ARGUMENT with no api.score guard; it ends right in the late-sample race only because it subscribes before NotationSurface (reasoned from effect order, not asserted).",
     "F-28: the PlayerShell.test.tsx harness has no api, so the loading bar shows from the start; deliver playerReady before the open, or 'no bar' proves nothing.",
-    "F-29: arm the clock only while visible (a tab opened hidden starts it when first shown), keep the time left across a hide, and have the first renderFinished remove the visibilitychange listener as well as clear the timer — a listener left behind re-arms it a minute after any tab switch."
+    "F-29: arm the clock only while visible (a tab opened hidden starts it when first shown), keep the time left across a hide, and have the first renderFinished remove the visibilitychange listener as well as clear the timer — a listener left behind re-arms it a minute after any tab switch.",
+    "ADD-5: web/scripts/assert-no-auth-token.mjs reads process.env.SENTRY_AUTH_TOKEN, exits 0 when it is unset, walks .next/static (readdirSync recursive with withFileTypes; parentPath needs Node 20.12+, the repo pins 24) and fails naming files only — it must never print the value, on success or failure. Append it to web's build script after assert-design-system-css.mjs; its test goes beside tooling/assert-design-system-css.test.mjs."
   ],
   "triage_plan": {
     "auto_resolve_first": "One commit, reported in one short list (the owner's standing rule: confident fixes and test improvements without asking, always reported): F-20 (option 1), F-26, F-27, F-30, AMB-5, AMB-6, AMB-7 (option 1), AMB-8. F-21 is decided here too, but applied in round 2's commit (shared §1 bullet); F-27's §1 bullet edit likewise.",

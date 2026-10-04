@@ -28,6 +28,7 @@
     "requestfailed",
     "unhandledrejection",
     "fbclid",
+    "visibilitychange",
     "sonivox",
     "flatrow",
     "peaceiris",
