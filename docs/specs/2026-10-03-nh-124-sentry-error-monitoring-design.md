@@ -14,7 +14,8 @@ tracking", in the epic NH-180 "Observability & SRE".
 ## Goal
 
 Every error a visitor meets in `web/` reaches Sentry — whether our code catches it or not — and
-neither the score, nor its file name, nor anything in it leaves the device.
+neither the score, nor its file name, nor the music in it leaves the device. Reports carry only the
+file's type and size, and the kinds of instrument it uses.
 
 ## Non-goals
 
@@ -297,7 +298,10 @@ and XHR callbacks, is lost; those errors still arrive through the same global ha
 | the file name                                  | any error message that quotes it — none does today                                                                                                                                                                                                                                                                                                                                                                                                                                                  | the same filter                                                                                                                                                      |
 | the score's contents — notes, lyrics, alphaTex | AlphaTab's console logs, and its parse messages, can quote a broken alphaTex line                                                                                                                                                                                                                                                                                                                                                                                                                   | console breadcrumbs are off: the default `Console` integration is removed (3.3), since Sentry 11 has no `console` switch; E101–E103 drop the exception message (2.3) |
 | kinds of instrument                            | the `instruments` tag (2.3) — sent on purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                       | only `drums` and the General MIDI numbers 0–127 can be sent, never text from the file, so no name can reach the tag                                                  |
-| IP address, cookies, headers                   | collected by Sentry's defaults                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | `dataCollection` turns each one off, **and** the project setting "Prevent Storing of IP Addresses" is on (section 5)                                                 |
+| the file's type and size                       | `FileFacts` (2.3) on E101–E103 and E105 — sent on purpose                                                                                                                                                                                                                                                                                                                                                                                                                                           | only an extension the open-file picker accepts, or `other`, and a size in bytes; never the file name                                                                 |
+| IP address, cookies, the Referer header        | collected by Sentry's defaults                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | `dataCollection` turns off each one — the Referer is sent as `[Filtered]` — **and** the project setting "Prevent Storing of IP Addresses" is on (section 5)          |
+| the browser's user-agent string                | the `User-Agent` header on each report, and the Release Health ping on every visit (S4) — sent on purpose                                                                                                                                                                                                                                                                                                                                                                                           | it names the browser, its version and the operating system, which Sentry shows on each issue; it holds no IP address and nothing from the file                       |
+| the visitor's locale and time zone             | Sentry's default culture context (`CultureContext`) on each report — sent on purpose                                                                                                                                                                                                                                                                                                                                                                                                                | the browser's language and time zone, such as `en-AU` and `Australia/Sydney`, and its calendar; it holds no IP address and nothing from the file                     |
 | query strings and `#` fragments                | the event's page address, and the from/to of navigation breadcrumbs — Sentry 11's `dataCollection` covers neither                                                                                                                                                                                                                                                                                                                                                                                   | `scrub.ts` cuts each address at its first `?` or `#`: the event's `request.url`, navigation breadcrumbs' `from` and `to`, fetch and xhr breadcrumbs' `url`           |
 
 The copy says "anonymous", so the IP address must be stopped on **both** sides: Sentry's docs warn
@@ -341,7 +345,12 @@ Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN, // absent → the SDK sends nothing
   release: APP_VERSION,
   environment: process.env.NEXT_PUBLIC_VERCEL_ENV,
-  dataCollection: { userInfo: false, cookies: false, httpHeaders: false, urlQueryParams: false },
+  dataCollection: {
+    userInfo: false,
+    cookies: false,
+    httpHeaders: { allow: ['User-Agent'] }, // the browser and OS; the Referer goes as [Filtered]
+    urlQueryParams: false,
+  },
   integrations: (defaults) => [
     ...defaults.filter(
       (integration) => !['Console', 'BrowserApiErrors', 'Breadcrumbs'].includes(integration.name),
@@ -366,7 +375,8 @@ After:                        …and play along. Your scores never leave this de
 After, a new paragraph below the Play button, `text-sm text-muted-foreground`:
                               This site counts visits and crashes anonymously, and sends an error
                               report when something goes wrong. Neither includes your file, its
-                              name, or the music in it — only the kinds of instrument it uses.
+                              name, or the music in it — only the file's type and size, and the
+                              kinds of instrument it uses.
 
 Before (web/app/error.tsx:12 and web/app/play/error.tsx:12):
                               Nothing you opened was sent anywhere. Try again, or reload the page.
@@ -375,18 +385,21 @@ After (both, and the new global-error.tsx):
                               the music in it. Try again, or reload the page.
 ```
 
-The tagline keeps its two lines. As one paragraph, the copy would grow from 119 to 318 characters,
+The tagline keeps its two lines. As one paragraph, the copy would grow from 119 to 348 characters,
 about five lines on a desktop and more on a phone.
 
 The error pages deliberately do **not** say "a report was sent". An ad blocker may have stopped it,
 and the page cannot know.
 
 "Counts visits" is Release Health (S4): a small ping on every visit, not only on a crash. It carries
-the release, the environment and whether the visit ended in an unhandled error — no file data.
-That is why the home page names it.
+the release, the environment, the browser's user-agent string and whether the visit ended in an
+unhandled error — no file data. That is why the home page names it.
 
 "The kinds of instrument" is the `instruments` tag (2.3): `drums` and General MIDI numbers, never
 a name.
+
+"The file's type and size" is `FileFacts` (2.3): an extension the open-file picker accepts, or
+`other`, and a size in bytes. Only E101–E103 and E105 send them.
 
 ## 4. Releases, environments and source maps
 

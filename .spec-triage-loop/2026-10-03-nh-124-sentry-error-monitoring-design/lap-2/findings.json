@@ -65,14 +65,24 @@
       "P3": "worth fixing — small, cheap"
     },
     "triage_progress": {
-      "decided": ["F-20", "F-26", "F-27", "F-30", "F-21"],
-      "undecided": ["F-17", "F-18", "F-19", "F-22", "F-23", "F-24", "F-25", "F-28", "F-29"],
+      "decided": ["F-20", "F-26", "F-27", "F-30", "F-21", "F-17", "F-18", "F-19"],
+      "undecided": ["F-22", "F-23", "F-24", "F-25", "F-28", "F-29"],
       "pending_apply": [
         "F-21 — all four rows, with round 2's commit",
         "F-27 — the §1 bullet (lines 101-104 at 78e35627), with round 2's commit"
       ]
     },
-    "triage_status": "IN PROGRESS — triage invocation 1. Auto-resolve batch applied (F-20, F-26, F-27 in part, F-30, AMB-5..8); F-21 decided, applied with round 2. Next: round 1 (F-17, F-18), then F-19."
+    "triage_status": "IN PROGRESS — triage invocation 1. Auto-resolve batch applied; round 1 applied (F-17 option 1, F-18 option 1, F-19 option 1, R25 option 1). Next: round 2 (F-25, F-23, F-24; then F-22 and F-21).",
+    "added_in_triage": [
+      {
+        "id": "R25",
+        "title": "The visitor's locale and time zone",
+        "raised_as": "a residual concern beside F-18 (the adversarial reviewer): Sentry 11's default CultureContext integration adds the locale, time zone and calendar to every event, and §3.1 did not list them",
+        "decision": "Option 1, chosen by leocaseiro (the recommendation was option 2, stop sending them): keep Sentry's default and list them. §3.1 gains the row 'the visitor's locale and time zone'.",
+        "round": "round 1 (2026-10-05)",
+        "applied": true
+      }
+    ]
   },
   "already_applied": [],
   "ambiguity_fixes": [
@@ -225,389 +235,6 @@
     }
   ],
   "undecided_findings": [
-    {
-      "id": "F-17",
-      "severity": "P1",
-      "severity_meaning": "should fix before planning — something would ship broken, or a promise in the spec would be false",
-      "confidence": 100,
-      "route": "Proposed fix",
-      "autofix_class": "gated_auto",
-      "recommended_action": "Apply (option 1)",
-      "reviewers": ["adversarial", "product-lens", "security-lens"],
-      "promotion": "adversarial was at 100 alone; product-lens and security-lens (75) agree — three reviewers",
-      "section": "§3.4 The copy (the new home paragraph); §3.1 What could leave the device",
-      "title": "The home page says only the kinds of instrument are sent — but a failed open also sends the file's type and size",
-      "terms_first": "E101/E102 = the file is too large / cannot be read; E103 = the file is not a score; E105 = our own code failed after the file was read (new in lap 1). FileFacts = the file's type (its extension, like `gp5`, or `other`) and its size in bytes; those four codes send it.",
-      "scenario": "You open `notes.txt` on /play by mistake. The player shows E103, and Sentry receives a warning that carries the type `other` and the size 1,532 bytes. The home page you just left told you that only the kinds of instrument would be sent, so it promised less than what left your browser.",
-      "whats_wrong": "Lap 1 added the instruments tag and, with it, the home-page clause \"only the kinds of instrument it uses\". But since the first draft, E101, E102, E103 and E105 reports also carry FileFacts — the file's extension and its byte size (§2.3, the §2.4 table, e2e case 2, setup step 6). The word \"only\" makes the visitor-facing promise false for every failed open. §3.1, the list of what can leave the device, has no row for type and size, which is how the copy missed them.",
-      "evidence_quotes": [
-        "name, or the music in it — only the kinds of instrument it uses.",
-        "warning, with file type and size",
-        "2. Opening a file that is not a score sends an E103 `warning` with its type and size, and no name.",
-        "neither the score, nor its file name, nor anything in it leaves the device.",
-        "the `instruments` tag (2.3) — sent on purpose",
-        "Sentry, with the file's type and size and without its name",
-        "error, message kept, with file type and size"
-      ],
-      "before_after": [
-        {
-          "option": "1 (recommended)",
-          "lines_at_78e35627": "296",
-          "before": "| kinds of instrument                            | the `instruments` tag (2.3) — sent on purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                       | only `drums` and the General MIDI numbers 0–127 can be sent, never text from the file, so no name can reach the tag                                                  |",
-          "after": "| kinds of instrument                            | the `instruments` tag (2.3) — sent on purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                       | only `drums` and the General MIDI numbers 0–127 can be sent, never text from the file, so no name can reach the tag                                                  |\n| the file's type and size                       | `FileFacts` (2.3) on E101–E103 and E105 — sent on purpose                                                                                                                                                                                                                                                                                                                                                                                                                                           | only an extension the open-file picker accepts, or `other`, and a size in bytes; never the file name                                                                 |"
-        },
-        {
-          "option": "1 (recommended)",
-          "lines_at_78e35627": "360-362",
-          "before": "                              This site counts visits and crashes anonymously, and sends an error\n                              report when something goes wrong. Neither includes your file, its\n                              name, or the music in it — only the kinds of instrument it uses.",
-          "after": "                              This site counts visits and crashes anonymously, and sends an error\n                              report when something goes wrong. Neither includes your file, its\n                              name, or the music in it — only the file's type and size, and the\n                              kinds of instrument it uses."
-        },
-        {
-          "option": "1 (recommended)",
-          "lines_at_78e35627": "371",
-          "before": "The tagline keeps its two lines. As one paragraph, the copy would grow from 119 to 318 characters,",
-          "after": "The tagline keeps its two lines. As one paragraph, the copy would grow from 119 to 348 characters,"
-        },
-        {
-          "option": "1 (recommended)",
-          "lines_at_78e35627": "381-382",
-          "before": "\"The kinds of instrument\" is the `instruments` tag (2.3): `drums` and General MIDI numbers, never\na name.",
-          "after": "\"The kinds of instrument\" is the `instruments` tag (2.3): `drums` and General MIDI numbers, never\na name.\n\n\"The file's type and size\" is `FileFacts` (2.3): an extension the open-file picker accepts, or\n`other`, and a size in bytes. Only E101–E103 and E105 send them."
-        },
-        {
-          "option": "2",
-          "lines_at_78e35627": "101-104",
-          "before": "- `web/app/play/OpenFileControl.tsx` and `web/app/play/PlayerShell.tsx`, beyond their catch sites:\n  picking or dropping a file remembers its name (3.2) and clears the `instruments` tag (2.3); the\n  score-loaded handler remembers the score's names and sets the tag; `readNotation` and\n  `LoadedNotation` carry the file's extension (2.3).",
-          "after": "- `web/app/play/OpenFileControl.tsx` and `web/app/play/PlayerShell.tsx`, beyond their catch sites:\n  picking or dropping a file remembers its name (3.2) and clears the `instruments` tag (2.3); the\n  score-loaded handler remembers the score's names and sets the tag."
-        },
-        {
-          "option": "2",
-          "lines_at_78e35627": "153-154",
-          "before": "type FileFacts = { readonly type: string; readonly bytes: number }; // the extension, never the name\n",
-          "after": ""
-        },
-        {
-          "option": "2",
-          "lines_at_78e35627": "158",
-          "before": "  options?: { code?: ErrorCode; level?: 'error' | 'warning'; file?: FileFacts; handled?: false },",
-          "after": "  options?: { code?: ErrorCode; level?: 'error' | 'warning'; handled?: false },"
-        },
-        {
-          "option": "2",
-          "lines_at_78e35627": "176-183",
-          "before": "- **E101, E102 and E103 drop the exception message** and keep its type, its stack, and the file's\n  type and size. The engine's parse message can quote text from inside the file (section 3.1).\n- **`FileFacts.type` is the file's extension**, lower-case, read from the name when the file is\n  read and carried on `LoadedNotation`: browsers give `.gp`, `.gp5`, `.gpx` and `.atex` files an\n  empty MIME type, and the code that reports E103 holds only the name and the bytes. Only an\n  extension the open-file picker accepts is sent (`ACCEPT` in `web/app/play/OpenFileControl.tsx`:\n  `gp`, `gp3`, `gp4`, `gp5`, `gpx`, `musicxml`, `mxl`, `xml`, `capx`, `atex`, `alphatex`); any\n  other, or none, becomes `other`. It says what kind of file it is, never what it is called.",
-          "after": "- **E101, E102 and E103 drop the exception message** and keep its type and its stack. The engine's\n  parse message can quote text from inside the file (section 3.1)."
-        },
-        {
-          "option": "2",
-          "lines_at_78e35627": "207-209",
-          "before": "| `web/app/play/PlayerShell.tsx:872`                                                             | the file is not a score                                         | E103       | warning, with file type and size                                                                                                    |\n| `web/app/play/OpenFileControl.tsx:75`, `web/app/play/PlayerShell.tsx:969`                      | the file is too large, or cannot be read                        | E101/E102  | warning, with file type and size                                                                                                    |\n| the same two catches, after the file was read                                                  | our own code failed while loading the score into the player     | E105 (new) | error, message kept, with file type and size                                                                                        |",
-          "after": "| `web/app/play/PlayerShell.tsx:872`                                                             | the file is not a score                                         | E103       | warning                                                                                                                             |\n| `web/app/play/OpenFileControl.tsx:75`, `web/app/play/PlayerShell.tsx:969`                      | the file is too large, or cannot be read                        | E101/E102  | warning                                                                                                                             |\n| the same two catches, after the file was read                                                  | our own code failed while loading the score into the player     | E105 (new) | error, message kept                                                                                                                 |"
-        },
-        {
-          "option": "2",
-          "lines_at_78e35627": "432-436",
-          "before": "6. After the first production deploy, open a file that is not a score. An E103 warning appearing in\n   Sentry, with the file's type and size and without its name, proves the whole path — and its\n   email (step 2) proves the alert. Its stack must show readable file and function names with the\n   code around each line, which proves the source maps, and its release must equal the version in\n   the wordmark's tooltip.",
-          "after": "6. After the first production deploy, open a file that is not a score. An E103 warning appearing in\n   Sentry, without the file's name, proves the whole path — and its email (step 2) proves the\n   alert. Its stack must show readable file and function names with the code around each line,\n   which proves the source maps, and its release must equal the version in the wordmark's tooltip."
-        },
-        {
-          "option": "2",
-          "lines_at_78e35627": "454",
-          "before": "  - the file type: `Song.GP5` gives `gp5`; `notes.txt` and a name with no extension give `other`;",
-          "after": ""
-        },
-        {
-          "option": "2",
-          "lines_at_78e35627": "486",
-          "before": "    2. Opening a file that is not a score sends an E103 `warning` with its type and size, and no name.",
-          "after": "    2. Opening a file that is not a score sends an E103 `warning` with no file name."
-        }
-      ],
-      "proposed_fix": "Option 1: end the home sentence with \"— only the file's type and size, and the kinds of instrument it uses\"; add the §3.1 row (type and size, sent on purpose with E101–E103 and E105, an accepted extension or `other` plus a byte count, never the name); add the FileFacts note under §3.4; update the character count to 348.",
-      "why_it_works": "The copy then names everything a report can say about the visitor's file, and the new §3.1 row keeps the list and the copy in step. \"The file's type\", not \"its type\": after \"the music in it\", \"its type\" could read as the music's genre.",
-      "drop_consequence": "Discard it. The home page keeps telling every visitor that only the kinds of instrument are sent, while every failed open also sends the file's type and size.",
-      "basis": "FileFacts travel with E101–E103 and E105 by design (§2.3); the \"only\" clause came in lap 1 with the instruments wording.",
-      "spike": {
-        "status": "run",
-        "what": "Python character count, counted the way the spec does (the new tagline + one space + the new paragraph, plain text, len() in code points); greedy word-wrap at 60-80 characters per line; then Prettier 3 (repo config), markdownlint-cli2 (repo config) and cspell (repo config, via stdin) over a scratch copy of the spec with the drafts applied.",
-        "result": "Reproduced the spec: tagline 119 + 1 + current paragraph 198 = 318. Drafted paragraph 228 → 348. PRO-1's shorter wording (\"only its type and size, and the kinds…\") gives 341, so its figure is right for its wording; SEC-3's gives 346. Wrapped at 60-80 characters, both 318 and 348 take 5-6 lines, so \"about five lines\" can stay. The patched spec is Prettier-stable and passes markdownlint and cspell, for option 1 and for option 2."
-      },
-      "verification": {
-        "verdict": "pass",
-        "verifier": "verify-A.json",
-        "checks": {
-          "section_exists": "Yes: Goal (lines 14-17), §2.3 FileFacts (151-183), §3.1 table (289-298), §3.4 The copy (353-382).",
-          "quotes": "11/11 verbatim (spec lines 362, 207, 208, 486, 17, 296, 433, 209; \"warning, with file type and size\" occurs twice, at 207 and 208)",
-          "fix_consistent": "Consistent with S1 (\"reword the privacy copy\") and with every place that already says type and size are sent (2.3, 2.4, §5 step 6, e2e case 2). Text that changes with it: the §3.4 count (371), a new §3.4 line for type and size (after 382), a new §3.1 row (after 296), and the Goal (F-19). The lap-1 changelog bullet that quotes the old copy and \"119 to 318\" is history and stays; a lap-2 entry records the change. Option 2 instead touches §1 (101-104), §2.3 (153-154, 158, 176-183), §2.4 (207-209), §5 step 6 (432-436) and §6 (454, 486)."
-        },
-        "central_claim": {
-          "status": "confirmed",
-          "key_evidence": [
-            "docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md:362 — the home paragraph ends \"— only the kinds of instrument it uses.\"",
-            "docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md:176-177, 207-209 — E101, E102, E103 and E105 all send \"the file's type and size\"; no other code does.",
-            "docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md:153, 178-183 — FileFacts is the lower-case extension (an accepted one, else `other`) and `bytes`, an exact byte count."
-          ],
-          "full_evidence": "verify-A.json"
-        },
-        "corrections": "None in substance. Two wording notes: \"its type and size\" after \"the music in it\" can be read as the music's type (its genre), so the draft says \"the file's type and size\" (348 characters, not PRO-1's 341). ADV-1's Goal wording belongs to F-19."
-      },
-      "notes_for_triage": "Option 1 (all three reviewers) rewords lap-1 copy; option 2 (named by ADV-1 as \"the owner's call\") removes a diagnostic the owner approved on 2026-10-03, and per the adversarial reviewer's residual risk every E103 report otherwise looks the same (message dropped, default name, minified frames), so the type is what tells an importer crash on a valid .gp file from a wrong file. Pair with F-19 (option 1 ↔ option 1). Security reviewer's open question, as a note only: should `FileFacts.bytes` be bucketed (rounded into ranges)? An exact byte count plus the extension can identify a well-known downloaded tab file. Collisions if option 2 is chosen: lines 176-177 are also edited by F-20 (merged text: \"- **E101, E102 and E103 drop the exception message** — from the exception's value and from the\n  event's `message` — and keep its type and its stack. The engine's parse message can quote text\n  from inside the file (section 3.1).\"); lines 101-104 are also edited by F-21, F-22, F-23, F-25 (verify-B) and F-27 (verify-C) — drop the \"`readNotation` and `LoadedNotation` carry the file's extension (2.3)\" clause from whatever wording they settle on; lines 432-436 are also rewritten by F-30 (verify-C) — in its text, replace \"with the file's type and size and without its name\" with \"without the file's name\"; line 454 is also deleted by F-27 (same action). A Drop leaves the home page stating less than E101-E103 and E105 send.",
-      "disposition_hint": "PICKER — round 1. Visitor-facing copy that the owner approved, so it is the owner's to confirm. Recommend option 1; option 2 revisits approved design and is shown for completeness. Q8 (round the size into ranges?) sits beside it: mention it, do not bundle it. F-19 (the Goal) then follows from the same answer.",
-      "raw_reviewer_findings": [
-        {
-          "raw_id": "ADV-1",
-          "reviewer": "adversarial",
-          "title": "Home copy and Goal promise less than reports send",
-          "severity": "P1",
-          "confidence": 100,
-          "autofix_class": "manual"
-        },
-        {
-          "raw_id": "PRO-1",
-          "reviewer": "product-lens",
-          "title": "Home copy's 'only' clause omits the file type and size",
-          "severity": "P1",
-          "confidence": 75,
-          "autofix_class": "gated_auto"
-        },
-        {
-          "raw_id": "SEC-3",
-          "reviewer": "security-lens",
-          "title": "Home copy says only instruments; type and size also sent",
-          "severity": "P2",
-          "confidence": 75,
-          "autofix_class": "gated_auto"
-        }
-      ],
-      "triage": null,
-      "options": [
-        {
-          "option": "1 (recommended — all three reviewers)",
-          "what": "End the home sentence with \"— only the file's type and size, and the kinds of instrument it uses\"; add a §3.1 row for type and size; add a §3.4 note that names FileFacts; change the character count 318 → 348.",
-          "pros": "The copy lists exactly what a report can carry about the file; keeps the diagnostic the owner approved (type tells an importer crash on a valid file from a wrong file — R29).",
-          "cons": "The home paragraph grows by 30 characters (still about five lines)."
-        },
-        {
-          "option": "2 (named by adversarial as \"the owner's call\")",
-          "what": "Stop sending type and size: remove FileFacts from §2.3, the §2.4 table, setup step 6 and e2e case 2; the copy stays as it is.",
-          "pros": "Reports carry less; the copy needs no change.",
-          "cons": "Revisits a design element the owner approved on 2026-10-03 (lap-1 FYI-3 made the type the extension); every E103 then looks the same in Sentry (R29); touches many lines other items also edit."
-        }
-      ]
-    },
-    {
-      "id": "F-18",
-      "severity": "P1",
-      "severity_meaning": "should fix before planning — something would ship broken, or a promise in the spec would be false",
-      "confidence": 75,
-      "route": "Decision",
-      "autofix_class": "manual",
-      "recommended_action": "Apply (option 1)",
-      "reviewers": ["adversarial"],
-      "promotion": "none (one reviewer; security-lens raised the session half as a residual)",
-      "section": "§3.1 (the IP address, cookies, headers row); §3.3 SDK settings; §3.4 The copy (the note on the per-visit ping)",
-      "title": "With headers off, no issue shows its browser or system — yet every visit's ping sends the browser's user agent anyway",
-      "terms_first": "User agent = the text a browser sends to say which browser, version and system it is. Release Health ping = the small session message Sentry sends on every visit (S4). Referer = the address of the page the visitor came from.",
-      "scenario": "You open a Sentry issue for E202 (the SoundFont failed to load) to see whether it only happens in Safari. The issue shows no browser and no operating system, because the reports carry no User-Agent header. Yet every visit's Release Health ping did send the full user-agent string, which the spec's own description of the ping (§3.4) leaves out.",
-      "whats_wrong": "§3.3 sets `httpHeaders: false`, and §3.1 groups headers with the IP address. In the browser SDK the only headers Sentry collects are User-Agent and Referer; neither carries the visitor's IP address. Sentry's server builds an issue's browser, system and device only from the event's User-Agent header, with no fallback (Relay source, read; not run against sentry.io). So every issue arrives without them — the first thing triage needs for an audio player. Meanwhile the session ping sends `navigator.userAgent` on every visit whatever `dataCollection` says, and §3.4 says the ping carries only the release, the environment and whether the visit ended in an unhandled error. Every error event also carries the visitor's locale and time zone (Sentry's default culture context), which §3.1 does not list (R25).",
-      "evidence_quotes": [
-        "dataCollection: { userInfo: false, cookies: false, httpHeaders: false, urlQueryParams: false },",
-        "that with `userInfo` off, an IP address can still arrive through headers, cookies or query strings.",
-        "the release, the environment and whether the visit ended in an unhandled error — no file data."
-      ],
-      "before_after": [
-        {
-          "option": "1 (recommended)",
-          "lines_at_78e35627": "297",
-          "before": "| IP address, cookies, headers                   | collected by Sentry's defaults                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | `dataCollection` turns each one off, **and** the project setting \"Prevent Storing of IP Addresses\" is on (section 5)                                                 |",
-          "after": "| IP address, cookies, the Referer header        | collected by Sentry's defaults                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | `dataCollection` turns off each one — the Referer is sent as `[Filtered]` — **and** the project setting \"Prevent Storing of IP Addresses\" is on (section 5)          |\n| the browser's user-agent string                | the `User-Agent` header on each report, and the Release Health ping on every visit (S4) — sent on purpose                                                                                                                                                                                                                                                                                                                                                                                           | it names the browser, its version and the operating system, which Sentry shows on each issue; it holds no IP address and nothing from the file                       |"
-        },
-        {
-          "option": "1 (recommended)",
-          "lines_at_78e35627": "337",
-          "before": "  dataCollection: { userInfo: false, cookies: false, httpHeaders: false, urlQueryParams: false },",
-          "after": "  dataCollection: {\n    userInfo: false,\n    cookies: false,\n    httpHeaders: { allow: ['User-Agent'] }, // the browser and OS; the Referer goes as [Filtered]\n    urlQueryParams: false,\n  },"
-        },
-        {
-          "option": "1 (recommended)",
-          "lines_at_78e35627": "377-379",
-          "before": "\"Counts visits\" is Release Health (S4): a small ping on every visit, not only on a crash. It carries\nthe release, the environment and whether the visit ended in an unhandled error — no file data.\nThat is why the home page names it.",
-          "after": "\"Counts visits\" is Release Health (S4): a small ping on every visit, not only on a crash. It carries\nthe release, the environment, the browser's user-agent string and whether the visit ended in an\nunhandled error — no file data. That is why the home page names it."
-        },
-        {
-          "option": "2",
-          "lines_at_78e35627": "297",
-          "before": "| IP address, cookies, headers                   | collected by Sentry's defaults                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | `dataCollection` turns each one off, **and** the project setting \"Prevent Storing of IP Addresses\" is on (section 5)                                                 |",
-          "after": "| IP address, cookies, headers                   | collected by Sentry's defaults                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | `dataCollection` turns each one off, **and** the project setting \"Prevent Storing of IP Addresses\" is on (section 5)                                                 |\n| the browser's user-agent string                | the Release Health ping on every visit (S4): Sentry 11 adds it to each session, whatever `dataCollection` says                                                                                                                                                                                                                                                                                                                                                                                      | sent with the ping only; error reports carry no headers, so an issue shows no browser or operating system                                                            |"
-        },
-        {
-          "option": "2",
-          "lines_at_78e35627": "377-379",
-          "before": "\"Counts visits\" is Release Health (S4): a small ping on every visit, not only on a crash. It carries\nthe release, the environment and whether the visit ended in an unhandled error — no file data.\nThat is why the home page names it.",
-          "after": "\"Counts visits\" is Release Health (S4): a small ping on every visit, not only on a crash. It carries\nthe release, the environment, the browser's user-agent string and whether the visit ended in an\nunhandled error — no file data. That is why the home page names it."
-        }
-      ],
-      "proposed_fix": "Option 1: allow the User-Agent header only (the Referer goes as `[Filtered]`), reword the §3.1 row, and correct §3.4's description of the ping. Under either option, list the locale and time zone in §3.1 (R25) — an accurate inventory either way.",
-      "why_it_works": "Option 1 gives triage the browser and system at no privacy cost the visit ping does not already pay; option 2 keeps reports minimal but at least makes the spec describe the ping truthfully. Withholding the Referer still matters: a same-origin referrer can hold the previous page's query string, which the address cut does not cover.",
-      "drop_consequence": "Discard it. Every issue arrives without its browser and system, and the spec keeps saying the per-visit ping carries less than it does.",
-      "basis": "The browser SDK's header setting removes only User-Agent and Referer; the session ping reads the user agent itself (verified in the 11.0.0 source; the allow-list shape type-checks).",
-      "spike": {
-        "status": "run",
-        "what": "(1) tsc 5.9.3 (strict) type-check of `{ allow: ['User-Agent'] }`, `{ request: { allow: ['User-Agent'] } }` and `false` against the mirrored 11.0.0 `DataCollection` type, plus three wrong shapes under @ts-expect-error. (2) Ran 11.0.0's resolveDataCollectionOptions + filterKeyValueData (Node 24 type stripping) on the two headers getHttpRequestData collects. (3) Relay's user-agent path by code rea…",
-        "result": "(1) tsc exit 0: all three valid shapes compile and all three wrong shapes are rejected. (2) `false` → no headers on the event; `{ allow: ['User-Agent'] }` (and the per-direction form) → `{\"Referer\":\"[Filtered]\",\"User-Agent\":\"Mozilla/5.0 …\"}`; `true` → both raw. (3) Settled by code: no headers, no browser/OS/device contexts, no fallback for error events."
-      },
-      "verification": {
-        "verdict": "pass",
-        "verifier": "verify-A.json",
-        "checks": {
-          "section_exists": "Yes: §3.1 row \"IP address, cookies, headers\" (297) and the note under it (300-301), §3.3 SDK settings (330-351), §3.4 the ping paragraph (377-379).",
-          "quotes": "3/3 verbatim (spec lines 337, 301, 378)",
-          "fix_consistent": "Both options keep lines 300-301 true (the IP address is still stopped on both sides: `userInfo: false` sets `infer_ip: never`, and \"Prevent Storing of IP Addresses\" stays on). Option 1 changes §3.3 line 337 and the §3.1 row 297 and adds a §3.1 row; option 2 keeps the config and adds a §3.1 row. Both must fix §3.4 (377-379). AMB-5's \"To verify\" item then covers the allow-list shape (it type-checks against 11.0.0). No e2e case is affected: case 7 opens `/?fbclid=probe123#frag` directly, so there is no referrer, and option 1 sends the Referer as `[Filtered]` anyway."
-        },
-        "central_claim": {
-          "status": "confirmed",
-          "key_evidence": [
-            "getsentry/sentry-javascript@11.0.0:packages/browser/src/helpers.ts:225-241 — (a) the browser SDK collects exactly two headers: `Referer` (document.referrer, when not empty) and `User-Agent` (navigator.userAgent).",
-            "getsentry/sentry-javascript@11.0.0:packages/browser/src/integrations/httpcontext.ts:19-36 — filters them with `dataCollection.httpHeaders.request`; an empty result sets `request.headers` to undefined. The page address is always kept (line 32).",
-            "getsentry/sentry-javascript@11.0.0:packages/core/src/utils/data-collection/filterKeyValueData.ts:38-51 and shouldFilterDataKey 8-28 — `false` drops the record; `{ allow }` keeps every key and replaces a value that matches no allow term with `[Filtered]` (case-insensitive substring match)."
-          ],
-          "full_evidence": "verify-A.json"
-        },
-        "corrections": "None in the claims. Precision: with `{ allow: ['User-Agent'] }` the Referer is not removed — its key stays on the event with the value `[Filtered]` (Sentry keeps key names). \"Neither header can carry an IP address\" holds for the visitor's address; the Referer holds the linking page's address."
-      },
-      "notes_for_triage": "Option 1 is the reviewer's recommendation (ADV-2, the only contributor). Withholding the Referer matters: a same-origin referrer can hold the previous page's query string (`fbclid`), which §3.1's address scrub does not cover. Option 2's cost: no browser, OS or device on any issue, and Sentry's crawler and legacy-browser filters cannot match error events (sessions are still filtered). Both options must fix §3.4: the ping sends the user agent whatever `dataCollection` says. A third path, proposed by no reviewer and untested: strip it in a `client.on('beforeSendSession', …)` hook (core/src/client.ts:618, 758) — then the crawler filter no longer applies to sessions and bot visits count in the health number. The ping also carries a random per-page-load id (`sid`), start and update times and an error count; no `did` (no user is set) and no IP. Separate from this item: every error event also carries the visitor's locale and time zone (`contexts.culture`, on by default), which §3.1 does not list (also the adversarial reviewer's residual risk); add a row, or filter out `CultureContext` too. The home copy's \"only\" clause is about the file, so it stays true under both options.",
-      "disposition_hint": "PICKER — round 1. A real choice: diagnostics against sending less. Recommend option 1: the user agent leaves on every visit anyway, and this player's bugs depend on the browser. Flip to option 2 if the owner wants reports to carry nothing beyond what they need, as a principle. A third path, proposed by no reviewer and untested: strip the user agent from sessions with a `beforeSendSession` hook — then bot visits count in the health number.",
-      "raw_reviewer_findings": [
-        {
-          "raw_id": "ADV-2",
-          "reviewer": "adversarial",
-          "title": "Headers off hides the browser; visit pings still send it",
-          "severity": "P1",
-          "confidence": 75,
-          "autofix_class": "manual"
-        }
-      ],
-      "triage": null,
-      "options": [
-        {
-          "option": "1 (recommended — the reviewer)",
-          "what": "`httpHeaders: { allow: ['User-Agent'] }`: issues show browser and system; the Referer key stays as `[Filtered]`. The §3.1 row becomes \"IP address, cookies, the Referer header\". §3.4 says the ping carries the browser's user-agent string.",
-          "pros": "Browser and system on every issue; Sentry's crawler and old-browser filters work on error events; sends nothing the visit ping does not already send.",
-          "cons": "Reports carry one more field."
-        },
-        {
-          "option": "2",
-          "what": "Keep `httpHeaders: false`; only §3.4 is corrected to say the ping carries the user agent.",
-          "pros": "Reports stay minimal.",
-          "cons": "No browser or system on any issue; Sentry's crawler and old-browser filters cannot match error events (sessions are still filtered)."
-        }
-      ]
-    },
-    {
-      "id": "F-19",
-      "severity": "P2",
-      "severity_meaning": "should fix — a real gap an implementer will hit",
-      "confidence": 100,
-      "route": "Proposed fix",
-      "autofix_class": "gated_auto",
-      "recommended_action": "Apply (the option that matches F-17)",
-      "reviewers": ["product-lens", "scope-guardian", "adversarial"],
-      "promotion": "product-lens at 100; scope-guardian (50) and adversarial agree",
-      "section": "Goal",
-      "title": "The Goal still promises that nothing from inside the file leaves the device",
-      "scenario": "You write the plan's privacy checks from the Goal: nothing in the score leaves the device. Your first check fails, because a report carries the tag `instruments: drums,30`, read from inside the file, and the file's type and size. You cannot tell whether the tag or the Goal is the mistake.",
-      "whats_wrong": "The Goal reads \"…neither the score, nor its file name, nor anything in it leaves the device.\" Lap 1 added the instruments tag at the owner's request (ADD-1): General MIDI numbers read from inside the score, sent on purpose (§3.1). Reports of a failed open also carry the file's type and size (F-17). The Goal was not updated, so the spec's first privacy promise contradicts its own settled design.",
-      "evidence_quotes": [
-        "neither the score, nor its file name, nor anything in it leaves the device.",
-        "the `instruments` tag (2.3) — sent on purpose",
-        "is a Sentry tag naming the open score's kinds of instrument, so an issue's",
-        "type FileFacts = { readonly type: string; readonly bytes: number }; // the extension, never the name",
-        "name, or the music in it — only the kinds of instrument it uses.",
-        "warning, with file type and size",
-        "2. Opening a file that is not a score sends an E103 `warning` with its type and size, and no name."
-      ],
-      "before_after": [
-        {
-          "option": "1 (recommended)",
-          "lines_at_78e35627": "16-17",
-          "before": "Every error a visitor meets in `web/` reaches Sentry — whether our code catches it or not — and\nneither the score, nor its file name, nor anything in it leaves the device.",
-          "after": "Every error a visitor meets in `web/` reaches Sentry — whether our code catches it or not — and\nneither the score, nor its file name, nor the music in it leaves the device. Reports carry only the\nfile's type and size, and the kinds of instrument it uses."
-        },
-        {
-          "option": "2",
-          "lines_at_78e35627": "16-17",
-          "before": "Every error a visitor meets in `web/` reaches Sentry — whether our code catches it or not — and\nneither the score, nor its file name, nor anything in it leaves the device.",
-          "after": "Every error a visitor meets in `web/` reaches Sentry — whether our code catches it or not — and\nneither the score, nor its file name, nor the music in it leaves the device. Reports carry only the\nkinds of instrument it uses."
-        }
-      ],
-      "proposed_fix": "Reword the Goal's privacy half in the home copy's terms, using the option that matches F-17's answer.",
-      "why_it_works": "The Goal then lists the same things as the copy and §3.1, so a plan written from the Goal tests the real promise.",
-      "drop_consequence": "Discard it. The first privacy promise a reader meets keeps forbidding the instruments tag the owner asked for.",
-      "basis": "Stale text after ADD-1 (lap 1); PRO-2's wording alone would still be wrong while FileFacts are sent, and SCO-4's would read as forbidding the extension.",
-      "spike": {
-        "status": "run",
-        "what": "Prettier, markdownlint and cspell (repo configs) over the patched spec copy, for both Goal options.",
-        "result": "Clean; every line is 100 characters or fewer."
-      },
-      "verification": {
-        "verdict": "pass",
-        "verifier": "verify-A.json",
-        "checks": {
-          "section_exists": "Yes: Goal (lines 14-17); §2.3 instruments bullet (186-194); §3.1 kinds-of-instrument row (296).",
-          "quotes": "10/10 verbatim (spec lines 17, 296, 186, 153, 362, 207, 208, 486)",
-          "fix_consistent": "Consistent once it matches F-17's outcome: option 1 here pairs with F-17 option 1 (type, size and instruments are sent), option 2 with F-17 option 2 (only instruments are sent). It also matches S1 (\"remove file names and contents before sending\") and lap 1's instruments decision. Nothing else quotes the Goal."
-        },
-        "central_claim": {
-          "status": "confirmed",
-          "key_evidence": [
-            "docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md:16-17 — \"nor anything in it leaves the device\".",
-            "docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md:186-194, 296 — the `instruments` tag (General MIDI numbers read from the score's tracks) is sent on purpose.",
-            "docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md:153, 176-177 — E101-E103 and E105 also send the extension (part of the file name) and the exact size."
-          ],
-          "full_evidence": "verify-A.json"
-        },
-        "corrections": "PRO-2's wording (\"— only the kinds of instrument it uses\") would still be wrong while FileFacts are sent; SCO-4's (\"nor its file name leaves the device\") would read as forbidding the extension, which is part of the name. The drafts name exactly what is sent."
-      },
-      "notes_for_triage": "Decide F-17 first; pick the matching option here. The draft uses a second sentence instead of a third dash, because the first line already has two. A Drop leaves the first privacy promise a reader meets contradicting the settled instruments tag.",
-      "disposition_hint": "AUTO-RESOLVE once F-17 is decided: stale text after ADD-1, no new scope and no trade-off. Apply the matching option in round 1's commit and report it in one line.",
-      "raw_reviewer_findings": [
-        {
-          "raw_id": "PRO-2",
-          "reviewer": "product-lens",
-          "title": "The Goal still promises nothing from inside the file leaves",
-          "severity": "P2",
-          "confidence": 100,
-          "autofix_class": "gated_auto"
-        },
-        {
-          "raw_id": "SCO-4",
-          "reviewer": "scope-guardian",
-          "title": "Goal sentence contradicts the settled instruments tag",
-          "severity": "P3",
-          "confidence": 50,
-          "autofix_class": "gated_auto"
-        },
-        {
-          "raw_id": "ADV-1",
-          "reviewer": "adversarial",
-          "title": "Home copy and Goal promise less than reports send",
-          "severity": "P1",
-          "confidence": 100,
-          "autofix_class": "manual"
-        }
-      ],
-      "triage": null,
-      "options": [
-        {
-          "option": "1 (if F-17 takes option 1)",
-          "what": "\"…nor the music in it leaves the device. Reports carry only the file's type and size, and the kinds of instrument it uses.\""
-        },
-        {
-          "option": "2 (if F-17 takes option 2)",
-          "what": "\"…nor the music in it leaves the device. Reports carry only the kinds of instrument it uses.\""
-        }
-      ]
-    },
     {
       "id": "F-22",
       "severity": "P2",
@@ -2081,6 +1708,404 @@
         "applied": false,
         "notes": "Decided with the batch; applied with round 2's commit, because it shares the §1 bullet and the §2.3 instruments bullet with F-22, F-23 and F-25 (verify-B's combined wording)."
       }
+    },
+    {
+      "id": "F-17",
+      "severity": "P1",
+      "severity_meaning": "should fix before planning — something would ship broken, or a promise in the spec would be false",
+      "confidence": 100,
+      "route": "Proposed fix",
+      "autofix_class": "gated_auto",
+      "recommended_action": "Apply (option 1)",
+      "reviewers": ["adversarial", "product-lens", "security-lens"],
+      "promotion": "adversarial was at 100 alone; product-lens and security-lens (75) agree — three reviewers",
+      "section": "§3.4 The copy (the new home paragraph); §3.1 What could leave the device",
+      "title": "The home page says only the kinds of instrument are sent — but a failed open also sends the file's type and size",
+      "terms_first": "E101/E102 = the file is too large / cannot be read; E103 = the file is not a score; E105 = our own code failed after the file was read (new in lap 1). FileFacts = the file's type (its extension, like `gp5`, or `other`) and its size in bytes; those four codes send it.",
+      "scenario": "You open `notes.txt` on /play by mistake. The player shows E103, and Sentry receives a warning that carries the type `other` and the size 1,532 bytes. The home page you just left told you that only the kinds of instrument would be sent, so it promised less than what left your browser.",
+      "whats_wrong": "Lap 1 added the instruments tag and, with it, the home-page clause \"only the kinds of instrument it uses\". But since the first draft, E101, E102, E103 and E105 reports also carry FileFacts — the file's extension and its byte size (§2.3, the §2.4 table, e2e case 2, setup step 6). The word \"only\" makes the visitor-facing promise false for every failed open. §3.1, the list of what can leave the device, has no row for type and size, which is how the copy missed them.",
+      "evidence_quotes": [
+        "name, or the music in it — only the kinds of instrument it uses.",
+        "warning, with file type and size",
+        "2. Opening a file that is not a score sends an E103 `warning` with its type and size, and no name.",
+        "neither the score, nor its file name, nor anything in it leaves the device.",
+        "the `instruments` tag (2.3) — sent on purpose",
+        "Sentry, with the file's type and size and without its name",
+        "error, message kept, with file type and size"
+      ],
+      "before_after": [
+        {
+          "option": "1 (recommended)",
+          "lines_at_78e35627": "296",
+          "before": "| kinds of instrument                            | the `instruments` tag (2.3) — sent on purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                       | only `drums` and the General MIDI numbers 0–127 can be sent, never text from the file, so no name can reach the tag                                                  |",
+          "after": "| kinds of instrument                            | the `instruments` tag (2.3) — sent on purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                       | only `drums` and the General MIDI numbers 0–127 can be sent, never text from the file, so no name can reach the tag                                                  |\n| the file's type and size                       | `FileFacts` (2.3) on E101–E103 and E105 — sent on purpose                                                                                                                                                                                                                                                                                                                                                                                                                                           | only an extension the open-file picker accepts, or `other`, and a size in bytes; never the file name                                                                 |"
+        },
+        {
+          "option": "1 (recommended)",
+          "lines_at_78e35627": "360-362",
+          "before": "                              This site counts visits and crashes anonymously, and sends an error\n                              report when something goes wrong. Neither includes your file, its\n                              name, or the music in it — only the kinds of instrument it uses.",
+          "after": "                              This site counts visits and crashes anonymously, and sends an error\n                              report when something goes wrong. Neither includes your file, its\n                              name, or the music in it — only the file's type and size, and the\n                              kinds of instrument it uses."
+        },
+        {
+          "option": "1 (recommended)",
+          "lines_at_78e35627": "371",
+          "before": "The tagline keeps its two lines. As one paragraph, the copy would grow from 119 to 318 characters,",
+          "after": "The tagline keeps its two lines. As one paragraph, the copy would grow from 119 to 348 characters,"
+        },
+        {
+          "option": "1 (recommended)",
+          "lines_at_78e35627": "381-382",
+          "before": "\"The kinds of instrument\" is the `instruments` tag (2.3): `drums` and General MIDI numbers, never\na name.",
+          "after": "\"The kinds of instrument\" is the `instruments` tag (2.3): `drums` and General MIDI numbers, never\na name.\n\n\"The file's type and size\" is `FileFacts` (2.3): an extension the open-file picker accepts, or\n`other`, and a size in bytes. Only E101–E103 and E105 send them."
+        },
+        {
+          "option": "2",
+          "lines_at_78e35627": "101-104",
+          "before": "- `web/app/play/OpenFileControl.tsx` and `web/app/play/PlayerShell.tsx`, beyond their catch sites:\n  picking or dropping a file remembers its name (3.2) and clears the `instruments` tag (2.3); the\n  score-loaded handler remembers the score's names and sets the tag; `readNotation` and\n  `LoadedNotation` carry the file's extension (2.3).",
+          "after": "- `web/app/play/OpenFileControl.tsx` and `web/app/play/PlayerShell.tsx`, beyond their catch sites:\n  picking or dropping a file remembers its name (3.2) and clears the `instruments` tag (2.3); the\n  score-loaded handler remembers the score's names and sets the tag."
+        },
+        {
+          "option": "2",
+          "lines_at_78e35627": "153-154",
+          "before": "type FileFacts = { readonly type: string; readonly bytes: number }; // the extension, never the name\n",
+          "after": ""
+        },
+        {
+          "option": "2",
+          "lines_at_78e35627": "158",
+          "before": "  options?: { code?: ErrorCode; level?: 'error' | 'warning'; file?: FileFacts; handled?: false },",
+          "after": "  options?: { code?: ErrorCode; level?: 'error' | 'warning'; handled?: false },"
+        },
+        {
+          "option": "2",
+          "lines_at_78e35627": "176-183",
+          "before": "- **E101, E102 and E103 drop the exception message** and keep its type, its stack, and the file's\n  type and size. The engine's parse message can quote text from inside the file (section 3.1).\n- **`FileFacts.type` is the file's extension**, lower-case, read from the name when the file is\n  read and carried on `LoadedNotation`: browsers give `.gp`, `.gp5`, `.gpx` and `.atex` files an\n  empty MIME type, and the code that reports E103 holds only the name and the bytes. Only an\n  extension the open-file picker accepts is sent (`ACCEPT` in `web/app/play/OpenFileControl.tsx`:\n  `gp`, `gp3`, `gp4`, `gp5`, `gpx`, `musicxml`, `mxl`, `xml`, `capx`, `atex`, `alphatex`); any\n  other, or none, becomes `other`. It says what kind of file it is, never what it is called.",
+          "after": "- **E101, E102 and E103 drop the exception message** and keep its type and its stack. The engine's\n  parse message can quote text from inside the file (section 3.1)."
+        },
+        {
+          "option": "2",
+          "lines_at_78e35627": "207-209",
+          "before": "| `web/app/play/PlayerShell.tsx:872`                                                             | the file is not a score                                         | E103       | warning, with file type and size                                                                                                    |\n| `web/app/play/OpenFileControl.tsx:75`, `web/app/play/PlayerShell.tsx:969`                      | the file is too large, or cannot be read                        | E101/E102  | warning, with file type and size                                                                                                    |\n| the same two catches, after the file was read                                                  | our own code failed while loading the score into the player     | E105 (new) | error, message kept, with file type and size                                                                                        |",
+          "after": "| `web/app/play/PlayerShell.tsx:872`                                                             | the file is not a score                                         | E103       | warning                                                                                                                             |\n| `web/app/play/OpenFileControl.tsx:75`, `web/app/play/PlayerShell.tsx:969`                      | the file is too large, or cannot be read                        | E101/E102  | warning                                                                                                                             |\n| the same two catches, after the file was read                                                  | our own code failed while loading the score into the player     | E105 (new) | error, message kept                                                                                                                 |"
+        },
+        {
+          "option": "2",
+          "lines_at_78e35627": "432-436",
+          "before": "6. After the first production deploy, open a file that is not a score. An E103 warning appearing in\n   Sentry, with the file's type and size and without its name, proves the whole path — and its\n   email (step 2) proves the alert. Its stack must show readable file and function names with the\n   code around each line, which proves the source maps, and its release must equal the version in\n   the wordmark's tooltip.",
+          "after": "6. After the first production deploy, open a file that is not a score. An E103 warning appearing in\n   Sentry, without the file's name, proves the whole path — and its email (step 2) proves the\n   alert. Its stack must show readable file and function names with the code around each line,\n   which proves the source maps, and its release must equal the version in the wordmark's tooltip."
+        },
+        {
+          "option": "2",
+          "lines_at_78e35627": "454",
+          "before": "  - the file type: `Song.GP5` gives `gp5`; `notes.txt` and a name with no extension give `other`;",
+          "after": ""
+        },
+        {
+          "option": "2",
+          "lines_at_78e35627": "486",
+          "before": "    2. Opening a file that is not a score sends an E103 `warning` with its type and size, and no name.",
+          "after": "    2. Opening a file that is not a score sends an E103 `warning` with no file name."
+        }
+      ],
+      "proposed_fix": "Option 1: end the home sentence with \"— only the file's type and size, and the kinds of instrument it uses\"; add the §3.1 row (type and size, sent on purpose with E101–E103 and E105, an accepted extension or `other` plus a byte count, never the name); add the FileFacts note under §3.4; update the character count to 348.",
+      "why_it_works": "The copy then names everything a report can say about the visitor's file, and the new §3.1 row keeps the list and the copy in step. \"The file's type\", not \"its type\": after \"the music in it\", \"its type\" could read as the music's genre.",
+      "drop_consequence": "Discard it. The home page keeps telling every visitor that only the kinds of instrument are sent, while every failed open also sends the file's type and size.",
+      "basis": "FileFacts travel with E101–E103 and E105 by design (§2.3); the \"only\" clause came in lap 1 with the instruments wording.",
+      "spike": {
+        "status": "run",
+        "what": "Python character count, counted the way the spec does (the new tagline + one space + the new paragraph, plain text, len() in code points); greedy word-wrap at 60-80 characters per line; then Prettier 3 (repo config), markdownlint-cli2 (repo config) and cspell (repo config, via stdin) over a scratch copy of the spec with the drafts applied.",
+        "result": "Reproduced the spec: tagline 119 + 1 + current paragraph 198 = 318. Drafted paragraph 228 → 348. PRO-1's shorter wording (\"only its type and size, and the kinds…\") gives 341, so its figure is right for its wording; SEC-3's gives 346. Wrapped at 60-80 characters, both 318 and 348 take 5-6 lines, so \"about five lines\" can stay. The patched spec is Prettier-stable and passes markdownlint and cspell, for option 1 and for option 2."
+      },
+      "verification": {
+        "verdict": "pass",
+        "verifier": "verify-A.json",
+        "checks": {
+          "section_exists": "Yes: Goal (lines 14-17), §2.3 FileFacts (151-183), §3.1 table (289-298), §3.4 The copy (353-382).",
+          "quotes": "11/11 verbatim (spec lines 362, 207, 208, 486, 17, 296, 433, 209; \"warning, with file type and size\" occurs twice, at 207 and 208)",
+          "fix_consistent": "Consistent with S1 (\"reword the privacy copy\") and with every place that already says type and size are sent (2.3, 2.4, §5 step 6, e2e case 2). Text that changes with it: the §3.4 count (371), a new §3.4 line for type and size (after 382), a new §3.1 row (after 296), and the Goal (F-19). The lap-1 changelog bullet that quotes the old copy and \"119 to 318\" is history and stays; a lap-2 entry records the change. Option 2 instead touches §1 (101-104), §2.3 (153-154, 158, 176-183), §2.4 (207-209), §5 step 6 (432-436) and §6 (454, 486)."
+        },
+        "central_claim": {
+          "status": "confirmed",
+          "key_evidence": [
+            "docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md:362 — the home paragraph ends \"— only the kinds of instrument it uses.\"",
+            "docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md:176-177, 207-209 — E101, E102, E103 and E105 all send \"the file's type and size\"; no other code does.",
+            "docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md:153, 178-183 — FileFacts is the lower-case extension (an accepted one, else `other`) and `bytes`, an exact byte count."
+          ],
+          "full_evidence": "verify-A.json"
+        },
+        "corrections": "None in substance. Two wording notes: \"its type and size\" after \"the music in it\" can be read as the music's type (its genre), so the draft says \"the file's type and size\" (348 characters, not PRO-1's 341). ADV-1's Goal wording belongs to F-19."
+      },
+      "notes_for_triage": "Option 1 (all three reviewers) rewords lap-1 copy; option 2 (named by ADV-1 as \"the owner's call\") removes a diagnostic the owner approved on 2026-10-03, and per the adversarial reviewer's residual risk every E103 report otherwise looks the same (message dropped, default name, minified frames), so the type is what tells an importer crash on a valid .gp file from a wrong file. Pair with F-19 (option 1 ↔ option 1). Security reviewer's open question, as a note only: should `FileFacts.bytes` be bucketed (rounded into ranges)? An exact byte count plus the extension can identify a well-known downloaded tab file. Collisions if option 2 is chosen: lines 176-177 are also edited by F-20 (merged text: \"- **E101, E102 and E103 drop the exception message** — from the exception's value and from the\n  event's `message` — and keep its type and its stack. The engine's parse message can quote text\n  from inside the file (section 3.1).\"); lines 101-104 are also edited by F-21, F-22, F-23, F-25 (verify-B) and F-27 (verify-C) — drop the \"`readNotation` and `LoadedNotation` carry the file's extension (2.3)\" clause from whatever wording they settle on; lines 432-436 are also rewritten by F-30 (verify-C) — in its text, replace \"with the file's type and size and without its name\" with \"without the file's name\"; line 454 is also deleted by F-27 (same action). A Drop leaves the home page stating less than E101-E103 and E105 send.",
+      "disposition_hint": "PICKER — round 1. Visitor-facing copy that the owner approved, so it is the owner's to confirm. Recommend option 1; option 2 revisits approved design and is shown for completeness. Q8 (round the size into ranges?) sits beside it: mention it, do not bundle it. F-19 (the Goal) then follows from the same answer.",
+      "raw_reviewer_findings": [
+        {
+          "raw_id": "ADV-1",
+          "reviewer": "adversarial",
+          "title": "Home copy and Goal promise less than reports send",
+          "severity": "P1",
+          "confidence": 100,
+          "autofix_class": "manual"
+        },
+        {
+          "raw_id": "PRO-1",
+          "reviewer": "product-lens",
+          "title": "Home copy's 'only' clause omits the file type and size",
+          "severity": "P1",
+          "confidence": 75,
+          "autofix_class": "gated_auto"
+        },
+        {
+          "raw_id": "SEC-3",
+          "reviewer": "security-lens",
+          "title": "Home copy says only instruments; type and size also sent",
+          "severity": "P2",
+          "confidence": 75,
+          "autofix_class": "gated_auto"
+        }
+      ],
+      "triage": {
+        "round": "round 1 (2026-10-05)",
+        "decision": "Apply — option 1 (recommended), chosen by leocaseiro",
+        "applied": true,
+        "notes": "The home copy ends '— only the file's type and size, and the kinds of instrument it uses'; §3.1 gains the row 'the file's type and size'; §3.4 gains the FileFacts note; the character count is 348. Q8 (round the size into ranges?) stays parked."
+      },
+      "options": [
+        {
+          "option": "1 (recommended — all three reviewers)",
+          "what": "End the home sentence with \"— only the file's type and size, and the kinds of instrument it uses\"; add a §3.1 row for type and size; add a §3.4 note that names FileFacts; change the character count 318 → 348.",
+          "pros": "The copy lists exactly what a report can carry about the file; keeps the diagnostic the owner approved (type tells an importer crash on a valid file from a wrong file — R29).",
+          "cons": "The home paragraph grows by 30 characters (still about five lines)."
+        },
+        {
+          "option": "2 (named by adversarial as \"the owner's call\")",
+          "what": "Stop sending type and size: remove FileFacts from §2.3, the §2.4 table, setup step 6 and e2e case 2; the copy stays as it is.",
+          "pros": "Reports carry less; the copy needs no change.",
+          "cons": "Revisits a design element the owner approved on 2026-10-03 (lap-1 FYI-3 made the type the extension); every E103 then looks the same in Sentry (R29); touches many lines other items also edit."
+        }
+      ]
+    },
+    {
+      "id": "F-18",
+      "severity": "P1",
+      "severity_meaning": "should fix before planning — something would ship broken, or a promise in the spec would be false",
+      "confidence": 75,
+      "route": "Decision",
+      "autofix_class": "manual",
+      "recommended_action": "Apply (option 1)",
+      "reviewers": ["adversarial"],
+      "promotion": "none (one reviewer; security-lens raised the session half as a residual)",
+      "section": "§3.1 (the IP address, cookies, headers row); §3.3 SDK settings; §3.4 The copy (the note on the per-visit ping)",
+      "title": "With headers off, no issue shows its browser or system — yet every visit's ping sends the browser's user agent anyway",
+      "terms_first": "User agent = the text a browser sends to say which browser, version and system it is. Release Health ping = the small session message Sentry sends on every visit (S4). Referer = the address of the page the visitor came from.",
+      "scenario": "You open a Sentry issue for E202 (the SoundFont failed to load) to see whether it only happens in Safari. The issue shows no browser and no operating system, because the reports carry no User-Agent header. Yet every visit's Release Health ping did send the full user-agent string, which the spec's own description of the ping (§3.4) leaves out.",
+      "whats_wrong": "§3.3 sets `httpHeaders: false`, and §3.1 groups headers with the IP address. In the browser SDK the only headers Sentry collects are User-Agent and Referer; neither carries the visitor's IP address. Sentry's server builds an issue's browser, system and device only from the event's User-Agent header, with no fallback (Relay source, read; not run against sentry.io). So every issue arrives without them — the first thing triage needs for an audio player. Meanwhile the session ping sends `navigator.userAgent` on every visit whatever `dataCollection` says, and §3.4 says the ping carries only the release, the environment and whether the visit ended in an unhandled error. Every error event also carries the visitor's locale and time zone (Sentry's default culture context), which §3.1 does not list (R25).",
+      "evidence_quotes": [
+        "dataCollection: { userInfo: false, cookies: false, httpHeaders: false, urlQueryParams: false },",
+        "that with `userInfo` off, an IP address can still arrive through headers, cookies or query strings.",
+        "the release, the environment and whether the visit ended in an unhandled error — no file data."
+      ],
+      "before_after": [
+        {
+          "option": "1 (recommended)",
+          "lines_at_78e35627": "297",
+          "before": "| IP address, cookies, headers                   | collected by Sentry's defaults                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | `dataCollection` turns each one off, **and** the project setting \"Prevent Storing of IP Addresses\" is on (section 5)                                                 |",
+          "after": "| IP address, cookies, the Referer header        | collected by Sentry's defaults                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | `dataCollection` turns off each one — the Referer is sent as `[Filtered]` — **and** the project setting \"Prevent Storing of IP Addresses\" is on (section 5)          |\n| the browser's user-agent string                | the `User-Agent` header on each report, and the Release Health ping on every visit (S4) — sent on purpose                                                                                                                                                                                                                                                                                                                                                                                           | it names the browser, its version and the operating system, which Sentry shows on each issue; it holds no IP address and nothing from the file                       |"
+        },
+        {
+          "option": "1 (recommended)",
+          "lines_at_78e35627": "337",
+          "before": "  dataCollection: { userInfo: false, cookies: false, httpHeaders: false, urlQueryParams: false },",
+          "after": "  dataCollection: {\n    userInfo: false,\n    cookies: false,\n    httpHeaders: { allow: ['User-Agent'] }, // the browser and OS; the Referer goes as [Filtered]\n    urlQueryParams: false,\n  },"
+        },
+        {
+          "option": "1 (recommended)",
+          "lines_at_78e35627": "377-379",
+          "before": "\"Counts visits\" is Release Health (S4): a small ping on every visit, not only on a crash. It carries\nthe release, the environment and whether the visit ended in an unhandled error — no file data.\nThat is why the home page names it.",
+          "after": "\"Counts visits\" is Release Health (S4): a small ping on every visit, not only on a crash. It carries\nthe release, the environment, the browser's user-agent string and whether the visit ended in an\nunhandled error — no file data. That is why the home page names it."
+        },
+        {
+          "option": "2",
+          "lines_at_78e35627": "297",
+          "before": "| IP address, cookies, headers                   | collected by Sentry's defaults                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | `dataCollection` turns each one off, **and** the project setting \"Prevent Storing of IP Addresses\" is on (section 5)                                                 |",
+          "after": "| IP address, cookies, headers                   | collected by Sentry's defaults                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | `dataCollection` turns each one off, **and** the project setting \"Prevent Storing of IP Addresses\" is on (section 5)                                                 |\n| the browser's user-agent string                | the Release Health ping on every visit (S4): Sentry 11 adds it to each session, whatever `dataCollection` says                                                                                                                                                                                                                                                                                                                                                                                      | sent with the ping only; error reports carry no headers, so an issue shows no browser or operating system                                                            |"
+        },
+        {
+          "option": "2",
+          "lines_at_78e35627": "377-379",
+          "before": "\"Counts visits\" is Release Health (S4): a small ping on every visit, not only on a crash. It carries\nthe release, the environment and whether the visit ended in an unhandled error — no file data.\nThat is why the home page names it.",
+          "after": "\"Counts visits\" is Release Health (S4): a small ping on every visit, not only on a crash. It carries\nthe release, the environment, the browser's user-agent string and whether the visit ended in an\nunhandled error — no file data. That is why the home page names it."
+        }
+      ],
+      "proposed_fix": "Option 1: allow the User-Agent header only (the Referer goes as `[Filtered]`), reword the §3.1 row, and correct §3.4's description of the ping. Under either option, list the locale and time zone in §3.1 (R25) — an accurate inventory either way.",
+      "why_it_works": "Option 1 gives triage the browser and system at no privacy cost the visit ping does not already pay; option 2 keeps reports minimal but at least makes the spec describe the ping truthfully. Withholding the Referer still matters: a same-origin referrer can hold the previous page's query string, which the address cut does not cover.",
+      "drop_consequence": "Discard it. Every issue arrives without its browser and system, and the spec keeps saying the per-visit ping carries less than it does.",
+      "basis": "The browser SDK's header setting removes only User-Agent and Referer; the session ping reads the user agent itself (verified in the 11.0.0 source; the allow-list shape type-checks).",
+      "spike": {
+        "status": "run",
+        "what": "(1) tsc 5.9.3 (strict) type-check of `{ allow: ['User-Agent'] }`, `{ request: { allow: ['User-Agent'] } }` and `false` against the mirrored 11.0.0 `DataCollection` type, plus three wrong shapes under @ts-expect-error. (2) Ran 11.0.0's resolveDataCollectionOptions + filterKeyValueData (Node 24 type stripping) on the two headers getHttpRequestData collects. (3) Relay's user-agent path by code rea…",
+        "result": "(1) tsc exit 0: all three valid shapes compile and all three wrong shapes are rejected. (2) `false` → no headers on the event; `{ allow: ['User-Agent'] }` (and the per-direction form) → `{\"Referer\":\"[Filtered]\",\"User-Agent\":\"Mozilla/5.0 …\"}`; `true` → both raw. (3) Settled by code: no headers, no browser/OS/device contexts, no fallback for error events."
+      },
+      "verification": {
+        "verdict": "pass",
+        "verifier": "verify-A.json",
+        "checks": {
+          "section_exists": "Yes: §3.1 row \"IP address, cookies, headers\" (297) and the note under it (300-301), §3.3 SDK settings (330-351), §3.4 the ping paragraph (377-379).",
+          "quotes": "3/3 verbatim (spec lines 337, 301, 378)",
+          "fix_consistent": "Both options keep lines 300-301 true (the IP address is still stopped on both sides: `userInfo: false` sets `infer_ip: never`, and \"Prevent Storing of IP Addresses\" stays on). Option 1 changes §3.3 line 337 and the §3.1 row 297 and adds a §3.1 row; option 2 keeps the config and adds a §3.1 row. Both must fix §3.4 (377-379). AMB-5's \"To verify\" item then covers the allow-list shape (it type-checks against 11.0.0). No e2e case is affected: case 7 opens `/?fbclid=probe123#frag` directly, so there is no referrer, and option 1 sends the Referer as `[Filtered]` anyway."
+        },
+        "central_claim": {
+          "status": "confirmed",
+          "key_evidence": [
+            "getsentry/sentry-javascript@11.0.0:packages/browser/src/helpers.ts:225-241 — (a) the browser SDK collects exactly two headers: `Referer` (document.referrer, when not empty) and `User-Agent` (navigator.userAgent).",
+            "getsentry/sentry-javascript@11.0.0:packages/browser/src/integrations/httpcontext.ts:19-36 — filters them with `dataCollection.httpHeaders.request`; an empty result sets `request.headers` to undefined. The page address is always kept (line 32).",
+            "getsentry/sentry-javascript@11.0.0:packages/core/src/utils/data-collection/filterKeyValueData.ts:38-51 and shouldFilterDataKey 8-28 — `false` drops the record; `{ allow }` keeps every key and replaces a value that matches no allow term with `[Filtered]` (case-insensitive substring match)."
+          ],
+          "full_evidence": "verify-A.json"
+        },
+        "corrections": "None in the claims. Precision: with `{ allow: ['User-Agent'] }` the Referer is not removed — its key stays on the event with the value `[Filtered]` (Sentry keeps key names). \"Neither header can carry an IP address\" holds for the visitor's address; the Referer holds the linking page's address."
+      },
+      "notes_for_triage": "Option 1 is the reviewer's recommendation (ADV-2, the only contributor). Withholding the Referer matters: a same-origin referrer can hold the previous page's query string (`fbclid`), which §3.1's address scrub does not cover. Option 2's cost: no browser, OS or device on any issue, and Sentry's crawler and legacy-browser filters cannot match error events (sessions are still filtered). Both options must fix §3.4: the ping sends the user agent whatever `dataCollection` says. A third path, proposed by no reviewer and untested: strip it in a `client.on('beforeSendSession', …)` hook (core/src/client.ts:618, 758) — then the crawler filter no longer applies to sessions and bot visits count in the health number. The ping also carries a random per-page-load id (`sid`), start and update times and an error count; no `did` (no user is set) and no IP. Separate from this item: every error event also carries the visitor's locale and time zone (`contexts.culture`, on by default), which §3.1 does not list (also the adversarial reviewer's residual risk); add a row, or filter out `CultureContext` too. The home copy's \"only\" clause is about the file, so it stays true under both options.",
+      "disposition_hint": "PICKER — round 1. A real choice: diagnostics against sending less. Recommend option 1: the user agent leaves on every visit anyway, and this player's bugs depend on the browser. Flip to option 2 if the owner wants reports to carry nothing beyond what they need, as a principle. A third path, proposed by no reviewer and untested: strip the user agent from sessions with a `beforeSendSession` hook — then bot visits count in the health number.",
+      "raw_reviewer_findings": [
+        {
+          "raw_id": "ADV-2",
+          "reviewer": "adversarial",
+          "title": "Headers off hides the browser; visit pings still send it",
+          "severity": "P1",
+          "confidence": 75,
+          "autofix_class": "manual"
+        }
+      ],
+      "triage": {
+        "round": "round 1 (2026-10-05)",
+        "decision": "Apply — option 1 (recommended), chosen by leocaseiro",
+        "applied": true,
+        "notes": "`httpHeaders: { allow: ['User-Agent'] }`: issues show the browser and system; the Referer goes as [Filtered]. §3.1's row reads 'IP address, cookies, the Referer header' and a user-agent row is added; §3.4 says the ping carries the user-agent string."
+      },
+      "options": [
+        {
+          "option": "1 (recommended — the reviewer)",
+          "what": "`httpHeaders: { allow: ['User-Agent'] }`: issues show browser and system; the Referer key stays as `[Filtered]`. The §3.1 row becomes \"IP address, cookies, the Referer header\". §3.4 says the ping carries the browser's user-agent string.",
+          "pros": "Browser and system on every issue; Sentry's crawler and old-browser filters work on error events; sends nothing the visit ping does not already send.",
+          "cons": "Reports carry one more field."
+        },
+        {
+          "option": "2",
+          "what": "Keep `httpHeaders: false`; only §3.4 is corrected to say the ping carries the user agent.",
+          "pros": "Reports stay minimal.",
+          "cons": "No browser or system on any issue; Sentry's crawler and old-browser filters cannot match error events (sessions are still filtered)."
+        }
+      ]
+    },
+    {
+      "id": "F-19",
+      "severity": "P2",
+      "severity_meaning": "should fix — a real gap an implementer will hit",
+      "confidence": 100,
+      "route": "Proposed fix",
+      "autofix_class": "gated_auto",
+      "recommended_action": "Apply (the option that matches F-17)",
+      "reviewers": ["product-lens", "scope-guardian", "adversarial"],
+      "promotion": "product-lens at 100; scope-guardian (50) and adversarial agree",
+      "section": "Goal",
+      "title": "The Goal still promises that nothing from inside the file leaves the device",
+      "scenario": "You write the plan's privacy checks from the Goal: nothing in the score leaves the device. Your first check fails, because a report carries the tag `instruments: drums,30`, read from inside the file, and the file's type and size. You cannot tell whether the tag or the Goal is the mistake.",
+      "whats_wrong": "The Goal reads \"…neither the score, nor its file name, nor anything in it leaves the device.\" Lap 1 added the instruments tag at the owner's request (ADD-1): General MIDI numbers read from inside the score, sent on purpose (§3.1). Reports of a failed open also carry the file's type and size (F-17). The Goal was not updated, so the spec's first privacy promise contradicts its own settled design.",
+      "evidence_quotes": [
+        "neither the score, nor its file name, nor anything in it leaves the device.",
+        "the `instruments` tag (2.3) — sent on purpose",
+        "is a Sentry tag naming the open score's kinds of instrument, so an issue's",
+        "type FileFacts = { readonly type: string; readonly bytes: number }; // the extension, never the name",
+        "name, or the music in it — only the kinds of instrument it uses.",
+        "warning, with file type and size",
+        "2. Opening a file that is not a score sends an E103 `warning` with its type and size, and no name."
+      ],
+      "before_after": [
+        {
+          "option": "1 (recommended)",
+          "lines_at_78e35627": "16-17",
+          "before": "Every error a visitor meets in `web/` reaches Sentry — whether our code catches it or not — and\nneither the score, nor its file name, nor anything in it leaves the device.",
+          "after": "Every error a visitor meets in `web/` reaches Sentry — whether our code catches it or not — and\nneither the score, nor its file name, nor the music in it leaves the device. Reports carry only the\nfile's type and size, and the kinds of instrument it uses."
+        },
+        {
+          "option": "2",
+          "lines_at_78e35627": "16-17",
+          "before": "Every error a visitor meets in `web/` reaches Sentry — whether our code catches it or not — and\nneither the score, nor its file name, nor anything in it leaves the device.",
+          "after": "Every error a visitor meets in `web/` reaches Sentry — whether our code catches it or not — and\nneither the score, nor its file name, nor the music in it leaves the device. Reports carry only the\nkinds of instrument it uses."
+        }
+      ],
+      "proposed_fix": "Reword the Goal's privacy half in the home copy's terms, using the option that matches F-17's answer.",
+      "why_it_works": "The Goal then lists the same things as the copy and §3.1, so a plan written from the Goal tests the real promise.",
+      "drop_consequence": "Discard it. The first privacy promise a reader meets keeps forbidding the instruments tag the owner asked for.",
+      "basis": "Stale text after ADD-1 (lap 1); PRO-2's wording alone would still be wrong while FileFacts are sent, and SCO-4's would read as forbidding the extension.",
+      "spike": {
+        "status": "run",
+        "what": "Prettier, markdownlint and cspell (repo configs) over the patched spec copy, for both Goal options.",
+        "result": "Clean; every line is 100 characters or fewer."
+      },
+      "verification": {
+        "verdict": "pass",
+        "verifier": "verify-A.json",
+        "checks": {
+          "section_exists": "Yes: Goal (lines 14-17); §2.3 instruments bullet (186-194); §3.1 kinds-of-instrument row (296).",
+          "quotes": "10/10 verbatim (spec lines 17, 296, 186, 153, 362, 207, 208, 486)",
+          "fix_consistent": "Consistent once it matches F-17's outcome: option 1 here pairs with F-17 option 1 (type, size and instruments are sent), option 2 with F-17 option 2 (only instruments are sent). It also matches S1 (\"remove file names and contents before sending\") and lap 1's instruments decision. Nothing else quotes the Goal."
+        },
+        "central_claim": {
+          "status": "confirmed",
+          "key_evidence": [
+            "docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md:16-17 — \"nor anything in it leaves the device\".",
+            "docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md:186-194, 296 — the `instruments` tag (General MIDI numbers read from the score's tracks) is sent on purpose.",
+            "docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md:153, 176-177 — E101-E103 and E105 also send the extension (part of the file name) and the exact size."
+          ],
+          "full_evidence": "verify-A.json"
+        },
+        "corrections": "PRO-2's wording (\"— only the kinds of instrument it uses\") would still be wrong while FileFacts are sent; SCO-4's (\"nor its file name leaves the device\") would read as forbidding the extension, which is part of the name. The drafts name exactly what is sent."
+      },
+      "notes_for_triage": "Decide F-17 first; pick the matching option here. The draft uses a second sentence instead of a third dash, because the first line already has two. A Drop leaves the first privacy promise a reader meets contradicting the settled instruments tag.",
+      "disposition_hint": "AUTO-RESOLVE once F-17 is decided: stale text after ADD-1, no new scope and no trade-off. Apply the matching option in round 1's commit and report it in one line.",
+      "raw_reviewer_findings": [
+        {
+          "raw_id": "PRO-2",
+          "reviewer": "product-lens",
+          "title": "The Goal still promises nothing from inside the file leaves",
+          "severity": "P2",
+          "confidence": 100,
+          "autofix_class": "gated_auto"
+        },
+        {
+          "raw_id": "SCO-4",
+          "reviewer": "scope-guardian",
+          "title": "Goal sentence contradicts the settled instruments tag",
+          "severity": "P3",
+          "confidence": 50,
+          "autofix_class": "gated_auto"
+        },
+        {
+          "raw_id": "ADV-1",
+          "reviewer": "adversarial",
+          "title": "Home copy and Goal promise less than reports send",
+          "severity": "P1",
+          "confidence": 100,
+          "autofix_class": "manual"
+        }
+      ],
+      "triage": {
+        "round": "round 1 (2026-10-05)",
+        "decision": "Apply — auto-resolved: option 1, matching F-17's answer",
+        "applied": true,
+        "notes": "The Goal: '…nor the music in it leaves the device. Reports carry only the file's type and size, and the kinds of instrument it uses.'"
+      },
+      "options": [
+        {
+          "option": "1 (if F-17 takes option 1)",
+          "what": "\"…nor the music in it leaves the device. Reports carry only the file's type and size, and the kinds of instrument it uses.\""
+        },
+        {
+          "option": "2 (if F-17 takes option 2)",
+          "what": "\"…nor the music in it leaves the device. Reports carry only the kinds of instrument it uses.\""
+        }
+      ]
     }
   ]
 }
