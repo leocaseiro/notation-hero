@@ -89,7 +89,7 @@ whatever pnpm resolves under the 7-day `minimumReleaseAge` gate; the plan record
 | `web/e2e/error-reporting.e2e.ts`           | The end-to-end reporting and privacy cases (section 6).                                                                                                             |
 | `web/e2e/sentry-envelopes.ts`              | The shared fixture: routes the fake DSN host, answers it, and records each envelope (section 6).                                                                    |
 | `tooling/silent-catch-fence.test.sh`       | The lint canary: a silent `catch { }` and a silent `.catch(() => null)` must both fail ESLint (section 6).                                                          |
-| `web/scripts/assert-no-auth-token.mjs`     | Fails the build when `SENTRY_AUTH_TOKEN`'s value is in a file under `.next/static`, which browsers download (section 4).                                            |
+| `web/scripts/assert-no-auth-token.mjs`     | Fails the build when `SENTRY_AUTH_TOKEN`'s value is in a file browsers download: under `.next/static` or `.next/server`, or in `public/` (section 4).               |
 | `tooling/assert-no-auth-token.test.mjs`    | Its test, with a fake token: a leak fails, and the output never holds the value (section 6).                                                                        |
 
 Each `lib/monitoring` file has its unit test beside it, and so do the three error pages,
@@ -284,10 +284,17 @@ the page is reloaded.
 frame, and a browser runs none in a hidden tab, so a player opened in a background tab draws
 nothing there while a plain timer keeps counting. The 60 seconds therefore run only while
 `document.visibilityState` is `visible`: a player opened in a background tab starts the clock when
-the tab is first shown, a `visibilitychange` to `hidden` stops it, it continues with the time left
-when the page is visible again, and the first `renderFinished` stops it for good, so a later tab
-switch never starts it again. Without this, a background tab left for a minute sends an unhandled
-E204 that lowers the health number although nothing failed.
+the tab is first shown, a `visibilitychange` to `hidden` stops it, and it continues with the time
+left when the page is visible again. Without this, a background tab left for a minute sends an
+unhandled E204 that lowers the health number although nothing failed.
+
+**Three events stop the clock permanently.** The first finished render, an E203, or the E204
+itself stops it, and after that a tab switch never starts it again. An E203 stops it because
+AlphaTab never draws once the font download has failed: without this, every E203 would be
+followed by a second unhandled report when the 60 visible seconds end, an E204 that says the font
+is late when it has already failed. The same clock also sets the banner's E204 text, so after an
+E203 the banner keeps its E203 text, and the clock does not show it again after the visitor
+dismisses it.
 
 **Blocked is not corrupt.** Storage the browser _blocks_ is the visitor's environment: a breadcrumb
 (S2b). Saved data that is _corrupt_ means our own code wrote something bad, or an update changed which
@@ -493,12 +500,15 @@ a name. Until the visitor opens a file it reads `sample`, which names the bundle
   hook is for navigation tracing, which S3 rules out.
 - **The token never reaches a browser file.** `web/scripts/assert-no-auth-token.mjs` runs at the end
   of `web`'s `build` script, after the design-system CSS check, and fails the build when the token's
-  value appears in any file under `.next/static`, which browsers download. It prints the files,
-  never the value. Without the token (CI, previews, local builds) it has nothing to check, so only
-  the production build on Vercel runs it for real. The token is safe today without it — Next.js
-  copies only `NEXT_PUBLIC_…` variables into the page, the token is read only in `next.config.ts`,
-  and the wrapper adds only its own `_sentry*` values to the bundle — but nothing else would fail if
-  a later change put it there.
+  value appears in any file that browsers download: the scripts and styles under `.next/static`, the
+  pages under `.next/server` (each page's `.html` and `.rsc` files, and the 404 and 500 pages), and
+  the files in `public/`. It prints the files, never the value. Without the token (CI, previews,
+  local builds) it has nothing to check, so only the production build on Vercel runs it for real.
+  The token is safe today without it — it is read only in `next.config.ts`, and the wrapper adds
+  only its own `_sentry*` values to the bundle — but nothing else would fail if a later change put
+  it there. Next.js copies only `NEXT_PUBLIC_…` variables into browser JavaScript, but a server
+  component can render any variable into a page, and both pages are static: `next build` writes
+  them as files under `.next/server`, not under `.next/static`.
 - **The build plugin's own telemetry is off** (`telemetry: false`).
 
 ```ts
@@ -597,19 +607,22 @@ secret. The upload now runs inside Vercel's build, so neither GitHub mechanism a
   visitor's file, the tag keeps the file's value.
 - **The opening state**, a case in `web/app/play/PlayerShell.test.tsx`: with the player ready, an
   open that throws after the parse shows E105 and leaves no "Loading the player" bar.
-- **The font clock**, a test beside `web/app/play/NotationSurface.tsx`, with fake timers and a
-  stubbed `document.visibilityState`: two hidden minutes raise no E204; 40 visible seconds, a hidden
-  minute, then 20 more visible seconds raise one; and once a render has finished, hiding and showing
-  the tab raises none a minute later. The end-to-end lane cannot cover this: headless Chromium keeps
-  every page visible.
+- **The font clock**, a test beside `web/app/play/NotationSurface.tsx`, with fake timers, a stubbed
+  `document.visibilityState` and a stub `document.fonts` (jsdom has none): two hidden minutes raise
+  no E204; 40 visible seconds, a hidden minute, then 20 more visible seconds raise one; once a
+  render has finished, hiding and showing the tab raises none a minute later; after an E203, 60
+  visible seconds raise no E204 and the banner still shows E203; and once an E204 has been raised,
+  hiding and showing the tab raises no second one. The end-to-end lane cannot cover the hidden-tab
+  cases: headless Chromium keeps every page visible.
 - **Lint canary:** `tooling/silent-catch-fence.test.sh`, a sibling of
   `tooling/alphatab-import-fence.test.sh` — its `expect_rejected` helper over the same
   `no-restricted-syntax` list, already run in the `quality` job — expects both a silent `catch { }`
   and a silent `.catch(() => null)` to fail, so neither selector can stop working quietly.
 - **The token check:** `tooling/assert-no-auth-token.test.mjs`, a sibling of
   `tooling/assert-design-system-css.test.mjs` under `pnpm run test:tooling`. With a fake token, a
-  fake `.next/static` file that holds it fails the check, and the output names the file but never
-  the value; clean files pass, and so does a build with no token.
+  fake `.next/static` file that holds it fails the check, and so do a fake
+  `.next/server/app/play.html` and a fake file in `public/`; the output names the file but never
+  the value. Clean files pass, and so does a build with no token.
 - **End to end (Playwright, in the existing `web` job):**
   - Every build of the lane — CI, local, and the Docker baseline update — gets a fake DSN,
     `https://public@sentry.invalid/1`, from `webServer.env` in `web/playwright.e2e.config.ts`,
