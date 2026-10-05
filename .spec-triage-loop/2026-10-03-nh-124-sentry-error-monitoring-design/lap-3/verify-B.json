@@ -1,0 +1,247 @@
+{
+  "area": "B",
+  "spec_commit": "2f68d380",
+  "method": "Read the spec at 2f68d380 in full, the lap-3 review-context primer and the NH-124 changelog entry, and ran the quote checker (16/16 verbatim). F-32: read Next 16.3.6's export worker, page writer, 404/500 copy step and bundled docs; listed and read, read-only, an existing local production build of `web/` from another checkout (no build was run; this worktree has no `web/.next`); read all 35 files under Sentry 11.0.0's packages/nextjs/src/config (checked again at 11.4.0) for where `authToken` goes; copied the lap-2 draft guard into two variants and ran them on nine fake trees and, read-only, on the real build. F-33: read README.md and web/README.md; read Relay's origin check and matcher at c4e99303, compiled the matcher verbatim with rustc and ran 12 origin cases; read Sentry's Stats grouping and Allowed Domains settings at a86c9bd3 and Vercel's Deployment Protection docs. FYI-15: Sentry's public docs on retention and deletion. FYI-16: Sentry 11.0.0's bundler-plugins core and Next.js config (11.4.0 and develop for changes) and Next's after-compile step; type-checked the errorHandler snippet with tsc. Every draft was applied to a copy of the spec and passed prettier --check, markdownlint-cli2 and cspell with the repository's configs, with negative controls showing prettier fails on bad input.",
+  "items": [
+    {
+      "id": "F-32",
+      "verdict": "pass",
+      "checks": {
+        "section_exists": "Yes: §1 New files, the `assert-no-auth-token.mjs` row (line 92); §4, the bullet 'The token never reaches a browser file' (494-501); §6, 'The token check' (609-612); Non-goals (31-32).",
+        "quotes": "8/8 verbatim (5 distinct; spec lines 92, 495-496, 498-499, 610-611, 31-32)",
+        "fix_consistent": "Consistent with Non-goals ('Both pages are static') and with ADD-5 as recorded in docs/decisions/decision-changelog.md:126-128 ('the build fails when the token's value is in any file a browser downloads'), which today's text implements for one folder only. Text that changes with it: §1's row (92), §4's bullet including its NEXT_PUBLIC_ premise (494-501), §6's token-check test (609-612). §1's test row (93) stays true. No other section names `.next/static`. Option 2 also adds a 'To verify' item (after 711), and its scope is wider than ADD-5's words, so the lap-3 changelog entry would say so."
+      },
+      "central_claim": {
+        "status": "confirmed",
+        "evidence": [
+          "next@16.3.6:dist/export/worker.js:86 — for an App Router page the prerender output folder is `.next/server/app`.",
+          "next@16.3.6:dist/export/routes/app-page.js:102, 111-115, 127, 152 — a static page is written as `<page>.rsc`, `<page>.segments/*.segment.rsc`, `<page>.html` and `<page>.meta` (status and headers only).",
+          "next@16.3.6:dist/build/index.js:2409-2446 — the build copies `server/app/_not-found.html` to `server/pages/404.html` and `server/app/_global-error.html` to `server/pages/500.html`.",
+          "An existing local production build of `web/` (Next 16.3.6, in another checkout of this repository; listed and read only, no build was run, and this worktree has no `web/.next`): `.next/server/app` holds index, play, _not-found and _global-error as `.html`, `.rsc` and `.segments/`; prerender-manifest.json marks `/` and `/play` `compute: static` with `dataRoute: /play.rsc`; the `rsc` block of routes-manifest.json names the `.rsc`, `.segment.rsc` and `.segments` suffixes that client navigation requests.",
+          "Same build: two strings that only server components render are in 0 of the 31 files under `.next/static`. The layout metadata description (web/app/layout.tsx:9) is in the index, play and _not-found pages under `server/app` (each one's `.html`, `.rsc` and `.segments/*` files) and in `server/pages/404.html`; the home tagline (web/app/page.tsx:9) is in `index.html`, `index.rsc` and `index.segments/*`.",
+          "web/app/play/page.tsx:1-8 — `/play` is a server component that renders the client `PlayerShell`; Next's bundled guide (next@16.3.6:dist/docs/01-app/02-guides/data-security.md:141-150) calls passing server data to a client component as a prop an exposure to the client.",
+          "next@16.3.6:dist/docs/01-app/02-guides/environment-variables.md:158-164 — the NEXT_PUBLIC_ rule inlines values 'into any JavaScript sent to the browser'; it says nothing about prerendered HTML.",
+          "getsentry/sentry-javascript@11.0.0:packages/nextjs/src/config/getBuildPluginOptions.ts:327 — across all 35 files under packages/nextjs/src/config (same at 11.4.0), `authToken` is read in this one place: the options for the release and upload step, which runs from a function set on `compiler.runAfterProductionCompile` (withSentryConfig/getFinalConfigObjectBundlerUtils.ts:194). The serialized config in required-server-files.json drops functions (the real build shows `\"compiler\": {}`), `env` gains only `_sentry*` values (withSentryConfig/buildTime.ts:17-82), and the Turbopack rules carry no token (turbopack/constructTurbopackConfig.ts, turbopack/generateValueInjectionRules.ts). So walking all of `.next` except `cache` is not expected to fail a normal production build (read from source, not run).",
+          "Same real build: no environment-variable name from the build shell (npm_config_user_agent, npm_lifecycle_event, PNPM_SCRIPT_SRC_DIR, npm_package_json, NVM_DIR, TERM_PROGRAM) appears in any file under `.next` outside `cache`: Next writes no copy of the environment there.",
+          "web/public at build time — 3 committed sample scores (notation/1-beat.gp, rock-beat.gp, drums.gp5) and 8 files that web/scripts/vendor-alphatab.mjs:23-32 copies from @coderline/alphatab@1.8.4 into the git-ignored public/alphatab/ before every build (4 ESM files, the SoundFont and its licence, the Bravura font and its licence): 11 files, 2.4 MB, all served to browsers. A token reaches them only if a build step writes it there, as vendor-alphatab.mjs writes that folder; reading them costs about 0.01 s, so walking them is cheap cover for ADD-5."
+        ]
+      },
+      "spike": {
+        "status": "run",
+        "what": "Copied the lap-2 draft guard and made two variants: option 1 walks `.next/static`, `.next/server` and `public/`; option 2 walks every file under `.next` except `.next/cache`, plus `public/`. Ran the three guards (and option 1 with the reviewers' exact list, `.next/server/app` in place of `.next/server`) as child processes on nine fake trees laid out like a real build, then read-only on the existing local production build with a random fake token and with a \"token\" equal to the layout metadata description, which only server components render. Applied each option's drafts to a copy of the spec and ran prettier --check, markdownlint-cli2 and cspell with the repository's configs.",
+        "result": "Fake trees: a token rendered into `.next/server/app/play.html` and `play.rsc` passes the lap-2 draft (exit 0) and fails both options (exit 1), whose output names `.next/server/app/play.html` and `.next/server/app/play.rsc` and never the value; a token split across two inline RSC chunks in play.html is caught through play.rsc; a token in `public/alphatab/esm/alphaTab.mjs` fails both options; a token in `.next/required-server-files.json` fails option 2 only; a token in `.next/cache` passes all; clean trees and a build with no token pass all; no run printed the value or half of it. The reviewers' exact list missed a token placed only in `.next/server/pages/500.html`, which a real build cannot produce alone (that file is a copy of `server/app/_global-error.html`). Real build, random token: lap-2 reads 31 files, option 1 175, option 2 433 (219 without a local `.next/dev` folder that a Vercel build never has), each under 0.1 s, all pass. Server-only text: lap-2 passes (0 of 31); option 1 fails naming 15 files; option 2 fails naming 17 (2 in the local `.next/dev`). Both options' drafts pass all three linters; a negative control (a mis-padded table row) makes prettier fail."
+      },
+      "before": [
+        {
+          "lines": "92",
+          "text": "| `web/scripts/assert-no-auth-token.mjs`     | Fails the build when `SENTRY_AUTH_TOKEN`'s value is in a file under `.next/static`, which browsers download (section 4).                                            |"
+        },
+        {
+          "lines": "494-501",
+          "text": "- **The token never reaches a browser file.** `web/scripts/assert-no-auth-token.mjs` runs at the end\n  of `web`'s `build` script, after the design-system CSS check, and fails the build when the token's\n  value appears in any file under `.next/static`, which browsers download. It prints the files,\n  never the value. Without the token (CI, previews, local builds) it has nothing to check, so only\n  the production build on Vercel runs it for real. The token is safe today without it — Next.js\n  copies only `NEXT_PUBLIC_…` variables into the page, the token is read only in `next.config.ts`,\n  and the wrapper adds only its own `_sentry*` values to the bundle — but nothing else would fail if\n  a later change put it there."
+        },
+        {
+          "lines": "609-612",
+          "text": "- **The token check:** `tooling/assert-no-auth-token.test.mjs`, a sibling of\n  `tooling/assert-design-system-css.test.mjs` under `pnpm run test:tooling`. With a fake token, a\n  fake `.next/static` file that holds it fails the check, and the output names the file but never\n  the value; clean files pass, and so does a build with no token."
+        },
+        {
+          "lines": "710-711",
+          "text": "- How Sentry 11 removes a tag: that `Sentry.setTag('instruments', undefined)` leaves no\n  `instruments` key in the report that is sent."
+        }
+      ],
+      "after_draft": [
+        {
+          "replaces_lines": "92",
+          "option": "1 (recommended by SEC-1 and ADV-3)",
+          "text": "| `web/scripts/assert-no-auth-token.mjs`     | Fails the build when `SENTRY_AUTH_TOKEN`'s value is in a file browsers download: under `.next/static` or `.next/server`, or in `public/` (section 4).               |"
+        },
+        {
+          "replaces_lines": "494-501",
+          "option": "1 (recommended by SEC-1 and ADV-3)",
+          "text": "- **The token never reaches a browser file.** `web/scripts/assert-no-auth-token.mjs` runs at the end\n  of `web`'s `build` script, after the design-system CSS check, and fails the build when the token's\n  value appears in any file that browsers download: the scripts and styles under `.next/static`, the\n  pages under `.next/server` (each page's `.html` and `.rsc` files, and the 404 and 500 pages), and\n  the files in `public/`. It prints the files, never the value. Without the token (CI, previews,\n  local builds) it has nothing to check, so only the production build on Vercel runs it for real.\n  The token is safe today without it — it is read only in `next.config.ts`, and the wrapper adds\n  only its own `_sentry*` values to the bundle — but nothing else would fail if a later change put\n  it there. Next.js copies only `NEXT_PUBLIC_…` variables into browser JavaScript, but a server\n  component can render any variable into a page, and both pages are static: `next build` writes\n  them as files under `.next/server`, not under `.next/static`."
+        },
+        {
+          "replaces_lines": "609-612",
+          "option": "1 (recommended by SEC-1 and ADV-3)",
+          "text": "- **The token check:** `tooling/assert-no-auth-token.test.mjs`, a sibling of\n  `tooling/assert-design-system-css.test.mjs` under `pnpm run test:tooling`. With a fake token, a\n  fake `.next/static` file that holds it fails the check, and so do a fake\n  `.next/server/app/play.html` and a fake file in `public/`; the output names the file but never\n  the value. Clean files pass, and so does a build with no token."
+        },
+        {
+          "replaces_lines": "92",
+          "option": "2",
+          "text": "| `web/scripts/assert-no-auth-token.mjs`     | Fails the build when `SENTRY_AUTH_TOKEN`'s value is in any file the build writes to `.next`, except `.next/cache`, or in `public/` (section 4).                     |"
+        },
+        {
+          "replaces_lines": "494-501",
+          "option": "2",
+          "text": "- **The token never reaches a browser file.** `web/scripts/assert-no-auth-token.mjs` runs at the end\n  of `web`'s `build` script, after the design-system CSS check, and fails the build when the token's\n  value appears in any file that `next build` writes to `.next`, except the `.next/cache` folder, or\n  in any file in `public/`. That covers every file browsers download — the scripts and styles under\n  `.next/static`, and each page's `.html` and `.rsc` files under `.next/server` — with no list of\n  folders to keep current when Next.js changes where it writes them. It prints the files, never the\n  value. Without the token (CI, previews, local builds) it has nothing to check, so only the\n  production build on Vercel runs it for real. The token is safe today without it — it is read only\n  in `next.config.ts`, and the wrapper hands it only to its own release and upload step and adds\n  only its own `_sentry*` values to the bundle — but nothing else would fail if a later change put\n  it there. Next.js copies only `NEXT_PUBLIC_…` variables into browser JavaScript, but a server\n  component can render any variable into a page, and both pages are static: `next build` writes\n  them as files under `.next/server`, not under `.next/static`."
+        },
+        {
+          "replaces_lines": "609-612",
+          "option": "2",
+          "text": "- **The token check:** `tooling/assert-no-auth-token.test.mjs`, a sibling of\n  `tooling/assert-design-system-css.test.mjs` under `pnpm run test:tooling`. With a fake token, a\n  fake `.next/static` file that holds it fails the check, and so do a fake\n  `.next/server/app/play.html`, a fake `.next/required-server-files.json` and a fake file in\n  `public/`; the output names the file but never the value. The same token in a fake `.next/cache`\n  file passes, and so do clean files and a build with no token."
+        },
+        {
+          "replaces_lines": "710-711",
+          "option": "2",
+          "text": "- How Sentry 11 removes a tag: that `Sentry.setTag('instruments', undefined)` leaves no\n  `instruments` key in the report that is sent.\n- That a production build given the token writes it into no file under `.next` outside\n  `.next/cache`, so the token check passes: Sentry 11 reads the token only for its release and\n  upload step, which runs inside `next build`."
+        }
+      ],
+      "scenario": "You add a line to `web/app/play/page.tsx` that passes a server value to `PlayerShell` as a prop, and by mistake the value is `process.env.SENTRY_AUTH_TOKEN`. The production build on Vercel stays green: the token check reads the 31 files under `.next/static` and finds nothing, because the token sits in `.next/server/app/play.html` and `play.rsc`. Every visitor to `/play` now downloads your Sentry token inside the page, and anyone who reads the page source can create releases and upload source maps in your Sentry organization.",
+      "corrections": "None of the reviewers' claims is wrong. Two refinements: (1) the drafts walk all of `.next/server`, not only `.next/server/app`. The content is the same, because the 404 and 500 pages under `.next/server/pages` are byte copies of `server/app/_not-found.html` and `_global-error.html` (and after this spec, `_global-error.html` renders our own `global-error.tsx`); the wider folder also names the copies browsers receive, and the server-only bundles beside them cost nothing to read. (2) `.next/server/app` also holds server-only files (`page.js`, manifests, `.meta`); the files browsers download there are the `.html`, `.rsc` and `.segments/*.segment.rsc` files.",
+      "notes_for_triage": "Two options. Option 1 (recommended by both reviewers, SEC-1 and ADV-3): the folders browsers download — `.next/static`, `.next/server`, `public/` — which is exactly ADD-5's 'any file a browser downloads'. Option 2 (the security-lens question): every file under `.next` except `.next/cache`, plus `public/` — one rule with no folder list, wider than ADD-5 (it also fails when the token sits in a server-only file such as required-server-files.json, for example if someone puts it in next.config's `env`). The evidence supports both. Nothing found would make option 2 fail a normal production build (Sentry 11.0.0 and 11.4.0 read the token in one place; the serialized config drops the hook's function), but that is read from source, not run, so option 2 adds a 'To verify' item. Flip to option 2 if the owner prefers no folder list to keep current (a hand-kept list must follow Next's layout: the reviewers' `server/app` already leaves out `server/pages`, where Next copies the 404 and 500 pages); keep option 1 if the check should match ADD-5's words exactly. Either way an encoded copy (base64, URL-encoded) still passes: a residual, not raised here. The plan note recorded for ADD-5 ('walks .next/static') changes with either option. Interaction with FYI-16 option 1: once `errorHandler` throws, a local build with a fake token fails at Sentry's release step before the token check runs, so option 2's 'To verify' build would run with the default handler. A Drop leaves the gap: a server component that renders the token into `/` or `/play` ships it with a green build, against ADD-5's decision."
+    },
+    {
+      "id": "F-33",
+      "verdict": "pass-with-correction",
+      "checks": {
+        "section_exists": "Yes: §5 Setup, step 3 (533-537) and step 6 (542-547); the Goal (16); step 2 (531-532).",
+        "quotes": "5/5 verbatim (spec lines 534-536, 542, 535, 16, 531-532)",
+        "fix_consistent": "Consistent with D5 (production only) and with lap 2's FYI-14, which this refines: the list stays a production list. Option 1 adds a second entry; option 2 adds an instruction for the domain ticket. Both change step 6's first sentence so the smoke test runs at a listed domain. No other section names Allowed Domains. The lap-2 changelog bullet ('setup step 3 sets Allowed Domains to the production domain', docs/decisions/decision-changelog.md:132) stays true for option 2 and becomes two entries for option 1, which the lap-3 entry would record. cspell.json already lists `notationhero`, so it needs no change."
+      },
+      "central_claim": {
+        "status": "confirmed",
+        "evidence": [
+          "README.md:150, 156 and web/README.md:30 — production is served at notation-hero-web.vercel.app today, and 'Domain wiring (`notationhero.com`) is a separate ticket'. docs/decisions/2026-07-08-fe-nextjs-vercel-aws-bff-adr.md:51 plans 'branded `notationhero.com` / `api.notationhero.com` everywhere the user looks'.",
+          "getsentry/relay@c4e99303:relay-server/src/services/projects/project/info.rs:140-143, 216-235 — every envelope, error events and Release Health sessions alike, whose origin matches no allowed domain is discarded with DiscardReason::Cors; an envelope with no origin is accepted.",
+          "getsentry/relay@c4e99303:relay-filter/src/csp.rs:62-119, 121-165 — an entry needs no scheme or port (a missing part matches anything), and '`*.domain.com`: matches domain.com and any subdomains' (csp.rs:128); Relay's own test at csp.rs:342 has `*.abc.com:85` match `http://abc.com:85`.",
+          "getsentry/relay@c4e99303:relay-server/src/services/outcome/mod.rs:436 — the discard is recorded as reason `cors`; getsentry/sentry@a86c9bd3:static/app/views/organizationStats/getReasonGroupName.ts:159 groups `cors` as `disallowed_domain` on the Stats page. No issue is created, so the step-2 issue alert cannot fire.",
+          "getsentry/sentry@a86c9bd3:static/app/views/settings/projectGeneralSettings/index.tsx:661-666, 861 — Allowed Domains takes one entry per line ('Separate multiple entries with a newline'), with `*.example.com` among its examples.",
+          "Vercel's Deployment Protection docs (vercel.com/docs/deployment-protection): Standard Protection 'protects all domains except production domains', and with it 'the production generated deployment URL becomes restricted'. So when the project uses it, only signed-in members reach a deployment's own URL, and the step-6 trap is mainly the owner's.",
+          "Severity: nothing breaks at ship time. Production has one host today and step 3 lists it, so the Goal (line 16) holds; reports stop only when the domain ticket ships, or for a production deployment's own URL (as in step 6). That is P2 (a real gap an implementer will hit), not P1."
+        ]
+      },
+      "spike": {
+        "status": "run",
+        "what": "Compiled Relay's SchemeDomainPort and matches_any_origin, copied verbatim from getsentry/relay@c4e99303:relay-filter/src/csp.rs, with rustc 1.94 (edition 2024), and ran 12 origin and list pairs. Applied each option's drafts to a copy of the spec and ran prettier --check, markdownlint-cli2 and cspell with the repository's configs.",
+        "result": "With only `notation-hero-web.vercel.app` listed: the production domain is accepted; a per-deployment URL, a branch URL, `notationhero.com` and `www.notationhero.com` are rejected. With `*.notationhero.com` added: `notationhero.com` and `www.notationhero.com` are accepted, while `evilnotationhero.com` and `notationhero.com.evil.example` are still rejected. A bare `notationhero.com` entry does not cover `www.notationhero.com`. Both drafts pass all three linters."
+      },
+      "before": [
+        {
+          "lines": "533-537",
+          "text": "3. Project settings → Security & Privacy → turn on **\"Prevent Storing of IP Addresses\"**. Then\n   Project settings → General Settings → Client Security → **Allowed Domains**: replace the default\n   `*` with the production domain. Sentry then rejects a report that a browser sends with this DSN\n   from any other site. A request with no `Origin` or `Referer` header still gets through, so this\n   limits misuse of the public DSN; it does not stop it."
+        },
+        {
+          "lines": "542-547",
+          "text": "6. After the first production deploy, open a file that is not a score. An E103 warning appearing in\n   Sentry, with the file's type and size and without its name, proves the whole path — and its\n   email (step 2) proves the alert. Its stack must show our own frame, the `PlayerShell.tsx` line\n   that calls `loadScoreFromBytes`, with readable names and the code around it, which proves the\n   source maps; the frames above it are AlphaTab's and stay minified (see \"Known limits\"). Its\n   release must equal the version in the wordmark's tooltip."
+        }
+      ],
+      "after_draft": [
+        {
+          "replaces_lines": "533-537",
+          "option": "1 (product-lens, PRO-1; the evidence favours it)",
+          "text": "3. Project settings → Security & Privacy → turn on **\"Prevent Storing of IP Addresses\"**. Then\n   Project settings → General Settings → Client Security → **Allowed Domains**: replace the default\n   `*` with two entries, one per line: `notation-hero-web.vercel.app`, the production domain today,\n   and `*.notationhero.com`, the brand domain that a separate ticket will point at this site (the\n   pattern also matches `notationhero.com` itself). Sentry then rejects a report that a browser\n   sends with this DSN from any other site, and every Release Health ping from there: no issue\n   opens, no alert fires, and only the Stats page counts them, as \"Disallowed Domain\". A request\n   with no `Origin` or `Referer` header still gets through, so this limits misuse of the public\n   DSN; it does not stop it."
+        },
+        {
+          "replaces_lines": "533-537",
+          "option": "2 (adversarial, ADV-1)",
+          "text": "3. Project settings → Security & Privacy → turn on **\"Prevent Storing of IP Addresses\"**. Then\n   Project settings → General Settings → Client Security → **Allowed Domains**: replace the default\n   `*` with the production domain, `notation-hero-web.vercel.app`. Sentry then rejects a report\n   that a browser sends with this DSN from any other site, and every Release Health ping from\n   there: no issue opens, no alert fires, and only the Stats page counts them, as \"Disallowed\n   Domain\". So the separate ticket that points `notationhero.com` at this site adds that domain,\n   and its `www` host, to this list before the domain serves visitors. A request with no `Origin`\n   or `Referer` header still gets through, so this limits misuse of the public DSN; it does not\n   stop it."
+        },
+        {
+          "replaces_lines": "542-547",
+          "option": "1 and 2 (the same step-6 change in both)",
+          "text": "6. After the first production deploy, open the site at a domain that step 3 lists. A\n   deployment's own address, such as `notation-hero-web-<id>.vercel.app`, is not on that list, so\n   Sentry rejects its reports. Open a file that is not a score. An E103 warning appearing in\n   Sentry, with the file's type and size and without its name, proves the whole path — and its\n   email (step 2) proves the alert. Its stack must show our own frame, the `PlayerShell.tsx` line\n   that calls `loadScoreFromBytes`, with readable names and the code around it, which proves the\n   source maps; the frames above it are AlphaTab's and stay minified (see \"Known limits\"). Its\n   release must equal the version in the wordmark's tooltip."
+        }
+      ],
+      "scenario": "The separate domain ticket points `notationhero.com` at the site, and visitors start using it. A visitor opens a file that is not a score and sees \"Error E103\", but Sentry discards the report because `notationhero.com` is not in Allowed Domains: no issue opens, no email arrives, and Release Health stops counting visits. The only trace is a \"Disallowed Domain\" count on Sentry's Stats page, which you have no reason to open, so the empty issue list reads as a healthy site.",
+      "corrections": "Severity: P2, not P1 (ADV-1). Nothing ships broken: at ship time production has one host and step 3 lists it, so the Goal holds; reports stop only after the separate domain ticket ships, or for a deployment's own URL. Everything else holds: `*.notationhero.com` does match the bare domain (PRO-1, confirmed by running Relay's matcher), error reports and Release Health pings are both discarded, and only Stats shows it. One refinement to ADV-1's fix: the reminder must name the `www` host (or use the wildcard), because a bare `notationhero.com` entry does not match `www.notationhero.com`.",
+      "notes_for_triage": "Two options. Option 1 (product-lens, PRO-1): list `notation-hero-web.vercel.app` and `*.notationhero.com` now, so the domain ticket has nothing to remember. Option 2 (adversarial, ADV-1): list only today's host and tell the domain ticket to add the new one; that works only if that ticket's implementer reads this spec, so README.md:156 or the Jira ticket would need the same reminder, a file §7 does not list. The evidence favours option 1: the matching is confirmed, only the owner controls DNS for notationhero.com, and the extra subdomains the wildcard admits (the ADR's planned `api.` and `auth.` hosts) run no page with this DSN. Flip to option 2 if the owner wants the list to name only hosts that serve the site today. The step-6 change is the same in both options. The reviewers' related question (should the domain ticket repeat step 6 from the new domain, so one E103 proves reports still arrive?) is cheap and fits either option, but belongs to that ticket. A Drop leaves the domain move as a silent end of monitoring, and step 6 fails with no visible cause if run from a deployment's own URL."
+    },
+    {
+      "id": "FYI-15",
+      "verdict": "pass-with-correction",
+      "checks": {
+        "section_exists": "Yes: §5 Setup, step 1 (522-526) and step 2 (527-532); Known limits (673-693).",
+        "quotes": "2/2 verbatim (spec lines 524-525, 531-532)",
+        "fix_consistent": "Consistent: one new Known-limits bullet after the last one (693); nothing else changes. It does not reopen lap 1's EU-region answer and adds no setup step."
+      },
+      "central_claim": {
+        "status": "confirmed",
+        "evidence": [
+          "The spec names no retention period and no way to remove a report: a search for retention, delete, purge and '30 days' finds only the source-map deletion (482-483) and e2e case 6's removal (340).",
+          "docs.sentry.io, Data Retention Periods (security-legal-pii/security/data-retention-periods): Errors are kept 30 days on the Developer plan, 90 days on Team, Business and Enterprise.",
+          "docs.sentry.io, Server-Side Data Scrubbing (security-legal-pii/scrubbing/server-side-scrubbing): 'you cannot delete a single event, you can delete the issue the event is in by clicking the trash icon on the Issue Details page'. A value sent as a tag needs Project Settings → Tags as well; the `instruments` and `code` tags never need it, since neither can hold a name (§3.1)."
+        ]
+      },
+      "spike": {
+        "status": "untested",
+        "what": "Deleting an issue in a Sentry project.",
+        "result": "Not run: it needs a Sentry project, which only the owner may create (§5). Settled from Sentry's public docs. The draft passes prettier --check, markdownlint-cli2 and cspell with the repository's configs."
+      },
+      "before": [
+        {
+          "lines": "693",
+          "text": "- **Release Health pings on every visit**, not only on a crash. The home-page copy says so."
+        }
+      ],
+      "after_draft": [
+        {
+          "replaces_lines": "693",
+          "option": "only",
+          "text": "- **Release Health pings on every visit**, not only on a crash. The home-page copy says so.\n- **Reports are kept for 30 days**, the error retention of the free Developer plan (Sentry's\n  data-retention docs). Sentry cannot delete one report, only the whole issue that holds it, with\n  the trash icon on the issue's page. If a report ever holds a name or any text from a score,\n  delete its issue and its alert email immediately, and fix the names filter before the next\n  deploy."
+        }
+      ],
+      "scenario": "A future bug puts a track name, such as `Lead Guitar`, into an error message that the names filter misses, and you see it in an issue title and in its alert email. Nothing in the spec says how long Sentry keeps that report or how to remove it, so it stays readable in the project for 30 days. Sentry cannot delete that one report: you delete the whole issue with the trash icon on its page, delete the email, and fix the filter before the next deploy.",
+      "corrections": "The suggested text says the report 'is deleted in Sentry at once, together with its alert email'. Sentry cannot delete one report, only the whole issue that holds it (with every other report in it), and the alert email is in the owner's mailbox, not in Sentry. The draft says both. The 30-day figure is right for the Developer plan.",
+      "notes_for_triage": "Light check only. If FYI-16 option 2 is also applied, both add a bullet after line 693; keep both. A Drop leaves the spec silent on how long a leaked name stays readable (30 days) and on the one way to remove it."
+    },
+    {
+      "id": "FYI-16",
+      "verdict": "pass",
+      "checks": {
+        "section_exists": "Yes: §4, 'Source maps' (481-485) and the next.config.ts snippet (504-516); §5 Setup, step 6 (542-547).",
+        "quotes": "1/1 verbatim (spec lines 481-483)",
+        "fix_consistent": "Consistent with D4 (the default upload and delete stay) and with 'No upload without a token' (486-490): without the token the hook is off, so `errorHandler` never runs on CI, preview or local builds. It changes one trade-off: a Sentry outage, a revoked token or a rate limit then blocks production deploys. Option 1 adds a §4 bullet after 'Source maps' and one option to the snippet; option 2 adds a Known-limits bullet only."
+      },
+      "central_claim": {
+        "status": "confirmed",
+        "evidence": [
+          "getsentry/sentry-javascript@11.0.0:packages/bundler-plugins/src/core/build-plugin-manager.ts:228-254 — `handleRecoverableError` calls `options.errorHandler` when one is set and rethrows what it throws; without one, unless `throwByDefault`, it only logs 'An error occurred. Couldn't finish all operations:'.",
+          "Same file :510-513 (release create, set-commits, finalize, deploy record), :534 (debug-ID injection) and :712 (source-map upload): each catch calls `handleRecoverableError(e, false)`, so the step is logged and the build goes on. Unchanged at 11.4.0 and on develop.",
+          "getsentry/sentry-javascript@11.0.0:packages/nextjs/src/config/handleRunAfterProductionCompile.ts:59-89 — createRelease, injectDebugIds (skipped with native debug IDs), uploadSourcemaps, then deleteArtifacts, with no check of the upload's result; build-plugin-manager.ts:742-772 deletes every `filesToDeleteAfterUpload` match. getBuildPluginOptions.ts:56, 184-206: that pattern is `.next/static/**/*.{js,mjs,cjs,css}.map`, on because withSentryConfig/getFinalConfigObjectBundlerUtils.ts:242-279 sets `deleteSourcemapsAfterUpload: true` for Turbopack builds. So the maps are deleted even when the upload failed.",
+          "getsentry/sentry-javascript@11.0.0:packages/core/src/build-time-plugins/buildTimeOptionsBase.ts:97 — `errorHandler?: (err: Error) => void`, kept by the Next.js SentryBuildOptions (packages/nextjs/src/config/types.ts:173-176 omits other keys only) and passed through at getBuildPluginOptions.ts:333. Its doc comment (:83-96) says the plugin throws by default; the code above does not, so the comment is stale.",
+          "next@16.3.6:dist/build/after-production-compile.js:78-92 and next@16.3.6:dist/build/index.js:1057 — Next awaits the hook, logs 'Failed to run runAfterProductionCompile', and rethrows, so a throwing `errorHandler` fails `next build` right after compiling, before prerendering and before the token check.",
+          "getsentry/sentry-javascript@11.0.0:packages/bundler-plugins/src/core/options-mapping.ts:137-163, 165-170 — on Vercel production the default set-commits step carries `shouldNotThrowOnFailure: true`, so it never reaches `errorHandler`; release creation, finalize and the default deploy record do."
+        ]
+      },
+      "spike": {
+        "status": "run",
+        "what": "Type-checked `errorHandler: (error) => { throw error; }` against Sentry 11.0.0's BuildTimeOptionsBase with the repository's TypeScript (strict), with a negative control (`@ts-expect-error` on a handler that takes a number). Applied each option's drafts to a copy of the spec and ran prettier --check, markdownlint-cli2 and cspell; as a negative control, prettier flags the handler written on one line inside the ts fence.",
+        "result": "tsc exits 0 (the negative control's error is expected and consumed). Both drafts pass all three linters. The runtime behaviour (logged and continued, maps deleted) is read from source, not run: it needs @sentry/nextjs installed and a production build with a token."
+      },
+      "before": [
+        {
+          "lines": "481-485",
+          "text": "- **Source maps** (D4): `withSentryConfig` uploads them after `next build` (Turbopack builds are\n  supported from `@sentry/nextjs` 10.13) and deletes them from the deploy by default\n  (`sourcemaps.deleteSourcemapsAfterUpload: true`). \"Hide source content\" stays **off**: the\n  repository is public, so hiding the code in Sentry protects nothing and removes the code around\n  each error line."
+        },
+        {
+          "lines": "512",
+          "text": "  useRunAfterProductionCompileHook: Boolean(process.env.SENTRY_AUTH_TOKEN),"
+        },
+        {
+          "lines": "693",
+          "text": "- **Release Health pings on every visit**, not only on a crash. The home-page copy says so."
+        }
+      ],
+      "after_draft": [
+        {
+          "replaces_lines": "481-485",
+          "option": "1 (recommended by ADV-4)",
+          "text": "- **Source maps** (D4): `withSentryConfig` uploads them after `next build` (Turbopack builds are\n  supported from `@sentry/nextjs` 10.13) and deletes them from the deploy by default\n  (`sourcemaps.deleteSourcemapsAfterUpload: true`). \"Hide source content\" stays **off**: the\n  repository is public, so hiding the code in Sentry protects nothing and removes the code around\n  each error line.\n- **A failed upload stops the deploy.** By default, Sentry's build plugin only logs a release or\n  upload step that fails: the build goes on, and the maps are deleted anyway, so that release's\n  own frames stay minified, and only a line in Vercel's build log says so. With `errorHandler` (in\n  the snippet below), the production build fails at that step instead: Vercel keeps the previous\n  deployment live, and a redeploy tries again. The cost: while Sentry is down or the token is\n  revoked, no production deploy succeeds until Sentry answers again or the token is replaced."
+        },
+        {
+          "replaces_lines": "512",
+          "option": "1 (recommended by ADV-4)",
+          "text": "  useRunAfterProductionCompileHook: Boolean(process.env.SENTRY_AUTH_TOKEN),\n  errorHandler: (error) => {\n    throw error; // a failed release or upload step fails the production build (section 4)\n  },"
+        },
+        {
+          "replaces_lines": "693",
+          "option": "2 (keep the default; record it as a known limit)",
+          "text": "- **Release Health pings on every visit**, not only on a crash. The home-page copy says so.\n- **A failed source-map upload is silent.** If the release or upload step fails during a\n  production build (a revoked token, an outage at Sentry, a rate limit), Sentry's build plugin\n  logs one line in Vercel's build log, the deploy goes ahead, and the maps are deleted anyway: that\n  release's own frames stay minified. Setup step 6 proves the upload once, not on every deploy."
+        }
+      ],
+      "scenario": "You revoke the Sentry token by mistake, then merge a pull request. Vercel's production build logs one line, \"An error occurred. Couldn't finish all operations\", deletes the `.map` files and deploys anyway. From then on every error from that release shows our own frames minified, `PlayerShell.tsx` never appears, and nothing told you. With the throwing `errorHandler`, the same deploy fails on Vercel instead, the previous deployment stays live, and the failed deploy tells you to fix the token.",
+      "corrections": "None. One addition: under option 1, a failure to finalize the release or to record the deploy (both on by default on Vercel) also stops the build, not only the upload; the default set-commits step does not, because Sentry marks it as one that never throws.",
+      "notes_for_triage": "Two options. Option 1 (recommended by the reviewer, ADV-4): `errorHandler` rethrows, so a failed release or upload step stops the production deploy. The cost: while Sentry is down or the token is revoked, no production deploy succeeds; removing SENTRY_AUTH_TOKEN from Vercel lets one through without maps, since the hook is off without it. Option 2: keep Sentry's default and record it as a known limit. The evidence confirms the reviewer's facts; the choice is a trade-off between deploy availability and readable stack traces, and nothing in the evidence decides it. Interaction with F-32 option 2: its 'To verify' build with a fake token would fail at the release step under option 1, so that check runs with the default handler. Sentry's own doc comment says the default already throws; the plan should not rely on it. A Drop leaves a failed upload visible only as one line in Vercel's build log; setup step 6 proves the upload once."
+    }
+  ]
+}

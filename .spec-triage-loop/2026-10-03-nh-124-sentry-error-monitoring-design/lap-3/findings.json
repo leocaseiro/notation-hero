@@ -1,0 +1,1401 @@
+{
+  "header": {
+    "artifact_path": "docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md",
+    "artifact_worktree": "nh-320-vr-spec-lap-4-92e22a",
+    "artifact_path_from_root": ".claude/worktrees/nh-320-vr-spec-lap-4-92e22a/docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md",
+    "artifact_permalink": "https://github.com/leocaseiro/notation-hero/blob/2f68d3808ef5f77657a34df4b2148b3817cb0338/docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md",
+    "permalink_sha": "2f68d3808ef5f77657a34df4b2148b3817cb0338",
+    "permalink_note": "The spec is byte-identical at this sha (the engine applied no edits this lap); every line number in this file refers to it.",
+    "branch": "claude/sentry-error-monitoring-89abc2",
+    "pr": "https://github.com/leocaseiro/notation-hero/pull/191",
+    "jira": "https://leocaseiro.atlassian.net/browse/NH-124 (status SPEC/PLAN REVIEW)",
+    "lap": 3,
+    "review_skill": "compound-engineering:ce-doc-review",
+    "review_mode": "mode:headless",
+    "state_store": "the spec's own YAML frontmatter — still lap: 2, last_applied: P1 at review time; the triage half writes lap: 3 at step 6.",
+    "document_type": "plan — a design spec (file lists, code, a test plan). The task-by-task implementation plan is written after this review.",
+    "review_baseline_commit": "2f68d380",
+    "line_numbers_note": "Line numbers in the spec, and in this file's code references, refer to the branch's base 0dd46b52 (the branch changed only docs). origin/master has since moved web/app/play/PlayerShell.tsx (#185, NH-344); the plan re-maps after a rebase. Not a finding.",
+    "id_note": "Ids continue from laps 1 and 2 (F-1–F-30, FYI-1–14, AMB-1–8, ADD-1–5, R1–R39, Q1–Q10), so no id names two things. Lap 3 holds F-31–F-34, FYI-15–19, R40–R49 and Q11–Q14. Raw reviewer ids (FEA-1, ADV-2, …) belong to this lap only and appear under raw_reviewer_findings.",
+    "reviewers_dispatched": {
+      "coherence": "always on; cheapest tier (haiku) — 0 findings, 2 residuals",
+      "feasibility": "always on; parent model — 2 findings",
+      "security-lens": "personal data, a third-party service, an auth token — 2 findings",
+      "adversarial": "privacy and an outside service are high-stakes — 4 findings",
+      "product-lens": "the home-page privacy promise and the instruments tag — 1 finding",
+      "design-lens": "the home and error-page copy, the loading bar (sonnet) — 2 findings",
+      "scope-guardian": "many parts: 16 catch sites, 10 new files, a lint rule, 8 e2e cases (sonnet) — 3 findings"
+    },
+    "reviewer_context": "Each reviewer read ce-doc-review's subagent template filled with its persona, the findings schema and a review context: the ten settled decisions; a primer of every lap-1 and lap-2 outcome (30 decided findings, 14 FYIs, 8 wording fixes, the triage additions ADD-1–5 and R25, questions Q1–Q10, residuals R1–R39 and lap 2's plan notes); the lap-3 focus (the text lap 2 added); the line-number rule (base 0dd46b52 = this worktree's code); and the out-of-scope list.",
+    "coverage_notes": [
+      "Cross-model peer pass SKIPPED: it would send the document to an outside AI provider, which the owner has not authorized. No finding is promoted on different-model agreement; agreement between separately dispatched same-host agents still counts.",
+      "No lap-3 finding re-raises a decision (synthesis rule R29). Each one is about text lap 2 added, or about the mechanism of a settled item, with new evidence: F-31 (ADD-3, the unmount clear), F-32 (ADD-5, the folders the token check reads), F-33 (FYI-14, the Allowed Domains list), F-34 (F-29, when the font clock ends), FYI-17 (lap 1's message drop).",
+      "Lap-2 fixes verified as landed (synthesis rule R30; adversarial and scope-guardian notes): F-19 (the Goal), F-20 and F-21 (the names filter's scope and timing), F-24 and F-25 (the tag's digits and `sample`), F-26 (e2e case 8), F-27 (the helpers' homes), F-28 (the opening state) and F-29 (the visible-time clock), with their line references (PlayerShell.tsx:805, :862, :872, :873, :913, :969; NotationSurface.tsx:117, :126, :141).",
+      "Eleven reviewer notes confirmed claims and were not carried as residuals: the per-report breadcrumb is added after beforeSend (feasibility); `httpHeaders: { allow: ['User-Agent'] }` keeps the User-Agent and sends the Referer as [Filtered] (security-lens, adversarial); a throwing beforeSend drops the event, so the filter fails closed (security-lens); Sentry 11 updates the session only after beforeSend returns an event, so dropped engine noise never marks a visit unhandled (product-lens, adversarial); the alert triggers and action names in step 2 match Sentry's docs; the root layout carries no theme or font class, so §2.2's global-error recipe holds; §3.4's character counts and line references hold (design-lens); the 16 catch sites and 4 never-throw paths match the code (scope-guardian); and lap 2's Q7, answered for AlphaTab 1.8.4 (plan_notes).",
+      "One residual dropped as already covered by the document: the coherence note that a plan-time check could show the design infeasible — the first To-verify item is already a go/no-go with a named fallback.",
+      "One residual refuted by verification (verify-A.json): the feasibility note that unicorn/no-useless-undefined would break `Sentry.setTag('instruments', undefined)`. The rule skips callees named `set[A-Z]…` (eslint-plugin-unicorn 63.0.0), so the call gets no message and no autofix. The engine envelope still lists it, as the engine produced it before verification."
+    ],
+    "finding_counts": {
+      "raw_from_reviewers": 14,
+      "merged_unique": 9,
+      "actionable_undecided": 4,
+      "fyi_observations": 5,
+      "ambiguity_fixes_to_apply_silently": 0,
+      "verified_items": 9,
+      "verified_pass": 4,
+      "verified_pass_with_correction": 5,
+      "verified_fail_dropped": 0,
+      "dropped_anchor_0_25": 0,
+      "silent_engine_edits": 0,
+      "restated_residuals_suppressed": 9,
+      "residuals_kept": 10,
+      "questions_kept": 4,
+      "confirming_notes": 11,
+      "residual_dropped_as_covered": 1,
+      "residual_refuted_by_verification": 1
+    },
+    "exit_signal_raw": "NOT CLEAN — the headless envelope carries a Proposed fixes section (3) and a Decisions section (1). See engine-envelope.txt.",
+    "silent_autofixes_by_engine": "none — no finding was a one-answer fix at anchor 100, so the engine applied nothing. The spec is byte-identical to 2f68d380.",
+    "verification": "Three dispatched subagents, by area: verify-A.json (the instruments tag, F-31), verify-B.json (the token check, Allowed Domains, retention, a failed upload: F-32, F-33, FYI-15, FYI-16) and verify-C.json (the font clock, issue titles, two e2e assertions, web/AGENTS.md: F-34, FYI-17, FYI-18, FYI-19). All 9 passed (4 clean, 5 with a correction); none failed. Every cited section exists and every evidence quote is verbatim (15 + 16 + 12 checks, fixed-string, line wraps collapsed). Spikes RUN: Next 16.3.6's own error boundary with React 19.2.7 under jsdom (production and development) and a 14-scenario, 20-check options matrix for F-31; ESLint 9.39.4 with unicorn's recommended config; tsc on option 1's sketch against Sentry 11.0.0's types; the token guard's variants on nine fake build trees and, read-only, on an existing local build; Relay's origin matcher compiled with rustc and run on 12 pairs; tsc on `errorHandler` against Sentry 11.0.0; a jsdom model of the font clock with fake time; every draft through Prettier, markdownlint and cspell on a scratch copy. Not run: FYI-15 (deleting an issue needs a Sentry project), FYI-16's runtime behaviour (read from source), FYI-18 (the envelope fixture does not exist yet), FYI-19 (a documentation change).",
+    "artifact_files": [
+      "engine-envelope.txt",
+      "verify-A.json",
+      "verify-B.json",
+      "verify-C.json",
+      "findings.json"
+    ],
+    "triaged": false,
+    "triage_cap": "12 findings or 5 picker rounds, whichever comes first (shared review-loop rule). 4 findings and 5 observations fit one triage invocation.",
+    "severity_scale": {
+      "P1": "should fix before planning — something would ship broken, or a promise in the spec would be false",
+      "P2": "should fix — a real gap an implementer will hit",
+      "P3": "worth fixing — small, cheap"
+    },
+    "severity_note": "Lap 3 holds no P0 or P1 after verification: F-33 was merged at adversarial's P1 and corrected to P2 (nothing ships broken; it breaks only when the domain moves).",
+    "triage_progress": {
+      "decided": [],
+      "undecided": [
+        "F-31",
+        "F-32",
+        "F-33",
+        "F-34",
+        "FYI-15",
+        "FYI-16",
+        "FYI-17",
+        "FYI-18",
+        "FYI-19"
+      ],
+      "pending_apply": []
+    },
+    "triage_status": "NOT TRIAGED. Review half done (2026-10-05): 4 findings and 5 observations, all verified. NEXT: the triage half, in a new session."
+  },
+  "already_applied": [],
+  "ambiguity_fixes": [],
+  "undecided_findings": [
+    {
+      "id": "F-31",
+      "severity": "P2",
+      "severity_meaning": "should fix — a real gap an implementer will hit",
+      "confidence": 100,
+      "route": "Decision",
+      "autofix_class": "manual",
+      "recommended_action": "Apply (option 1)",
+      "reviewers": ["feasibility", "adversarial", "scope-guardian"],
+      "promotion": "75 → 100: four findings from three personas (FEA-1, FEA-2, ADV-2, SCO-1)",
+      "section": "§2.3 The reporting functions ('When the tag changes'); §1 Changed files ('Also'); §3.3 SDK settings (beforeSend); §6 Testing (the tag's lifecycle, the PlayerShell tag case); To verify (removing a tag)",
+      "title": "Clearing the instruments tag when the player unmounts strips it from every crash report and blocks it for the rest of the visit",
+      "terms_first": "The `instruments` tag = a label on each Sentry report naming the open score's kinds of instrument (`drums,030`, or `sample` for the bundled beat): lap 1's ADD-1, refined in lap 2 by F-24 (three digits), F-25 (`sample`) and F-23 (off while a file opens). ADD-3 = the lap-2 addition, applied without asking to complete the owner's F-25 choice: `clearInstruments()` runs when the player unmounts, so a report from the home page `/` never says `sample`. E901 = the code the error pages show after a React crash; it is sent as an unhandled error, which lowers the health number. Unmount = React removing the player from the page: on a crash, on Back or the wordmark link to `/`, before Try again mounts it again, and twice in development (strict mode).",
+      "whats_wrong": "§2.3 says the player sets the tag to `sample` when it mounts, and that `clearInstruments()` removes the tag when it unmounts, after which 'an open still running then changes nothing'. §6 makes that clear permanent: 'after `clearInstruments`, no call changes the tag'. Two things then go wrong, both confirmed by running Next 16.3.6's own error boundary with React 19.2.7. (1) When the player crashes, React runs the player's unmount cleanup (the clear) BEFORE `/play`'s error page runs the effect that sends the E901, so no E901 ever carries the tag; lap 2's residual R32 assumed it did. (2) The clear is a one-way latch for the whole page load. Try again, Back then Play, and the development double mount all mount the player again in the same page load, and the new mount's `tagInstruments('sample')` is ignored, so no report carries the tag for the rest of the visit. §6's own PlayerShell.test.tsx tag cases cannot pass in one file without a test-only reset.",
+      "proposed_fix": "Option 1 (recommended): decide by page, not by mount. Remove `clearInstruments()` and its latch; no code calls `Sentry.setTag` for this tag. `beforeSend` calls a new `addInstrumentsTag(event)` that adds the remembered value only to a report sent while the page is `/play` and no open runs. The player sets `sample` each time it mounts. A ref guards the swap's `tagInstruments()`, so an open that outlives its player sets nothing; its `restoreInstruments()` still runs. This changes §1 'Also', the §2.3 function list and 'When the tag changes', §3.3's beforeSend line and §6's two tag cases, and removes the To-verify item about removing a tag with `setTag`. Options 2-4 are in `options`.",
+      "why_it_works": "The decision moves from the moment the player unmounts, which React reaches before the error page reports, to the moment a report is sent, when the page is known. Reports from `/` still never carry the tag (ADD-3's goal); the E901 from `/play`'s error page carries the score the crashed player held (R32 becomes true); and every new mount starts from `sample`. The swap guard closes the two stale-open cases the plain page rule misses: 18 of 20 checks become 20 of 20 in the verifier's options matrix.",
+      "drop_consequence": "Discard it. Every E901, the unhandled report the health number counts, reaches Sentry with no instruments tag, and after one Back-then-Play, one Try again or the development double mount, no report carries the tag for the rest of the visit.",
+      "basis": "React 19.2.7 runs every passive cleanup, a removed child's included, before any new passive effect (react-dom flushPassiveEffects). Next 16.3.6's error boundary replaces the player with the error page and mounts it again on reset. The five tag functions take no token, so report.ts cannot tell a stale open from the current one.",
+      "options": [
+        {
+          "option": "1 (recommended by verification)",
+          "name": "Decide by page, plus a guard on the swap",
+          "from": "ADV-2 (adversarial), with the swap guard verification added",
+          "what": "`beforeSend` adds the remembered value only to a report sent from `/play` while no open runs; no `clearInstruments()`; the player sets `sample` on every mount; a ref skips the swap's `tagInstruments()` for an open whose player has gone.",
+          "pros": "Fixes both halves. Reports from `/` stay untagged (ADD-3's goal), the E901 from `/play` carries the crashed score, every mount starts from `sample`. No framework hook. Removes the To-verify item about removing a tag with `setTag`.",
+          "cons": "The tag is added in `beforeSend`, not held in Sentry's scope: one more exported function, and unit tests must set the page to `/play` (Vitest's jsdom page is `/`; use history.replaceState).",
+          "best_when": "Crash reports should say which instruments were open.",
+          "matrix_checks_passed": "20 of 20 (ADV-2 as written: 18 — an open that outlives its player can write its value after a new mount)"
+        },
+        {
+          "option": "2",
+          "name": "Reset instead of lock, with mounted refs",
+          "from": "FEA-1 (feasibility)",
+          "what": "`clearInstruments()` becomes a reset (tag removed, open count 0, value forgotten); the next mount's `sample` applies; the call sites keep a mounted ref.",
+          "pros": "Smallest change to the current text; the tag stays in Sentry's scope.",
+          "cons": "Every E901 still has no tag, by design: §2.3 must then say so, and R32's assumption becomes false. A stale E103 after Back then Play carries `sample`.",
+          "best_when": "Crash reports need no instruments.",
+          "matrix_checks_passed": "16 of 20"
+        },
+        {
+          "option": "3",
+          "name": "Clear on navigation away from /play",
+          "from": "FEA-2 (feasibility), with the latch removed and the same swap guard",
+          "what": "`web/instrumentation-client.ts` exports Next's `onRouterTransitionStart` and clears the tag when the target is not `/play`.",
+          "pros": "Fixes both halves; the tag stays in Sentry's scope. Next 16.3.6 calls the hook for links, router.push and Back/Forward.",
+          "cons": "Adds a framework hook; contradicts §4's 'That hook is for navigation tracing, which S3 rules out' (rewrite §4) and makes `suppressOnRouterTransitionStartWarning` unneeded; keeps the `setTag` To-verify item; more parts to test. As FEA-2 wrote it (latch kept): 14 of 20.",
+          "best_when": "The tag should stay in Sentry's scope rather than be added in beforeSend.",
+          "matrix_checks_passed": "20 of 20 with the latch removed and the swap guard; 14 as written"
+        },
+        {
+          "option": "4",
+          "name": "Never clear",
+          "from": "SCO-1 (scope-guardian)",
+          "what": "Drop `clearInstruments()` and the unmount call; the tag keeps the last value.",
+          "pros": "The least code; the E901 carries the tag.",
+          "cons": "Reports from `/` carry the last score's value (or `sample`) after a visit to `/play`, which reverses ADD-3's goal; an open that outlives its player can still write a wrong value.",
+          "best_when": "Home-page reports may carry the last song's instruments.",
+          "matrix_checks_passed": "16 of 20"
+        }
+      ],
+      "owner_questions": [
+        "(a) Should an E901 from /play carry the score's instruments? Yes → option 1 or 3; no → option 2.",
+        "(b) May a report from / carry the last score's value after a visit to /play? Yes → option 4 becomes possible (it reverses ADD-3)."
+      ],
+      "decisive_tradeoff": "Where the rule lives: at the moment a report is sent (option 1, no framework hook) or in Sentry's scope, cleared by a navigation hook (option 3, more parts).",
+      "disposition_hint": "DECISION — its own card, with the full comparison (the triage skill's §7: depth per option, the table, a weighted matrix, the decisive trade-off, a recommendation and its flip condition). It changes the mechanism of a settled item (ADD-3, applied without asking in lap 2) and the four reviewers proposed four different fixes, so it is the owner's call, not an auto-resolve. Recommend option 1; flip to option 3 if the owner wants the tag kept in Sentry's scope; flip to option 2 if crash reports need no instruments.",
+      "scenario": "You are the owner, reading Sentry. A visitor opens Punk.gp on /play, the header fails while it draws the new title, and /play's error page shows \"Error E901\" — but the E901 issue's Tags panel has no instruments entry, because the player's unmount removes the tag a moment before the error page sends the report. The visitor then presses Try again (or Back, then Play) and opens Punk.gp again, and every later report from that visit also arrives without the tag, so a search for instruments:*030* finds none of them.",
+      "before_after": [
+        {
+          "before": [
+            {
+              "lines": "95-97",
+              "text": "Each `lib/monitoring` file has its unit test beside it, and so do the three error pages,\n`web/app/play/OpenFileControl.tsx`, `web/app/play/PlayerShell.tsx` and\n`web/app/play/NotationSurface.tsx` (section 6)."
+            },
+            {
+              "lines": "106-113",
+              "text": "- `web/app/play/OpenFileControl.tsx` and `web/app/play/PlayerShell.tsx`, beyond their catch sites:\n  picking or dropping a file remembers its name (3.2) and takes the `instruments` tag off until the\n  open ends (2.3); `requestNotation` remembers the score's names as soon as the file parses (3.2)\n  and sets the tag just before the opened score replaces the open one; the player sets the tag to\n  `sample` when it mounts and removes it when it unmounts; `readNotation` and `LoadedNotation`\n  carry the file's extension (2.3). The function that turns a file name into that type lives in\n  `OpenFileControl.tsx`, beside the `ACCEPT` list it checks, and is exported like `readNotation`,\n  so the drop path in `PlayerShell.tsx` uses the same list."
+            },
+            {
+              "lines": "178-188",
+              "text": "/** Sets the Sentry tag `instruments` for the score on screen: `sample` or `instrumentsValue()`. */\nexport function tagInstruments(value: string): void;\n\n/** A file was picked or dropped: no report carries the tag until that open ends. */\nexport function suspendInstruments(): void;\n\n/** In a `finally`, when that open ends: the tag holds the value for the score on screen again. */\nexport function restoreInstruments(): void;\n\n/** The player unmounted: the tag is removed, and an open still running changes nothing. */\nexport function clearInstruments(): void;"
+            },
+            {
+              "lines": "233-235",
+              "text": "  When the player unmounts, `clearInstruments()` removes the tag: a report from `/` carries none,\n  and an open still running then changes nothing. AlphaTab's score-loaded event never sets the\n  tag: it also fires for the bundled beat, sometimes after the visitor's file."
+            },
+            {
+              "lines": "425",
+              "text": "  beforeSend: (event) => (isKnownEngineNoise(event) ? null : scrubEvent(event)),"
+            },
+            {
+              "lines": "491-493",
+              "text": "- **No navigation-tracing prompt.** `suppressOnRouterTransitionStartWarning: true` stops the\n  \"ACTION REQUIRED … `onRouterTransitionStart`\" line that the wrapper prints on every build. That\n  hook is for navigation tracing, which S3 rules out."
+            },
+            {
+              "lines": "513",
+              "text": "  suppressOnRouterTransitionStartWarning: true,"
+            },
+            {
+              "lines": "571-574",
+              "text": "  - the tag's lifecycle: `suspendInstruments` takes the tag off and `restoreInstruments` puts the\n    remembered value back; `tagInstruments` while an open runs changes only the remembered value;\n    with two opens running, the tag comes back only when the second one ends; after\n    `clearInstruments`, no call changes the tag;"
+            },
+            {
+              "lines": "592-597",
+              "text": "- **The tag follows the score on screen**, cases in `web/app/play/PlayerShell.test.tsx`: the tag\n  is `sample` once the player mounts and gone once it unmounts; opening `Punk.gp` sets `drums,030`;\n  with `Punk.gp` open, a file that is not a score sends an E103 without the tag and leaves\n  `drums,030`, and so does Cancel on the prompt to replace it; an E105 thrown just after the swap\n  leaves the new score's value; and when the bundled sample's score-loaded event arrives after the\n  visitor's file, the tag keeps the file's value."
+            },
+            {
+              "lines": "710-711",
+              "text": "- How Sentry 11 removes a tag: that `Sentry.setTag('instruments', undefined)` leaves no\n  `instruments` key in the report that is sent."
+            }
+          ],
+          "after_drafts": [
+            {
+              "replaces_lines": "106-113",
+              "option": "1 (recommended)",
+              "text": "- `web/app/play/OpenFileControl.tsx` and `web/app/play/PlayerShell.tsx`, beyond their catch sites:\n  picking or dropping a file remembers its name (3.2) and takes the `instruments` tag off until the\n  open ends (2.3); `requestNotation` remembers the score's names as soon as the file parses (3.2)\n  and sets the tag just before the opened score replaces the open one, but only while the player\n  that started the open is still mounted; the player sets the tag to `sample` each time it mounts;\n  `readNotation` and `LoadedNotation` carry the file's extension (2.3). The function that turns a\n  file name into that type lives in `OpenFileControl.tsx`, beside the `ACCEPT` list it checks, and\n  is exported like `readNotation`, so the drop path in `PlayerShell.tsx` uses the same list."
+            },
+            {
+              "replaces_lines": "178-188",
+              "option": "1 (recommended)",
+              "text": "/** The `instruments` value for the score on screen: `sample` or `instrumentsValue()`. */\nexport function tagInstruments(value: string): void;\n\n/** A file was picked or dropped: no report carries the tag until that open ends. */\nexport function suspendInstruments(): void;\n\n/** In a `finally`, when that open ends: reports carry the value for the score on screen again. */\nexport function restoreInstruments(): void;\n\n/** For `beforeSend`: adds the tag to a report sent from `/play` while no open runs. */\nexport function addInstrumentsTag(event: ErrorEvent): ErrorEvent; // Sentry's type, not the DOM's"
+            },
+            {
+              "replaces_lines": "233-235",
+              "option": "1 (recommended)",
+              "text": "  AlphaTab's score-loaded event never sets the tag: it also fires for the bundled beat, sometimes\n  after the visitor's file.\n- **The page decides, when a report is sent.** No code calls `Sentry.setTag` for this tag.\n  `beforeSend` calls `addInstrumentsTag()`, which adds the value only to a report sent while the\n  page is `/play` and no open runs. So a report from `/` carries none, even after a visit to\n  `/play`, and the E901 that `/play`'s error page sends carries the score the crashed player held.\n  Removing the tag when the player unmounts would lose that: React runs the crashed player's\n  unmount cleanups before the error page's own effect sends the report. Leaving `/play` and\n  returning to it, or Try again on its error page, mounts the player again, and it sets `sample`.\n  An open that outlives its player never sets a value: the swap's `tagInstruments()` runs only\n  while the player that started the open is mounted (a ref). Its `restoreInstruments()` still\n  runs, so the count of running opens stays correct."
+            },
+            {
+              "replaces_lines": "425",
+              "option": "1 (recommended)",
+              "text": "  beforeSend: (event) => (isKnownEngineNoise(event) ? null : addInstrumentsTag(scrubEvent(event))),"
+            },
+            {
+              "replaces_lines": "571-574",
+              "option": "1 (recommended)",
+              "text": "  - the tag's lifecycle, read through `addInstrumentsTag`: `suspendInstruments` takes the tag off\n    and `restoreInstruments` puts the remembered value back; `tagInstruments` while an open runs\n    changes only the remembered value; with two opens running, the tag comes back only when the\n    second one ends; a report from `/play` carries the remembered value, and a report from `/`\n    never carries the tag;"
+            },
+            {
+              "replaces_lines": "592-597",
+              "option": "1 (recommended)",
+              "text": "- **The tag follows the score on screen**, cases in `web/app/play/PlayerShell.test.tsx`: the tag\n  is `sample` once the player mounts; opening `Punk.gp` sets `drums,030`; after an unmount, a report\n  from `/play` still carries `drums,030` (the E901 case) and a report from `/` carries none, and a\n  second mount gives `sample`; an open left running across that unmount sets nothing when it ends;\n  with `Punk.gp` open, a file that is not a score sends an E103 without the tag and leaves\n  `drums,030`, and so does Cancel on the prompt to replace it; an E105 thrown just after the swap\n  leaves the new score's value; and when the bundled sample's score-loaded event arrives after the\n  visitor's file, the tag keeps the file's value."
+            },
+            {
+              "replaces_lines": "710-711",
+              "option": "1 (recommended)",
+              "text": ""
+            },
+            {
+              "replaces_lines": "106-113",
+              "option": "2",
+              "text": "- `web/app/play/OpenFileControl.tsx` and `web/app/play/PlayerShell.tsx`, beyond their catch sites:\n  picking or dropping a file remembers its name (3.2) and takes the `instruments` tag off until the\n  open ends (2.3); `requestNotation` remembers the score's names as soon as the file parses (3.2)\n  and sets the tag just before the opened score replaces the open one; the player sets the tag to\n  `sample` when it mounts and removes it when it unmounts, and both components keep a mounted ref\n  so that an open that outlives them changes nothing (2.3); `readNotation` and `LoadedNotation`\n  carry the file's extension (2.3). The function that turns a file name into that type lives in\n  `OpenFileControl.tsx`, beside the `ACCEPT` list it checks, and is exported like `readNotation`,\n  so the drop path in `PlayerShell.tsx` uses the same list."
+            },
+            {
+              "replaces_lines": "187-188",
+              "option": "2",
+              "text": "/** The player unmounted: the tag is removed, the open count is 0, and the value is forgotten. */\nexport function clearInstruments(): void;"
+            },
+            {
+              "replaces_lines": "233-235",
+              "option": "2",
+              "text": "  When the player unmounts, `clearInstruments()` removes the tag, sets the open count to 0 and\n  forgets the remembered value: a report from `/` carries none, and the next mount sets `sample` as\n  on a first visit. An E901 from `/play` carries none either, because React runs the crashed\n  player's unmount cleanups before the error page's own effect sends it. An open that outlives its\n  player changes nothing: the player and `OpenFileControl` each keep a mounted ref, and an open\n  whose component has unmounted skips the swap's `tagInstruments()` and its `restoreInstruments()`.\n  AlphaTab's score-loaded event never sets the tag: it also fires for the bundled beat, sometimes\n  after the visitor's file."
+            },
+            {
+              "replaces_lines": "571-574",
+              "option": "2",
+              "text": "  - the tag's lifecycle: `suspendInstruments` takes the tag off and `restoreInstruments` puts the\n    remembered value back; `tagInstruments` while an open runs changes only the remembered value;\n    with two opens running, the tag comes back only when the second one ends; after\n    `clearInstruments` the tag is gone and the open count is 0, and `tagInstruments('sample')` then\n    sets it again;"
+            },
+            {
+              "replaces_lines": "592-597",
+              "option": "2",
+              "text": "- **The tag follows the score on screen**, cases in `web/app/play/PlayerShell.test.tsx`: the tag\n  is `sample` once the player mounts and gone once it unmounts, and a second mount gives `sample`\n  again; an open left running across that unmount changes nothing when it ends; opening `Punk.gp`\n  sets `drums,030`; with `Punk.gp` open, a file that is not a score sends an E103 without the tag\n  and leaves `drums,030`, and so does Cancel on the prompt to replace it; an E105 thrown just after\n  the swap leaves the new score's value; and when the bundled sample's score-loaded event arrives\n  after the visitor's file, the tag keeps the file's value."
+            },
+            {
+              "replaces_lines": "95-97",
+              "option": "3",
+              "text": "Each `lib/monitoring` file has its unit test beside it, and so do `web/instrumentation-client.ts`,\nthe three error pages, `web/app/play/OpenFileControl.tsx`, `web/app/play/PlayerShell.tsx` and\n`web/app/play/NotationSurface.tsx` (section 6)."
+            },
+            {
+              "replaces_lines": "106-113",
+              "option": "3",
+              "text": "- `web/app/play/OpenFileControl.tsx` and `web/app/play/PlayerShell.tsx`, beyond their catch sites:\n  picking or dropping a file remembers its name (3.2) and takes the `instruments` tag off until the\n  open ends (2.3); `requestNotation` remembers the score's names as soon as the file parses (3.2)\n  and sets the tag just before the opened score replaces the open one, but only while the player\n  that started the open is still mounted; the player sets the tag to `sample` each time it mounts;\n  `readNotation` and `LoadedNotation` carry the file's extension (2.3). The function that turns a\n  file name into that type lives in `OpenFileControl.tsx`, beside the `ACCEPT` list it checks, and\n  is exported like `readNotation`, so the drop path in `PlayerShell.tsx` uses the same list."
+            },
+            {
+              "replaces_lines": "187-188",
+              "option": "3",
+              "text": "/** The visitor is leaving `/play`: the tag is removed, and the remembered value forgotten. */\nexport function clearInstruments(): void;"
+            },
+            {
+              "replaces_lines": "233-235",
+              "option": "3",
+              "text": "  When a navigation leaves `/play`, `onRouterTransitionStart` in `web/instrumentation-client.ts`\n  calls `clearInstruments()` (section 4): a report from `/` carries none. The tag is not removed\n  when the player unmounts, because React runs a crashed player's unmount cleanups before the error\n  page's own effect sends its E901; that report carries the score the player held. Leaving `/play`\n  and returning to it, or Try again on its error page, mounts the player again, and it sets\n  `sample`. An open that outlives its player never sets a value: the swap's `tagInstruments()` runs\n  only while the player that started the open is mounted (a ref). Its `restoreInstruments()` still\n  runs, so the count of running opens stays correct. AlphaTab's score-loaded event never sets the\n  tag: it also fires for the bundled beat, sometimes after the visitor's file."
+            },
+            {
+              "replaces_lines": "491-493",
+              "option": "3",
+              "text": "- **The navigation hook clears the tag.** `web/instrumentation-client.ts` exports\n  `onRouterTransitionStart`, which Next 16 calls at the start of every App Router navigation: a\n  link, `router.push`, and Back or Forward (`traverse`). It calls `clearInstruments()` when the new\n  path, read with `new URL(url, location.href)`, is not `/play`, and it records no navigation span\n  (S3). Because the file names the hook, the wrapper prints no \"ACTION REQUIRED\" line, so\n  `suppressOnRouterTransitionStartWarning` is not set."
+            },
+            {
+              "replaces_lines": "513",
+              "option": "3",
+              "text": ""
+            },
+            {
+              "replaces_lines": "571-574",
+              "option": "3",
+              "text": "  - the tag's lifecycle: `suspendInstruments` takes the tag off and `restoreInstruments` puts the\n    remembered value back; `tagInstruments` while an open runs changes only the remembered value;\n    with two opens running, the tag comes back only when the second one ends; after\n    `clearInstruments` the tag is gone, and a `restoreInstruments` after it restores nothing;\n  - the navigation hook, beside `web/instrumentation-client.ts`: called with `'/'` and `'push'`,\n    or with `'http://localhost/'` and `'traverse'` (Back), it removes the tag; called with\n    `'/play'`, it keeps it;"
+            },
+            {
+              "replaces_lines": "592-597",
+              "option": "3",
+              "text": "- **The tag follows the score on screen**, cases in `web/app/play/PlayerShell.test.tsx`: the tag\n  is `sample` once the player mounts; opening `Punk.gp` sets `drums,030`; an unmount leaves\n  `drums,030` (an E901 is sent after its player unmounts), and a second mount gives `sample`; an\n  open left running across that unmount sets nothing when it ends; with `Punk.gp` open, a file\n  that is not a score sends an E103 without the tag and leaves `drums,030`, and so does Cancel on\n  the prompt to replace it; an E105 thrown just after the swap leaves the new score's value; and\n  when the bundled sample's score-loaded event arrives after the visitor's file, the tag keeps the\n  file's value."
+            },
+            {
+              "replaces_lines": "106-113",
+              "option": "4",
+              "text": "- `web/app/play/OpenFileControl.tsx` and `web/app/play/PlayerShell.tsx`, beyond their catch sites:\n  picking or dropping a file remembers its name (3.2) and takes the `instruments` tag off until the\n  open ends (2.3); `requestNotation` remembers the score's names as soon as the file parses (3.2)\n  and sets the tag just before the opened score replaces the open one; the player sets the tag to\n  `sample` when it mounts; `readNotation` and `LoadedNotation` carry the file's extension (2.3).\n  The function that turns a file name into that type lives in `OpenFileControl.tsx`, beside the\n  `ACCEPT` list it checks, and is exported like `readNotation`, so the drop path in\n  `PlayerShell.tsx` uses the same list."
+            },
+            {
+              "replaces_lines": "186-188",
+              "option": "4",
+              "text": ""
+            },
+            {
+              "replaces_lines": "233-235",
+              "option": "4",
+              "text": "  When the player unmounts, the tag keeps the value of the score last on screen, so the E901 that\n  `/play`'s error page sends carries it. A report from `/` after a visit to `/play` carries it too,\n  and an open still running when the player unmounted can still change it. AlphaTab's score-loaded\n  event never sets the tag: it also fires for the bundled beat, sometimes after the visitor's file."
+            },
+            {
+              "replaces_lines": "571-574",
+              "option": "4",
+              "text": "  - the tag's lifecycle: `suspendInstruments` takes the tag off and `restoreInstruments` puts the\n    remembered value back; `tagInstruments` while an open runs changes only the remembered value;\n    with two opens running, the tag comes back only when the second one ends;"
+            },
+            {
+              "replaces_lines": "592-597",
+              "option": "4",
+              "text": "- **The tag follows the score on screen**, cases in `web/app/play/PlayerShell.test.tsx`: the tag\n  is `sample` once the player mounts and keeps its value once it unmounts; opening `Punk.gp` sets\n  `drums,030`; with `Punk.gp` open, a file that is not a score sends an E103 without the tag and\n  leaves `drums,030`, and so does Cancel on the prompt to replace it; an E105 thrown just after the\n  swap leaves the new score's value; and when the bundled sample's score-loaded event arrives after\n  the visitor's file, the tag keeps the file's value."
+            }
+          ]
+        }
+      ],
+      "spike": {
+        "status": "run",
+        "what": "(1) Required: a throwaway Node script that renders Next 16.3.6's own ErrorBoundaryHandler around a stand-in player whose useEffect (in a second run, useLayoutEffect) calls tagInstruments('sample') and returns clearInstruments, with an error page whose useEffect sends the E901; react and react-dom 19.2.7 under jsdom 29.1.1, NODE_ENV production and development; report.ts modelled as the spec text states it (the latch). (2) The same harness with every option as a small report.ts model, through 14 scenarios and 20 checks: a crash after a swap, a throw inside an effect, a crash during an open, Try again, Back then Play, three stale-open cases (it ends on /, after a new mount, while the new player opens a file), a stale open that fails with E103, and an F-23 overlap. (3) ESLint 9.39.4's Linter with unicorn's recommended config on Sentry.setTag('instruments', undefined), and its autofix. (4) tsc 5.9.3 on option 1's report.ts sketch against Sentry 11.0.0's ErrorEvent and CoreOptions['beforeSend'], with a negative control. (5) Every option's drafts applied to a scratch copy of the spec, then the repo's Prettier, markdownlint-cli2 and cspell.",
+        "result": "(1) Confirmed on both builds: the crashed player's cleanup runs before the error page's effect, so the E901 carries no instruments tag, for a passive or a layout effect alike. Try again, Back then Play, and the development double mount each leave the tag absent for the rest of the visit. (2) Checks passed, of 20, identical in production and development: spec text 10; option 1 as ADV-2 wrote it 18 — its two misses are an open that outlives its player and ends after a new mount or after Try again, writing drums,030 while the sample is on screen; option 1 plus a guard on the swap's tagInstruments only (restore still runs) 20; FEA-1's wider guard with the count reset at mount 19 (a stale E103 after Back then Play carries sample), and with the reset at unmount 17 (an E901 sent during an open carries sample, against F-23); option 2 (FEA-1) 16 — every E901 untagged, plus that stale E103; option 3 (FEA-2) as written, with §6's latch kept, 14 — Back then Play still loses the tag; option 3 with the latch removed and the same swap guard 20; option 4 (SCO-1) 16 — reports from / carry drums,030, and stale opens write wrong values. (3) unicorn/no-useless-undefined does not flag the call: no message, and the autofix leaves it. (4) Option 1's sketch type-checks against Sentry 11.0.0's types (0 errors in the sketch; a beforeSend that returns a string fails). (5) All four options' drafts are Prettier-, markdownlint- and cspell-clean, with no line over 100 columns."
+      },
+      "verification": {
+        "verdict": "pass-with-correction",
+        "verifier": "verify-A.json",
+        "checks": {
+          "section_exists": "Yes: §1 Changed files, the 'Also' bullet (106-113); §2.2 The error pages (140-156, the reportError diff at 148); §2.3 The reporting functions (158-235: the tag functions 178-188, 'When the tag changes' 222-235); §3.2's E901 sentence (388-389); §6 Testing (the tag-lifecycle unit case 571-574, the error pages 579-583, the PlayerShell tag case 592-597); To verify (710-711).",
+          "quotes": "15/15 verbatim, each found exactly once (spec lines 109-110, 148, 211-212, 223, 233, 233-234, 388-389, 573-574, 592-593).",
+          "fix_consistent": "Option 1 (ADV-2 plus a swap guard): also changes §3.3's beforeSend line (425) and removes the To-verify item (710-711), both drafted; keeps ADD-3's goal (no tag on reports from /) with a new mechanism, and makes lap 2's R32 true; contradicts no Decisions row. Option 2 (FEA-1): no section contradicts it, but §2.3 must then say that an E901 carries no tag (drafted), so R32's assumption becomes false by design. Option 3 (FEA-2): contradicts §4's 'That hook is for navigation tracing, which S3 rules out' (491-493) and makes suppressOnRouterTransitionStartWarning (513) unneeded, both drafted; §1's list of tested files (95-97) gains the hook (drafted); §1's new-files row for web/instrumentation-client.ts (84) would ideally name the hook, not drafted because editing that cell makes Prettier re-pad the whole table; as FEA-2 wrote it, §6's latch ('no call changes the tag') stays and still blocks a second mount. Option 4 (SCO-1): reverses ADD-3, which lap 2 applied without asking; no other section contradicts it. Under options 1, 3 and 4 the changelog's lap-2 sentence 'The player removes the tag when it unmounts' (docs/decisions/decision-changelog.md, NH-124 entry) needs a lap-3 line. Every option's drafts, applied to a scratch copy of the spec, pass the repo's Prettier, markdownlint and cspell, with no line over 100 columns."
+        },
+        "central_claim": {
+          "status": "confirmed",
+          "evidence": [
+            "react-dom@19.2.7:cjs/react-dom-client.production.js:11762-11768 — flushPassiveEffects runs commitPassiveUnmountOnFiber(root.current) before commitPassiveMountOnFiber: every passive cleanup, a removed child's included, runs before any new passive effect.",
+            "next@16.3.6:dist/client/components/error-boundary.js:34-65 and :101-118 — the boundary that renders web/app/play/error.tsx replaces its children (the player) with errorComponent, passing error and reset; reset (:39-41) clears the error, so Try again mounts the player again in the same page load.",
+            "Required spike (Next's own ErrorBoundaryHandler; react and react-dom 19.2.7; jsdom 29.1.1; production and development builds) printed: 'player passive cleanup: clearInstruments()' then 'error page effect: reportError(E901 …) -> report carries instruments: (none)'. With a useLayoutEffect the cleanup runs earlier still. After Try again the new mount's tagInstruments('sample') is ignored: (none). A crash during an open is reported inside flushSync, with the tag already off.",
+            "web/app/play/PlayerHeader.tsx:112-113 — Back calls router.back() (next@16.3.6:dist/client/components/app-router-instance.js:286, window.history.back(); the popstate becomes a client-side traverse, app-router.js:284-301) or router.push('/'); :144 the wordmark is a Link to /; web/app/page.tsx:19 Play is a Link to /play. All client-side: one page load and one report.ts module, so a latch set on the first unmount stays.",
+            "web/app/play/page.tsx:6-8 renders only PlayerShell, and there is no web/app/play/layout.tsx, so the /play error boundary wraps the player directly; web/next.config.ts:3-12 sets no cacheComponents, so /play unmounts on a navigation (lap 2's reading of Next's bundled preserving-ui-state guide); :6 reactStrictMode: true mounts twice in development, and the spike shows the latch then leaves no tag even on the first visit.",
+            "web/app/play/PlayerShell.tsx:912 — no await follows the swap's setNotation, so the open's finally (restoreInstruments) runs before React renders the new title: a header crash on the new title starts with the open count at 0 and the tag holding the new score's value — until the unmount cleanup removes it.",
+            "Spec §2.3:187 and §6:573-574 — the tag functions are void and take no token, and 'after clearInstruments, no call changes the tag': the latch is permanent for the page load. report.ts could recognise the mount's call by its value alone (instrumentsValue never returns sample), but cannot tell a stale open's restoreInstruments() or swap-time tagInstruments() from the current player's.",
+            "web/vitest.setup.ts:10 — afterEach(cleanup) unmounts every render, and modules persist within a test file: under the latch every PlayerShell.test.tsx tag case after the first would see no tag unless report.ts gained a test-only reset."
+          ]
+        },
+        "corrections": "1. The related note on unicorn/no-useless-undefined is refuted for the installed eslint-plugin-unicorn 63.0.0: the rule skips any callee whose name matches /^set[A-Z]/ (eslint-plugin-unicorn@63.0.0:rules/no-useless-undefined.js, the setState exception), so Sentry.setTag('instruments', undefined) gets no message and no autofix (ran it). The To-verify item about removing a tag at run time still stands for options 2-4; option 1 drops it for another reason (no setTag call is left). 2. FEA-1's 'report.ts cannot tell a new mount's tagInstruments('sample') from a call by an open that outlived the old player' is imprecise: only the mount passes sample, since instrumentsValue never returns it. What report.ts cannot tell apart is a stale open's restoreInstruments() and swap-time tagInstruments(). The conclusion holds. 3. ADV-2 as written misses two rare cases (18/20): an open that outlives its player and ends after a new mount, or after Try again, writes drums,030 while the sample is on screen. A guard on the swap's tagInstruments() alone, with restoreInstruments() still running, fixes both (20/20). FEA-1's wider guard (skip the restore too) needs a count reset, and both places for it cost something: at mount, a stale open that fails reports its E103 with sample after Back then Play (19/20); at unmount, an E901 sent during an open carries sample, against F-23 (17/20). 4. FEA-1's fix alone mends the second mount but leaves every E901 untagged (16/20). 5. FEA-2 as written keeps §6's latch, so Back then Play still loses the tag (14/20); it needs the latch removed and the same swap guard (20/20). Next 16.3.6 does call the hook for Back and Forward ('traverse': next@16.3.6:dist/client/components/app-router.js:297 → app-router-instance.js:235) and for links and router.push (app-router-instance.js:224). The hook contradicts §4's sentence, and the suppress flag becomes unneeded, because Sentry's warning only checks whether instrumentation-client's text contains onRouterTransitionStart (getsentry/sentry-javascript@11.0.0:packages/nextjs/src/config/withSentryConfig/getFinalConfigObjectUtils.ts:222-233). 6. SCO-1's fix tags reports from / with the last score, and stale opens can still write a value, so it reverses ADD-3; its 'rare' is not measured. 7. The claim all four reviewers share — the unmount clear runs before the error page reports — is confirmed on both React builds, and FEA-2's 'commitPassiveUnmountOnFiber before passive mounts' is exact."
+      },
+      "notes_for_triage": "Two owner questions decide this item. (a) Should an E901 from /play carry the score's instruments? Lap 2's R32 assumed yes, and §2.3 says the tag exists so an issue's Tags panel shows which sets of instruments its reports came from. Yes: option 1 (or 3). No: option 2. (b) May a report from / carry the last score's value after a visit to /play? Yes: option 4 is the least code, but it reverses ADD-3. The reviewers did not agree: each proposed its own fix (ADV-2 is option 1, FEA-1 option 2, FEA-2 option 3, SCO-1 option 4), and only ADV-2 claimed to fix both halves. The evidence supports option 1 — ADV-2's 'decide by page' plus a guard on the swap's tagInstruments() — the only shape that passed all 20 checks without a framework hook. Flip to option 3 if the owner wants the tag to stay in Sentry's scope instead of being added in beforeSend (also 20/20, but it adds the Next hook, rewrites §4 and keeps the setTag To-verify item); flip to option 2 if the answer to (a) is no. What a Drop leaves: every E901, the unhandled report the health number counts, reaches Sentry with no instruments tag; after one Back then Play, one Try again or the development double mount, no report carries the tag for the rest of the visit; and §6's own PlayerShell.test.tsx tag cases cannot pass in one file without a test-only reset in report.ts. No e2e case can check the E901 tag without a crash hook in the app, which the spec rules out, so the PlayerShell.test.tsx unmount case is the only check. For the plan, if option 1 is chosen: addInstrumentsTag can read location.pathname, or event.request.url, which Sentry's HttpContext integration sets in preprocessEvent, before beforeSend (getsentry/sentry-javascript@11.0.0:packages/browser/src/integrations/httpcontext.ts:13-36); Sentry 11's capture-to-beforeSend chain is synchronous for the browser SDK (packages/browser/src/eventbuilder.ts:224-238, packages/core/src/utils/promisebuffer.ts:45-52, packages/core/src/client.ts:310-333 and :1505-1527), so 'no open runs' is judged at the moment of capture, as the scope tag is today; Vitest's jsdom page is /, so tag tests set /play with history.replaceState. The draft's signature uses Sentry's ErrorEvent, the beforeSend parameter type in 11.0.0 (packages/core/src/types/options.ts:577). Option 1 keeps lines 222-232 as they are: 'the tag holds the remembered value' still reads right, because the tag is what reports carry. In every option a hung open keeps the count above 0, so the tag stays off for the rest of the visit (lap 2's known note). An after_draft whose text is empty means: delete those lines.",
+      "evidence_quotes": [
+        "after `clearInstruments`, no call changes the tag;",
+        "the player sets the tag to `sample` when it mounts and removes it when it unmounts;",
+        "When the player unmounts, `clearInstruments()` removes the tag: a report from `/` carries none, and an open still running then changes nothing.",
+        "When the player unmounts, `clearInstruments()` removes the tag: a report from `/` carries none",
+        "useEffect(() => reportError(error, { code: ERROR.unexpectedCrash, handled: false }), [error]);",
+        "so an issue's Tags panel shows which sets of instruments its reports came from",
+        "after `clearInstruments`, no call changes the tag",
+        "the tag is `sample` once the player mounts and gone once it unmounts",
+        "When the player mounts it is `sample`",
+        "a crash while the header draws the new title (E901)"
+      ],
+      "raw_reviewer_findings": [
+        {
+          "raw_id": "FEA-1",
+          "reviewer": "feasibility",
+          "title": "Clearing the tag on unmount blocks every later mount",
+          "severity": "P2",
+          "confidence": 75,
+          "autofix_class": "gated_auto",
+          "finding_type": "error",
+          "why_it_matters": "A visitor who leaves /play and comes back in the same page load sends no instruments tag for the rest of the visit, neither `sample` nor an opened score's value. Leaving and returning is client-side here: Back (PlayerHeader.tsx:112-113) or the wordmark link (:144), then Play (app/page.tsx:19); Try again on the player's error page remounts the player too, and reactStrictMode: true (next.config.ts:6) does the same in development. The spec has the player tag `sample` on every mount but makes clearInstruments final, and with the five listed functions report.ts cannot tell a new mount's tagInstruments('sample') from a call by an open that outlived the old player. A PlayerShell.test.tsx that mounts the player more than once will expose this, and resetting report.ts between tests would hide it rather than fix it.",
+          "suggested_fix": "In §2.3, make clearInstruments end only the player that unmounts: it removes the tag, sets the open count to 0 and forgets the remembered value, and the next mount's tagInstruments('sample') applies as on a first visit. Keep 'an open still running then changes nothing' at the call sites: the player and OpenFileControl each keep a mounted ref, and an open whose component has unmounted skips restoreInstruments and the swap's tagInstruments. In §6, replace 'after clearInstruments, no call changes the tag' with 'after clearInstruments the tag is gone and the open count is 0', and add a PlayerShell.test.tsx case: mount, unmount and mount again gives `sample`, and an open left running across the unmount changes nothing.",
+          "evidence": [
+            "after `clearInstruments`, no call changes the tag;",
+            "the player sets the tag to `sample` when it mounts and removes it when it unmounts;",
+            "When the player unmounts, `clearInstruments()` removes the tag: a report from `/` carries none, and an open still running then changes nothing."
+          ]
+        },
+        {
+          "raw_id": "FEA-2",
+          "reviewer": "feasibility",
+          "title": "Player crash reports always lose the instruments tag",
+          "severity": "P2",
+          "confidence": 75,
+          "autofix_class": "manual",
+          "finding_type": "error",
+          "why_it_matters": "Every E901 from a crashed player reaches Sentry with no instruments tag, so the Tags panel can never show whether player crashes cluster on an instrument. E901 is also the unhandled report that lowers the health number. When web/app/play/error.tsx (or global-error.tsx) replaces the crashed player, React runs the removed player's effect cleanups, including clearInstruments, before the error page's own effect calls reportError: the installed react-dom flushes passive unmounts (commitPassiveUnmountOnFiber) before passive mounts. The spec means the unmount clear for reports from `/` only. Clearing on navigation instead keeps `/` clean while an error page still sees the tag.",
+          "suggested_fix": "Clear the tag when the visitor navigates away from /play, not when the player unmounts: export onRouterTransitionStart from web/instrumentation-client.ts (Next 16 calls it at the start of every App Router navigation) and call clearInstruments there when the target path is not /play. An error page that replaces a crashed player then reports with the instruments of the score that was on screen. Add a case beside web/app/play/error.tsx: with the tag set, its E901 report carries it.",
+          "evidence": [
+            "When the player unmounts, `clearInstruments()` removes the tag: a report from `/` carries none",
+            "useEffect(() => reportError(error, { code: ERROR.unexpectedCrash, handled: false }), [error]);",
+            "so an issue's Tags panel shows which sets of instruments its reports came from"
+          ]
+        },
+        {
+          "raw_id": "ADV-2",
+          "reviewer": "adversarial",
+          "title": "Unmount clear strips crash reports' tag and blocks its return",
+          "severity": "P2",
+          "confidence": 75,
+          "autofix_class": "manual",
+          "finding_type": "error",
+          "why_it_matters": "A crash on /play will never report which instruments were open, and after one crash the tag stays off for the rest of the visit. Next's error boundary unmounts the player before /play's error page sends its E901. React runs every unmount cleanup before any new effect (flushPassiveEffects in the installed react-dom 19.2.7), so clearInstruments() has already removed the tag. And because §6 says no call changes the tag after clearInstruments, a player that mounts again in the same page never gets `sample` or a score's value back. Both re-mounts are client-side: Try again on that error page, and Back then Play. Deciding by page instead of by mount fixes both problems; it also makes lap 2's R32 true ('an E901 sent after a score has loaded carries the tag'), which today it is not.",
+          "suggested_fix": "Decide by page, not by mount. Drop clearInstruments() and its latch. report.ts adds the `instruments` tag in beforeSend, using the value last set, only to events whose page path is /play and only while no open is pending. The player calls tagInstruments('sample') on every mount. In §6, replace 'after clearInstruments, no call changes the tag' with 'a mount after an unmount reads sample', and add an error-page case: an E901 from /play carries the open score's value.",
+          "evidence": [
+            "When the player unmounts, `clearInstruments()` removes the tag: a report from `/` carries none, and an open still running then changes nothing.",
+            "after `clearInstruments`, no call changes the tag",
+            "useEffect(() => reportError(error, { code: ERROR.unexpectedCrash, handled: false }), [error]);",
+            "the tag is `sample` once the player mounts and gone once it unmounts"
+          ]
+        },
+        {
+          "raw_id": "SCO-1",
+          "reviewer": "scope-guardian",
+          "title": "clearInstruments at unmount strips the tag from crash reports",
+          "severity": "P2",
+          "confidence": 75,
+          "autofix_class": "manual",
+          "finding_type": "error",
+          "why_it_matters": "Every E901 from `/play` will reach Sentry without an `instruments` tag, including the case 3.2 describes (the header failing while it draws a newly opened score), because React unmounts the player, running `clearInstruments()`, before the error page's effect calls `reportError` (measured on React 19.2.7 with a boundary shaped like Next's `error.tsx`: cleanup first, then the fallback's effect; lap 2's note R32 assumed the opposite). The contract is also unbuildable from the listed `void` signatures: 'after `clearInstruments`, no call changes the tag' contradicts 'when the player mounts it is `sample`', and Try again re-mounts the player, so a literal build leaves every later report untagged while no listed test re-mounts. What the function protects, a stale tag on an error from the static home page after a visit to `/play`, is rare, and the lap-2 spike (finding 7) asked only for one line saying the tag stays after leaving `/play`; dropping the function removes the contradiction and keeps crash reports tagged.",
+          "suggested_fix": "Drop `clearInstruments()` and the player's unmount call, delete the unit case 'after `clearInstruments`, no call changes the tag' and the PlayerShell case 'gone once it unmounts', and add one sentence to 2.3: when the player unmounts the tag keeps the value of the score last on screen, so an error page's E901 report carries it.",
+          "evidence": [
+            "When the player unmounts, `clearInstruments()` removes the tag: a report from `/` carries none, and an open still running then changes nothing.",
+            "after `clearInstruments`, no call changes the tag",
+            "When the player mounts it is `sample`",
+            "useEffect(() => reportError(error, { code: ERROR.unexpectedCrash, handled: false }), [error]);",
+            "a crash while the header draws the new title (E901)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "F-32",
+      "severity": "P2",
+      "severity_meaning": "should fix — a real gap an implementer will hit",
+      "confidence": 100,
+      "route": "Proposed fix",
+      "autofix_class": "gated_auto",
+      "recommended_action": "Apply (option 1)",
+      "reviewers": ["security-lens", "adversarial"],
+      "promotion": "75 → 100: security-lens and adversarial (feasibility raised it as a residual)",
+      "section": "§4 Releases, environments and source maps (the token check); §1 New files (the `assert-no-auth-token.mjs` row); §6 Testing (the token check)",
+      "title": "The token check skips the page files browsers actually download",
+      "terms_first": "The token check = `web/scripts/assert-no-auth-token.mjs`, the build step lap 2 added at the owner's request (ADD-5): it fails the build when the Sentry auth token's value is in a file browsers download. Prerendered page = the HTML and data files `next build` writes for a static page (`/` and `/play` are both static); a browser downloads them when it opens the page. `NEXT_PUBLIC_` = the name prefix that lets Next.js copy an environment variable into browser JavaScript.",
+      "whats_wrong": "§4 says the check reads every file under `.next/static`, 'which browsers download', and gives as the reason the token is safe today that 'Next.js copies only `NEXT_PUBLIC_…` variables into the page'. But a static page's HTML and its data payload (`play.html`, `play.rsc`, the `.segments` files) are written under `.next/server/app`, and the 404 and 500 pages are copied to `.next/server/pages`; browsers download all of them. Only browser JavaScript is limited to `NEXT_PUBLIC_` variables: a server component such as `web/app/play/page.tsx` can render any variable into the page, or pass it to the client player as a prop. The spike ran the lap-2 draft of the check on a fake build with the token in `.next/server/app/play.html` and `play.rsc`: it passed (exit 0).",
+      "proposed_fix": "Option 1 (recommended by both reviewers): walk `.next/static`, `.next/server` and `public/`, the folders browsers download from, and correct §4's premise: only browser JavaScript is limited to `NEXT_PUBLIC_` variables, and a server component can render any variable into a prerendered page. Update §1's row and §6's test (a fake `.next/server/app/play.html` that holds the token must fail). Option 2: walk every file under `.next` except `.next/cache`, plus `public/` — no folder list to keep current, but wider than ADD-5's words, and it adds a To-verify item (a real production build must not hold the token in a server-only file).",
+      "why_it_works": "The check then reads the files the browser really receives, so the leak the App Router makes easiest — a server value rendered into a static page — fails the build. In the spike both options caught the planted token and named the files, never the value.",
+      "drop_consequence": "Discard it. A later change that renders the token into a page ships it to every visitor of /play while the build stays green, and the check gives a false sense of safety.",
+      "basis": "Next 16.3.6 writes a static App Router page's `.html`, `.rsc` and `.segments` files under `.next/server/app` (export/worker.js:86, export/routes/app-page.js); `.next/static` holds only the client bundles and assets.",
+      "options": [
+        {
+          "option": "1 (recommended by both reviewers)",
+          "name": "The folders browsers download from",
+          "what": "`.next/static`, `.next/server` and `public/`.",
+          "pros": "Matches ADD-5's words ('any file a browser downloads') exactly.",
+          "cons": "A folder list that must follow Next's layout.",
+          "best_when": "The check should do what ADD-5 promised, no more."
+        },
+        {
+          "option": "2",
+          "name": "All of `.next` except the cache",
+          "what": "Every file under `.next` except `.next/cache`, plus `public/`.",
+          "pros": "No folder list to keep current; also catches a token in a server-only file (for example in next.config's `env`).",
+          "cons": "Wider than ADD-5; a server-only copy of the token would fail every production build — read from source as safe in Sentry 11.0.0 and 11.4.0, not run — so it adds a To-verify item.",
+          "best_when": "The owner prefers one simple rule over a folder list."
+        }
+      ],
+      "disposition_hint": "AUTO-RESOLVE candidate, option 1: it completes ADD-5. The owner chose a check for \"any file a browser downloads\", and option 1 makes the check do exactly that. It changes no behaviour, scope or trade-off for visitors; report it in one line. Option 2 is wider than ADD-5's words: mention it in the report, and offer it only if the owner asks.",
+      "scenario": "You add a line to `web/app/play/page.tsx` that passes a server value to `PlayerShell` as a prop, and by mistake the value is `process.env.SENTRY_AUTH_TOKEN`. The production build on Vercel stays green: the token check reads the 31 files under `.next/static` and finds nothing, because the token sits in `.next/server/app/play.html` and `play.rsc`. Every visitor to `/play` now downloads your Sentry token inside the page, and anyone who reads the page source can create releases and upload source maps in your Sentry organization.",
+      "before_after": [
+        {
+          "before": [
+            {
+              "lines": "92",
+              "text": "| `web/scripts/assert-no-auth-token.mjs`     | Fails the build when `SENTRY_AUTH_TOKEN`'s value is in a file under `.next/static`, which browsers download (section 4).                                            |"
+            },
+            {
+              "lines": "494-501",
+              "text": "- **The token never reaches a browser file.** `web/scripts/assert-no-auth-token.mjs` runs at the end\n  of `web`'s `build` script, after the design-system CSS check, and fails the build when the token's\n  value appears in any file under `.next/static`, which browsers download. It prints the files,\n  never the value. Without the token (CI, previews, local builds) it has nothing to check, so only\n  the production build on Vercel runs it for real. The token is safe today without it — Next.js\n  copies only `NEXT_PUBLIC_…` variables into the page, the token is read only in `next.config.ts`,\n  and the wrapper adds only its own `_sentry*` values to the bundle — but nothing else would fail if\n  a later change put it there."
+            },
+            {
+              "lines": "609-612",
+              "text": "- **The token check:** `tooling/assert-no-auth-token.test.mjs`, a sibling of\n  `tooling/assert-design-system-css.test.mjs` under `pnpm run test:tooling`. With a fake token, a\n  fake `.next/static` file that holds it fails the check, and the output names the file but never\n  the value; clean files pass, and so does a build with no token."
+            },
+            {
+              "lines": "710-711",
+              "text": "- How Sentry 11 removes a tag: that `Sentry.setTag('instruments', undefined)` leaves no\n  `instruments` key in the report that is sent."
+            }
+          ],
+          "after_drafts": [
+            {
+              "replaces_lines": "92",
+              "option": "1 (recommended by SEC-1 and ADV-3)",
+              "text": "| `web/scripts/assert-no-auth-token.mjs`     | Fails the build when `SENTRY_AUTH_TOKEN`'s value is in a file browsers download: under `.next/static` or `.next/server`, or in `public/` (section 4).               |"
+            },
+            {
+              "replaces_lines": "494-501",
+              "option": "1 (recommended by SEC-1 and ADV-3)",
+              "text": "- **The token never reaches a browser file.** `web/scripts/assert-no-auth-token.mjs` runs at the end\n  of `web`'s `build` script, after the design-system CSS check, and fails the build when the token's\n  value appears in any file that browsers download: the scripts and styles under `.next/static`, the\n  pages under `.next/server` (each page's `.html` and `.rsc` files, and the 404 and 500 pages), and\n  the files in `public/`. It prints the files, never the value. Without the token (CI, previews,\n  local builds) it has nothing to check, so only the production build on Vercel runs it for real.\n  The token is safe today without it — it is read only in `next.config.ts`, and the wrapper adds\n  only its own `_sentry*` values to the bundle — but nothing else would fail if a later change put\n  it there. Next.js copies only `NEXT_PUBLIC_…` variables into browser JavaScript, but a server\n  component can render any variable into a page, and both pages are static: `next build` writes\n  them as files under `.next/server`, not under `.next/static`."
+            },
+            {
+              "replaces_lines": "609-612",
+              "option": "1 (recommended by SEC-1 and ADV-3)",
+              "text": "- **The token check:** `tooling/assert-no-auth-token.test.mjs`, a sibling of\n  `tooling/assert-design-system-css.test.mjs` under `pnpm run test:tooling`. With a fake token, a\n  fake `.next/static` file that holds it fails the check, and so do a fake\n  `.next/server/app/play.html` and a fake file in `public/`; the output names the file but never\n  the value. Clean files pass, and so does a build with no token."
+            },
+            {
+              "replaces_lines": "92",
+              "option": "2",
+              "text": "| `web/scripts/assert-no-auth-token.mjs`     | Fails the build when `SENTRY_AUTH_TOKEN`'s value is in any file the build writes to `.next`, except `.next/cache`, or in `public/` (section 4).                     |"
+            },
+            {
+              "replaces_lines": "494-501",
+              "option": "2",
+              "text": "- **The token never reaches a browser file.** `web/scripts/assert-no-auth-token.mjs` runs at the end\n  of `web`'s `build` script, after the design-system CSS check, and fails the build when the token's\n  value appears in any file that `next build` writes to `.next`, except the `.next/cache` folder, or\n  in any file in `public/`. That covers every file browsers download — the scripts and styles under\n  `.next/static`, and each page's `.html` and `.rsc` files under `.next/server` — with no list of\n  folders to keep current when Next.js changes where it writes them. It prints the files, never the\n  value. Without the token (CI, previews, local builds) it has nothing to check, so only the\n  production build on Vercel runs it for real. The token is safe today without it — it is read only\n  in `next.config.ts`, and the wrapper hands it only to its own release and upload step and adds\n  only its own `_sentry*` values to the bundle — but nothing else would fail if a later change put\n  it there. Next.js copies only `NEXT_PUBLIC_…` variables into browser JavaScript, but a server\n  component can render any variable into a page, and both pages are static: `next build` writes\n  them as files under `.next/server`, not under `.next/static`."
+            },
+            {
+              "replaces_lines": "609-612",
+              "option": "2",
+              "text": "- **The token check:** `tooling/assert-no-auth-token.test.mjs`, a sibling of\n  `tooling/assert-design-system-css.test.mjs` under `pnpm run test:tooling`. With a fake token, a\n  fake `.next/static` file that holds it fails the check, and so do a fake\n  `.next/server/app/play.html`, a fake `.next/required-server-files.json` and a fake file in\n  `public/`; the output names the file but never the value. The same token in a fake `.next/cache`\n  file passes, and so do clean files and a build with no token."
+            },
+            {
+              "replaces_lines": "710-711",
+              "option": "2",
+              "text": "- How Sentry 11 removes a tag: that `Sentry.setTag('instruments', undefined)` leaves no\n  `instruments` key in the report that is sent.\n- That a production build given the token writes it into no file under `.next` outside\n  `.next/cache`, so the token check passes: Sentry 11 reads the token only for its release and\n  upload step, which runs inside `next build`."
+            }
+          ]
+        }
+      ],
+      "spike": {
+        "status": "run",
+        "what": "Copied the lap-2 draft guard and made two variants: option 1 walks `.next/static`, `.next/server` and `public/`; option 2 walks every file under `.next` except `.next/cache`, plus `public/`. Ran the three guards (and option 1 with the reviewers' exact list, `.next/server/app` in place of `.next/server`) as child processes on nine fake trees laid out like a real build, then read-only on the existing local production build with a random fake token and with a \"token\" equal to the layout metadata description, which only server components render. Applied each option's drafts to a copy of the spec and ran prettier --check, markdownlint-cli2 and cspell with the repository's configs.",
+        "result": "Fake trees: a token rendered into `.next/server/app/play.html` and `play.rsc` passes the lap-2 draft (exit 0) and fails both options (exit 1), whose output names `.next/server/app/play.html` and `.next/server/app/play.rsc` and never the value; a token split across two inline RSC chunks in play.html is caught through play.rsc; a token in `public/alphatab/esm/alphaTab.mjs` fails both options; a token in `.next/required-server-files.json` fails option 2 only; a token in `.next/cache` passes all; clean trees and a build with no token pass all; no run printed the value or half of it. The reviewers' exact list missed a token placed only in `.next/server/pages/500.html`, which a real build cannot produce alone (that file is a copy of `server/app/_global-error.html`). Real build, random token: lap-2 reads 31 files, option 1 175, option 2 433 (219 without a local `.next/dev` folder that a Vercel build never has), each under 0.1 s, all pass. Server-only text: lap-2 passes (0 of 31); option 1 fails naming 15 files; option 2 fails naming 17 (2 in the local `.next/dev`). Both options' drafts pass all three linters; a negative control (a mis-padded table row) makes prettier fail."
+      },
+      "verification": {
+        "verdict": "pass",
+        "verifier": "verify-B.json",
+        "checks": {
+          "section_exists": "Yes: §1 New files, the `assert-no-auth-token.mjs` row (line 92); §4, the bullet 'The token never reaches a browser file' (494-501); §6, 'The token check' (609-612); Non-goals (31-32).",
+          "quotes": "8/8 verbatim (5 distinct; spec lines 92, 495-496, 498-499, 610-611, 31-32)",
+          "fix_consistent": "Consistent with Non-goals ('Both pages are static') and with ADD-5 as recorded in docs/decisions/decision-changelog.md:126-128 ('the build fails when the token's value is in any file a browser downloads'), which today's text implements for one folder only. Text that changes with it: §1's row (92), §4's bullet including its NEXT_PUBLIC_ premise (494-501), §6's token-check test (609-612). §1's test row (93) stays true. No other section names `.next/static`. Option 2 also adds a 'To verify' item (after 711), and its scope is wider than ADD-5's words, so the lap-3 changelog entry would say so."
+        },
+        "central_claim": {
+          "status": "confirmed",
+          "evidence": [
+            "next@16.3.6:dist/export/worker.js:86 — for an App Router page the prerender output folder is `.next/server/app`.",
+            "next@16.3.6:dist/export/routes/app-page.js:102, 111-115, 127, 152 — a static page is written as `<page>.rsc`, `<page>.segments/*.segment.rsc`, `<page>.html` and `<page>.meta` (status and headers only).",
+            "next@16.3.6:dist/build/index.js:2409-2446 — the build copies `server/app/_not-found.html` to `server/pages/404.html` and `server/app/_global-error.html` to `server/pages/500.html`.",
+            "An existing local production build of `web/` (Next 16.3.6, in another checkout of this repository; listed and read only, no build was run, and this worktree has no `web/.next`): `.next/server/app` holds index, play, _not-found and _global-error as `.html`, `.rsc` and `.segments/`; prerender-manifest.json marks `/` and `/play` `compute: static` with `dataRoute: /play.rsc`; the `rsc` block of routes-manifest.json names the `.rsc`, `.segment.rsc` and `.segments` suffixes that client navigation requests.",
+            "Same build: two strings that only server components render are in 0 of the 31 files under `.next/static`. The layout metadata description (web/app/layout.tsx:9) is in the index, play and _not-found pages under `server/app` (each one's `.html`, `.rsc` and `.segments/*` files) and in `server/pages/404.html`; the home tagline (web/app/page.tsx:9) is in `index.html`, `index.rsc` and `index.segments/*`.",
+            "web/app/play/page.tsx:1-8 — `/play` is a server component that renders the client `PlayerShell`; Next's bundled guide (next@16.3.6:dist/docs/01-app/02-guides/data-security.md:141-150) calls passing server data to a client component as a prop an exposure to the client.",
+            "next@16.3.6:dist/docs/01-app/02-guides/environment-variables.md:158-164 — the NEXT_PUBLIC_ rule inlines values 'into any JavaScript sent to the browser'; it says nothing about prerendered HTML.",
+            "getsentry/sentry-javascript@11.0.0:packages/nextjs/src/config/getBuildPluginOptions.ts:327 — across all 35 files under packages/nextjs/src/config (same at 11.4.0), `authToken` is read in this one place: the options for the release and upload step, which runs from a function set on `compiler.runAfterProductionCompile` (withSentryConfig/getFinalConfigObjectBundlerUtils.ts:194). The serialized config in required-server-files.json drops functions (the real build shows `\"compiler\": {}`), `env` gains only `_sentry*` values (withSentryConfig/buildTime.ts:17-82), and the Turbopack rules carry no token (turbopack/constructTurbopackConfig.ts, turbopack/generateValueInjectionRules.ts). So walking all of `.next` except `cache` is not expected to fail a normal production build (read from source, not run).",
+            "Same real build: no environment-variable name from the build shell (npm_config_user_agent, npm_lifecycle_event, PNPM_SCRIPT_SRC_DIR, npm_package_json, NVM_DIR, TERM_PROGRAM) appears in any file under `.next` outside `cache`: Next writes no copy of the environment there.",
+            "web/public at build time — 3 committed sample scores (notation/1-beat.gp, rock-beat.gp, drums.gp5) and 8 files that web/scripts/vendor-alphatab.mjs:23-32 copies from @coderline/alphatab@1.8.4 into the git-ignored public/alphatab/ before every build (4 ESM files, the SoundFont and its licence, the Bravura font and its licence): 11 files, 2.4 MB, all served to browsers. A token reaches them only if a build step writes it there, as vendor-alphatab.mjs writes that folder; reading them costs about 0.01 s, so walking them is cheap cover for ADD-5."
+          ]
+        },
+        "corrections": "None of the reviewers' claims is wrong. Two refinements: (1) the drafts walk all of `.next/server`, not only `.next/server/app`. The content is the same, because the 404 and 500 pages under `.next/server/pages` are byte copies of `server/app/_not-found.html` and `_global-error.html` (and after this spec, `_global-error.html` renders our own `global-error.tsx`); the wider folder also names the copies browsers receive, and the server-only bundles beside them cost nothing to read. (2) `.next/server/app` also holds server-only files (`page.js`, manifests, `.meta`); the files browsers download there are the `.html`, `.rsc` and `.segments/*.segment.rsc` files."
+      },
+      "notes_for_triage": "Two options. Option 1 (recommended by both reviewers, SEC-1 and ADV-3): the folders browsers download — `.next/static`, `.next/server`, `public/` — which is exactly ADD-5's 'any file a browser downloads'. Option 2 (the security-lens question): every file under `.next` except `.next/cache`, plus `public/` — one rule with no folder list, wider than ADD-5 (it also fails when the token sits in a server-only file such as required-server-files.json, for example if someone puts it in next.config's `env`). The evidence supports both. Nothing found would make option 2 fail a normal production build (Sentry 11.0.0 and 11.4.0 read the token in one place; the serialized config drops the hook's function), but that is read from source, not run, so option 2 adds a 'To verify' item. Flip to option 2 if the owner prefers no folder list to keep current (a hand-kept list must follow Next's layout: the reviewers' `server/app` already leaves out `server/pages`, where Next copies the 404 and 500 pages); keep option 1 if the check should match ADD-5's words exactly. Either way an encoded copy (base64, URL-encoded) still passes: a residual, not raised here. The plan note recorded for ADD-5 ('walks .next/static') changes with either option. Interaction with FYI-16 option 1: once `errorHandler` throws, a local build with a fake token fails at Sentry's release step before the token check runs, so option 2's 'To verify' build would run with the default handler. A Drop leaves the gap: a server component that renders the token into `/` or `/play` ships it with a green build, against ADD-5's decision.",
+      "evidence_quotes": [
+        "fails the build when the token's value appears in any file under `.next/static`, which browsers download.",
+        "Fails the build when `SENTRY_AUTH_TOKEN`'s value is in a file under `.next/static`, which browsers download (section 4).",
+        "Next.js copies only `NEXT_PUBLIC_…` variables into the page",
+        "With a fake token, a fake `.next/static` file that holds it fails the check",
+        "Both pages are static."
+      ],
+      "raw_reviewer_findings": [
+        {
+          "raw_id": "SEC-1",
+          "reviewer": "security-lens",
+          "title": "Token check skips the prerendered pages browsers download",
+          "severity": "P2",
+          "confidence": 75,
+          "autofix_class": "gated_auto",
+          "finding_type": "error",
+          "why_it_matters": "A later change that renders SENTRY_AUTH_TOKEN into a page would ship it to every visitor with the build still green: both pages are static, so `next build` writes their HTML, `.rsc` payload and `.segments` files under `.next/server/app` (next/dist/export/worker.js sets that folder for app pages; export/routes/app-page.js writes the three files), and the check reads only `.next/static`. That is the App Router's usual leak path — a Server Component such as web/app/play/page.tsx passing a server-only value to the client PlayerShell as a prop — and Next's NEXT_PUBLIC_ rule does not cover it, because that rule governs inlining into JavaScript, not what server code renders at build time with the full build environment. The decision approved in lap 2 says the build fails when the token is in 'any file a browser downloads', and the HTML document is the first such file; widening the walk makes the script, its test and the section heading match that decision.",
+          "suggested_fix": "Walk `.next/static`, `.next/server/app` (the prerendered `.html`, `.rsc` and `.segments` files of `/` and `/play`) and `public/`, and say so in §1's row and §4's bullet, where the premise becomes 'Next.js inlines only `NEXT_PUBLIC_…` variables into browser JavaScript'. §6's token-check test adds a fake `.next/server/app/play.html` that holds the token and must fail the check.",
+          "evidence": [
+            "fails the build when the token's value appears in any file under `.next/static`, which browsers download.",
+            "Fails the build when `SENTRY_AUTH_TOKEN`'s value is in a file under `.next/static`, which browsers download (section 4).",
+            "Next.js copies only `NEXT_PUBLIC_…` variables into the page",
+            "With a fake token, a fake `.next/static` file that holds it fails the check",
+            "Both pages are static."
+          ]
+        },
+        {
+          "raw_id": "ADV-3",
+          "reviewer": "adversarial",
+          "title": "Token check skips the prerendered pages browsers actually download",
+          "severity": "P2",
+          "confidence": 75,
+          "autofix_class": "gated_auto",
+          "finding_type": "error",
+          "why_it_matters": "The check would pass the leak it is most likely to meet. `next build` writes the HTML and RSC payload that browsers load for / and /play under .next/server/app, not under .next/static: a local build holds index.html, play.html, *.rsc and *.segments there. Both pages are Server Components, which can render any environment variable into those files, or pass one to a client component as a prop. Only client bundles are limited to NEXT_PUBLIC_ variables. The document's reason the token is safe today is the premise that sent the scan to the wrong folder.",
+          "suggested_fix": "Scan every .html and .rsc file under .next/server/app as well as .next/static. Reword the sentence to: 'Next.js copies only NEXT_PUBLIC_… variables into client bundles, but a Server Component can render any variable into a prerendered page.' Add a tooling test case with the fake token in a .next/server/app/index.html.",
+          "evidence": [
+            "fails the build when the token's value appears in any file under `.next/static`, which browsers download.",
+            "Next.js copies only `NEXT_PUBLIC_…` variables into the page",
+            "Fails the build when `SENTRY_AUTH_TOKEN`'s value is in a file under `.next/static`, which browsers download (section 4)."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "F-33",
+      "severity": "P2",
+      "severity_meaning": "should fix — a real gap an implementer will hit",
+      "confidence": 100,
+      "route": "Proposed fix",
+      "autofix_class": "gated_auto",
+      "recommended_action": "Apply (option 1)",
+      "reviewers": ["adversarial", "product-lens"],
+      "promotion": "75 → 100: adversarial and product-lens (security-lens and scope-guardian raised it as residuals)",
+      "severity_note": "Merged at adversarial's P1 (product-lens rated it P2); verification corrected it to P2: nothing ships broken. At ship time production has one host and step 3 lists it, so the Goal holds; reports stop only after the separate domain work ships, or on a deployment's own URL.",
+      "section": "§5 Setup, step 3 (Allowed Domains) and step 6 (the first-deploy check)",
+      "title": "Allowed Domains will silently drop every report once the site moves to notationhero.com",
+      "terms_first": "Allowed Domains = a Sentry project setting that lap 2 put in setup step 3 (FYI-14): Sentry accepts a report from a browser only if the page's address is on this list. The site is served at `notation-hero-web.vercel.app` today; the repository already plans the brand domain `notationhero.com` as separate work (README.md, web/README.md). Release Health ping = the small report sent on every visit, which the health number counts. Relay = the Sentry server that receives reports.",
+      "whats_wrong": "Step 3 replaces the default `*` with 'the production domain': one host. Relay discards every report whose page address matches no entry — error reports and Release Health pings alike — and records it only as 'Disallowed Domain' on the Stats page. No issue opens, so no alert fires. When the separate domain work points `notationhero.com` at the site, monitoring stops with no sign, and the empty issue list reads as a healthy site. The same rule makes step 6 fail with no visible cause if it is run from a deployment's own `*.vercel.app` address. Lap 2's verification of FYI-14 noted that a custom domain must be added too, but that note never reached the spec.",
+      "proposed_fix": "Option 1 (product-lens; the evidence favours it): list two entries now — `notation-hero-web.vercel.app` and `*.notationhero.com` (Relay's pattern also matches the bare `notationhero.com` and `www.notationhero.com`) — so the domain work has nothing to remember. Option 2 (adversarial): list only today's host, and tell the domain work to add `notationhero.com` and `www.notationhero.com` before the new domain serves visitors. In both options step 6 runs on a listed domain.",
+      "why_it_works": "Relay's own matcher, compiled and run, accepts `notationhero.com` and `www.notationhero.com` under `*.notationhero.com` and still rejects look-alikes (`evilnotationhero.com`, `notationhero.com.evil.example`), so option 1 keeps the guard on the public DSN and survives the move. Option 2 works only if whoever wires the domain reads this spec.",
+      "drop_consequence": "Discard it. On the day the site moves to notationhero.com, every error report and every visit ping is thrown away, no alert fires, and the empty issue list looks like a healthy site.",
+      "basis": "getsentry/relay@c4e99303: relay-filter/src/csp.rs (the matcher: an entry needs no scheme or port, and `*.domain.com` matches the domain and its subdomains) and relay-server's project info.rs (an envelope whose origin matches no entry is discarded as `cors`, shown as 'Disallowed Domain' on Stats).",
+      "options": [
+        {
+          "option": "1 (product-lens; the evidence favours it)",
+          "name": "List the brand domain now",
+          "what": "`notation-hero-web.vercel.app` and `*.notationhero.com`; step 6 on a listed domain.",
+          "pros": "Nothing to remember on the day of the move; the guard against misuse stays.",
+          "cons": "The list names a host that does not serve the site yet; the wildcard also admits the ADR's planned `api.` and `auth.` hosts, which run no page with this DSN.",
+          "best_when": "The move should not depend on anyone reading this spec."
+        },
+        {
+          "option": "2 (adversarial)",
+          "name": "List today's host, with a reminder",
+          "what": "Today's host only; step 3 tells the domain work to add `notationhero.com` and `www.notationhero.com` first; step 6 on a listed domain.",
+          "pros": "The list names only hosts that serve the site today.",
+          "cons": "Works only if the domain work reads this spec; README.md or the Jira ticket would need the same reminder.",
+          "best_when": "The owner wants the list to hold only live hosts."
+        }
+      ],
+      "disposition_hint": "PICKER — a real choice between two options: which hosts the list names now. The evidence favours option 1; flip to option 2 if the owner wants the list to name only hosts that serve the site today. P2 after verification.",
+      "scenario": "The separate domain ticket points `notationhero.com` at the site, and visitors start using it. A visitor opens a file that is not a score and sees \"Error E103\", but Sentry discards the report because `notationhero.com` is not in Allowed Domains: no issue opens, no email arrives, and Release Health stops counting visits. The only trace is a \"Disallowed Domain\" count on Sentry's Stats page, which you have no reason to open, so the empty issue list reads as a healthy site.",
+      "before_after": [
+        {
+          "before": [
+            {
+              "lines": "533-537",
+              "text": "3. Project settings → Security & Privacy → turn on **\"Prevent Storing of IP Addresses\"**. Then\n   Project settings → General Settings → Client Security → **Allowed Domains**: replace the default\n   `*` with the production domain. Sentry then rejects a report that a browser sends with this DSN\n   from any other site. A request with no `Origin` or `Referer` header still gets through, so this\n   limits misuse of the public DSN; it does not stop it."
+            },
+            {
+              "lines": "542-547",
+              "text": "6. After the first production deploy, open a file that is not a score. An E103 warning appearing in\n   Sentry, with the file's type and size and without its name, proves the whole path — and its\n   email (step 2) proves the alert. Its stack must show our own frame, the `PlayerShell.tsx` line\n   that calls `loadScoreFromBytes`, with readable names and the code around it, which proves the\n   source maps; the frames above it are AlphaTab's and stay minified (see \"Known limits\"). Its\n   release must equal the version in the wordmark's tooltip."
+            }
+          ],
+          "after_drafts": [
+            {
+              "replaces_lines": "533-537",
+              "option": "1 (product-lens, PRO-1; the evidence favours it)",
+              "text": "3. Project settings → Security & Privacy → turn on **\"Prevent Storing of IP Addresses\"**. Then\n   Project settings → General Settings → Client Security → **Allowed Domains**: replace the default\n   `*` with two entries, one per line: `notation-hero-web.vercel.app`, the production domain today,\n   and `*.notationhero.com`, the brand domain that a separate ticket will point at this site (the\n   pattern also matches `notationhero.com` itself). Sentry then rejects a report that a browser\n   sends with this DSN from any other site, and every Release Health ping from there: no issue\n   opens, no alert fires, and only the Stats page counts them, as \"Disallowed Domain\". A request\n   with no `Origin` or `Referer` header still gets through, so this limits misuse of the public\n   DSN; it does not stop it."
+            },
+            {
+              "replaces_lines": "533-537",
+              "option": "2 (adversarial, ADV-1)",
+              "text": "3. Project settings → Security & Privacy → turn on **\"Prevent Storing of IP Addresses\"**. Then\n   Project settings → General Settings → Client Security → **Allowed Domains**: replace the default\n   `*` with the production domain, `notation-hero-web.vercel.app`. Sentry then rejects a report\n   that a browser sends with this DSN from any other site, and every Release Health ping from\n   there: no issue opens, no alert fires, and only the Stats page counts them, as \"Disallowed\n   Domain\". So the separate ticket that points `notationhero.com` at this site adds that domain,\n   and its `www` host, to this list before the domain serves visitors. A request with no `Origin`\n   or `Referer` header still gets through, so this limits misuse of the public DSN; it does not\n   stop it."
+            },
+            {
+              "replaces_lines": "542-547",
+              "option": "1 and 2 (the same step-6 change in both)",
+              "text": "6. After the first production deploy, open the site at a domain that step 3 lists. A\n   deployment's own address, such as `notation-hero-web-<id>.vercel.app`, is not on that list, so\n   Sentry rejects its reports. Open a file that is not a score. An E103 warning appearing in\n   Sentry, with the file's type and size and without its name, proves the whole path — and its\n   email (step 2) proves the alert. Its stack must show our own frame, the `PlayerShell.tsx` line\n   that calls `loadScoreFromBytes`, with readable names and the code around it, which proves the\n   source maps; the frames above it are AlphaTab's and stay minified (see \"Known limits\"). Its\n   release must equal the version in the wordmark's tooltip."
+            }
+          ]
+        }
+      ],
+      "spike": {
+        "status": "run",
+        "what": "Compiled Relay's SchemeDomainPort and matches_any_origin, copied verbatim from getsentry/relay@c4e99303:relay-filter/src/csp.rs, with rustc 1.94 (edition 2024), and ran 12 origin and list pairs. Applied each option's drafts to a copy of the spec and ran prettier --check, markdownlint-cli2 and cspell with the repository's configs.",
+        "result": "With only `notation-hero-web.vercel.app` listed: the production domain is accepted; a per-deployment URL, a branch URL, `notationhero.com` and `www.notationhero.com` are rejected. With `*.notationhero.com` added: `notationhero.com` and `www.notationhero.com` are accepted, while `evilnotationhero.com` and `notationhero.com.evil.example` are still rejected. A bare `notationhero.com` entry does not cover `www.notationhero.com`. Both drafts pass all three linters."
+      },
+      "verification": {
+        "verdict": "pass-with-correction",
+        "verifier": "verify-B.json",
+        "checks": {
+          "section_exists": "Yes: §5 Setup, step 3 (533-537) and step 6 (542-547); the Goal (16); step 2 (531-532).",
+          "quotes": "5/5 verbatim (spec lines 534-536, 542, 535, 16, 531-532)",
+          "fix_consistent": "Consistent with D5 (production only) and with lap 2's FYI-14, which this refines: the list stays a production list. Option 1 adds a second entry; option 2 adds an instruction for the domain ticket. Both change step 6's first sentence so the smoke test runs at a listed domain. No other section names Allowed Domains. The lap-2 changelog bullet ('setup step 3 sets Allowed Domains to the production domain', docs/decisions/decision-changelog.md:132) stays true for option 2 and becomes two entries for option 1, which the lap-3 entry would record. cspell.json already lists `notationhero`, so it needs no change."
+        },
+        "central_claim": {
+          "status": "confirmed",
+          "evidence": [
+            "README.md:150, 156 and web/README.md:30 — production is served at notation-hero-web.vercel.app today, and 'Domain wiring (`notationhero.com`) is a separate ticket'. docs/decisions/2026-07-08-fe-nextjs-vercel-aws-bff-adr.md:51 plans 'branded `notationhero.com` / `api.notationhero.com` everywhere the user looks'.",
+            "getsentry/relay@c4e99303:relay-server/src/services/projects/project/info.rs:140-143, 216-235 — every envelope, error events and Release Health sessions alike, whose origin matches no allowed domain is discarded with DiscardReason::Cors; an envelope with no origin is accepted.",
+            "getsentry/relay@c4e99303:relay-filter/src/csp.rs:62-119, 121-165 — an entry needs no scheme or port (a missing part matches anything), and '`*.domain.com`: matches domain.com and any subdomains' (csp.rs:128); Relay's own test at csp.rs:342 has `*.abc.com:85` match `http://abc.com:85`.",
+            "getsentry/relay@c4e99303:relay-server/src/services/outcome/mod.rs:436 — the discard is recorded as reason `cors`; getsentry/sentry@a86c9bd3:static/app/views/organizationStats/getReasonGroupName.ts:159 groups `cors` as `disallowed_domain` on the Stats page. No issue is created, so the step-2 issue alert cannot fire.",
+            "getsentry/sentry@a86c9bd3:static/app/views/settings/projectGeneralSettings/index.tsx:661-666, 861 — Allowed Domains takes one entry per line ('Separate multiple entries with a newline'), with `*.example.com` among its examples.",
+            "Vercel's Deployment Protection docs (vercel.com/docs/deployment-protection): Standard Protection 'protects all domains except production domains', and with it 'the production generated deployment URL becomes restricted'. So when the project uses it, only signed-in members reach a deployment's own URL, and the step-6 trap is mainly the owner's.",
+            "Severity: nothing breaks at ship time. Production has one host today and step 3 lists it, so the Goal (line 16) holds; reports stop only when the domain ticket ships, or for a production deployment's own URL (as in step 6). That is P2 (a real gap an implementer will hit), not P1."
+          ]
+        },
+        "corrections": "Severity: P2, not P1 (ADV-1). Nothing ships broken: at ship time production has one host and step 3 lists it, so the Goal holds; reports stop only after the separate domain ticket ships, or for a deployment's own URL. Everything else holds: `*.notationhero.com` does match the bare domain (PRO-1, confirmed by running Relay's matcher), error reports and Release Health pings are both discarded, and only Stats shows it. One refinement to ADV-1's fix: the reminder must name the `www` host (or use the wildcard), because a bare `notationhero.com` entry does not match `www.notationhero.com`."
+      },
+      "notes_for_triage": "Two options. Option 1 (product-lens, PRO-1): list `notation-hero-web.vercel.app` and `*.notationhero.com` now, so the domain ticket has nothing to remember. Option 2 (adversarial, ADV-1): list only today's host and tell the domain ticket to add the new one; that works only if that ticket's implementer reads this spec, so README.md:156 or the Jira ticket would need the same reminder, a file §7 does not list. The evidence favours option 1: the matching is confirmed, only the owner controls DNS for notationhero.com, and the extra subdomains the wildcard admits (the ADR's planned `api.` and `auth.` hosts) run no page with this DSN. Flip to option 2 if the owner wants the list to name only hosts that serve the site today. The step-6 change is the same in both options. The reviewers' related question (should the domain ticket repeat step 6 from the new domain, so one E103 proves reports still arrive?) is cheap and fits either option, but belongs to that ticket. A Drop leaves the domain move as a silent end of monitoring, and step 6 fails with no visible cause if run from a deployment's own URL.",
+      "evidence_quotes": [
+        "Project settings → General Settings → Client Security → **Allowed Domains**: replace the default `*` with the production domain. Sentry then rejects a report that a browser sends with this DSN from any other site.",
+        "After the first production deploy, open a file that is not a score.",
+        "`*` with the production domain. Sentry then rejects a report that a browser sends with this DSN",
+        "Every error a visitor meets in `web/` reaches Sentry — whether our code catches it or not",
+        "Each new kind of error or warning, and each fixed one that comes back, then sends one email."
+      ],
+      "raw_reviewer_findings": [
+        {
+          "raw_id": "ADV-1",
+          "reviewer": "adversarial",
+          "title": "Allowed Domains will silently reject everything after the domain move",
+          "severity": "P1",
+          "confidence": 75,
+          "autofix_class": "gated_auto",
+          "finding_type": "omission",
+          "why_it_matters": "Error monitoring will go dark, with no signal, on the day the site moves to notationhero.com. The repository README already lists that move as a separate ticket. Step 3 ties the Sentry project to today's host, so every report and every Release Health ping from a new host is rejected. Sentry only counts these as 'Disallowed Domain' on its Stats page. No alert fires, because no issue ever arrives, and an empty issue list looks like 'no errors'. The same rejection makes step 6 look broken if it is run from a deployment's own *.vercel.app address instead of the production domain.",
+          "suggested_fix": "In step 3, list every host production is served from (today notation-hero-web.vercel.app, per web/README.md) and add: 'When notationhero.com is wired, add it, and any www host, to this list before it serves visitors.' In step 6, say to open the site on a listed production domain.",
+          "evidence": [
+            "Project settings → General Settings → Client Security → **Allowed Domains**: replace the default `*` with the production domain. Sentry then rejects a report that a browser sends with this DSN from any other site.",
+            "After the first production deploy, open a file that is not a score."
+          ]
+        },
+        {
+          "raw_id": "PRO-1",
+          "reviewer": "product-lens",
+          "title": "The planned notationhero.com move would silently stop every report",
+          "severity": "P2",
+          "confidence": 75,
+          "autofix_class": "gated_auto",
+          "finding_type": "omission",
+          "why_it_matters": "When the separate domain-wiring ticket points notationhero.com at the site (README.md: 'Domain wiring (notationhero.com) is a separate ticket'), Sentry will discard every error report and every Release Health ping sent from the new domain, because step 3 allows only today's production domain. Nothing is stored, so no issue opens and the step-2 alert never fires: the owner reads the silence as a healthy site, and the Goal fails with no sign (Relay drops a report whose Origin matches no allowed domain, DiscardReason::Cors, shown only as 'Disallowed Domain' in Stats). Lap 2's verification noted that a custom domain must be added too, but the note never reached the spec. Listing the brand domain now costs nothing, because only the owner can serve pages on it, and the domain ticket then has nothing to remember.",
+          "suggested_fix": "In setup step 3, replace 'replace the default `*` with the production domain.' with: 'replace the default `*` with two entries: the production domain, `notation-hero-web.vercel.app`, and `*.notationhero.com`, the brand domain that a separate ticket will point at this site (Sentry's pattern also matches the bare `notationhero.com`). Sentry discards every report and every Release Health ping from a domain that is not on this list, and no alert fires.'",
+          "evidence": [
+            "`*` with the production domain. Sentry then rejects a report that a browser sends with this DSN",
+            "Every error a visitor meets in `web/` reaches Sentry — whether our code catches it or not",
+            "Each new kind of error or warning, and each fixed one that comes back, then sends one email."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "F-34",
+      "severity": "P2",
+      "severity_meaning": "should fix — a real gap an implementer will hit",
+      "confidence": 75,
+      "route": "Proposed fix",
+      "autofix_class": "gated_auto",
+      "recommended_action": "Apply (option 1)",
+      "reviewers": ["design-lens"],
+      "promotion": "none (one reviewer; a scope-guardian residual about the banner was folded in)",
+      "section": "§2.4 Every handled failure ('E204 counts visible time only'); §6 Testing ('The font clock')",
+      "title": "One music-font failure sends E203 and then a false E204, and E204 can fire again after a tab switch",
+      "terms_first": "E203 = the music font failed to download; E204 = the music font did not arrive within 60 seconds. Both are sent as unhandled errors. Lap 2's F-29 (the owner chose 'pause and resume') made E204's 60 seconds count only while the page is visible, and named one event that ends the clock: the first finished render (`renderFinished`). The banner = the player's alert line that shows the code.",
+      "whats_wrong": "§2.4 ends the clock only at the first `renderFinished`. But the E203 handler (`web/app/play/NotationSurface.tsx:115-120`) never stops the 60-second timer, and a failed font download never finishes a render, so E204 follows E203 after 60 visible seconds: a second unhandled issue with its own email, saying the download hung when it failed. The banner switches from the E203 text to E204 and comes back after a dismissal. And once E204 has fired, nothing says the clock is over: 'it continues with the time left when the page is visible again' lets a later tab switch send E204 again. A jsdom model of the spec as written showed all three.",
+      "proposed_fix": "Option 1 (recommended by verification): a paragraph that ends the clock for good at the first of three events — a finished render, the E203 report (that failure is already known and reported), or the E204 report itself — says why, and adds that the same clock drives the banner, so the banner keeps the E203 text. Option 2 (the reviewer's own wording): the same rule written into the existing sentence. Both: §6's 'The font clock' gains two cases — after a font download failure, 60 visible seconds raise no E204; after an E204, hiding and showing the tab raises no second one — and notes that jsdom has no `document.fonts`, so the test stubs it.",
+      "why_it_works": "The clock stops as soon as the outcome is known, so each failure sends exactly one report and the banner keeps the true reason. In the model the fix sends one report, keeps the E203 text, and leaves the three existing §6 cases unchanged.",
+      "drop_consequence": "Discard it. A visitor whose font download fails sends two unhandled errors, the second one false, and sees the banner's reason change; after a real E204, a tab switch can send it again.",
+      "basis": "`web/app/play/NotationSurface.tsx:115-120` (E203) never clears the timer; :125-130 (E204) sets the banner text and shows a dismissed banner again; only `renderFinished` (:155-160) clears it.",
+      "options": [
+        {
+          "option": "1 (recommended by verification)",
+          "name": "A paragraph with the reason",
+          "what": "DES-1's rule, why an E203 ends the clock, and the banner sentence.",
+          "pros": "Says why; covers the banner, which one timer also drives.",
+          "cons": "A few more lines.",
+          "best_when": "Always, unless the shortest text matters."
+        },
+        {
+          "option": "2",
+          "name": "The reviewer's wording, in place",
+          "what": "The same rule inside the existing sentence.",
+          "pros": "The smallest edit.",
+          "cons": "Keeps the idiom 'for good', puts two colons in one sentence, and says nothing about the banner.",
+          "best_when": "The shortest change is preferred."
+        }
+      ],
+      "disposition_hint": "AUTO-RESOLVE candidate, option 1: it completes the owner's F-29 choice (E204 only when the font really never arrived) and removes a false report. The banner keeps the true reason instead of switching to a wrong one; today, before this spec, it already switches. Report it in one line. If the triage half reads the banner change as a behaviour change, ask instead.",
+      "scenario": "You open /play on a weak hotel network, the music-font download fails, and the banner reads 'Error E203: the music font could not be downloaded'; you dismiss it. About a minute later the banner returns, now reading 'Error E204: the music font did not arrive within 60 seconds', and the owner's Sentry gains a second issue, with its own email, saying the download hung when it failed. On another visit the download really hangs and E204 is sent at 60 seconds; you switch to another tab and back, and a literal reading of 'it continues with the time left' sends E204 again.",
+      "before_after": [
+        {
+          "before": [
+            {
+              "lines": "283-290",
+              "text": "**E204 counts visible time only.** AlphaTab 1.8.4 starts its first render from an animation\nframe, and a browser runs none in a hidden tab, so a player opened in a background tab draws\nnothing there while a plain timer keeps counting. The 60 seconds therefore run only while\n`document.visibilityState` is `visible`: a player opened in a background tab starts the clock when\nthe tab is first shown, a `visibilitychange` to `hidden` stops it, it continues with the time left\nwhen the page is visible again, and the first `renderFinished` stops it for good, so a later tab\nswitch never starts it again. Without this, a background tab left for a minute sends an unhandled\nE204 that lowers the health number although nothing failed."
+            },
+            {
+              "lines": "600-604",
+              "text": "- **The font clock**, a test beside `web/app/play/NotationSurface.tsx`, with fake timers and a\n  stubbed `document.visibilityState`: two hidden minutes raise no E204; 40 visible seconds, a hidden\n  minute, then 20 more visible seconds raise one; and once a render has finished, hiding and showing\n  the tab raises none a minute later. The end-to-end lane cannot cover this: headless Chromium keeps\n  every page visible."
+            }
+          ],
+          "after_drafts": [
+            {
+              "replaces_lines": "283-290",
+              "option": "1 (recommended by verification: DES-1's rule, plus why an E203 ends the clock and the banner sentence)",
+              "text": "**E204 counts visible time only.** AlphaTab 1.8.4 starts its first render from an animation\nframe, and a browser runs none in a hidden tab, so a player opened in a background tab draws\nnothing there while a plain timer keeps counting. The 60 seconds therefore run only while\n`document.visibilityState` is `visible`: a player opened in a background tab starts the clock when\nthe tab is first shown, a `visibilitychange` to `hidden` stops it, and it continues with the time\nleft when the page is visible again. Without this, a background tab left for a minute sends an\nunhandled E204 that lowers the health number although nothing failed.\n\n**Three events stop the clock permanently.** The first finished render, an E203, or the E204\nitself stops it, and after that a tab switch never starts it again. An E203 stops it because\nAlphaTab never draws once the font download has failed: without this, every E203 would be\nfollowed by a second unhandled report when the 60 visible seconds end, an E204 that says the font\nis late when it has already failed. The same clock also sets the banner's E204 text, so after an\nE203 the banner keeps its E203 text, and the clock does not show it again after the visitor\ndismisses it."
+            },
+            {
+              "replaces_lines": "283-290",
+              "option": "2 (DES-1's own suggested wording, in place: the reviewers' recommendation)",
+              "text": "**E204 counts visible time only.** AlphaTab 1.8.4 starts its first render from an animation\nframe, and a browser runs none in a hidden tab, so a player opened in a background tab draws\nnothing there while a plain timer keeps counting. The 60 seconds therefore run only while\n`document.visibilityState` is `visible`: a player opened in a background tab starts the clock when\nthe tab is first shown, a `visibilitychange` to `hidden` stops it, it continues with the time left\nwhen the page is visible again, and the clock ends for good at the first of three events: a\nfinished render, the E203 report (that failure is already known and reported), or the E204 report\nitself, so a later tab switch can never start it again. Without this, a background tab left for a\nminute sends an unhandled E204 that lowers the health number although nothing failed."
+            },
+            {
+              "replaces_lines": "600-604",
+              "option": "only (goes with option 1 or option 2 above)",
+              "text": "- **The font clock**, a test beside `web/app/play/NotationSurface.tsx`, with fake timers, a stubbed\n  `document.visibilityState` and a stub `document.fonts` (jsdom has none): two hidden minutes raise\n  no E204; 40 visible seconds, a hidden minute, then 20 more visible seconds raise one; once a\n  render has finished, hiding and showing the tab raises none a minute later; after an E203, 60\n  visible seconds raise no E204 and the banner still shows E203; and once an E204 has been raised,\n  hiding and showing the tab raises no second one. The end-to-end lane cannot cover the hidden-tab\n  cases: headless Chromium keeps every page visible."
+            }
+          ]
+        }
+      ],
+      "spike": {
+        "status": "run",
+        "what": "A Node model run in jsdom 29.1.1 (the version the web package's Vitest 4.1.11 lane resolves; pretendToBeVisual on, as Vitest sets it), with a hand-made fake clock, a stub document.fonts EventTarget that raises a real 'loadingerror' event, and real visibilitychange events. Three models: TODAY, a transcription of web/app/play/NotationSurface.tsx:107-136 and :155-167; SPEC, the section 2.4 text (visible-time clock, only renderFinished ends it, the reports where the section 2.4 table puts them), with 'the time left' after a firing read two literal ways — (a) the stored time left, (b) 60 s minus the visible time so far; FIX, SPEC plus the reviewer's end states at E203 and E204. The real component was not mounted: the visible-time clock is not written yet, and running Vitest would write its cache inside the worktree.",
+        "result": "Font fails at 2 s, banner dismissed at 10 s: TODAY shows the banner again at 60 s with the E204 text; SPEC (both readings) sends E203 at 2 s and E204 at 60 s and shows the dismissed banner again with the E204 text; FIX sends E203 only and the banner stays dismissed. Download hangs, E204 at 60 s, tab hidden at 90 s and shown at 100 s: SPEC sends a second E204 (reading a at 160 s, reading b at 100 s); FIX sends one. The same with a pause before the firing (E204 at 120 s, hide/show at 130/140 s): SPEC sends a second E204 (160 s / 140 s); FIX one. The three section 6 cases (two hidden minutes; 40 s visible, 60 s hidden, 20 s visible; a render, then hide and show) give the same result in SPEC and FIX: none, one at 120 s, none. A font that arrives at 70 s after an E204 still clears the banner in FIX. jsdom 29.1.1 has no document.fonts (typeof is 'undefined'). The drafted text, applied to a copy of the spec, passes Prettier (prettier.config.mjs), markdownlint-cli2 (.markdownlint.yaml) and cspell (cspell.json) with 0 issues, and every `before` matches the spec at 2f68d380 line for line."
+      },
+      "verification": {
+        "verdict": "pass",
+        "verifier": "verify-C.json",
+        "checks": {
+          "section_exists": "Yes: section 2.4 'E204 counts visible time only' (spec lines 283-290) and the section 6 bullet 'The font clock' (lines 600-604).",
+          "quotes": "3/3 verbatim (spec lines 288, 278, 285).",
+          "fix_consistent": "Consistent. It also needs the section 6 'The font clock' bullet (lines 600-604, drafted). Nothing else in the spec says when the clock ends: the section 2.4 rows for E203 and E204 ('error, unhandled', lines 278-279) and the lap-2 changelog bullet ('Chosen over restarting the clock at each return, which could leave a real hang unreported') stay true. The lap-2 plan note for F-29 (the first renderFinished also removes the visibilitychange listener) now applies at all three end events. The existing e2e case 'a music font that arrives after the 60 s backstop clears the error' (web/e2e/player.e2e.ts:230-258) still holds: ending the clock at E204 does not touch the renderFinished handler that clears the banner."
+        },
+        "central_claim": {
+          "status": "confirmed",
+          "evidence": [
+            "web/app/play/NotationSurface.tsx:115-120 — the loadingerror listener (the E203 site, :117) sets the banner text and setDismissed(false), and never clears timeoutRef: the 60-second timer keeps running after an E203.",
+            "web/app/play/NotationSurface.tsx:125-130 — the timer (the E204 site, :126) sets the E204 text and setDismissed(false), so it replaces the E203 text and shows a dismissed banner again. Section 2.4 puts the E204 report in this same callback.",
+            "web/app/play/NotationSurface.tsx:155-160 — only renderFinished clears the timer and the font error.",
+            "web/app/play/NotationSurface.tsx:211-213 and :223-229 — one banner (role=alert), text = runtimeError ?? fontError, inside 'The player engine could not start. Reload the page to try again. (…)'.",
+            "@coderline/alphatab@1.8.4:dist/alphaTab.core.mjs:30530-30539 — FontLoadingChecker's error handler, with one family left, logs 'Loading Failed, rendering cannot start' and stops; :30544 — isFontLoaded becomes true only in the success handler; :41065 — the music font's checker has exactly one family, so there is no fallback.",
+            "@coderline/alphatab@1.8.4:dist/alphaTab.core.mjs:40817-40830 and :46050-46053 — render() runs only when every font checker has loaded, and otherwise waits on canRenderChanged, which a failed font never triggers: after a failed music-font download no render starts, so renderFinished never fires. The component comment at web/app/play/NotationSurface.tsx:110-114 says the same, and that the browser raises `loadingerror` at once (verified in Chromium).",
+            "docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md:286-289 — the text ends the clock only at the first renderFinished; once E204 has fired, 'the time left' is not defined, so whether a later tab switch arms it again is left to the implementer.",
+            "getsentry/sentry-javascript@11.0.0:packages/core/src/client.ts:1360-1369 — a second unhandled error in a session that is already unhandled sends no session update, so the duplicate E204 does not lower the health number a second time. Its cost is a second issue (with its first new-issue email), one more event per failed visit, and an E204 count that overstates hangs."
+          ]
+        },
+        "corrections": "None of substance. Two precisions: the second new-issue email arrives once, when the E204 issue is first created (later failed visits add events to that issue); and the health number does not drop twice, because the session is already unhandled after the E203. Whether a second E204 follows a tab switch depends on how the implementer reads 'the time left' (the model shows both natural readings send it), so it is a gap in the text rather than a certain bug."
+      },
+      "notes_for_triage": "Completes F-29 (lap 2), whose text named only renderFinished. The reviewers recommended the rule in DES-1's own words (option 2). Verification recommends option 1, which makes the same rule but gives it its own paragraph, says why an E203 ends the clock, and adds the banner sentence the scope-guardian's note asks for; option 2 keeps the idiom 'for good' and puts two colons in one sentence. The banner sentence matters because one timer drives both the report and the banner (web/app/play/NotationSurface.tsx:125-130): without it, an implementer could keep a wall-clock timer for the banner and change only the report, and the section 6 case could not tell. The fix changes what a visitor sees: today, before this spec, the banner already switches from E203 to E204 after 60 s and returns after a dismissal (the TODAY model); with the fix it keeps the E203 text. No e2e case waits 60 s after a font abort (web/e2e/player.e2e.ts:215-223 checks E203 soon after load), so none breaks. Reverse order stays as it is: a download that hangs past 60 visible seconds and then fails sends E204, then E203, both true, and the banner switches to E203. The section 6 draft also adds 'a stub document.fonts (jsdom has none)': that is a verification addition, not part of DES-1 — the component's effect calls document.fonts.addEventListener on mount (NotationSurface.tsx:121), which throws in jsdom without a stub, for the three existing cases as well; the stub is also how the new E203 case raises its event. 'Permanently' means for the life of that player, as 'for good' does today: the clock lives in an effect keyed on the AlphaTab api (NotationSurface.tsx:107-136), so a new player after leaving /play and coming back starts a new clock. What a Drop leaves: every failed font download sends a false E204 when the 60 visible seconds end, and the clock's behaviour after an E204 is left to the implementer.",
+      "evidence_quotes": [
+        "when the page is visible again, and the first `renderFinished` stops it for good, so a later tab",
+        "the music font failed to download",
+        "The 60 seconds therefore run only while"
+      ],
+      "raw_reviewer_findings": [
+        {
+          "raw_id": "DES-1",
+          "reviewer": "design-lens",
+          "title": "E204 clock keeps running after E203 and after it fires",
+          "severity": "P2",
+          "confidence": 75,
+          "autofix_class": "gated_auto",
+          "finding_type": "omission",
+          "why_it_matters": "One music-font download failure will send two unhandled errors, and the visitor's banner will change its words: E203 is raised at once, but the 60-second clock keeps running (`onFontError` in `NotationSurface.tsx:115-121` never clears it, and a failed download never finishes a render), so E204 follows when the 60 visible seconds are up. The owner gets a second new-issue email whose meaning ('the download hung') is wrong, and the alert banner (role=alert) flips from the E203 text to the E204 text and returns even if the visitor dismissed it. The text also leaves 'the time left' undefined once E204 has fired, so the next tab switch can raise it again. Naming E203 and E204 itself as end states, beside a finished render, closes both.",
+          "suggested_fix": "In section 2.4, 'E204 counts visible time only', replace 'and the first `renderFinished` stops it for good, so a later tab switch never starts it again' with 'and the clock ends for good at the first of three events: a finished render, the E203 report (that failure is already known and reported), or the E204 report itself, so a later tab switch can never start it again'. In section 6, 'The font clock', add two cases: after a music-font download failure, 60 visible seconds raise no E204; after an E204 has been raised, hiding and showing the tab raises no second one.",
+          "evidence": [
+            "when the page is visible again, and the first `renderFinished` stops it for good, so a later tab",
+            "the music font failed to download",
+            "The 60 seconds therefore run only while"
+          ]
+        }
+      ]
+    }
+  ],
+  "fyi_observations": [
+    {
+      "id": "FYI-15",
+      "severity": "P3",
+      "confidence": 50,
+      "reviewer": "security-lens",
+      "section": "Known limits; §5 Setup, steps 1 and 2",
+      "title": "Nothing says how long Sentry keeps a report, or how to remove one that leaked",
+      "suggestion": "Add a Known-limits bullet: the Developer plan keeps error reports for 30 days; a report found holding a name or any text from a score cannot be deleted alone — delete the whole issue (the trash icon on its page), delete the alert email from the mailbox, and fix the filter before the next deploy. Verification corrected the reviewer's text, which said the one report and its email are deleted in Sentry.",
+      "drop_consequence": "Nothing breaks; the spec stays silent on how long a leaked name stays readable (30 days) and on the one way to remove it.",
+      "recommended": "Approve",
+      "scenario": "A future bug puts a track name, such as `Lead Guitar`, into an error message that the names filter misses, and you see it in an issue title and in its alert email. Nothing in the spec says how long Sentry keeps that report or how to remove it, so it stays readable in the project for 30 days. Sentry cannot delete that one report: you delete the whole issue with the trash icon on its page, delete the email, and fix the filter before the next deploy.",
+      "before_after": [
+        {
+          "before": [
+            {
+              "lines": "693",
+              "text": "- **Release Health pings on every visit**, not only on a crash. The home-page copy says so."
+            }
+          ],
+          "after_drafts": [
+            {
+              "replaces_lines": "693",
+              "option": "only",
+              "text": "- **Release Health pings on every visit**, not only on a crash. The home-page copy says so.\n- **Reports are kept for 30 days**, the error retention of the free Developer plan (Sentry's\n  data-retention docs). Sentry cannot delete one report, only the whole issue that holds it, with\n  the trash icon on the issue's page. If a report ever holds a name or any text from a score,\n  delete its issue and its alert email immediately, and fix the names filter before the next\n  deploy."
+            }
+          ]
+        }
+      ],
+      "spike": {
+        "status": "untested",
+        "what": "Deleting an issue in a Sentry project.",
+        "result": "Not run: it needs a Sentry project, which only the owner may create (§5). Settled from Sentry's public docs. The draft passes prettier --check, markdownlint-cli2 and cspell with the repository's configs."
+      },
+      "verification": {
+        "verdict": "pass-with-correction",
+        "verifier": "verify-B.json",
+        "checks": {
+          "section_exists": "Yes: §5 Setup, step 1 (522-526) and step 2 (527-532); Known limits (673-693).",
+          "quotes": "2/2 verbatim (spec lines 524-525, 531-532)",
+          "fix_consistent": "Consistent: one new Known-limits bullet after the last one (693); nothing else changes. It does not reopen lap 1's EU-region answer and adds no setup step."
+        },
+        "central_claim": {
+          "status": "confirmed",
+          "evidence": [
+            "The spec names no retention period and no way to remove a report: a search for retention, delete, purge and '30 days' finds only the source-map deletion (482-483) and e2e case 6's removal (340).",
+            "docs.sentry.io, Data Retention Periods (security-legal-pii/security/data-retention-periods): Errors are kept 30 days on the Developer plan, 90 days on Team, Business and Enterprise.",
+            "docs.sentry.io, Server-Side Data Scrubbing (security-legal-pii/scrubbing/server-side-scrubbing): 'you cannot delete a single event, you can delete the issue the event is in by clicking the trash icon on the Issue Details page'. A value sent as a tag needs Project Settings → Tags as well; the `instruments` and `code` tags never need it, since neither can hold a name (§3.1)."
+          ]
+        },
+        "corrections": "The suggested text says the report 'is deleted in Sentry at once, together with its alert email'. Sentry cannot delete one report, only the whole issue that holds it (with every other report in it), and the alert email is in the owner's mailbox, not in Sentry. The draft says both. The 30-day figure is right for the Developer plan."
+      },
+      "notes_for_triage": "Light check only. If FYI-16 option 2 is also applied, both add a bullet after line 693; keep both. A Drop leaves the spec silent on how long a leaked name stays readable (30 days) and on the one way to remove it.",
+      "raw_reviewer_findings": [
+        {
+          "raw_id": "SEC-2",
+          "reviewer": "security-lens",
+          "title": "No retention or purge step for a report that leaks",
+          "severity": "P3",
+          "confidence": 50,
+          "autofix_class": "gated_auto",
+          "finding_type": "omission",
+          "why_it_matters": "If a name or a line of a score ever gets past the filter — the review has already recorded lyrics, chord names and URL-encoded names as text it would miss — nothing in the spec says how long Sentry keeps that report or how to remove it, so it stays readable in the project, and in the alert email that copied its title, until it ages out. Setup step 1 picks the EU region as the fallback for exactly that case but attaches no action to it. Sentry keeps error events for 30 days on the Developer plan (Sentry's data-retention docs), so one Known-limits bullet naming that period and a delete step closes the loop.",
+          "suggested_fix": "Add a Known-limits bullet: 'Sentry keeps each report for 30 days on the free Developer plan. A report found holding a name or any text from a score is deleted in Sentry at once, together with its alert email, and the filter is fixed before the next deploy.'",
+          "evidence": [
+            "the EU keeps error events under GDPR, the stricter fallback should anything personal ever slip through.",
+            "Each new kind of error or warning, and each fixed one that comes back, then sends one email."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "FYI-16",
+      "severity": "P3",
+      "confidence": 50,
+      "reviewer": "adversarial",
+      "section": "§4 Source maps and the next.config.ts snippet; Known limits",
+      "title": "A failed source-map upload still deploys, and the maps are deleted",
+      "suggestion": "Option 1 (the reviewer): pass `errorHandler: (error) => { throw error; }` to `withSentryConfig`, so a failed release or upload step stops the production build; Vercel keeps the previous deployment, and a redeploy retries. Option 2: keep Sentry's default (log and continue; the maps are deleted anyway) and record it as a Known limit.",
+      "tradeoff": "Deploy availability against readable stack traces: under option 1, while Sentry is down or the token is revoked, no production deploy succeeds (removing SENTRY_AUTH_TOKEN from Vercel lets one through without maps); under option 2 a release's traces can be unreadable and only one build-log line says so.",
+      "drop_consequence": "A failed upload stays visible only as one line in Vercel's build log; setup step 6 proves the upload once.",
+      "recommended": "Approve option 1 — it fails loudly, like the repository's other build checks; flip to option 2 if a Sentry outage must never block a production deploy. The evidence confirms the facts but does not decide the trade-off, so give it its own question, not a checkbox.",
+      "scenario": "You revoke the Sentry token by mistake, then merge a pull request. Vercel's production build logs one line, \"An error occurred. Couldn't finish all operations\", deletes the `.map` files and deploys anyway. From then on every error from that release shows our own frames minified, `PlayerShell.tsx` never appears, and nothing told you. With the throwing `errorHandler`, the same deploy fails on Vercel instead, the previous deployment stays live, and the failed deploy tells you to fix the token.",
+      "before_after": [
+        {
+          "before": [
+            {
+              "lines": "481-485",
+              "text": "- **Source maps** (D4): `withSentryConfig` uploads them after `next build` (Turbopack builds are\n  supported from `@sentry/nextjs` 10.13) and deletes them from the deploy by default\n  (`sourcemaps.deleteSourcemapsAfterUpload: true`). \"Hide source content\" stays **off**: the\n  repository is public, so hiding the code in Sentry protects nothing and removes the code around\n  each error line."
+            },
+            {
+              "lines": "512",
+              "text": "  useRunAfterProductionCompileHook: Boolean(process.env.SENTRY_AUTH_TOKEN),"
+            },
+            {
+              "lines": "693",
+              "text": "- **Release Health pings on every visit**, not only on a crash. The home-page copy says so."
+            }
+          ],
+          "after_drafts": [
+            {
+              "replaces_lines": "481-485",
+              "option": "1 (recommended by ADV-4)",
+              "text": "- **Source maps** (D4): `withSentryConfig` uploads them after `next build` (Turbopack builds are\n  supported from `@sentry/nextjs` 10.13) and deletes them from the deploy by default\n  (`sourcemaps.deleteSourcemapsAfterUpload: true`). \"Hide source content\" stays **off**: the\n  repository is public, so hiding the code in Sentry protects nothing and removes the code around\n  each error line.\n- **A failed upload stops the deploy.** By default, Sentry's build plugin only logs a release or\n  upload step that fails: the build goes on, and the maps are deleted anyway, so that release's\n  own frames stay minified, and only a line in Vercel's build log says so. With `errorHandler` (in\n  the snippet below), the production build fails at that step instead: Vercel keeps the previous\n  deployment live, and a redeploy tries again. The cost: while Sentry is down or the token is\n  revoked, no production deploy succeeds until Sentry answers again or the token is replaced."
+            },
+            {
+              "replaces_lines": "512",
+              "option": "1 (recommended by ADV-4)",
+              "text": "  useRunAfterProductionCompileHook: Boolean(process.env.SENTRY_AUTH_TOKEN),\n  errorHandler: (error) => {\n    throw error; // a failed release or upload step fails the production build (section 4)\n  },"
+            },
+            {
+              "replaces_lines": "693",
+              "option": "2 (keep the default; record it as a known limit)",
+              "text": "- **Release Health pings on every visit**, not only on a crash. The home-page copy says so.\n- **A failed source-map upload is silent.** If the release or upload step fails during a\n  production build (a revoked token, an outage at Sentry, a rate limit), Sentry's build plugin\n  logs one line in Vercel's build log, the deploy goes ahead, and the maps are deleted anyway: that\n  release's own frames stay minified. Setup step 6 proves the upload once, not on every deploy."
+            }
+          ]
+        }
+      ],
+      "spike": {
+        "status": "run",
+        "what": "Type-checked `errorHandler: (error) => { throw error; }` against Sentry 11.0.0's BuildTimeOptionsBase with the repository's TypeScript (strict), with a negative control (`@ts-expect-error` on a handler that takes a number). Applied each option's drafts to a copy of the spec and ran prettier --check, markdownlint-cli2 and cspell; as a negative control, prettier flags the handler written on one line inside the ts fence.",
+        "result": "tsc exits 0 (the negative control's error is expected and consumed). Both drafts pass all three linters. The runtime behaviour (logged and continued, maps deleted) is read from source, not run: it needs @sentry/nextjs installed and a production build with a token."
+      },
+      "verification": {
+        "verdict": "pass",
+        "verifier": "verify-B.json",
+        "checks": {
+          "section_exists": "Yes: §4, 'Source maps' (481-485) and the next.config.ts snippet (504-516); §5 Setup, step 6 (542-547).",
+          "quotes": "1/1 verbatim (spec lines 481-483)",
+          "fix_consistent": "Consistent with D4 (the default upload and delete stay) and with 'No upload without a token' (486-490): without the token the hook is off, so `errorHandler` never runs on CI, preview or local builds. It changes one trade-off: a Sentry outage, a revoked token or a rate limit then blocks production deploys. Option 1 adds a §4 bullet after 'Source maps' and one option to the snippet; option 2 adds a Known-limits bullet only."
+        },
+        "central_claim": {
+          "status": "confirmed",
+          "evidence": [
+            "getsentry/sentry-javascript@11.0.0:packages/bundler-plugins/src/core/build-plugin-manager.ts:228-254 — `handleRecoverableError` calls `options.errorHandler` when one is set and rethrows what it throws; without one, unless `throwByDefault`, it only logs 'An error occurred. Couldn't finish all operations:'.",
+            "Same file :510-513 (release create, set-commits, finalize, deploy record), :534 (debug-ID injection) and :712 (source-map upload): each catch calls `handleRecoverableError(e, false)`, so the step is logged and the build goes on. Unchanged at 11.4.0 and on develop.",
+            "getsentry/sentry-javascript@11.0.0:packages/nextjs/src/config/handleRunAfterProductionCompile.ts:59-89 — createRelease, injectDebugIds (skipped with native debug IDs), uploadSourcemaps, then deleteArtifacts, with no check of the upload's result; build-plugin-manager.ts:742-772 deletes every `filesToDeleteAfterUpload` match. getBuildPluginOptions.ts:56, 184-206: that pattern is `.next/static/**/*.{js,mjs,cjs,css}.map`, on because withSentryConfig/getFinalConfigObjectBundlerUtils.ts:242-279 sets `deleteSourcemapsAfterUpload: true` for Turbopack builds. So the maps are deleted even when the upload failed.",
+            "getsentry/sentry-javascript@11.0.0:packages/core/src/build-time-plugins/buildTimeOptionsBase.ts:97 — `errorHandler?: (err: Error) => void`, kept by the Next.js SentryBuildOptions (packages/nextjs/src/config/types.ts:173-176 omits other keys only) and passed through at getBuildPluginOptions.ts:333. Its doc comment (:83-96) says the plugin throws by default; the code above does not, so the comment is stale.",
+            "next@16.3.6:dist/build/after-production-compile.js:78-92 and next@16.3.6:dist/build/index.js:1057 — Next awaits the hook, logs 'Failed to run runAfterProductionCompile', and rethrows, so a throwing `errorHandler` fails `next build` right after compiling, before prerendering and before the token check.",
+            "getsentry/sentry-javascript@11.0.0:packages/bundler-plugins/src/core/options-mapping.ts:137-163, 165-170 — on Vercel production the default set-commits step carries `shouldNotThrowOnFailure: true`, so it never reaches `errorHandler`; release creation, finalize and the default deploy record do."
+          ]
+        },
+        "corrections": "None. One addition: under option 1, a failure to finalize the release or to record the deploy (both on by default on Vercel) also stops the build, not only the upload; the default set-commits step does not, because Sentry marks it as one that never throws."
+      },
+      "notes_for_triage": "Two options. Option 1 (recommended by the reviewer, ADV-4): `errorHandler` rethrows, so a failed release or upload step stops the production deploy. The cost: while Sentry is down or the token is revoked, no production deploy succeeds; removing SENTRY_AUTH_TOKEN from Vercel lets one through without maps, since the hook is off without it. Option 2: keep Sentry's default and record it as a known limit. The evidence confirms the reviewer's facts; the choice is a trade-off between deploy availability and readable stack traces, and nothing in the evidence decides it. Interaction with F-32 option 2: its 'To verify' build with a fake token would fail at the release step under option 1, so that check runs with the default handler. Sentry's own doc comment says the default already throws; the plan should not rely on it. A Drop leaves a failed upload visible only as one line in Vercel's build log; setup step 6 proves the upload once.",
+      "raw_reviewer_findings": [
+        {
+          "raw_id": "ADV-4",
+          "reviewer": "adversarial",
+          "title": "A failed source-map upload still deploys, with maps deleted",
+          "severity": "P3",
+          "confidence": 50,
+          "autofix_class": "manual",
+          "finding_type": "omission",
+          "why_it_matters": "A release can ship with unreadable stack traces, and nobody is told. In Sentry 11's build plugin, a failed release or upload step is logged and the build continues (handleRecoverableError(e, false) in build-plugin-manager.ts). The .map files under .next/static are then deleted whether or not they were uploaded, so they can never be sent again. Step 6 proves the upload once. After that, a revoked token, a Sentry outage or a rate limit during a deploy leaves only a line in Vercel's build log.",
+          "suggested_fix": "Pass `errorHandler: (error) => { throw error; }` to withSentryConfig. In §4, say that a production build whose release or upload step fails stops there: Vercel keeps the previous deployment, and a redeploy retries the upload.",
+          "evidence": [
+            "`withSentryConfig` uploads them after `next build` (Turbopack builds are supported from `@sentry/nextjs` 10.13) and deletes them from the deploy by default (`sourcemaps.deleteSourcemapsAfterUpload: true`)."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "FYI-17",
+      "severity": "P3",
+      "confidence": 50,
+      "reviewer": "design-lens",
+      "section": "§2.3 (the E101–E103 message drop); §3.1 (the score's contents row); §6 (the reportError and open-file cases)",
+      "title": "With the message dropped, E101 and E103 issues are titled only `Error`",
+      "suggestion": "Replace the dropped message instead of emptying it: the exception's value and the event's `message` become a fixed sentence of ours for that code (for E103: 'E103: No AlphaTab importer accepts the bytes.'), on the last exception value, where Sentry builds the title; type, stack, file type and size stay. Also change §3.1's row and §6's two cases, which the reviewer did not name (verification drafted them).",
+      "drop_consequence": "Nothing breaks: E101 and E103 issues and their email subjects read '<short id> - Error', found only by the `code` tag or by opening them.",
+      "recommended": "Approve",
+      "scenario": "You, the owner, scan your inbox for Sentry alerts and find two new-issue emails whose subjects read 'WEB-4 - Error' and 'WEB-7 - Error' (the short IDs here are examples). One is a file over 25 MB (E101) and one a file that is not a score (E103), but nothing in the subject says which. You open each email or issue and look for the `code` tag before you can decide which one needs you.",
+      "before_after": [
+        {
+          "before": [
+            {
+              "lines": "199-201",
+              "text": "- **E101, E102 and E103 drop the exception message** — from the exception's value and from the\n  event's `message` — and keep its type, its stack, and the file's type and size. The engine's parse\n  message can quote text from inside the file (section 3.1)."
+            },
+            {
+              "lines": "357",
+              "text": "| the score's contents — notes, lyrics, alphaTex | AlphaTab's console logs, and its parse messages, can quote a broken alphaTex line                                                                                                                                                                                                                                                                                                                                                                                                                   | console breadcrumbs are off: the default `Console` integration is removed (3.3), since Sentry 11 has no `console` switch; E101–E103 drop the exception message (2.3) |"
+            },
+            {
+              "lines": "567-568",
+              "text": "  - `reportError`: the default level, the `code` tag, and E101–E103 dropping the message, also from\n    the event's `message`;"
+            },
+            {
+              "lines": "584-588",
+              "text": "- **The open-file catches**, a test beside `web/app/play/OpenFileControl.tsx`: a read that fails\n  shows E102 and reports a warning without the message; an `onNotation` that fails shows E105 and\n  reports an error that keeps its message; neither report carries the `instruments` tag, and once\n  the open ends the tag is back to the value for the score on screen; and the file type:\n  `Song.GP5` gives `gp5`, while `notes.txt` and a name with no extension give `other`."
+            }
+          ],
+          "after_drafts": [
+            {
+              "replaces_lines": "199-201",
+              "option": "only",
+              "text": "- **E101, E102 and E103 replace the exception message** — in the exception's value and in the\n  event's `message` — with a fixed sentence of ours: the code, then its meaning from\n  `docs/reference/error-codes.md`, such as `E103: No AlphaTab importer accepts the bytes.` They keep\n  the type, the stack, and the file's type and size. The engine's parse message can quote text\n  from inside the file (section 3.1), so none of the original message is sent. Sentry titles an\n  issue with the exception's type and then its value, and the alert email's subject repeats that\n  title: without the sentence, E101 and E103 would read only `Error`."
+            },
+            {
+              "replaces_lines": "357",
+              "option": "only",
+              "text": "| the score's contents — notes, lyrics, alphaTex | AlphaTab's console logs, and its parse messages, can quote a broken alphaTex line                                                                                                                                                                                                                                                                                                                                                                                                                   | console breadcrumbs are off: the default `Console` integration is removed (3.3), since Sentry 11 has no `console` switch; E101–E103 send our own fixed message (2.3) |"
+            },
+            {
+              "replaces_lines": "567-568",
+              "option": "only",
+              "text": "  - `reportError`: the default level, the `code` tag, and E101–E103 replacing the message with the\n    code's fixed sentence, also in the event's `message`;"
+            },
+            {
+              "replaces_lines": "584-588",
+              "option": "only",
+              "text": "- **The open-file catches**, a test beside `web/app/play/OpenFileControl.tsx`: a read that fails\n  shows E102 and reports a warning whose message is E102's fixed sentence; an `onNotation` that\n  fails shows E105 and reports an error that keeps its message; neither report carries the\n  `instruments` tag, and once the open ends the tag is back to the value for the score on screen;\n  and the file type: `Song.GP5` gives `gp5`, while `notes.txt` and a name with no extension give\n  `other`."
+            }
+          ]
+        }
+      ],
+      "spike": {
+        "status": "run",
+        "what": "Read the open paths and the vendored minified AlphaTab build for an explicit `name`; read Sentry's server code for the issue title and the email subject (getsentry/sentry, default branch, fetched 2026-10-05) and Sentry 11's browser event builder for the exception type.",
+        "result": "Confirmed: E101 and E103 carry type `Error`, so with the value dropped their titles, and their email subjects (for example `WEB-4 - Error`), name nothing; E102 usually carries the DOMException's own name. Sentry titles a chained error from the last value in exception.values, which is the thrown error itself (getsentry/sentry-javascript@11.0.0:packages/core/src/utils/aggregate-errors.ts:22; getsentry/sentry@master:src/sentry/eventtypes/error.py:115-126), so that is where the fixed sentence must go. The drafted text, applied to a copy of the spec, passes Prettier (prettier.config.mjs), markdownlint-cli2 (.markdownlint.yaml) and cspell (cspell.json) with 0 issues, and every `before` matches the spec at 2f68d380 line for line."
+      },
+      "verification": {
+        "verdict": "pass-with-correction",
+        "verifier": "verify-C.json",
+        "checks": {
+          "section_exists": "Yes: section 2.3, the bullet 'E101, E102 and E103 drop the exception message' (spec lines 199-201); the email is section 5, step 2 (line 532).",
+          "quotes": "3/3 verbatim (spec lines 199, 197, 532).",
+          "fix_consistent": "Consistent with S1 and with lap 1's privacy rule: the sentence is fixed text of ours, so nothing from the file is sent. The reviewer's fix names section 2.3 and the section 6 reportError unit case; two more places say 'drop' and must change with it: the section 3.1 row 'the score's contents' (line 357) and the section 6 open-file case (lines 584-588, 'reports a warning without the message'). All four are drafted; the table row keeps its exact width, so Prettier does not re-pad the table. Section 3.2's 'E105, E901 and E201–E204 keep their message' stays true."
+        },
+        "central_claim": {
+          "status": "confirmed",
+          "evidence": [
+            "web/app/play/OpenFileControl.tsx:36-39 — E101 is a plain `new Error` whose text reads 'over the 25 MB limit': type `Error`.",
+            "web/app/play/OpenFileControl.tsx:40 — E102 is the rejection of file.arrayBuffer(), a DOMException such as NotFoundError or NotReadableError; getsentry/sentry-javascript@11.0.0:packages/browser/src/eventbuilder.ts:288 uses its own name as the type when it carries a stack (:37, :180), and otherwise sends type `Error` with the name inside the value (:300-303).",
+            "@coderline/alphatab@1.8.4:dist/alphaTab.core.mjs:176-182 and :14964-14968 — E103 is UnsupportedFormatError('No compatible importer found for file') (:30232), a subclass of AlphaTabError, and neither sets `name`. The vendored minified build (dist/alphaTab.core.min.mjs, copied as esm/alphaTab.core.mjs by web/scripts/vendor-alphatab.mjs:25) mangles the class names (`class r extends Error{type;constructor(t,e=\"\",s){super(e??\"\",{cause:s}),this.type=t}}`) but adds no `name` either. Sentry reads `ex.name`, never the class name, so the type is `Error`. Any other importer error is rethrown as it is (alphaTab.core.mjs:30223-30228): a crash keeps its own type, such as TypeError, and AlphaTab's own FormatError is again `Error`.",
+            "getsentry/sentry@master:src/sentry/eventtypes/error.py:77-90 (fetched 2026-10-05) — the issue title is the type, plus ': ' and the value's first line only when the value is not empty; an empty value leaves the title `Error`.",
+            "getsentry/sentry@master:src/sentry/services/eventstore/models.py:492-500 and :856 — the default email subject template is `$shortID - $title`; src/sentry/notifications/notifications/rules.py:137-138 uses it for issue-alert emails, and src/sentry/mail/notifications.py:50-63 may add a subject prefix. The code tag appears in neither.",
+            "shared/src/error-codes.ts:16-21 and docs/reference/error-codes.md:27-29 — the one-line meanings exist as a doc table and as code comments only; no runtime string holds them."
+          ]
+        },
+        "corrections": "The fix must also change section 3.1's row 'the score's contents' (line 357) and section 6's open-file case (lines 584-588), which the reviewer did not name; both are drafted. 'In the words docs/reference/error-codes.md already uses' needs new runtime strings: shared/src/error-codes.ts holds the meanings only as comments, and tooling/check-error-codes.mjs compares codes, not wording, so nothing would catch the sentences drifting from the page. The reviewer's title claim is right for E101 and E103, as stated; E102's title is usually the DOMException's name, which names the kind of failure but not the code."
+      },
+      "notes_for_triage": "Overlaps residual R29 (lap 2, adversarial: every E103 looks alike — default name 'Error', message dropped); the new part is the issue title and the email subject. E101's own message (web/app/play/OpenFileControl.tsx:38) and E102's (browser text) never quote the file; only E103's can, and the spec drops all three for one simple rule, which the fix keeps. Q7 (lap 2: blank every linked exception's value) stays open; the fixed sentence belongs on the last value. The names filter (section 3.2) also runs over the fixed sentence, so a remembered name equal to one of its words (a track called 'file', say) becomes [file] in it — cosmetic, since the sentence is ours. Considered and not drafted: Sentry's per-project email subject template accepts `${tag:code}` (EventSubjectTemplate, models.py:814-815), but an event with no code tag — every uncaught error — would then show the literal text `${tag:code}` (the lookup raises KeyError and safe_substitute keeps the placeholder), and it changes no issue title. Grouping should not change (a constant sentence; reasoned, not checked). What a Drop leaves: E101 and E103 issues titled `Error`, found only by the code tag (search `code:E103`) or by opening them; nothing breaks.",
+      "raw_reviewer_findings": [
+        {
+          "raw_id": "DES-2",
+          "reviewer": "design-lens",
+          "title": "Dropped messages leave E101-E103 issue titles as a bare Error",
+          "severity": "P3",
+          "confidence": 50,
+          "autofix_class": "gated_auto",
+          "finding_type": "omission",
+          "why_it_matters": "The owner's issue list and each new-issue email will lead with a bare 'Error' for E101 and E103: Sentry builds an exception's title from its type plus its value, and the value is dropped, so the email subject (Sentry's default is the short issue ID, a dash, then the title) names nothing, and only the `code` tag, which an inbox scan does not show, says which failure it is. The spec spends its effort on tags for lookup but leaves the one line the owner reads first undefined, so triage means opening every email. Replacing the dropped message with a fixed sentence of ours keeps the privacy rule (nothing from the file) and puts the code and its meaning in the title, in the words `docs/reference/error-codes.md` already uses for each code.",
+          "suggested_fix": "In section 2.3, change the E101-E103 bullet from dropping the message to replacing it: the exception's value and the event's `message` become that code's one-line meaning from `docs/reference/error-codes.md`, prefixed with the code (for E103: 'E103: No AlphaTab importer accepts the bytes.'), a fixed sentence of ours that never comes from the file; the type, the stack and the file's type and size stay as written. In section 6, change the `reportError` unit case from 'dropping the message' to 'replacing the message with the code's fixed sentence, also in the event's `message`'.",
+          "evidence": [
+            "E101, E102 and E103 drop the exception message",
+            "`code` becomes the Sentry tag `code`",
+            "error or warning, and each fixed one that comes back, then sends one email."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "FYI-18",
+      "severity": "P3",
+      "confidence": 50,
+      "reviewer": "scope-guardian",
+      "section": "§6 End to end (cases that already force a failure); §1 (the player.e2e.ts bullet)",
+      "title": "The E601 and E603 warnings from the settings restore are pinned by no test",
+      "suggestion": "Extend §6's 'Cases that already force a failure' to the two existing cases in `web/e2e/player.e2e.ts` that force them ('a single out-of-range setting is corrected and the warning NAMES it' → E601; 'a corrupt stored value resets with a toast, and the player still starts' → E603), each asserting one warning-level event with its code, and update §1's player.e2e.ts bullet. Verification: both cases force the settings restore only; the transport restore stays untested.",
+      "drop_consequence": "A refactor can drop or mis-level the E601/E603 report with every check green.",
+      "recommended": "Approve",
+      "scenario": "Next year you, the implementer, move the two settings-restore effects in web/app/play/PlayerShell.tsx into a hook and lose the reportError call for E601. The toast still reads 'Error E601', so the e2e case at web/e2e/player.e2e.ts:1855 stays green, lint stays green because no catch is involved, and Sentry never again hears that a visitor's saved settings were repaired.",
+      "before_after": [
+        {
+          "before": [
+            {
+              "lines": "114-115",
+              "text": "- `web/e2e/player.e2e.ts` — one assertion each on the font and SoundFont failures it already\n  forces (section 6)."
+            },
+            {
+              "lines": "619-622",
+              "text": "  - **Cases that already force a failure** get one extra assertion each: the font abort\n    (`web/e2e/player.e2e.ts:218`) must produce E203, and the SoundFont abort\n    (`web/e2e/player.e2e.ts:267`) E202. No case in `player.e2e.ts` aborts the engine module, so\n    E201 gets a case of its own (case 8 below)."
+            }
+          ],
+          "after_drafts": [
+            {
+              "replaces_lines": "114-115",
+              "option": "only",
+              "text": "- `web/e2e/player.e2e.ts` — one assertion each on the failures it already forces: the font and\n  SoundFont downloads, and the out-of-range and corrupt stored settings (section 6)."
+            },
+            {
+              "replaces_lines": "619-622",
+              "option": "only",
+              "text": "  - **Cases that already force a failure** get one extra assertion each: the font abort\n    (`web/e2e/player.e2e.ts:218`) must produce E203, the SoundFont abort\n    (`web/e2e/player.e2e.ts:267`) E202, the out-of-range stored Zoom\n    (`web/e2e/player.e2e.ts:1856`) one E601 `warning`, and the corrupt stored settings\n    (`web/e2e/player.e2e.ts:1885`) one E603 `warning`. No case in `player.e2e.ts` aborts the\n    engine module, so E201 gets a case of its own (case 8 below), and none stores a bad transport\n    value, so the transport restore's E601/E603 stays untested."
+            }
+          ]
+        }
+      ],
+      "spike": {
+        "status": "untested",
+        "what": "Read the two cases and both restore effects. The new assertions cannot run yet: the envelope fixture (web/e2e/sentry-envelopes.ts) and the reportError calls do not exist.",
+        "result": "The cases exist and force E601 and E603 through the settings restore only. The drafted text, applied to a copy of the spec, passes Prettier (prettier.config.mjs), markdownlint-cli2 (.markdownlint.yaml) and cspell (cspell.json) with 0 issues, and every `before` matches the spec at 2f68d380 line for line."
+      },
+      "verification": {
+        "verdict": "pass-with-correction",
+        "verifier": "verify-C.json",
+        "checks": {
+          "section_exists": "Yes: the section 2.4 'Failures that never throw' row (spec line 281), the section 6 bullet 'Cases that already force a failure' (lines 619-622), and section 1's player.e2e.ts bullet (lines 114-115).",
+          "quotes": "4/4 verbatim (spec lines 281, 281, 619-621, 301).",
+          "fix_consistent": "Consistent: section 2.4 already lists E601/E603 as warnings from both restore paths, and section 1's player.e2e.ts bullet must change with section 6 (both drafted). Q9 (lap 2: which tests install the envelope fixture) stays with the plan; if the recorder is a Playwright fixture it is in place before the test body, so before these cases' page.goto, which they need because the warning is raised while /play first mounts."
+        },
+        "central_claim": {
+          "status": "confirmed",
+          "evidence": [
+            "web/e2e/player.e2e.ts:1855-1878 — 'a single out-of-range setting is corrected and the warning NAMES it' plants `{ settings: { display: { scale: 99 } } }` under notation-hero.player-settings with addInitScript (:1856) and asserts the toast reads 'Error E601' (:1866).",
+            "web/e2e/player.e2e.ts:1882-1899 — 'a corrupt stored value resets with a toast, and the player still starts' plants '{broken' (:1885-1887) and asserts 'Error E603' (:1891).",
+            "web/app/play/PlayerShell.tsx:216-259 — the settings restore effect: E601 when keys were repaired, E603 when the document could not be read (after the opt-out catch at web/lib/alphatab/settings-storage.ts:195). Both cases force this one effect.",
+            "web/app/play/PlayerShell.tsx:561-572 — the transport restore effect raises the same two codes for the notation-hero.transport document (web/lib/alphatab/transport-storage.ts:25); no case in player.e2e.ts stores a bad transport value.",
+            "Neither effect has a catch clause, so the section 2.5 lint rule never sees these reports; section 6 pins E201, E202, E203 and E204 but not E601/E603."
+          ]
+        },
+        "corrections": "The two cases force only one of the two restore paths, the settings restore (web/app/play/PlayerShell.tsx:216-259), where they reach both codes; they do not cover 'the two settings-restore effects'. The transport restore (PlayerShell.tsx:561-572) raises the same codes and stays untested; the draft says so in one clause."
+      },
+      "notes_for_triage": "Same cheap pattern lap 2 used for E201 (F-26). The assertion also pins the level: a report sent as `error` instead of `warning` fails it. A transport case would be new but equally cheap — plant a bad notation-hero.transport value with addInitScript — and is not drafted, since it is a new case rather than an extra assertion. The related note stands: E205, E401 (both sites), E602 and the settings-apply catch (web/app/play/PlayerShell.tsx:309) are also pinned only by the lint rule, which proves a catch reports something, not its code or level; each needs its own harness. What a Drop leaves: a refactor can drop or mis-level the E601/E603 report with every check green.",
+      "raw_reviewer_findings": [
+        {
+          "raw_id": "SCO-2",
+          "reviewer": "scope-guardian",
+          "title": "E601/E603 restore-path reports have no guard or test",
+          "severity": "P3",
+          "confidence": 50,
+          "autofix_class": "gated_auto",
+          "finding_type": "omission",
+          "why_it_matters": "A refactor of the two settings-restore effects can drop or mis-level the E601/E603 warning while every check stays green: these paths have no `catch` clause, so the lint rule never sees them, and section 6 pins E203, E202 and E204 but not them. Two existing cases in `web/e2e/player.e2e.ts` ('a single out-of-range setting is corrected and the warning NAMES it' and 'a corrupt stored value resets with a toast, and the player still starts') already force exactly these paths, so one envelope assertion each costs a few lines, the same cheap fix lap 2 made for E201.",
+          "suggested_fix": "Extend the 'Cases that already force a failure' bullet in section 6 to the E601 case ('a single out-of-range setting is corrected and the warning NAMES it') and the E603 case ('a corrupt stored value resets with a toast, and the player still starts'), each asserting one warning-level event carrying its code, and add both to the `web/e2e/player.e2e.ts` bullet in section 1.",
+          "evidence": [
+            "`web/app/play/PlayerShell.tsx`, both restore paths",
+            "saved settings or transport repaired, or unreadable",
+            "**Cases that already force a failure** get one extra assertion each: the font abort (`web/e2e/player.e2e.ts:218`) must produce E203, and the SoundFont abort (`web/e2e/player.e2e.ts:267`) E202.",
+            "Two selectors make a catch that reports nothing a lint error."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "FYI-19",
+      "severity": "P3",
+      "confidence": 50,
+      "reviewer": "scope-guardian",
+      "section": "§7 Documents that change; §1 Changed files",
+      "title": "The catch-must-report rule is not written in web/AGENTS.md",
+      "suggestion": "Add `web/AGENTS.md` to §7 and to §1's changed files, with one bullet in its 'This package' list: every `catch` and `.catch()` in `web/` calls `reportError` or `noteError` from `web/lib/monitoring/report.ts`; a deliberate silence needs `// eslint-disable-next-line no-restricted-syntax -- <reason>`; lint enforces it. Optional: say that the browser's own global `reportError` is banned too.",
+      "drop_consequence": "Nothing breaks; the next contributor learns the rule from a lint failure.",
+      "recommended": "Approve",
+      "scenario": "You, the next agent, add `try { … } catch { setFailed(true) }` to a new component in web/. You read web/AGENTS.md, the package's own contract, and it lists the AlphaTab import fence but nothing about catches, so you learn the rule only when pnpm run lint fails with no-restricted-syntax, and the exact opt-out comment is written only in this spec.",
+      "before_after": [
+        {
+          "before": [
+            {
+              "lines": "99-104",
+              "text": "**Changed files:** `web/next.config.ts` (the `withSentryConfig` wrapper), `web/package.json` (the\ndependency, and the token check at the end of its `build` script), both `error.tsx` files, the 16\ncatch sites and 4 failure paths listed in section 2.4, `web/app/page.tsx` (copy),\n`web/eslint.config.mjs` (the rule), `web/e2e/page-errors.ts` (reads the shared list), the `/`\nscreenshot baseline, `web/README.md` (the environment variables), `web/playwright.e2e.config.ts`\n(a fake DSN), `cspell.json`, and the decision registry and changelog. Also:"
+            },
+            {
+              "lines": "667",
+              "text": "- `web/README.md` — the Deploy section names both environment variables."
+            }
+          ],
+          "after_drafts": [
+            {
+              "replaces_lines": "99-104",
+              "option": "only",
+              "text": "**Changed files:** `web/next.config.ts` (the `withSentryConfig` wrapper), `web/package.json` (the\ndependency, and the token check at the end of its `build` script), both `error.tsx` files, the 16\ncatch sites and 4 failure paths listed in section 2.4, `web/app/page.tsx` (copy),\n`web/eslint.config.mjs` (the rule), `web/AGENTS.md` (the rule, in words), `web/e2e/page-errors.ts`\n(reads the shared list), the `/` screenshot baseline, `web/README.md` (the environment variables),\n`web/playwright.e2e.config.ts` (a fake DSN), `cspell.json`, and the decision registry and\nchangelog. Also:"
+            },
+            {
+              "replaces_lines": "667",
+              "option": "only",
+              "text": "- `web/README.md` — the Deploy section names both environment variables.\n- `web/AGENTS.md` — one bullet in its \"This package\" list, beside the AlphaTab import fence: every\n  `catch` and `.catch()` callback in `web/` calls `reportError` or `noteError` from\n  `web/lib/monitoring/report.ts`, a deliberate silence is\n  `// eslint-disable-next-line no-restricted-syntax -- <reason>`, and lint enforces the rule\n  (section 2.5)."
+            }
+          ]
+        }
+      ],
+      "spike": {
+        "status": "untested",
+        "what": "A documentation change: nothing to run beyond checking the drafted spec text.",
+        "result": "The drafted text, applied to a copy of the spec, passes Prettier (prettier.config.mjs), markdownlint-cli2 (.markdownlint.yaml) and cspell (cspell.json) with 0 issues, and every `before` matches the spec at 2f68d380 line for line."
+      },
+      "verification": {
+        "verdict": "pass",
+        "verifier": "verify-C.json",
+        "checks": {
+          "section_exists": "Yes: section 7 'Documents that change' (spec lines 661-671), section 1 'Changed files' (lines 99-104), section 2.5 'The lint rule' (lines 299-320).",
+          "quotes": "2/2 verbatim (spec lines 102-104, 313).",
+          "fix_consistent": "Consistent: section 2.5 already states the rule and the opt-out comment, and the drafted bullet repeats them. Section 1 must gain web/AGENTS.md as well, because lap 1 made section 1's file lists complete (both drafted)."
+        },
+        "central_claim": {
+          "status": "confirmed",
+          "evidence": [
+            "web/AGENTS.md:7-12 — the 'This package' list records the AlphaTab import fence the same way: 'Type-only imports are the rule here and a lint fence enforces it (`web/eslint.config.mjs`)'.",
+            "docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md — the spec never names web/AGENTS.md (no match for 'AGENTS'); section 7 lists the changelog, the registry, web/README.md, the error-code pair and Jira.",
+            "web/AGENTS.md:29-37 — the Next.js-managed block is separate; the 'This package' list is outside it, so a bullet there survives next dev and next build."
+          ]
+        },
+        "corrections": "none"
+      },
+      "notes_for_triage": "Optional, not in the reviewer's text: the bullet could also say that the browser's own global reportError is banned (no-restricted-globals, section 2.5), the other trap an agent meets. What a Drop leaves: nothing breaks; the rule is learned from a lint failure.",
+      "raw_reviewer_findings": [
+        {
+          "raw_id": "SCO-3",
+          "reviewer": "scope-guardian",
+          "title": "Catch-must-report rule is missing from web/AGENTS.md",
+          "severity": "P3",
+          "confidence": 50,
+          "autofix_class": "gated_auto",
+          "finding_type": "omission",
+          "why_it_matters": "The next contributor or agent who writes a `catch` in `web/` learns the report-or-opt-out rule only when lint fails, and the opt-out comment form exists only in this spec. `web/AGENTS.md` already records the AlphaTab import fence the same way ('a lint fence enforces it'), so the silent-catch rule is the one new fence the package contract would not mention. Nothing breaks without it, which is why this is advisory.",
+          "suggested_fix": "Add `web/AGENTS.md` to section 7, with one bullet in its 'This package' list: every `catch` and `.catch()` in `web/` must call `reportError` or `noteError` from `web/lib/monitoring/report.ts`; a deliberate silence needs `// eslint-disable-next-line no-restricted-syntax -- <reason>`; the rule is lint-enforced.",
+          "evidence": [
+            "`web/eslint.config.mjs` (the rule), `web/e2e/page-errors.ts` (reads the shared list), the `/` screenshot baseline, `web/README.md` (the environment variables), `web/playwright.e2e.config.ts` (a fake DSN), `cspell.json`, and the decision registry and changelog.",
+            "**A deliberate silence** is `// eslint-disable-next-line no-restricted-syntax -- <reason>`."
+          ]
+        }
+      ]
+    }
+  ],
+  "rejected_findings": [],
+  "residual_concerns": [
+    "R40 (feasibility, product-lens, adversarial): Sentry caps a tag value at 200 characters, and the `instruments` value grows by 4 characters per distinct program, so a score with about 49 or more distinct General MIDI programs loses its tag. Rare (a large orchestral MusicXML file); lap 2's F-24 spike measured every fixture well under the limit.",
+    "R41 (security-lens): the token check matches the raw value only, so a base64- or URL-encoded copy would pass. Each page's `.rsc` file holds the payload whole, so walking `.next/server` (F-32) also covers the chunked copy inside the HTML.",
+    "R42 (adversarial, product-lens): Release Health counts every page load (Sentry 11's \"page\" session lifecycle; lap 1's Q3 asked the plan to read it), including visits that never leave `/`. The health share therefore moves when more or fewer visitors press Play: 60 home-only visits plus 40 player visits with 20 E202s read 80%. S4 is settled; a measurement note.",
+    "R43 (adversarial): an engine import that never settles leaves the loading skeleton forever and sends nothing: E204's clock starts only once the engine exists, and E201 needs a rejection. Predates the spec.",
+    "R44 (adversarial): Firefox storage failures that come from the visitor's own profile but are not refusals (NS_ERROR_FILE_CORRUPTED, UnknownError) fall into S2b's 'anything else: error' branch and send one error per page load for that visitor.",
+    "R45 (adversarial): storage is read during render (useRestoredTransport's render-phase adjustment, PlayerShell's useState initializer), so S2b's breadcrumb is recorded during render — twice under development's strict mode; harmless in production.",
+    "R46 (product-lens): if `beforeSend` throws, Sentry 11 drops the event (`callback_error`) and never updates the session, so a bug in `scrubEvent` or `isKnownEngineNoise` on an unusual event shape removes that whole class of reports and keeps those visits out of the unhandled count. The spec does not say which goal wins when the privacy filter itself fails. Sits beside R9 and R19.",
+    "R47 (product-lens): setup step 6 runs in the owner's own browser, where an ad blocker can block Sentry's ingest host just as D3 accepts for visitors; the E103 then never arrives and the setup looks broken. Step 6 could say: use a browser with no ad blocker.",
+    "R48 (product-lens): the calls that take the `instruments` tag off and put it back live in the two open paths (pick and drop), not in `requestNotation`. A third open path, such as the paused catalog's 'find a piece to play', would send its failures with the previous song's instruments, and no test or lint rule would notice. Paused work.",
+    "R49 (coherence): §3.3 removes the default `Breadcrumbs` integration and adds `breadcrumbsIntegration({ dom: false })` back on the next line; correct, but it can be misread at first as removing breadcrumbs."
+  ],
+  "deferred_questions": [
+    "Q11 (product-lens): once notationhero.com serves the site, should the domain work repeat setup step 6 from the new domain, so that one E103 proves reports still arrive from there? Fits either option of F-33; belongs to that ticket.",
+    "Q12 (design-lens): what should the E105 toast say when the failure came after the new score had already replaced the open one? The success toast and the 'Opened …' announcement come right after the swap, so 'could not be opened' can follow for a score that is on screen (extends lap 2's R35). (plan)",
+    "Q13 (design-lens): should an E105 from the file picker also write the player's screen-reader announcement, as a dropped file does? §2.4 accepts the toast alone because OpenFileControl receives only onNotation; settle it with lap 2's Q6 when the plan keys the E105 branch on the read flag. (plan)",
+    "Q14 (scope-guardian): in which order should the plan's commits land, so each stays small? A natural order: the withSentryConfig build go/no-go, reporting and scrub, the lint rule and its canary, the instruments lifecycle, E105 with the opening state, the E204 clock, the token check. (plan)"
+  ],
+  "dedup_notes": [
+    "F-31 = feasibility FEA-1 (P2, 75, the latch blocks a second mount) + feasibility FEA-2 (P2, 75, crash reports lose the tag) + adversarial ADV-2 (P2, 75, both) + scope-guardian SCO-1 (P2, 75, both). Merged at P2, anchor 100. Four different fixes, so the merged finding is a decision (synthesis 3.5), not a proposed fix.",
+    "F-32 = security-lens SEC-1 (P2, 75) + adversarial ADV-3 (P2, 75), the same fix; feasibility raised it as a residual and security-lens asked about option 2. Merged at P2, anchor 100.",
+    "F-33 = adversarial ADV-1 (P1, 75) + product-lens PRO-1 (P2, 75), two variants of one fix; security-lens and scope-guardian raised it as residuals. Merged at P1 by the rule (highest severity), anchor 100; verification corrected it to P2.",
+    "F-34 = design-lens DES-1 (P2, 75) alone; the scope-guardian residual that one timer also drives the banner was folded in.",
+    "FYI-15..19 = SEC-2, ADV-4, DES-2, SCO-2, SCO-3, each at anchor 50 (an observation, no decision required by the engine)."
+  ],
+  "restated_suppressed": [
+    "feasibility residual \"the token check walks only .next/static\" → F-32",
+    "security-lens question \"walk all of .next except cache?\" → F-32 option 2",
+    "security-lens residual \"Allowed Domains to one host rejects per-deployment URLs\" → F-33",
+    "scope-guardian residual \"a second production domain would be rejected silently\" → F-33",
+    "adversarial residual \"the §6 latch leaves report.ts latched across PlayerShell.test.tsx\" → F-31",
+    "adversarial question \"should an E901 from /play carry the instruments?\" → F-31's owner question (a)",
+    "scope-guardian question \"if clearInstruments stays, how does the next mount re-arm the tag?\" → F-31",
+    "scope-guardian residual \"one timer drives the E204 banner and the report\" → F-34",
+    "scope-guardian residual \"E205, E401, E602 and the settings-apply catch are pinned by no test\" → FYI-18's notes"
+  ],
+  "cross_fix_conflicts": [
+    "F-31 option 1 deletes the To-verify item about removing a tag with `setTag` (lines 710-711); F-32 option 2 adds a To-verify item at the end of the same list. Apply both by matching text.",
+    "F-31 (every option) and FYI-17 both edit §6: F-31 the tag-lifecycle unit case (571-574) and the PlayerShell tag case (592-597); FYI-17 the reportError unit case (567-568) and the open-file case (584-588). Different lines, side by side: re-run the linters after merging.",
+    "§1 is edited by four items: F-32 the new-files row (92); FYI-19 the 'Changed files' paragraph (99-104); F-31 the 'Also' bullet (106-113; option 3 also 95-97); FYI-18 the player.e2e.ts bullet (114-115). Apply each by its before text.",
+    "F-31 option 3 rewrites §4's 'No navigation-tracing prompt' bullet and the snippet's `suppressOnRouterTransitionStartWarning` line; FYI-16 option 1 adds `errorHandler` to the same snippet. Merge the snippet once.",
+    "F-32 option 2's To-verify build with a fake token would fail at Sentry's release step under FYI-16 option 1: run that check with the default handler.",
+    "FYI-15 and FYI-16 option 2 each add a Known-limits bullet after the last one: keep both."
+  ],
+  "carry_forward_constraints": [
+    "The ten approved decisions (S1, S2, S2b, S3, S4, D1–D5), every outcome in the NH-124 entry of docs/decisions/decision-changelog.md ('Changed by the spec review, lap 1' and 'lap 2'), and the triage additions R25, ADD-3, ADD-4 and ADD-5 are settled. Lap-3 findings that change a settled item's detail — F-31 (ADD-3's mechanism), F-32 (ADD-5's folders), F-33 (FYI-14's list), F-34 (F-29's end states), FYI-17 (lap 1's message drop) — change its detail, not the decision: record each approved change in the same entry, under a new 'Changed by the spec review, lap 3' list.",
+    "The spec's 'To verify at plan time' list belongs to the plan.",
+    "The draft's red pr-checklist / CI Green is expected — never enable Auto-fix.",
+    "Write the PR body BEFORE every push (a body edit cancels a running CI).",
+    "Apply as you go: one commit per picker round (and one for the auto-resolves), each revertable.",
+    "Dependabot alert #93 is separate work — keep it out of this PR.",
+    "NH-349 (a visitor's choice of what to send) is filed and out of scope.",
+    "The cross-model pass stays skipped: no consent to send the spec to an outside AI provider.",
+    "In this public repo, committed files carry no personal data and no machine paths; refer to the owner as 'the owner' or by handle.",
+    "Line numbers refer to the branch's base 0dd46b52; master has moved PlayerShell.tsx since (#185). The plan re-maps them after a rebase."
+  ],
+  "plan_notes": [
+    "F-31 option 1: `addInstrumentsTag` can read `location.pathname`, or `event.request.url`, which Sentry's HttpContext integration sets in preprocessEvent, before beforeSend. The browser SDK's capture-to-beforeSend chain is synchronous, so 'no open runs' is judged at the moment of capture. Vitest's jsdom page is `/`, so tag tests set `/play` with history.replaceState. Type the parameter with Sentry's `ErrorEvent` (CoreOptions['beforeSend'] in 11.0.0). In every option a hung open keeps the count above 0, so the tag stays off for the rest of the visit.",
+    "F-32: the plan note recorded for ADD-5 ('walks .next/static') changes with either option. Next copies the 404 and 500 pages to `.next/server/pages`.",
+    "F-33 option 2: README.md (the domain-wiring line) or the domain ticket needs the same reminder; Q11 (repeat step 6 from the new domain) belongs to that ticket.",
+    "F-34: jsdom has no `document.fonts`; the font-clock test stubs it, because the component's effect calls `document.fonts.addEventListener` on mount (NotationSurface.tsx:121).",
+    "FYI-17: put the fixed sentence on the last exception value (the thrown error), where Sentry titles a chained error. The sentences need runtime strings: shared/src/error-codes.ts holds the meanings only as comments, and tooling/check-error-codes.mjs compares codes, not wording.",
+    "FYI-16: Sentry's own doc comment says the default already throws; the code logs and continues. Do not rely on the comment.",
+    "FYI-18: the transport restore (PlayerShell.tsx:561-572) raises E601 and E603 too and has no case that forces it; a new case would plant a bad notation-hero.transport value.",
+    "Lap 2's Q7, answered for AlphaTab 1.8.4 (security-lens, verified): ScoreLoader.loadScoreFromBytes catches every UnsupportedFormatError and throws a fresh one with no cause, so an E103 carries no linked exception in this version. The risk returns with an engine that rethrows a wrapped error.",
+    "unicorn/no-useless-undefined skips callees named `set[A-Z]…`, so `Sentry.setTag('instruments', undefined)` is not flagged (it matters only if F-31's chosen option keeps `setTag`)."
+  ],
+  "triage_plan": {
+    "auto_resolve_first": "F-32 (option 1) and F-34 (option 1), as confident completions of settled items (ADD-5, F-29): apply without asking, report each in one line, one commit. If the triage half reads F-34's banner change as a behaviour change, move it to round 2 instead.",
+    "rounds": [
+      "Round 1: F-31 alone, with the full comparison (four options; two owner questions decide it), then [Q-add].",
+      "Round 2: F-33 (two options) and FYI-16 (a trade-off with two options), then [Q-add].",
+      "Round 3: FYI-15, FYI-17, FYI-18 and FYI-19 on one multi-select card (unchecked = left open, never dropped), then [Q-add]."
+    ],
+    "cap_note": "4 findings + 5 observations; even if F-31 needs two rounds (it then counts twice), the walk stays under the 12-finding / 5-round cap: one invocation.",
+    "finally": "The wrap-up: the spec's frontmatter `lap: 3` and `last_applied:` the highest severity applied (P2 if only these items), mark this file triaged, the changelog list 'Changed by the spec review, lap 3', commit, PR body, push — then step 7.",
+    "step7_heads_up": "After verification lap 3 holds no P0 or P1. Step 7 in order: (a) the bound — lap 3 is under the cap of 5; the no-progress test compares unresolved P0/P1 counts (0 after lap 2, 0 now) — say what it shows rather than read it mechanically; (b) re-lap if a P0 or P1 was applied (none) OR the exit signal is not clean (it is not: 3 proposed fixes and 1 decision), so the rule as written re-laps to lap 4. Put the choice to the owner with that evidence: re-lap (lap 4, review half) or exit to PLAN."
+  },
+  "notes": [
+    "Read ONLY this file in the triage half (plus verify-A/B/C.json if a detail is missing) — never the spec: every finding carries its scenario and Before → After.",
+    "Line numbers are those of the spec at 2f68d380. They move after each applied round, so apply by matching the before text (exactly one match), never by line number.",
+    "Several items edit §1 and §6 (see cross_fix_conflicts). Merge, never apply two drafts blindly.",
+    "Every draft passed Prettier, markdownlint and cspell on a scratch copy; re-run the linters after merging drafts.",
+    "An after_draft whose text is empty means: delete those lines (F-31 option 1's To-verify item)."
+  ],
+  "resume": {
+    "triage_half": "NEXT: lap 3 triage half — run spec-triage-loop:doc-review-loop on the spec (spec_path_from_root, prefixed with your repo root). The entry rule starts at step 4: F-31–F-34 and FYI-15–19 are undecided.",
+    "spec_permalink": "https://github.com/leocaseiro/notation-hero/blob/2f68d3808ef5f77657a34df4b2148b3817cb0338/docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md",
+    "spec_path_from_root": ".claude/worktrees/nh-320-vr-spec-lap-4-92e22a/docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md",
+    "artifact_path_from_root": ".claude/worktrees/nh-320-vr-spec-lap-4-92e22a/.spec-triage-loop/2026-10-03-nh-124-sentry-error-monitoring-design/lap-3/findings.json",
+    "paths_note": "Repo-root-relative, because this file is tracked in a public repo. Chat prints the absolute form, built from the reader's own repo root.",
+    "permalink_note": "The spec permalink is pinned to 2f68d380, where the spec is byte-identical. This file cannot name the sha of its own commit; the hand-over message carries a link pinned to the pushed sha."
+  },
+  "decided_findings": []
+}
