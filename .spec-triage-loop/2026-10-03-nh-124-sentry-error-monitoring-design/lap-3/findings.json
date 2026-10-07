@@ -73,8 +73,8 @@
     },
     "severity_note": "Lap 3 holds no P0 or P1 after verification: F-33 was merged at adversarial's P1 and corrected to P2 (nothing ships broken; it breaks only when the domain moves).",
     "triage_progress": {
-      "decided": ["F-32", "F-34", "F-31"],
-      "undecided": ["F-33", "FYI-15", "FYI-16", "FYI-17", "FYI-18", "FYI-19"],
+      "decided": ["F-32", "F-34", "F-31", "F-33", "FYI-16"],
+      "undecided": ["FYI-15", "FYI-17", "FYI-18", "FYI-19"],
       "pending_apply": []
     },
     "triage_status": "NOT TRIAGED. Review half done (2026-10-05): 4 findings and 5 observations, all verified. NEXT: the triage half, in a new session."
@@ -1432,6 +1432,21 @@
         "Vitest's jsdom page is `/`: the tag unit cases set `/play` with history.replaceState.",
         "Nothing in the test lanes can tell preprocessEvent from beforeSend (production builds run both inside captureException); the section 2.3 sentence is what keeps the hook."
       ]
+    },
+    {
+      "id": "F-33",
+      "severity": "P2",
+      "decision": "APPLIED — the owner's own direction, given in Other: \"We should move to new domain already, and redirect from vercel to there\". Step 3 lists `*.notationhero.com` as the production domain and keeps `notation-hero-web.vercel.app`, which will redirect there; step 6 runs on a listed domain (option 1's two entries, reframed so notationhero.com is the production domain).",
+      "what_changed": "Setup step 3: two Allowed Domains entries, `*.notationhero.com` (matches the bare domain and www) and `notation-hero-web.vercel.app` (kept so reports arrive whether the domain move or the Sentry setup comes first), and what a rejection looks like (no issue, no alert, only Stats). Setup step 6: open the site at a listed domain; a deployment's own address is rejected.",
+      "why_both_entries": "Order-proof: before the move, reports come from vercel.app; after it, from notationhero.com; once vercel.app redirects, no page runs there, so its entry is inert. Only the owner can serve pages from either host.",
+      "follow_up": "The domain move itself is separate work the owner asked to do now, with a guide (README.md: \"Domain wiring (`notationhero.com`) is a separate ticket\")."
+    },
+    {
+      "id": "FYI-16",
+      "severity": "P3",
+      "decision": "APPLIED — option 1, chosen by the owner: `errorHandler` rethrows, so a failed release or upload step fails the production build.",
+      "what_changed": "Section 4 gains the bullet \"A failed upload stops the deploy\" (Vercel keeps the previous deployment live; a redeploy retries; the cost: no production deploy succeeds while Sentry is down or the token is revoked). The next.config.ts snippet gains `errorHandler: (error) => { throw error; }`.",
+      "untested": "The runtime behaviour was read from Sentry 11.0.0's source, not run: it needs a production build with a token. Type-checked only."
     }
   ]
 }

@@ -503,6 +503,12 @@ a name. Until the visitor opens a file it reads `sample`, which names the bundle
   (`sourcemaps.deleteSourcemapsAfterUpload: true`). "Hide source content" stays **off**: the
   repository is public, so hiding the code in Sentry protects nothing and removes the code around
   each error line.
+- **A failed upload stops the deploy.** By default, Sentry's build plugin only logs a release or
+  upload step that fails: the build goes on, and the maps are deleted anyway, so that release's
+  own frames stay minified, and only a line in Vercel's build log says so. With `errorHandler` (in
+  the snippet below), the production build fails at that step instead: Vercel keeps the previous
+  deployment live, and a redeploy tries again. The cost: while Sentry is down or the token is
+  revoked, no production deploy succeeds until Sentry answers again or the token is replaced.
 - **No upload without a token.** `SENTRY_AUTH_TOKEN` exists only in Vercel's Production environment.
   Preview builds, CI builds and local builds skip the upload and the release step
   (`useRunAfterProductionCompileHook` is off without a token), so they print no "No auth token"
@@ -533,6 +539,9 @@ export default withSentryConfig(nextConfig, {
   release: { name: process.env.NEXT_PUBLIC_APP_VERSION },
   sourcemaps: { disable: !process.env.SENTRY_AUTH_TOKEN },
   useRunAfterProductionCompileHook: Boolean(process.env.SENTRY_AUTH_TOKEN),
+  errorHandler: (error) => {
+    throw error; // a failed release or upload step fails the production build (section 4)
+  },
   suppressOnRouterTransitionStartWarning: true,
   telemetry: false,
 });
@@ -555,14 +564,21 @@ An agent may not create accounts or handle the token.
    error or warning, and each fixed one that comes back, then sends one email.
 3. Project settings → Security & Privacy → turn on **"Prevent Storing of IP Addresses"**. Then
    Project settings → General Settings → Client Security → **Allowed Domains**: replace the default
-   `*` with the production domain. Sentry then rejects a report that a browser sends with this DSN
-   from any other site. A request with no `Origin` or `Referer` header still gets through, so this
+   `*` with two entries, one per line: `*.notationhero.com`, the production domain (the pattern
+   also matches `notationhero.com` itself and `www.notationhero.com`), and
+   `notation-hero-web.vercel.app`, which redirects there once the domain is set up, but stays
+   listed so reports keep arriving whether the domain move or this setup comes first. Sentry then
+   rejects a report that a browser sends with this DSN from any other site, and every Release
+   Health ping from there: no issue opens, no alert fires, and only the Stats page counts them, as
+   "Disallowed Domain". A request with no `Origin` or `Referer` header still gets through, so this
    limits misuse of the public DSN; it does not stop it.
 4. Create an **organization auth token**, used only for the source-map upload.
 5. Vercel → the project → Settings → Environment Variables, **Production only** (D5):
    - `NEXT_PUBLIC_SENTRY_DSN` — public by design; it ships inside the page.
    - `SENTRY_AUTH_TOKEN` — marked **Sensitive**. Never in chat, never in the repository.
-6. After the first production deploy, open a file that is not a score. An E103 warning appearing in
+6. After the first production deploy, open the site at a domain that step 3 lists. A
+   deployment's own address, such as `notation-hero-web-<id>.vercel.app`, is not on that list, so
+   Sentry rejects its reports. Open a file that is not a score. An E103 warning appearing in
    Sentry, with the file's type and size and without its name, proves the whole path — and its
    email (step 2) proves the alert. Its stack must show our own frame, the `PlayerShell.tsx` line
    that calls `loadScoreFromBytes`, with readable names and the code around it, which proves the
