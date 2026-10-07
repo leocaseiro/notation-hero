@@ -106,11 +106,11 @@ screenshot baseline, `web/README.md` (the environment variables), `web/playwrigh
 - `web/app/play/OpenFileControl.tsx` and `web/app/play/PlayerShell.tsx`, beyond their catch sites:
   picking or dropping a file remembers its name (3.2) and takes the `instruments` tag off until the
   open ends (2.3); `requestNotation` remembers the score's names as soon as the file parses (3.2)
-  and sets the tag just before the opened score replaces the open one; the player sets the tag to
-  `sample` when it mounts and removes it when it unmounts; `readNotation` and `LoadedNotation`
-  carry the file's extension (2.3). The function that turns a file name into that type lives in
-  `OpenFileControl.tsx`, beside the `ACCEPT` list it checks, and is exported like `readNotation`,
-  so the drop path in `PlayerShell.tsx` uses the same list.
+  and sets the tag just before the opened score replaces the open one, but only while the player
+  that started the open is still mounted; the player sets the tag to `sample` each time it mounts;
+  `readNotation` and `LoadedNotation` carry the file's extension (2.3). The function that turns a
+  file name into that type lives in `OpenFileControl.tsx`, beside the `ACCEPT` list it checks, and
+  is exported like `readNotation`, so the drop path in `PlayerShell.tsx` uses the same list.
 - `web/e2e/player.e2e.ts` — one assertion each on the font and SoundFont failures it already
   forces (section 6).
 - `shared/src/error-codes.ts` and `docs/reference/error-codes.md` — the new E105 (section 2.4).
@@ -175,17 +175,17 @@ export function instrumentsValue(
   tracks: readonly { program: number; isPercussion: boolean }[],
 ): string;
 
-/** Sets the Sentry tag `instruments` for the score on screen: `sample` or `instrumentsValue()`. */
+/** The `instruments` value for the score on screen: `sample` or `instrumentsValue()`. */
 export function tagInstruments(value: string): void;
 
 /** A file was picked or dropped: no report carries the tag until that open ends. */
 export function suspendInstruments(): void;
 
-/** In a `finally`, when that open ends: the tag holds the value for the score on screen again. */
+/** In a `finally`, when that open ends: reports carry the value for the score on screen again. */
 export function restoreInstruments(): void;
 
-/** The player unmounted: the tag is removed, and an open still running changes nothing. */
-export function clearInstruments(): void;
+/** Sentry's `preprocessEvent` hook (3.3): tags a report captured on `/play` while no open runs. */
+export function addInstrumentsTag(event: SentryEvent): void; // Sentry's `Event`, not the DOM's
 ```
 
 - `level` defaults to `error`.
@@ -230,9 +230,21 @@ export function clearInstruments(): void;
   carries the last song's instruments. Afterwards the tag holds the remembered value again: the
   previous score's after a cancelled or failed open, the new score's after a successful one.
   `report.ts` counts the opens still running, so the tag comes back only when the last one ends.
-  When the player unmounts, `clearInstruments()` removes the tag: a report from `/` carries none,
-  and an open still running then changes nothing. AlphaTab's score-loaded event never sets the
-  tag: it also fires for the bundled beat, sometimes after the visitor's file.
+  AlphaTab's score-loaded event never sets the tag: it also fires for the bundled beat, sometimes
+  after the visitor's file.
+- **The page decides, when an error is captured.** No code calls `Sentry.setTag` for this tag. A
+  one-line integration in the SDK settings (3.3) gives Sentry's `preprocessEvent` hook to
+  `addInstrumentsTag()`, which adds the value only to a report captured while the page is `/play`
+  and no open runs. So a report from `/` carries none, even after a visit to `/play`, and the E901
+  that `/play`'s error page sends carries the score the crashed player held. Removing the tag when
+  the player unmounts would lose that: React runs the crashed player's unmount cleanups before the
+  error page's own effect sends the report. The hook runs inside `captureException`, so it reads
+  the page and the open count at the moment of the error; `beforeSend` would read them only as the
+  report leaves, which `@sentry/nextjs` delays under `next dev`. Leaving `/play` and returning to
+  it, or Try again on its error page, mounts the player again, and it sets `sample`. An open that
+  outlives its player never sets a value: the swap's `tagInstruments()` runs only while the player
+  that started the open is mounted (a ref). Its `restoreInstruments()` still runs, so the count of
+  running opens stays correct.
 
 ### 2.4 Every handled failure in `web/`
 
@@ -427,6 +439,7 @@ Sentry.init({
         ),
     ),
     breadcrumbsIntegration({ dom: false }), // no click breadcrumbs: their labels hold track names
+    { name: 'InstrumentsTag', preprocessEvent: addInstrumentsTag }, // the instruments tag (2.3)
   ],
   beforeBreadcrumb: scrubBreadcrumb,
   beforeSend: (event) => (isKnownEngineNoise(event) ? null : scrubEvent(event)),
@@ -578,10 +591,11 @@ secret. The upload now runs inside Vercel's build, so neither GitHub mechanism a
     the event's `message`;
   - `instrumentsValue`: a percussion track and a Distortion Guitar track (program 30) give
     `drums,030`; program 5 gives `005`; two tracks on the same program give one number;
-  - the tag's lifecycle: `suspendInstruments` takes the tag off and `restoreInstruments` puts the
-    remembered value back; `tagInstruments` while an open runs changes only the remembered value;
-    with two opens running, the tag comes back only when the second one ends; after
-    `clearInstruments`, no call changes the tag;
+  - the tag's lifecycle, read through `addInstrumentsTag`: `suspendInstruments` takes the tag off
+    and `restoreInstruments` puts the remembered value back; `tagInstruments` while an open runs
+    changes only the remembered value; with two opens running, the tag comes back only when the
+    second one ends; a report from `/play` carries the remembered value, and a report from `/`
+    never carries the tag;
   - `isStorageRefusal`: `SecurityError`, `QuotaExceededError` and `NS_ERROR_DOM_QUOTA_REACHED` count
     as refused storage; a `TypeError` from our own reader does not;
   - known engine noise: a throw whose frames all sit in the engine bundle is dropped; the same
@@ -600,7 +614,9 @@ secret. The upload now runs inside Vercel's build, so neither GitHub mechanism a
   `Punk.gp` and make the step after the parse throw with a message that quotes `Distortion Guitar`;
   once filtered, the E105 report's message reads `[file]` where it quoted the name.
 - **The tag follows the score on screen**, cases in `web/app/play/PlayerShell.test.tsx`: the tag
-  is `sample` once the player mounts and gone once it unmounts; opening `Punk.gp` sets `drums,030`;
+  is `sample` once the player mounts; opening `Punk.gp` sets `drums,030`; after an unmount, a report
+  from `/play` still carries `drums,030` (the E901 case) and a report from `/` carries none, and a
+  second mount gives `sample`; an open left running across that unmount sets nothing when it ends;
   with `Punk.gp` open, a file that is not a score sends an E103 without the tag and leaves
   `drums,030`, and so does Cancel on the prompt to replace it; an E105 thrown just after the swap
   leaves the new score's value; and when the bundled sample's score-loaded event arrives after the
@@ -720,5 +736,3 @@ Each is a claim this design rests on but no one has run yet:
 - What argument AlphaTab's `error` event passes — an `Error` or a string.
 - That Vercel never builds a fork's pull request with Production variables.
 - That Playwright can route a request to the `.invalid` host before any DNS lookup.
-- How Sentry 11 removes a tag: that `Sentry.setTag('instruments', undefined)` leaves no
-  `instruments` key in the report that is sent.

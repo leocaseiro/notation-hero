@@ -73,18 +73,8 @@
     },
     "severity_note": "Lap 3 holds no P0 or P1 after verification: F-33 was merged at adversarial's P1 and corrected to P2 (nothing ships broken; it breaks only when the domain moves).",
     "triage_progress": {
-      "decided": [],
-      "undecided": [
-        "F-31",
-        "F-32",
-        "F-33",
-        "F-34",
-        "FYI-15",
-        "FYI-16",
-        "FYI-17",
-        "FYI-18",
-        "FYI-19"
-      ],
+      "decided": ["F-32", "F-34", "F-31"],
+      "undecided": ["F-33", "FYI-15", "FYI-16", "FYI-17", "FYI-18", "FYI-19"],
       "pending_apply": []
     },
     "triage_status": "NOT TRIAGED. Review half done (2026-10-05): 4 findings and 5 observations, all verified. NEXT: the triage half, in a new session."
@@ -1397,5 +1387,51 @@
     "paths_note": "Repo-root-relative, because this file is tracked in a public repo. Chat prints the absolute form, built from the reader's own repo root.",
     "permalink_note": "The spec permalink is pinned to 2f68d380, where the spec is byte-identical. This file cannot name the sha of its own commit; the hand-over message carries a link pinned to the pushed sha."
   },
-  "decided_findings": []
+  "decided_findings": [
+    {
+      "id": "F-32",
+      "severity": "P2",
+      "decision": "APPLIED without a picker (auto-resolve), option 1 — the triage plan named it, and the owner's resume prompt asked for it",
+      "commit": "0de0f45f",
+      "what_changed": "The token check walks `.next/static`, `.next/server` and `public/`, the folders browsers download from; section 4 no longer says only NEXT_PUBLIC_ variables can reach a page (a server component can render any variable into a prerendered page); the test gains a fake `.next/server/app/play.html` and a fake file in `public/`.",
+      "why_no_picker": "It completes ADD-5 (\"any file a browser downloads\"): the check now does exactly what the owner chose. Option 2 (all of `.next` except the cache) was not taken: it is wider than ADD-5's words."
+    },
+    {
+      "id": "F-34",
+      "severity": "P2",
+      "decision": "APPLIED without a picker (auto-resolve), option 1 — the triage plan named it, and the owner's resume prompt asked for it",
+      "commit": "0de0f45f",
+      "what_changed": "A new paragraph, \"Three events stop the clock permanently\": the first finished render, an E203, or the E204 itself; the banner keeps its E203 text. Section 6's font-clock test gains both cases and a stub `document.fonts` (jsdom has none).",
+      "why_no_picker": "It completes F-29 (lap 2: E204 only when the font really never arrived) and removes a false report. The banner change goes from a wrong reason to the true one, with no alternative anyone would choose."
+    },
+    {
+      "id": "F-31",
+      "severity": "P2",
+      "decision": "APPLIED — option 1's rule (decide by page when a report is made), written as a one-line Sentry integration whose `preprocessEvent` hook calls `addInstrumentsTag` (\"1b\"), chosen by the owner after a real-SDK spike. Not in `beforeSend` (\"1a\").",
+      "rounds": 2,
+      "round_note": "Two picker rounds: in the first the owner asked for a spike with the real SDK and for what other apps use; the second carried the results. It counts as two against the finding cap.",
+      "what_changed": "Section 1 \"Also\": the swap's tagInstruments runs only while the player that started the open is mounted; the player sets `sample` each time it mounts. Section 2.3: `clearInstruments()` removed; `addInstrumentsTag(event: SentryEvent): void` added; a new bullet \"The page decides, when an error is captured\". Section 3.3: the integrations list gains `{ name: 'InstrumentsTag', preprocessEvent: addInstrumentsTag }`; `beforeSend` is unchanged. Section 6: the tag-lifecycle unit case and the PlayerShell tag case rewritten (the E901 case, a second mount, a stale open). To verify: the item about removing a tag with `setTag` removed (no setTag call is left).",
+      "spike_real_sdk": {
+        "setup": "@sentry/browser 11.0.0 and @sentry/nextjs 11.0.0's client init, with the spec's section 3.3 options and an in-memory transport; react and react-dom 19.2.7; Next 16.3.6's own error boundary; jsdom 29.1.1; production and development builds; 972 runs, one page load each; a second run gave identical results. The tag was read from the JSON that would be sent.",
+        "results_out_of_10": {
+          "spec as written (unmount clear + lock)": "production 5, @sentry/nextjs development 3",
+          "1a rule in beforeSend": "production 10 (both SDKs), @sentry/nextjs development 9",
+          "1a as a global event processor": "production 10, @sentry/nextjs development 9",
+          "1b rule in an integration (preprocessEvent or processEvent)": "every check in all four runs",
+          "2 clear on leaving /play (navigation hook)": "10 in every run, but it fails a new case: a navigation that starts and never finishes clears the tag while the visitor stays on /play",
+          "3 reset instead of lock": "9 (every E901 untagged)"
+        },
+        "why_1a_slips_in_development": "@sentry/nextjs adds an asynchronous event processor in development (devErrorSymbolicationEventProcessor), so beforeSend runs after the page or the open count may have changed: a report from `/` got `sample`, and an E103 from an open got `sample`. In production builds of 11.0.0 beforeSend runs inside captureException. Only production builds send reports (decision D5; with no DSN the SDK sends nothing).",
+        "set_tag_undefined": "`Sentry.setTag('instruments', undefined)` leaves no `instruments` key in the sent JSON (beforeSend still sees the key with the value undefined). Moot after this decision."
+      },
+      "type_check": "Run in the triage half with TypeScript 5.9.3 against @sentry/nextjs 11.0.0's published types: `Integration` is NOT exported from `@sentry/nextjs` (its types entry merges client, server and edge with `export *`), so the spec names no Integration type. `Event`, `ErrorEvent` and `EventHint` are exported. `addInstrumentsTag(event: SentryEvent): void` (import type { Event as SentryEvent }) and the inline `{ name: 'InstrumentsTag', preprocessEvent: addInstrumentsTag }` in the `integrations` callback compile (exit 0); a negative control with a wrong hook signature fails (exit 2). A type derived from `breadcrumbsIntegration` does not work: its `name` is the literal 'Breadcrumbs'.",
+      "research_other_apps": "Sentry's docs present beforeSend for filtering and scrubbing, run last after every event processor; event processors and integrations are where they add data. GitHub code search (rough counts): for a tag on every report, `Sentry.setTag` updated when state changes (~75 files) and adding the tag in beforeSend (~70) are about equally common; larger apps (Lightdash, Expensify, WorkAdventure) lean on setTag; Plasmic adds its open project's id in beforeSend at send time; integrations or processors that add tags are rare in app code (PostHog's Sentry integration is one); none of 66 files that mention onRouterTransitionStart with setTag sets a tag in that hook.",
+      "plan_notes": [
+        "Import the type as `import type { Event as SentryEvent } from '@sentry/nextjs'` in report.ts; do not add @sentry/core as a dependency for an Integration type.",
+        "addInstrumentsTag can skip non-error events (`event.type !== undefined`), as the spike did.",
+        "Vitest's jsdom page is `/`: the tag unit cases set `/play` with history.replaceState.",
+        "Nothing in the test lanes can tell preprocessEvent from beforeSend (production builds run both inside captureException); the section 2.3 sentence is what keeps the hook."
+      ]
+    }
+  ]
 }
