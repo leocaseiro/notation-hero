@@ -1,0 +1,918 @@
+{
+  "lap": 1,
+  "document": "docs/specs/2026-10-08-nh-51-google-analytics-design.md",
+  "baseline_commit": "f9c1fdf6",
+  "raw_finding_count": 27,
+  "unique_count": 20,
+  "actionable": [
+    "F-1",
+    "F-2",
+    "F-3",
+    "F-4",
+    "F-5",
+    "F-6",
+    "F-7",
+    "F-8",
+    "F-9",
+    "F-10",
+    "F-11",
+    "F-12",
+    "F-13",
+    "F-14",
+    "F-15"
+  ],
+  "fyi": ["FYI-1", "FYI-2", "FYI-3", "FYI-4", "FYI-5"],
+  "findings": [
+    {
+      "id": "F-1",
+      "area": "Area 1 - who is asked, and when it goes live",
+      "title": "A saved 'No' is ignored once the browser's time zone is outside Europe",
+      "severity": "P2",
+      "anchor": 100,
+      "route": "proposed_fix",
+      "finding_type": "error",
+      "reviewers": ["adversarial", "feasibility", "security-lens"],
+      "constituents": [
+        {
+          "title": "Saved 'No' ignored once the time zone leaves Europe",
+          "severity": "P2",
+          "section": "2. The privacy choice — the visitor table and allowed()",
+          "why_it_matters": "A visitor's explicit 'No, send nothing' stops being honoured once their browser reports a non-European time zone. An Australian who answers 'No' while in Berlin, or a German whose laptop switches to New York time, gets Google Analytics and Sentry again on their next visit. This happens because the table gives 'Outside Europe' everything, and allowed() is specified as that table (and unit-tested as its 15 cells), with no row for a saved answer. The same rule would make NH-349's link save answers that allowed() ignores, although its Jira text lets 'a visitor outside Europe ... turn things off' and 'Extending later' says it only reuses saveChoice(); G3 already says 'by default', so letting a saved answer win everywhere changes neither G3 nor G4.",
+          "finding_type": "omission",
+          "autofix_class": "gated_auto",
+          "suggested_fix": "In section 2, state that a saved answer decides for every visitor and the time zone decides only when nothing is saved. Add the row 'Any visitor with a saved answer → that answer's row' to the table, and add unit cases such as Australia/Sydney with a saved 'none' allowing nothing.",
+          "confidence": 75,
+          "evidence": [
+            "/** The table above, for this visitor. */",
+            "`allowed()`: the 15 cells of section 2's table.",
+            "Visitors in Europe are asked first; everyone else gets everything by default, with no popup",
+            "NH-349's link reuses `PrivacyChoices` and `saveChoice()`."
+          ],
+          "raw_id": "adversarial#1",
+          "reviewer": "adversarial"
+        },
+        {
+          "title": "Saved 'No' ignored once the time zone leaves Europe",
+          "severity": "P2",
+          "section": "2. The privacy choice",
+          "why_it_matters": "Suppose a visitor answers 'No, send nothing' while their browser is set to a European time zone. On their next visit from a time zone outside Europe, they are counted and reported anyway. The reason: `allowed()`, the one rule both tools follow, is defined as section 2's table. Its 'Outside Europe' row allows everything, whatever answer is saved, and the 15 unit-test cells lock that in. This contradicts the Goal's 'one answer governs' and G3's 'by default'. It also breaks the 'Extending later' plan for NH-349, the 'Privacy choices' link for every visitor: if a visitor outside Europe says 'No' through that link, the next page load overrides it. Letting a saved answer win for every visitor, with the time zone deciding only whether to ask when nothing is saved, fixes both for the cost of one table row.",
+          "finding_type": "error",
+          "autofix_class": "gated_auto",
+          "suggested_fix": "In section 2, state that a saved answer wins for every visitor, and that the time zone only decides whether to ask when nothing is saved. allowed() reads savedChoice() first. The table's first row becomes 'Outside Europe, no saved answer', and a new row is added: 'Outside Europe, answered earlier: as answered'. Section 9's allowed() unit cells cover the new row.",
+          "confidence": 75,
+          "evidence": [
+            "/** The table above, for this visitor. */",
+            "Visitors in Europe are asked first, and one answer governs both Google Analytics and Sentry.",
+            "**NH-349's link** reuses `PrivacyChoices` and `saveChoice()`. Changing to \"No\" must stop Google Analytics (a consent update to denied, and no more events) and close Sentry for the rest of the visit.",
+            "`allowed()`: the 15 cells of section 2's table."
+          ],
+          "raw_id": "feasibility#3",
+          "reviewer": "feasibility"
+        },
+        {
+          "title": "A saved 'No' is ignored outside a European time zone",
+          "severity": "P2",
+          "section": "2. The privacy choice — the allowed() table",
+          "why_it_matters": "A visitor who chose 'No, send nothing' is tracked by Google Analytics and Sentry on any later page load where the browser's time zone is not European. A phone or laptop that updates its time zone while travelling is enough. This happens because `allowed()` is defined as the section 2 table, whose 'Outside Europe' row is all ✅ whatever was saved, and its unit test checks exactly those 15 cells. The same rule breaks NH-349 (the 'Privacy choices' link planned for every visitor): a non-European visitor's 'No' would be saved and then ignored on the next page load. If a saved answer wins, and the time zone only picks the default when there is no answer, G3's 'everything by default' and the Goal's 'one answer governs both' both still hold.",
+          "finding_type": "error",
+          "autofix_class": "gated_auto",
+          "suggested_fix": "In section 2, make a saved answer win in every time zone: `allowed()` first reads the saved (or in-memory) answer and returns that answer's row. Only when there is no answer does `asksFirst()` decide: in Europe nothing runs until the visitor answers, and elsewhere everything runs. Rename the first table row 'Outside Europe, no saved answer'. Add 'Outside Europe' rows for a saved 'Report errors only' and a saved 'No, send nothing', with the same cells as their Europe rows. Extend the `allowed()` unit test to cover the new rows.",
+          "confidence": 75,
+          "evidence": [
+            "/** The table above, for this visitor. */",
+            "`allowed()`: the 15 cells of section 2's table.",
+            "Visitors in Europe are asked first; everyone else gets everything by default, with no popup",
+            "narrowed on 2026-10-05 to a \"Privacy choices\" link for every visitor"
+          ],
+          "raw_id": "security-lens#1",
+          "reviewer": "security-lens"
+        }
+      ],
+      "evidence_union": [
+        "/** The table above, for this visitor. */",
+        "`allowed()`: the 15 cells of section 2's table.",
+        "Visitors in Europe are asked first; everyone else gets everything by default, with no popup",
+        "NH-349's link reuses `PrivacyChoices` and `saveChoice()`.",
+        "/** The table above, for this visitor. */",
+        "Visitors in Europe are asked first, and one answer governs both Google Analytics and Sentry.",
+        "**NH-349's link** reuses `PrivacyChoices` and `saveChoice()`. Changing to \"No\" must stop Google Analytics (a consent update to denied, and no more events) and close Sentry for the rest of the visit.",
+        "`allowed()`: the 15 cells of section 2's table.",
+        "/** The table above, for this visitor. */",
+        "`allowed()`: the 15 cells of section 2's table.",
+        "Visitors in Europe are asked first; everyone else gets everything by default, with no popup",
+        "narrowed on 2026-10-05 to a \"Privacy choices\" link for every visitor"
+      ],
+      "synthesis_note": "Three separately dispatched reviewers found it; the table and the unit-test line state it outright, so the anchor rises one step (75 -> 100). Fix entailed by the spec's own Goal ('one answer governs both'), G3's 'by default' and NH-349's link 'for every visitor'. Coherence's deferred question 2 restates it.",
+      "recommended_action": "Apply"
+    },
+    {
+      "id": "F-2",
+      "area": "Area 1 - who is asked, and when it goes live",
+      "title": "Go-live has no gate on NH-349, the link that lets a visitor take back an answer",
+      "severity": "P2",
+      "anchor": 75,
+      "route": "decision",
+      "finding_type": "omission",
+      "reviewers": ["adversarial", "product-lens", "scope-guardian"],
+      "constituents": [
+        {
+          "title": "Go-live in Europe has no gate on NH-349",
+          "severity": "P2",
+          "section": "Known limits — 'Until NH-349 ships' (with G10, code after NH-124 merges)",
+          "why_it_matters": "Following G10 (merge after NH-124, then rebase) puts the popup live in Europe the moment this ticket merges, because the popup shows whenever Sentry's DSN or the Google Analytics ID is set and master deploys to production. At that point a visitor can withdraw consent only by clearing site data, which is the GDPR Article 7(3) gap this spec itself names. Nothing turns 'should land before or with' into a gate: NH-349 is in To Do and its only link is 'relates to NH-124' (Jira, checked 2026-10-08). NH-349 reuses this ticket's PrivacyChoices, so merging the two together is the one order that meets the recorded launch condition without reopening G7's rejection of 'NH-349 first'.",
+          "finding_type": "omission",
+          "autofix_class": "gated_auto",
+          "suggested_fix": "Replace the Known-limits sentence 'NH-349 should land before or with this ticket's go-live' with a gate: this ticket's pull request merges only together with NH-349's link, which is a separate pull request stacked on this branch. In section 10's Jira bullet, add that NH-349 blocks NH-51.",
+          "confidence": 75,
+          "evidence": [
+            "Until NH-349 ships, a visitor in Europe can change their answer only by clearing the site's data. GDPR Article 7(3) requires withdrawing to be as easy as agreeing, so NH-349 should land before or with this ticket's go-live.",
+            "The popup and the rule apply only when `NEXT_PUBLIC_SENTRY_DSN` or `NEXT_PUBLIC_GA_ID` is set.",
+            "This spec now; the code after NH-124 merges, then a rebase"
+          ],
+          "raw_id": "adversarial#2",
+          "reviewer": "adversarial"
+        },
+        {
+          "title": "Consent withdrawal (NH-349) is required at go-live but ungated",
+          "severity": "P2",
+          "section": "Known limits — 'Until NH-349 ships' (withdrawing an answer), with the Status line",
+          "why_it_matters": "Visitors in Europe could answer Yes and have no way to take it back for as long as NH-349 (the 'Privacy choices' link) stays in the backlog. The spec says the Article 7(3) fix 'should' land by go-live, but it never defines go-live and nothing waits for it. In practice go-live is this ticket's merge: once NH-124's Sentry DSN is set, section 2 shows the popup on that deploy. Yet the Status line and G10 (code after NH-124 merges) wait only for NH-124, and Jira links neither ticket to the other (NH-349 is To Do, Medium). The gate is leocaseiro's call, because holding this ticket keeps NH-124's reporting in Europe running without consent until both merge. Without a gate, though, the plan cannot order the two tickets.",
+          "finding_type": "omission",
+          "autofix_class": "manual",
+          "suggested_fix": "Define go-live in Known limits as the production deploy of this ticket's merge, and make NH-349's 'Privacy choices' link its blocker. The Status line and section 10 say this pull request merges only once NH-349's own pull request, stacked on this branch, is approved and merges right after it. Jira gets the link 'NH-349 blocks NH-51'.",
+          "confidence": 75,
+          "evidence": [
+            "GDPR Article 7(3) requires withdrawing to be as easy as agreeing, so NH-349 should land before or with this ticket's go-live.",
+            "The popup and the rule apply only when `NEXT_PUBLIC_SENTRY_DSN` or `NEXT_PUBLIC_GA_ID` is set.",
+            "Not implemented. The plan comes next; the code waits for NH-124 to merge.",
+            "**Jira:** NH-51 rewritten and NH-349 narrowed (both done on 2026-10-05)."
+          ],
+          "raw_id": "product-lens#1",
+          "reviewer": "product-lens"
+        },
+        {
+          "title": "Setup step 5 can start Analytics before NH-349 ships",
+          "severity": "P2",
+          "section": "8. Setup (done by hand), step 5 (Vercel environment variable), with Known limits",
+          "why_it_matters": "Following section 8 as written starts Google Analytics collection in Europe while a visitor there still has no way to withdraw consent. Known limits says GDPR Article 7(3) requires withdrawal and that NH-349 (the 'Privacy choices' link, kept as its own ticket by G7, the decision to build the popup here and narrow NH-349) should land before or with go-live, but step 5 - setting NEXT_PUBLIC_GA_ID, the one action that starts collection - carries no such gate. Nothing in section 8, section 10 or the registry row L11-analytics ties the two, so the condition depends on someone remembering it on launch day. One sentence at step 5 makes it part of the launch steps and leaves G7 intact, because NH-349 stays a separate ticket.",
+          "finding_type": "omission",
+          "autofix_class": "gated_auto",
+          "suggested_fix": "Add to section 8, step 5: 'Set this only after NH-349 (the Privacy choices link) is live or ships in the same release; Known limits explains why. While the variable is unset, Google Analytics never starts.'",
+          "confidence": 75,
+          "evidence": [
+            "GDPR Article 7(3) requires withdrawing to be as easy as agreeing, so NH-349 should land",
+            "ships inside the page. Then redeploy: variables reach new deployments only.",
+            "No way yet to change an answer."
+          ],
+          "raw_id": "scope-guardian#1",
+          "reviewer": "scope-guardian"
+        }
+      ],
+      "evidence_union": [
+        "Until NH-349 ships, a visitor in Europe can change their answer only by clearing the site's data. GDPR Article 7(3) requires withdrawing to be as easy as agreeing, so NH-349 should land before or with this ticket's go-live.",
+        "The popup and the rule apply only when `NEXT_PUBLIC_SENTRY_DSN` or `NEXT_PUBLIC_GA_ID` is set.",
+        "This spec now; the code after NH-124 merges, then a rebase",
+        "GDPR Article 7(3) requires withdrawing to be as easy as agreeing, so NH-349 should land before or with this ticket's go-live.",
+        "The popup and the rule apply only when `NEXT_PUBLIC_SENTRY_DSN` or `NEXT_PUBLIC_GA_ID` is set.",
+        "Not implemented. The plan comes next; the code waits for NH-124 to merge.",
+        "**Jira:** NH-51 rewritten and NH-349 narrowed (both done on 2026-10-05).",
+        "GDPR Article 7(3) requires withdrawing to be as easy as agreeing, so NH-349 should land",
+        "ships inside the page. Then redeploy: variables reach new deployments only.",
+        "No way yet to change an answer."
+      ],
+      "synthesis_note": "One problem, three remedies: merge this PR only together with NH-349's (adversarial, product-lens), or hold NEXT_PUBLIC_GA_ID until NH-349 ships (scope-guardian). The env-var gate does not cover Sentry: the popup also shows when only the Sentry DSN is set, so a 'Yes' to Sentry still cannot be taken back. Choosing the gate is leocaseiro's call (product-lens says so), so it is a decision. Coupled with F-3.",
+      "recommended_action": "Apply (merge-together gate)"
+    },
+    {
+      "id": "F-3",
+      "area": "Area 1 - who is asked, and when it goes live",
+      "title": "Sentry reports visitors in Europe before this ticket's popup exists",
+      "severity": "P2",
+      "anchor": 75,
+      "route": "decision",
+      "finding_type": "omission",
+      "reviewers": ["feasibility"],
+      "constituents": [
+        {
+          "title": "NH-124 going live first reports Europe without asking",
+          "severity": "P2",
+          "section": "6. Changes to Sentry's design and 8. Setup",
+          "why_it_matters": "NH-124's merge deploys to production. From then until this ticket's code ships, every visitor in Europe is reported to Sentry without being asked, Release Health's visit ping included. G5 forbids exactly this: in Europe nothing loads, Sentry included, until the visitor answers (leocaseiro's 'whatever is good by law'). G10 places this code after NH-124 merges. NH-124's own setup sets `NEXT_PUBLIC_SENTRY_DSN` in Production and checks a live report right after its first deploy. This spec's go-live note covers only NH-349. Holding back the DSN until the deploy that ships the popup closes the gap. The cost is that Sentry's first live check moves to this ticket's deploy.",
+          "finding_type": "omission",
+          "autofix_class": "gated_auto",
+          "suggested_fix": "Add to section 8 and 'Known limits': NEXT_PUBLIC_SENTRY_DSN is added to Vercel Production only with the deploy that ships this ticket's popup. Until then, NH-124 runs in production with no DSN, so no visitor in Europe is reported before they answer. NH-124's first live check moves to that deploy.",
+          "confidence": 75,
+          "evidence": [
+            "This spec now; the code after NH-124 merges, then a rebase",
+            "In Europe nothing loads — Sentry included — until the visitor answers",
+            "Made in this ticket's pull request, after NH-124 merges:",
+            "NH-349 should land before or with this ticket's go-live."
+          ],
+          "raw_id": "feasibility#4",
+          "reviewer": "feasibility"
+        }
+      ],
+      "evidence_union": [
+        "This spec now; the code after NH-124 merges, then a rebase",
+        "In Europe nothing loads — Sentry included — until the visitor answers",
+        "Made in this ticket's pull request, after NH-124 merges:",
+        "NH-349 should land before or with this ticket's go-live."
+      ],
+      "synthesis_note": "Reviewer filed gated_auto with one remedy (hold the Sentry DSN until the popup's deploy). Reclassified as a decision: every remedy changes NH-124's go-live (no Sentry anywhere until NH-51 ships, or an interim window in Europe, or an interim Europe-off rule inside NH-124), which is leocaseiro's call, not an entailed correction. Coupled with F-2.",
+      "recommended_action": "Decide"
+    },
+    {
+      "id": "F-4",
+      "area": "Area 1 - who is asked, and when it goes live",
+      "title": "No privacy notice: the popup never says who runs the site or that an answer can be withdrawn",
+      "severity": "P2",
+      "anchor": 75,
+      "route": "decision",
+      "finding_type": "omission",
+      "reviewers": ["adversarial"],
+      "constituents": [
+        {
+          "title": "No privacy notice: consent lacks controller and withdrawal right",
+          "severity": "P2",
+          "section": "3. The popup — the approved words (with G9, the home-page disclosure)",
+          "why_it_matters": "A 'Yes' given in Europe may not be valid consent, and valid consent is the outcome G3 and G5 ('whatever is good by law') exist to secure. The EDPB's consent guidelines (05/2020) and the CNIL's cookie guidelines count consent as informed only when the visitor is told at least who is asking, each purpose, the data used, and that they can withdraw. The approved words name the purposes and tools but not who runs the site or the right to withdraw, and the site has no privacy page to hold that information; Google Analytics' terms (section 7) also require 'an appropriate Privacy Policy', not only the disclosure link G9 relies on. The words are leocaseiro's, and which name and contact to publish is leocaseiro's decision.",
+          "finding_type": "omission",
+          "autofix_class": "manual",
+          "suggested_fix": "Add a short privacy notice that says who runs Notation Hero and how to reach them, what each tool receives and for how long, and how to change the answer. Link it from the popup's Details and from the home note.",
+          "confidence": 75,
+          "evidence": [
+            "Can we count visits (with a cookie) and get error reports? Your scores stay on your device.",
+            "Error reports go to Sentry, a bug-tracking service. Visit counts go to Sentry and Google Analytics. Neither gets your file, its name, or the music in it. How Google uses data ↗",
+            "The home page names Google Analytics because its terms require the site to disclose it and link to Google's page (G9).",
+            "No way yet to change an answer."
+          ],
+          "raw_id": "adversarial#3",
+          "reviewer": "adversarial"
+        }
+      ],
+      "evidence_union": [
+        "Can we count visits (with a cookie) and get error reports? Your scores stay on your device.",
+        "Error reports go to Sentry, a bug-tracking service. Visit counts go to Sentry and Google Analytics. Neither gets your file, its name, or the music in it. How Google uses data ↗",
+        "The home page names Google Analytics because its terms require the site to disclose it and link to Google's page (G9).",
+        "No way yet to change an answer."
+      ],
+      "synthesis_note": "Manual as filed: which name and contact to publish, and whether a short notice page is in scope, are leocaseiro's to decide. Needs the legal claims checked (EDPB Guidelines 05/2020 minimum content; Google Analytics terms section 7).",
+      "recommended_action": "Decide"
+    },
+    {
+      "id": "F-5",
+      "area": "Area 2 - the end-to-end tests",
+      "title": "The end-to-end tests would reach Google, and the source of Google's script in tests is undecided",
+      "severity": "P2",
+      "anchor": 100,
+      "route": "decision",
+      "finding_type": "error",
+      "reviewers": ["adversarial", "feasibility"],
+      "constituents": [
+        {
+          "title": "Every existing lane test would still reach Google",
+          "severity": "P2",
+          "section": "9. Testing (End to end, Playwright) and 1. Packages and files",
+          "why_it_matters": "Every existing test in the `web` lane would download Google's gtag.js and send page-view hits to Google on every CI and local run. The fake Google Analytics ID and the Sydney time zone apply to the whole one-build lane, but only `privacy-choice.e2e.ts` installs the fixture that answers Google's hosts. `player.e2e.ts`, `a11y.e2e.ts`, `toast-occlusion.e2e.ts` and `pages.vr.ts` import `test` straight from `@playwright/test`, and none of them is on the changed-files list. Sentry's opt-in fixture is safe only because its fake DSN host is `.invalid` and never resolves. `www.googletagmanager.com` does resolve, and the spike showed that a made-up ID still gets a working script that sends a page view. A module-scope call that every lane file makes, the same shape `failOnUnexpectedPageErrors()` already has, keeps 'no test reaches Google' true and keeps a live third-party host out of the merge-blocking lane.",
+          "finding_type": "error",
+          "autofix_class": "gated_auto",
+          "suggested_fix": "Have web/e2e/google-analytics.ts export a module-scope call, the same shape as failOnUnexpectedPageErrors(), that answers Google's hosts for every test in the calling file. Add web/e2e/player.e2e.ts, a11y.e2e.ts, toast-occlusion.e2e.ts and pages.vr.ts to 'Changed files' as callers of it. State in section 9 that every test in the lane answers Google's hosts locally, not only privacy-choice.e2e.ts.",
+          "confidence": 100,
+          "evidence": [
+            "`web/playwright.e2e.config.ts`: `timezoneId: 'Australia/Sydney'` for every project, and a fake Google Analytics ID.",
+            "the shared fixture: answers Google's hosts locally and records every request",
+            "`web/e2e/google-analytics.ts` answers Google's hosts locally, the way Sentry's fixture answers its fake DSN, so no test reaches Google."
+          ],
+          "raw_id": "feasibility#1",
+          "reviewer": "feasibility"
+        },
+        {
+          "title": "Existing e2e cases will send real hits to Google",
+          "severity": "P2",
+          "section": "9. Testing — End to end (the web/e2e/google-analytics.ts fixture)",
+          "why_it_matters": "About a hundred existing cases (player, accessibility, toast and the ten screenshots) will download Google's script and send real hits to Google from CI, which contradicts 'no test reaches Google'. The lane's one build gets the fake Google Analytics ID and every project runs as Sydney, so startAnalytics() runs on each page load. Only cases that install the new fixture get local answers, and the four existing files import test directly from @playwright/test. Sentry's fake DSN never had this gap because it is on .invalid, which cannot resolve, while Google's hosts do resolve; the spec also does not say where the fixture gets the real gtag.js that the gcs, npa and dt assertions need, and the spike answered only Google's collect requests locally.",
+          "finding_type": "error",
+          "autofix_class": "gated_auto",
+          "suggested_fix": "In web/playwright.e2e.config.ts, make Google's hosts (www.googletagmanager.com, *.google-analytics.com, analytics.google.com, www.google.com) unresolvable for both projects with Chromium's --host-resolver-rules launch argument, so a case without the fixture fails closed like Sentry's .invalid DSN. The fixture fetches the real gtag.js with route.fetch(), which runs in Node and so is not affected by that rule, and answers every hit locally. Change section 9's claim to 'no test sends Google a hit'.",
+          "confidence": 75,
+          "evidence": [
+            "`web/e2e/google-analytics.ts` answers Google's hosts locally, the way Sentry's fixture answers its fake DSN, so no test reaches Google.",
+            "`web/playwright.e2e.config.ts`: `timezoneId: 'Australia/Sydney'` for every project, and a fake Google Analytics ID.",
+            "afterLoad(() => addScript(`https://www.googletagmanager.com/gtag/js?id=${id}`));",
+            "Sydney: no popup; a page view with `gcs=G101` and `npa=1`"
+          ],
+          "raw_id": "adversarial#4",
+          "reviewer": "adversarial"
+        },
+        {
+          "title": "E2E assertions need Google's real gtag.js; its source is undecided",
+          "severity": "P2",
+          "section": "9. Testing (End to end, Playwright)",
+          "why_it_matters": "The Sydney, 'Yes' and privacy cases check `gcs=G101`, `npa=1` and `dt`. Only Google's own gtag.js puts those values on its collect requests. Yet section 9 answers every Google host locally and never says what the fixture returns for the script itself. If the fixture serves a stub script, the page sends no collect request at all: the Sydney case cannot pass, and the privacy case ('no Google request contains the title') passes while checking nothing. leocaseiro needs to choose between two options. (1) Commit a snapshot of the gtag.js that Google serves for the fake ID as a test fixture: no test reaches Google, but a Google-owned script then sits in a public repository, and the tests run a frozen copy until someone refreshes it. (2) Let only the script download through to Google, as the spike did: the tests run the live script, but the merge-blocking `web` job then depends on googletagmanager.com, and section 9's promise becomes 'no hit reaches Google'. Whichever is chosen, the privacy case should also check that at least one collect request was recorded.",
+          "finding_type": "error",
+          "autofix_class": "manual",
+          "suggested_fix": null,
+          "confidence": 75,
+          "evidence": [
+            "**Sydney:** no popup; a page view with `gcs=G101` and `npa=1`",
+            "No Google request — address or body — contains any of them, and `dt` stays `Notation Hero`.",
+            "`web/e2e/google-analytics.ts` answers Google's hosts locally, the way Sentry's fixture answers its fake DSN, so no test reaches Google.",
+            "Google's collect requests answered locally, so nothing reached Google."
+          ],
+          "raw_id": "feasibility#2",
+          "reviewer": "feasibility"
+        }
+      ],
+      "evidence_union": [
+        "`web/playwright.e2e.config.ts`: `timezoneId: 'Australia/Sydney'` for every project, and a fake Google Analytics ID.",
+        "the shared fixture: answers Google's hosts locally and records every request",
+        "`web/e2e/google-analytics.ts` answers Google's hosts locally, the way Sentry's fixture answers its fake DSN, so no test reaches Google.",
+        "`web/e2e/google-analytics.ts` answers Google's hosts locally, the way Sentry's fixture answers its fake DSN, so no test reaches Google.",
+        "`web/playwright.e2e.config.ts`: `timezoneId: 'Australia/Sydney'` for every project, and a fake Google Analytics ID.",
+        "afterLoad(() => addScript(`https://www.googletagmanager.com/gtag/js?id=${id}`));",
+        "Sydney: no popup; a page view with `gcs=G101` and `npa=1`",
+        "**Sydney:** no popup; a page view with `gcs=G101` and `npa=1`",
+        "No Google request — address or body — contains any of them, and `dt` stays `Notation Hero`.",
+        "`web/e2e/google-analytics.ts` answers Google's hosts locally, the way Sentry's fixture answers its fake DSN, so no test reaches Google.",
+        "Google's collect requests answered locally, so nothing reached Google."
+      ],
+      "synthesis_note": "Merged: one strategy resolves all three. Feasibility#1 (anchor 100) and adversarial#4 describe the same leak (existing test files never install the fixture; Google's hosts resolve, unlike Sentry's .invalid DSN) with different mechanisms (a call in every file, versus a fail-closed resolver rule in the config). Feasibility#2 adds that the gcs/npa/dt assertions need Google's real gtag.js and nothing says where the fixture gets it (snapshot committed, or live). Choosing the script source is a real trade-off (Google-owned code in a public repo, versus a merge-blocking lane that depends on googletagmanager.com), so the merged finding is a decision. Coherence's deferred question 1 restates it.",
+      "recommended_action": "Decide"
+    },
+    {
+      "id": "F-6",
+      "area": "Area 2 - the end-to-end tests",
+      "title": "The privacy test can pass before any Google request has arrived",
+      "severity": "P2",
+      "anchor": 75,
+      "route": "proposed_fix",
+      "finding_type": "omission",
+      "reviewers": ["adversarial"],
+      "constituents": [
+        {
+          "title": "Privacy e2e case can pass before any hit arrives",
+          "severity": "P2",
+          "section": "9. Testing — End to end, the Privacy case",
+          "why_it_matters": "The only automated check that no title or track name reaches Google can pass while a name leaks. Google batches custom events and sends them a few seconds later (the spike's table), so a case that opens a fixture and then reads the recorded requests may find only the page view, and an empty match proves nothing. The case also never presses a control whose label holds a track name, such as Solo and Mute, which TrackRow labels with the track's name; that is the leak path G8 cites. Sentry's spec closes the same hole by making each 'nothing sent' case wait for a sentinel, because 'a recorder that captured nothing would pass'.",
+          "finding_type": "omission",
+          "autofix_class": "gated_auto",
+          "suggested_fix": "In the privacy case, click one track's Solo and Mute. Wait until the fixture has recorded the score_loaded hit with the fixture's track_count and both mixer_change hits, and only then assert that no recorded Google request contains the title or any track name.",
+          "confidence": 75,
+          "evidence": [
+            "Privacy: open a fixture with a known title and track names. No Google request — address or body — contains any of them, and `dt` stays `Notation Hero`.",
+            "sent, batched a few seconds later",
+            "automatic click tracking (button labels hold track names — the reason Sentry turned click breadcrumbs off)"
+          ],
+          "raw_id": "adversarial#5",
+          "reviewer": "adversarial"
+        }
+      ],
+      "evidence_union": [
+        "Privacy: open a fixture with a known title and track names. No Google request — address or body — contains any of them, and `dt` stays `Notation Hero`.",
+        "sent, batched a few seconds later",
+        "automatic click tracking (button labels hold track names — the reason Sentry turned click breadcrumbs off)"
+      ],
+      "synthesis_note": "Unique. Coupled with F-5: the waits it adds assume the fixture records real collect requests.",
+      "recommended_action": "Apply"
+    },
+    {
+      "id": "F-7",
+      "area": "Area 2 - the end-to-end tests",
+      "title": "'Report errors only' is never checked for the absence of Sentry's visit ping",
+      "severity": "P2",
+      "anchor": 75,
+      "route": "proposed_fix",
+      "finding_type": "omission",
+      "reviewers": ["security-lens"],
+      "constituents": [
+        {
+          "title": "Errors-only answer never checked for an absent visit ping",
+          "severity": "P2",
+          "section": "9. Testing — End to end, the Berlin cases",
+          "why_it_matters": "Suppose 'Report errors only' still starts Sentry's Release Health, the per-visit ping. Every European who turned down visit counting would then send a visit ping on every page load, and no test would fail. The risk is real: the integration's name is still unverified (it is on the spec's 'To verify at plan time' list), and a future Sentry major version can change it. The Berlin case checks only that an error reaches Sentry and nothing reaches Google, and NH-124's end-to-end cases read event envelopes only, never the session envelope. One assertion in that case would guard G6 (one purpose per button) on Sentry's side, where the visit count is the only difference between 'errors only' and 'everything'.",
+          "finding_type": "omission",
+          "autofix_class": "gated_auto",
+          "suggested_fix": "In section 9's Berlin cases, also read Sentry's session envelopes. After 'Report errors only', the forced error arrives and no session envelope is sent. After 'Yes, …', a session envelope is sent.",
+          "confidence": 75,
+          "evidence": [
+            "\"Report errors only\": a forced error reaches Sentry, and nothing reaches Google.",
+            "With \"Report errors only\", Sentry starts without its Release Health session integration, so no visit ping is sent.",
+            "Sentry 11 can start after the page has loaded, and the name of its Release Health integration."
+          ],
+          "raw_id": "security-lens#2",
+          "reviewer": "security-lens"
+        }
+      ],
+      "evidence_union": [
+        "\"Report errors only\": a forced error reaches Sentry, and nothing reaches Google.",
+        "With \"Report errors only\", Sentry starts without its Release Health session integration, so no visit ping is sent.",
+        "Sentry 11 can start after the page has loaded, and the name of its Release Health integration."
+      ],
+      "synthesis_note": "Unique. Depends on NH-124's fixture being able to see session envelopes; verify against the Sentry spec.",
+      "recommended_action": "Apply"
+    },
+    {
+      "id": "F-8",
+      "area": "Area 2 - the end-to-end tests",
+      "title": "The accessibility scan asks for a dark theme web/ cannot show",
+      "severity": "P2",
+      "anchor": 100,
+      "route": "proposed_fix",
+      "finding_type": "error",
+      "reviewers": ["design-lens", "scope-guardian"],
+      "constituents": [
+        {
+          "title": "Dark-theme axe scan targets a state web/ cannot reach",
+          "severity": "P2",
+          "section": "9. Testing - Screenshots and accessibility (axe scan), and 3. The popup - Themes",
+          "why_it_matters": "An implementer following section 9 has to inject a .dark class from the test to scan a theme no visitor can reach: web/app/layout.tsx renders a bare html element with no theme control, and every existing web axe case is light-only. The repo's web visual-regression spec (docs/specs/2026-09-21-web-visual-regression-gate.md, 'Light only') rules this out, calling dark mode unreachable in web/ and a test-injected .dark 'test-only instrumentation of exactly the kind this project bans'. The dark scan would also audit the rest of /play in a theme nobody has audited, so unrelated findings could land on this ticket. Scanning in light only matches the other axe cases and removes the problem.",
+          "finding_type": "error",
+          "autofix_class": "gated_auto",
+          "suggested_fix": "In section 9, change the accessibility bullet to: 'An axe scan with the popup open, in the light theme like the rest of the web lane.' In section 3, change the Themes bullet to: 'Themes: colours come from the design tokens; no new colour.'",
+          "confidence": 75,
+          "evidence": [
+            "An axe scan with the popup open, in both themes.",
+            "light and dark from the design tokens; no new colour."
+          ],
+          "raw_id": "scope-guardian#2",
+          "reviewer": "scope-guardian"
+        },
+        {
+          "title": "'Both themes' axe scan is unreachable in light-only web/",
+          "severity": "P2",
+          "section": "9. Testing — Screenshots and accessibility, last bullet (line 398); 3. The popup — Themes bullet (line 164)",
+          "why_it_matters": "The test plan asks for a step the `web` lane cannot perform: `web/` can never show dark mode, because the variant is the class `.dark` (`client/src/styles.css:27`), nothing sets it, and `web/app/layout.tsx` renders a bare `<html lang=\"en\">`. A scan \"in both themes\" therefore means injecting the class from the test, which the visual-regression gate's 'Light only' section (`docs/specs/2026-09-21-web-visual-regression-gate.md`) rejects as \"a state no visitor can reach\"; the implementer either breaks that reasoning or silently drops half the clause. The changelog entry of 2026-09-21 defers dark mode behind NH-302 (the dark-mode work for the notation colours), so recording light-only now matches the repo's decision and still lets the card's token-only styling carry dark later.",
+          "finding_type": "error",
+          "autofix_class": "gated_auto",
+          "suggested_fix": "In section 9, change the last bullet to: 'An axe scan with the popup open, in light only: dark mode cannot be turned on in `web/` yet (deferred behind NH-302; see \"Light only\" in `docs/specs/2026-09-21-web-visual-regression-gate.md`).' In section 3, reword the Themes bullet to: 'Styled from design tokens only, so dark follows the day `web/` can show it; no new colour.'",
+          "confidence": 75,
+          "evidence": [
+            "An axe scan with the popup open, in both themes.",
+            "**Themes:** light and dark from the design tokens; no new colour."
+          ],
+          "raw_id": "design-lens#2",
+          "reviewer": "design-lens"
+        }
+      ],
+      "evidence_union": [
+        "An axe scan with the popup open, in both themes.",
+        "light and dark from the design tokens; no new colour.",
+        "An axe scan with the popup open, in both themes.",
+        "**Themes:** light and dark from the design tokens; no new colour."
+      ],
+      "synthesis_note": "Two separately dispatched reviewers; the repo's web visual-regression spec decides 'Light only' and web/app/layout.tsx has no theme control, so the anchor rises one step (75 -> 100). Entailed by that repo decision.",
+      "recommended_action": "Apply"
+    },
+    {
+      "id": "F-9",
+      "area": "Area 2 - the end-to-end tests",
+      "title": "Three new screenshot baselines without saying what only each one covers",
+      "severity": "P2",
+      "anchor": 75,
+      "route": "proposed_fix",
+      "finding_type": "error",
+      "reviewers": ["scope-guardian"],
+      "constituents": [
+        {
+          "title": "Three new popup baselines against the lane's shot-count rule",
+          "severity": "P2",
+          "section": "9. Testing - Screenshots and accessibility (new shots), and 1. Packages and files - Changed files",
+          "why_it_matters": "Implementers will add three baselines to a lane whose own header says the shot count is deliberate ('An eleventh should have to justify itself', web/e2e/pages.vr.ts) and which leaves everything narrower than its 900 px shot uncovered on purpose, because desktop web is the v0 target. The spec gives no 'what only this shot covers' for any of them: its no-overlap case already measures the /play placement at desktop and phone width, and on / the card sits over empty page. Every added shot moves whenever client/ changes or AlphaTab is upgraded, so the phone-width and / shots add churn without coverage. One /play shot at desktop width, the placement with the 12 px-over-80 px stacking, is what the lane's rule would accept.",
+          "finding_type": "error",
+          "autofix_class": "gated_auto",
+          "suggested_fix": "Cut section 9's new shots to one, /play with the popup at desktop width, and add a sentence saying what only that shot covers (the card's look over the transport row, which the no-overlap case measures but cannot show). Change the 'three new shots' wording in section 1 to match.",
+          "confidence": 75,
+          "evidence": [
+            "New shots, in `Europe/Berlin`: `/` and `/play` with the popup, and `/play` at phone width.",
+            "Screenshot baselines: `/` (the new note) and three new shots with the popup (section 9)."
+          ],
+          "raw_id": "scope-guardian#3",
+          "reviewer": "scope-guardian"
+        }
+      ],
+      "evidence_union": [
+        "New shots, in `Europe/Berlin`: `/` and `/play` with the popup, and `/play` at phone width.",
+        "Screenshot baselines: `/` (the new note) and three new shots with the popup (section 9)."
+      ],
+      "synthesis_note": "Unique. A scope cut to the test plan, not a user decision from the brainstorm (section 9 was written into the spec, not approved section by section).",
+      "recommended_action": "Apply"
+    },
+    {
+      "id": "F-10",
+      "area": "Area 3 - the popup",
+      "title": "A file dropped onto the popup card is opened by the browser, not by the player",
+      "severity": "P2",
+      "anchor": 75,
+      "route": "proposed_fix",
+      "finding_type": "error",
+      "reviewers": ["feasibility"],
+      "constituents": [
+        {
+          "title": "The card over the drop zone swallows dropped files",
+          "severity": "P2",
+          "section": "3. The popup",
+          "why_it_matters": "A visitor in Europe who drops a score onto the part of the notation area under the card does not get it opened. The browser's default action runs instead: it opens or downloads the file, and a plain .xml score replaces the player in the tab. The card is rendered from the root layout, outside the player's drop container, and nothing there cancels dragover or drop. A comment beside the drop overlay in PlayerShell.tsx already records this problem: an element mounted outside the container is not a descendant, so dragleave throws off the player's drag counter and 'Drop to open' disappears over it. Letting a file drag pass through the card keeps 'the player works while the card waits' true. No case in section 9 drops a file on the card's area, so no test would catch this.",
+          "finding_type": "error",
+          "autofix_class": "gated_auto",
+          "suggested_fix": "In section 3: while a file is dragged over the page, the card takes no pointer events, so the drop zone beneath keeps the drag. Switch this on from a window dragenter event that carries files, and switch it off the way PlayerShell already detects that a drag has ended. Add a Berlin case to privacy-choice.e2e.ts that drops a fixture onto the card's area while the card is showing and expects the file to open.",
+          "confidence": 75,
+          "evidence": [
+            "On `/play` it sits 12 px above the 80 px transport row",
+            "`web/app/layout.tsx`: renders `<PrivacyChoices />`.",
+            "The player works while the card waits, and nothing is sent meanwhile."
+          ],
+          "raw_id": "feasibility#5",
+          "reviewer": "feasibility"
+        }
+      ],
+      "evidence_union": [
+        "On `/play` it sits 12 px above the 80 px transport row",
+        "`web/app/layout.tsx`: renders `<PrivacyChoices />`.",
+        "The player works while the card waits, and nothing is sent meanwhile."
+      ],
+      "synthesis_note": "Unique. Must be verified against PlayerShell.tsx's real drag-and-drop handling: if a window-level dragover/drop handler already cancels the browser default, the finding fails.",
+      "recommended_action": "Apply"
+    },
+    {
+      "id": "F-11",
+      "area": "Area 3 - the popup",
+      "title": "Screen readers will not announce the popup when it appears",
+      "severity": "P2",
+      "anchor": 75,
+      "route": "proposed_fix",
+      "finding_type": "omission",
+      "reviewers": ["design-lens"],
+      "constituents": [
+        {
+          "title": "Screen-reader announcement of the card will not happen",
+          "severity": "P2",
+          "section": "3. The popup — 'Screen readers' bullet (line 162)",
+          "why_it_matters": "European screen-reader users may never be told that a privacy question has appeared: the card is inserted after hydration, and a live region that arrives together with its text is not announced. `web/app/play/PlayerShell.tsx` records exactly this (\"the region has to be there first\") and keeps an always-mounted `aria-live` paragraph for it. A labelled region is a landmark, not a live region, so one element cannot be both \"a labelled region\" and \"announced politely when it appears\", and neither the unit tests nor the axe scan the spec lists would notice the silence. The repo's own pattern, a persistent polite region that receives text when the card mounts, closes the gap.",
+          "finding_type": "omission",
+          "autofix_class": "gated_auto",
+          "suggested_fix": "In section 3, replace the Screen readers bullet with: 'The card is a labelled region (\"Privacy choice\") and carries no `aria-live` of its own. `PrivacyChoices` renders an empty polite live region from the first render and keeps it for the life of the page, the way `PlayerShell.tsx` keeps its `announcement` paragraph; when the card appears, the region receives the question text.' Add to the `PrivacyChoices` unit tests that the live region is in the document before the card appears and that its text changes when the card appears.",
+          "confidence": 75,
+          "evidence": [
+            "**Screen readers:** the card is a labelled region (\"Privacy choice\"), announced politely when it appears.",
+            "The popup, which appears after hydration, causes no layout shift (it is fixed-position)."
+          ],
+          "raw_id": "design-lens#1",
+          "reviewer": "design-lens"
+        }
+      ],
+      "evidence_union": [
+        "**Screen readers:** the card is a labelled region (\"Privacy choice\"), announced politely when it appears.",
+        "The popup, which appears after hydration, causes no layout shift (it is fixed-position)."
+      ],
+      "synthesis_note": "Unique. Grounded in the repo's own always-mounted live region in PlayerShell.tsx.",
+      "recommended_action": "Apply"
+    },
+    {
+      "id": "F-12",
+      "area": "Area 4 - the code sketches",
+      "title": "The loader sketch drops the separate settings step the spike verified",
+      "severity": "P2",
+      "anchor": 75,
+      "route": "proposed_fix",
+      "finding_type": "error",
+      "reviewers": ["coherence"],
+      "constituents": [
+        {
+          "title": "Sketch drops the settings step the spike verified",
+          "severity": "P2",
+          "section": "4. Google Analytics in code - startAnalytics sketch (lines 172-196) and the \"order is verified\" bullet (lines 198-200); spike table (line 457)",
+          "why_it_matters": "The spec says the queue the spike verified is consent, a separate settings step, then js and config, but the sketch an implementer will copy queues consent, js, then config with the privacy settings folded into it. The unit test on \"the queue's order\" and the Sydney check for gcs=G101 and npa=1 therefore rest on an order nobody ran: the spike queued the settings with their own gtag('set', ...) call, which the sketch lacks. Restoring that call, and leaving only release in config, makes the \"verified\" label true and keeps the one unrun piece where \"To verify at plan time\" already tracks it.",
+          "finding_type": "error",
+          "autofix_class": "gated_auto",
+          "suggested_fix": "In the section 4 sketch, add `gtag('set', { allow_google_signals: false, allow_ad_personalization_signals: false });` between the consent call and `gtag('js', new Date());`, and remove those two keys from the `gtag('config', id, {...})` call so that only `release: APP_VERSION` remains there.",
+          "confidence": 75,
+          "evidence": [
+            "**The order is verified** by the 2026-10-05 spike: consent, settings, then `js` and `config`.",
+            "gtag('js', new Date());\n  gtag('config', id, {\n    allow_google_signals: false,\n    allow_ad_personalization_signals: false,\n    release: APP_VERSION,\n  });",
+            "Our settings ran first | consent → settings → `js` → `config`"
+          ],
+          "raw_id": "coherence#2",
+          "reviewer": "coherence"
+        }
+      ],
+      "evidence_union": [
+        "**The order is verified** by the 2026-10-05 spike: consent, settings, then `js` and `config`.",
+        "gtag('js', new Date());\n  gtag('config', id, {\n    allow_google_signals: false,\n    allow_ad_personalization_signals: false,\n    release: APP_VERSION,\n  });",
+        "Our settings ran first | consent → settings → `js` → `config`"
+      ],
+      "synthesis_note": "Unique. Verify against the 2026-10-05 spike's own instrumentation-client.ts (kept outside the repo).",
+      "recommended_action": "Apply"
+    },
+    {
+      "id": "F-13",
+      "area": "Area 4 - the code sketches",
+      "title": "The mixer_change type contradicts its own field table and the branded-string rule",
+      "severity": "P2",
+      "anchor": 75,
+      "route": "proposed_fix",
+      "finding_type": "error",
+      "reviewers": ["coherence"],
+      "constituents": [
+        {
+          "title": "mixer_change type contradicts its field table and brand rule",
+          "severity": "P2",
+          "section": "5. Events - events.ts sketch (lines 256-273) against the `instrument` field row (line 251) and the branded-string paragraph (lines 275-276)",
+          "why_it_matters": "Copying the sketch gives a mixer_change type that cannot express solo all, mute all or the layout switch, because instrument is required while the field table says it is absent for those three. The checked example also passes the literal '025', which the paragraph below says can never type-check because Instrument is a branded string, and the function that mints an Instrument (\"its one-track twin\") is never named, so the example has nothing legitimate to call. A type test written from this sketch would start with a positive case that fails to compile.",
+          "finding_type": "error",
+          "autofix_class": "gated_auto",
+          "suggested_fix": "Rewrite the mixer_change entry as a union on control: render, solo, mute, transpose_audio, transpose_full and staff carry `instrument: Instrument`; solo_all, mute_all and layout carry only `on`. Change the ✅ line so `instrument` comes from the one-track function, name that function `trackInstrument(track)`, and add it to the `web/lib/score-facts.ts` row of section 1 (Packages and files).",
+          "confidence": 75,
+          "evidence": [
+            "mixer_change: { control: MixerControl; on: boolean; instrument: Instrument };",
+            "`instrument` | `drums` or a three-digit program, for the one track a change applies to; absent for solo all, mute all and the layout switch",
+            "track('mixer_change', { control: 'solo', on: true, instrument: '025' }); // ✅",
+            "`Instruments` and `Instrument` are branded strings that only `instrumentsValue()` and its one-track twin can make, so a free string never type-checks."
+          ],
+          "raw_id": "coherence#3",
+          "reviewer": "coherence"
+        }
+      ],
+      "evidence_union": [
+        "mixer_change: { control: MixerControl; on: boolean; instrument: Instrument };",
+        "`instrument` | `drums` or a three-digit program, for the one track a change applies to; absent for solo all, mute all and the layout switch",
+        "track('mixer_change', { control: 'solo', on: true, instrument: '025' }); // ✅",
+        "`Instruments` and `Instrument` are branded strings that only `instrumentsValue()` and its one-track twin can make, so a free string never type-checks."
+      ],
+      "synthesis_note": "Unique. Cheap to spike with tsc.",
+      "recommended_action": "Apply"
+    },
+    {
+      "id": "F-14",
+      "area": "Area 4 - the code sketches",
+      "title": "'Every event name starts with a verb' is false for nine of the twelve",
+      "severity": "P3",
+      "anchor": 100,
+      "route": "ambiguity_fix",
+      "finding_type": "error",
+      "reviewers": ["coherence"],
+      "constituents": [
+        {
+          "title": "Naming rule says every event starts with a verb",
+          "severity": "P3",
+          "section": "5. Events - intro paragraph (lines 219-221) against the event table (lines 225-236)",
+          "why_it_matters": "A contributor adding a thirteenth event, or a plan that turns this sentence into a naming check, is told every name starts with a verb, but only open_file, play and export_score do; the other nine, such as score_loaded, loop_toggle and tempo_change, start with a noun. The table's names are the ones the funnel, the tests and the approved twelve-event list use, so the sentence is the stale part, and renaming nine events instead would ripple through all three. Deleting the false clause keeps the one real constraint, which is avoiding Google's reserved names.",
+          "finding_type": "error",
+          "autofix_class": "safe_auto",
+          "suggested_fix": "Delete \"starts with a verb and\" so the sentence reads: \"Every name avoids Google's reserved names (`click`, `error`, `file_download`, …).\"",
+          "confidence": 100,
+          "evidence": [
+            "Every name starts with a verb and avoids Google's reserved names (`click`, `error`, `file_download`, …).",
+            "`score_loaded` | a score becomes the one on screen",
+            "`tempo_change` | the speed is set"
+          ],
+          "raw_id": "coherence#1",
+          "reviewer": "coherence"
+        }
+      ],
+      "evidence_union": [
+        "Every name starts with a verb and avoids Google's reserved names (`click`, `error`, `file_download`, …).",
+        "`score_loaded` | a score becomes the one on screen",
+        "`tempo_change` | the speed is set"
+      ],
+      "synthesis_note": "Stale-text fix with one right answer (the approved twelve names stay). Report-only mode applied nothing; the triage half applies it without a picker and reports it.",
+      "recommended_action": "Apply"
+    },
+    {
+      "id": "F-15",
+      "area": "Area 4 - the code sketches",
+      "title": "track() is sketched under events.ts but filed as track.ts",
+      "severity": "P3",
+      "anchor": 75,
+      "route": "ambiguity_fix",
+      "finding_type": "error",
+      "reviewers": ["coherence"],
+      "constituents": [
+        {
+          "title": "track() is sketched in events.ts but filed under track.ts",
+          "severity": "P3",
+          "section": "5. Events - events.ts sketch (lines 257 and 269) against 1. Packages and files - New files table (line 78)",
+          "why_it_matters": "A plan unit built from section 1 (Packages and files) and an implementer copying the section 5 (Events) sketch will disagree about where track() and its unit test live, because section 1 gives track() its own file, track.ts, while the block headed events.ts also declares it. Putting it in events.ts instead would move the gtag call and the not-started check into a file that section 1 describes only as the typed event list. Relabelling the sketch matches the file table, which is the more detailed of the two passages.",
+          "finding_type": "error",
+          "autofix_class": "safe_auto",
+          "suggested_fix": "Keep only the AnalyticsEvents interface under the `// web/lib/analytics/events.ts (sketch)` header, and put the `export function track<…>` signature and the two usage lines under their own `// web/lib/analytics/track.ts (sketch)` header.",
+          "confidence": 75,
+          "evidence": [
+            "// web/lib/analytics/events.ts (sketch)",
+            "export function track<E extends keyof AnalyticsEvents>(event: E, fields: AnalyticsEvents[E]): void;",
+            "`track()`: sends one event, or nothing until Google Analytics has started"
+          ],
+          "raw_id": "coherence#4",
+          "reviewer": "coherence"
+        }
+      ],
+      "evidence_union": [
+        "// web/lib/analytics/events.ts (sketch)",
+        "export function track<E extends keyof AnalyticsEvents>(event: E, fields: AnalyticsEvents[E]): void;",
+        "`track()`: sends one event, or nothing until Google Analytics has started"
+      ],
+      "synthesis_note": "Relabel only; section 1's file table is the more detailed passage. Triage half applies without a picker and reports.",
+      "recommended_action": "Apply"
+    },
+    {
+      "id": "FYI-1",
+      "area": "FYI",
+      "title": "Safari and iPhone keep Google Analytics' cookie 7 days, so returning visitors are undercounted",
+      "severity": "P3",
+      "anchor": 50,
+      "route": "fyi",
+      "finding_type": "omission",
+      "reviewers": ["adversarial"],
+      "constituents": [
+        {
+          "title": "Safari keeps the _ga cookie 7 days; returning undercounts",
+          "severity": "P3",
+          "section": "Why this exists — goal 1, 'Who comes' (new and returning)",
+          "why_it_matters": "Goal 1's new-versus-returning split will count too few returning visitors on Safari and on iPhones. Apple's WebKit limits cookies written by scripts, such as Google Analytics' _ga, to 7 days after the last visit, so anyone who comes back after a week is counted as new. Section 7's premise that the cookie is 'a lasting ID' holds only for other browsers. One known-limit line stops a low returning share from being read as 'nobody comes back'.",
+          "finding_type": "omission",
+          "autofix_class": "gated_auto",
+          "suggested_fix": "Add to Known limits: 'Safari and iPhone browsers keep Google Analytics' cookie for 7 days after the last visit, so a visitor who returns later counts as new.'",
+          "confidence": 50,
+          "evidence": [
+            "Who comes — visits, new and returning, country, device, and where they came from.",
+            "\"Anonymously\" goes: Google Analytics' cookie is a lasting ID."
+          ],
+          "raw_id": "adversarial#6",
+          "reviewer": "adversarial"
+        }
+      ],
+      "evidence_union": [
+        "Who comes — visits, new and returning, country, device, and where they came from.",
+        "\"Anonymously\" goes: Google Analytics' cookie is a lasting ID."
+      ],
+      "synthesis_note": "Anchor 50.",
+      "recommended_action": "FYI"
+    },
+    {
+      "id": "FYI-2",
+      "area": "FYI",
+      "title": "Typed fields stop object literals only; track() forwards whatever object it is given",
+      "severity": "P3",
+      "anchor": 50,
+      "route": "fyi",
+      "finding_type": "error",
+      "reviewers": ["feasibility"],
+      "constituents": [
+        {
+          "title": "Typed fields catch literals only; track() forwards everything",
+          "severity": "P3",
+          "section": "5. Events",
+          "why_it_matters": "The promise that 'text from the file cannot reach Google' only holds where a call passes an object literal. TypeScript skips its excess-property check for an object that is built first, or merged in with a spread. So a fields object that also carries a track name still type-checks, and `track()` forwards the whole object to `gtag('event', …)`. If `track()` copies only the keys declared for that event, the promise holds for every call shape, for the cost of one key list per event. The privacy e2e case cannot catch this, because it covers opening a file, not every control.",
+          "finding_type": "error",
+          "autofix_class": "gated_auto",
+          "suggested_fix": "In section 5, track() sends only the fields declared for that event. They are read from a per-event key list kept beside AnalyticsEvents, with the types derived from it; the fields object is never forwarded as given.",
+          "confidence": 50,
+          "evidence": [
+            "Every field comes from a fixed list or is a number, so text from the file cannot reach Google.",
+            "**`track(name, fields)`** sends `gtag('event', name, fields)` once started, and nothing before",
+            "track('mixer_change', { control: 'solo', on: true, track: 'Lead Guitar' });"
+          ],
+          "raw_id": "feasibility#6",
+          "reviewer": "feasibility"
+        }
+      ],
+      "evidence_union": [
+        "Every field comes from a fixed list or is a number, so text from the file cannot reach Google.",
+        "**`track(name, fields)`** sends `gtag('event', name, fields)` once started, and nothing before",
+        "track('mixer_change', { control: 'solo', on: true, track: 'Lead Guitar' });"
+      ],
+      "synthesis_note": "Anchor 50. Cheap to spike with tsc.",
+      "recommended_action": "FYI"
+    },
+    {
+      "id": "FYI-3",
+      "area": "FYI",
+      "title": "leocaseiro's own production visits will be counted as visitors",
+      "severity": "P3",
+      "anchor": 50,
+      "route": "fyi",
+      "finding_type": "omission",
+      "reviewers": ["product-lens"],
+      "constituents": [
+        {
+          "title": "Owner's own production visits will be counted as visitors",
+          "severity": "P3",
+          "section": "8. Setup — done by leocaseiro, by hand",
+          "why_it_matters": "On a small personal demo, leocaseiro's own production visits can be a large share of what Google Analytics records: step 6's Realtime check, checks after later deploys, and demos from leocaseiro's own machine. Then 'who comes', 'what they use' and the funnel would partly describe the owner, not visitors. leocaseiro is in Sydney, which G3 (everyone outside Europe counted by default) always counts. Section 8 tunes the property for small numbers but excludes no internal traffic. Google Analytics' internal-traffic rule and data filter remove these visits with no code. The filter goes on after step 6, because an active filter discards matching data for good and would hide step 6's own check.",
+          "finding_type": "omission",
+          "autofix_class": "gated_auto",
+          "suggested_fix": "Add a step 7 to section 8: after step 6's checks, define internal traffic for leocaseiro's own IP addresses (the web data stream → Configure tag settings → Define internal traffic) and set the 'Internal Traffic' data filter to Active.",
+          "confidence": 50,
+          "evidence": [
+            "**After the first production deploy, in the Realtime report:** a page view on `/`",
+            "Visitors in Europe are asked first; everyone else gets everything by default, with no popup",
+            "**Reporting identity: device-based**, so thresholds do not hide small numbers."
+          ],
+          "raw_id": "product-lens#2",
+          "reviewer": "product-lens"
+        }
+      ],
+      "evidence_union": [
+        "**After the first production deploy, in the Realtime report:** a page view on `/`",
+        "Visitors in Europe are asked first; everyone else gets everything by default, with no popup",
+        "**Reporting identity: device-based**, so thresholds do not hide small numbers."
+      ],
+      "synthesis_note": "Anchor 50.",
+      "recommended_action": "FYI"
+    },
+    {
+      "id": "FYI-4",
+      "area": "FYI",
+      "title": "The two Sentry filters for Google traffic remove only noise",
+      "severity": "P3",
+      "anchor": 50,
+      "route": "fyi",
+      "finding_type": "error",
+      "reviewers": ["scope-guardian"],
+      "constituents": [
+        {
+          "title": "Two Sentry filters for Google traffic remove only noise",
+          "severity": "P3",
+          "section": "6. Changes to Sentry's design - Google's breadcrumbs and denyUrls",
+          "why_it_matters": "The PR would add two Sentry-side Google filters whose stated purpose is cosmetic: a beforeBreadcrumb drop of Google's fetch and xhr breadcrumbs ('removes noise, not identifiers') and a denyUrls entry for errors thrown inside Google's script. Neither follows from an existing contract or guards against harm that would go unseen: an error from gtag.js opens a new issue and sends the alert email that NH-124's setup (the Sentry spec) defines, though the visit also counts against its interim health number, and breadcrumb clutter shows in the first report that carries it. Each is a one-line addition at that point, while shipping both now widens this PR's edits to NH-124's unmerged SDK settings and adds a Google host list to keep in step.",
+          "finding_type": "error",
+          "autofix_class": "gated_auto",
+          "suggested_fix": "Remove both bullets from section 6 and add one item under Non-goals: 'Sentry keeps Google's fetch and xhr breadcrumbs and any error thrown inside gtag.js; a beforeBreadcrumb host drop or a denyUrls entry is added only if either shows up as noise in Sentry.'",
+          "confidence": 50,
+          "evidence": [
+            "Sentry's scrub already cuts their `?`, so this removes noise, not",
+            "Errors thrown inside Google's script are not ours:"
+          ],
+          "raw_id": "scope-guardian#4",
+          "reviewer": "scope-guardian"
+        }
+      ],
+      "evidence_union": [
+        "Sentry's scrub already cuts their `?`, so this removes noise, not",
+        "Errors thrown inside Google's script are not ours:"
+      ],
+      "synthesis_note": "Anchor 50.",
+      "recommended_action": "FYI"
+    },
+    {
+      "id": "FYI-5",
+      "area": "FYI",
+      "title": "Click IDs such as fbclid in the page address reach Google",
+      "severity": "P3",
+      "anchor": 50,
+      "route": "fyi",
+      "finding_type": "omission",
+      "reviewers": ["security-lens"],
+      "constituents": [
+        {
+          "title": "Page address sends third-party click IDs to Google",
+          "severity": "P3",
+          "section": "4. Google Analytics in code — Addresses",
+          "why_it_matters": "A visitor who arrives from a Facebook link brings an `fbclid` (Meta's identifier for that click) in the `?` part. Google Analytics stores it in the page address and in the next page view's referrer, and Google Analytics 4 does not remove it by default. The spec does not need it: it keeps the `?` part only for campaign tags. The project already treats this value as visitor data, since NH-124's end-to-end case 7 opens `/?fbclid=probe123` to prove Sentry never sends it. Google Analytics' own 'Redact data' setting replaces named query parameters in the browser before anything is sent, so campaign tags keep working and no code changes.",
+          "finding_type": "omission",
+          "autofix_class": "gated_auto",
+          "suggested_fix": "In section 8 step 3, add 'Redact data: email on, and the query parameters fbclid, gclid and msclkid'. In step 6, open `/?utm_source=probe&fbclid=probe123` and confirm that the collect request keeps `utm_source` and does not contain `probe123`. Change the Addresses sentence in section 4 to say the `?` part reaches Google with those identifiers redacted.",
+          "confidence": 50,
+          "evidence": [
+            "Google Analytics receives the page address with its `?` part — the campaign tags on a link you share",
+            "No address in `web/` carries anything of the visitor's."
+          ],
+          "raw_id": "security-lens#3",
+          "reviewer": "security-lens"
+        }
+      ],
+      "evidence_union": [
+        "Google Analytics receives the page address with its `?` part — the campaign tags on a link you share",
+        "No address in `web/` carries anything of the visitor's."
+      ],
+      "synthesis_note": "Anchor 50.",
+      "recommended_action": "FYI"
+    }
+  ],
+  "residual_concerns": [
+    {
+      "id": "R1",
+      "source": "adversarial",
+      "text": "'Extending later' tells NH-349 that 'a consent update to denied' stops Google Analytics. Google's consent-mode help page says a loaded tag with analytics_storage denied keeps sending cookieless pings, which are the pings G3 rejected as needing consent. NH-349 (out of scope here) will therefore need to stop the tag, not only update consent."
+    }
+  ],
+  "deferred_questions": [
+    {
+      "id": "Q1",
+      "source": "design-lens",
+      "text": "Where does `<PrivacyChoices />` sit in the DOM and the tab order? Section 1 says only that `layout.tsx` renders it. Rendered first, a keyboard user meets the question at once but passes four extra Tab stops (three answers and Details) on every page until answering; rendered last, as the Toaster is, it comes after a dozen or more page controls (the a11y lane's floor for `/play` is 12), which is why `Sonner.tsx` gave the Toaster an Alt+T hotkey. The plan must pick one and add an e2e assertion for the choice."
+    }
+  ],
+  "restated_suppressed": [
+    {
+      "source": "coherence",
+      "text": "What does the Google fixture in web/e2e/google-analytics.ts serve for the gtag.js script, and is it installed for every Playwright test? Section 1 (Packages and files) puts a fake Google Analytics ID in the whole lane's config and defaults every project to Sydney, so Google Analytics starts in every end-to-end test and in all ten existing screenshots; section 9 (Testing) says the fixture answers Google's hosts so no test reaches Google, yet the Sydney assertions on gcs=G101 and npa=1 need Google's own script, which the spike let load from googletagmanager.com while answering only the collect requests locally. The plan must either pin a copy of the script and install the routing for all tests, or narrow the claim to collect requests.",
+      "restates": "F-5"
+    },
+    {
+      "source": "coherence",
+      "text": "When a visitor's saved answer is 'Report errors only' or 'No, send nothing' and their time zone later reads as outside Europe, does the saved answer still govern? Section 2 (The privacy choice) gives 'Outside Europe' everything and has no row for a stored refusal, allowed() is specified as exactly that table, and the 15-cell unit test in section 9 would not cover the case either way, so the plan has to choose between honouring the stored refusal and following the time zone.",
+      "restates": "F-1"
+    }
+  ],
+  "dropped_anchor_0_25": 0
+}

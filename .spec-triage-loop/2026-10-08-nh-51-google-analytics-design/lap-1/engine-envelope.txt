@@ -1,0 +1,106 @@
+Document review complete (non-interactive mode).
+
+Reviewed: docs/specs/2026-10-08-nh-51-google-analytics-design.md at f9c1fdf6 (document type: plan —
+a design spec; the task-by-task plan comes after this review).
+Coverage: coherence 4, feasibility 6, adversarial 6, scope-guardian 4, security-lens 3,
+design-lens 2, product-lens 2 — 27 raw findings, 20 after merging. Cross-model pass: not run (it
+would send the document to an outside AI provider; not authorized by the owner). Report-only
+invocation: nothing was applied.
+
+Entailed corrections (already entailed by the document; awaiting one grouped confirmation):
+
+2. The privacy choice
+  - A visitor who said "No" is counted again once their browser's time zone reads as outside
+    Europe — let a saved answer decide for every visitor, and use the time zone only when nothing
+    is saved.
+
+3. The popup
+  - A score dropped onto the card is opened by the browser instead of the player — let a dragged
+    file pass through the card to the drop area beneath it.
+  - Screen-reader users are never told the question appeared — keep one polite announcement area on
+    the page from the start, and give it the question's words when the card appears.
+
+4. Google Analytics in code
+  - The loader sketch does not run the settings step the spike verified — add the separate settings
+    call between the consent call and the start call, as the spike did.
+
+5. Events
+  - The mixer event's type rejects calls the field table allows — make the instrument field depend
+    on which control changed, and name the function that makes a one-track instrument value.
+  - The naming rule wrongly says every event name starts with a verb — delete that clause; the
+    twelve approved names stay.
+  - The sketch of the sending function sits under the event-list file's header — give it its own
+    file header, matching the file table.
+
+Proposed fixes (nothing here has landed; awaiting the same grouped confirmation):
+
+End-to-end tests — the checks that prove nothing private reaches Google can pass without proving it
+
+[P2] Section: 9. Testing, the privacy case — The only check that no title or track name reaches Google can pass before Google's batched requests arrive (adversarial, confidence 75)
+  Recommendation: Apply
+  Consequence if unchanged: a leak of a track name through the mixer controls would not fail any test.
+  Change: press one track's Solo and Mute, wait until the recorder holds the score and mixer hits, then assert no request carries the title or a track name.
+  Basis: Google sends custom events a few seconds after the call, so an immediate check can find only the page view.
+
+[P2] Section: 9. Testing, the Berlin cases — "Report errors only" is never checked for the absence of Sentry's visit ping (security-lens, confidence 75)
+  Recommendation: Apply
+  Consequence if unchanged: visitors who refused visit counting could send a visit ping on every page load with no test failing.
+  Change: in the Berlin cases, read Sentry's session envelopes too — none after "Report errors only", one after "Yes".
+  Basis: the visit ping is the only difference between "errors only" and "everything" on Sentry's side, and the integration's name is still unverified.
+
+Screenshots and accessibility — test steps the web lane cannot or should not take
+
+[P2] Section: 9. Testing and 3. The popup, themes — The accessibility scan asks for a dark theme the site cannot show (scope-guardian, design-lens, confidence 100)
+  Recommendation: Apply
+  Consequence if unchanged: the implementer must force a theme no visitor can reach, which the project's screenshot gate rules out, or silently drop half the step.
+  Change: scan with the popup open in the light theme only; the card keeps using design tokens so dark follows later.
+  Basis: the site sets no theme, and the screenshot gate's spec records "light only" until dark mode is built.
+
+[P2] Section: 9. Testing, new screenshots — Three new screenshot baselines are added without saying what only each one covers (scope-guardian, confidence 75)
+  Recommendation: Apply
+  Consequence if unchanged: two extra baselines change with every design-system or notation-engine update while covering what the overlap test already measures.
+  Change: keep one new shot (the play page with the popup, desktop width) and say what only it covers.
+  Basis: the screenshot lane's own header asks every added shot to justify itself.
+
+Decisions (requires user judgment):
+
+[P2] Section: Known limits — Go-live has no gate on the link that lets a visitor take back an answer (adversarial, product-lens, scope-guardian, confidence 75)
+  Recommendation: Apply (merge this ticket together with that link's ticket)
+  Consequence if unchanged: visitors in Europe can say yes, but can take it back only by clearing the site's data — the gap the spec itself names under GDPR Article 7(3).
+  Change: turn "should land before or with" into a gate — merge together with the link's pull request, or hold the analytics ID until it ships.
+  Basis: the popup goes live on this ticket's merge; only "should" ties the withdraw link to it, and the env-variable gate alone would not cover Sentry's consent.
+
+[P2] Section: 6. Changes to Sentry's design and 8. Setup — Sentry reports visitors in Europe from the day the Sentry ticket merges until this popup ships (feasibility, confidence 75)
+  Recommendation: Decide
+  Consequence if unchanged: between the two merges, every visitor in Europe is reported to Sentry without being asked, which the spec's own rule forbids.
+  Change: choose one — hold Sentry's key until the popup deploys, ship a small "no Sentry in Europe" rule with the Sentry ticket, or accept the window and record it.
+  Basis: the Sentry ticket sets its key in production and checks a live report on its first deploy; this ticket's code waits for that merge.
+
+[P2] Section: 3. The popup, the approved words — The popup never says who runs the site or that an answer can be withdrawn (adversarial, confidence 75)
+  Recommendation: Decide
+  Consequence if unchanged: a "Yes" given in Europe may not count as informed consent, and Google's terms ask for a privacy policy.
+  Change: add a short privacy notice (who runs the site and how to reach them, what each tool receives, how to change the answer), linked from Details and the home note.
+  Basis: the EU data-protection board's consent guidelines list the controller's identity and the right to withdraw as minimum content.
+
+[P2] Section: 9. Testing and 1. Packages and files — The end-to-end tests would reach Google, and the source of Google's script in tests is undecided (feasibility, adversarial, confidence 100)
+  Recommendation: Decide
+  Consequence if unchanged: every existing test downloads Google's script and sends hits from CI, and the tests that check Google's consent values cannot pass with a stub script.
+  Change: choose one strategy — the live script fetched by the test runner with every hit answered locally and Google unresolvable in the browser; a committed copy of the script; or no Google script in tests, checking what our code queues instead.
+  Basis: only the new privacy test installs the fixture, and Google's hosts resolve, unlike Sentry's test address.
+
+FYI observations (anchor 50, no decision required): 5
+- Safari and iPhones keep Google Analytics' cookie 7 days after the last visit, so returning visitors are undercounted.
+- The typed event fields stop extra keys only in object literals; the send function forwards whatever object it gets.
+- leocaseiro's own production visits will be counted as visitors unless internal traffic is filtered.
+- The two Sentry filters for Google traffic remove only noise and widen this ticket's edits to the Sentry setup.
+- Click IDs such as Facebook's in the page address reach Google unless Google Analytics' data redaction removes them.
+
+Residual concerns:
+- The later "Privacy choices" link must stop Google's tag, not only update consent: a loaded tag keeps sending cookieless pings after consent changes to denied (adversarial).
+
+Deferred questions:
+- Where does the popup sit in the page order — first, so a keyboard user meets it at once but passes four extra stops on every page, or last, like the toast area, after a dozen controls (design-lens)?
+
+Restated: 2 (residual/deferred items suppressed as duplicates of actionable findings)
+
+Review complete
