@@ -25,7 +25,8 @@ in Europe are asked first, and one answer governs both Google Analytics and Sent
 - **No way yet to change an answer.** That is [NH-349](https://leocaseiro.atlassian.net/browse/NH-349),
   narrowed on 2026-10-05 to a "Privacy choices" link for every visitor (see "Known limits").
 - **No preview deployments, no local dev.** Production only, like Sentry's D5.
-- **No server code.** `web/` stays two static pages: no location headers, no Measurement Protocol.
+- **No server code.** `web/` stays three static pages: no location headers, no Measurement
+  Protocol.
 - **No ad-blocker bypass**, like Sentry's D3. A blocked visitor is not counted.
 - **No automatic click tracking.** Google's "enhanced measurement" keeps page views only; scrolls,
   outbound clicks, site search, video, file downloads and form interactions stay off.
@@ -79,6 +80,7 @@ No new dependency: the loader is our own (G2).
 | `web/lib/analytics/track.ts`    | `track()`: sends one event, or nothing until Google Analytics has started                               |
 | `web/lib/score-facts.ts`        | `instrumentsValue()`, moved out of Sentry's `report.ts` (section 6)                                     |
 | `web/app/PrivacyChoices.tsx`    | the popup (section 3)                                                                                   |
+| `web/app/privacy/page.tsx`      | the privacy notice (section 7)                                                                          |
 | `web/e2e/google-analytics.ts`   | the shared fixture: answers Google's hosts locally and records every request                            |
 | `web/e2e/privacy-choice.e2e.ts` | the consent, privacy and no-overlap cases (section 9)                                                   |
 
@@ -151,6 +153,7 @@ Can we count visits (with a cookie) and get error reports? Your scores stay on y
 Details ▾
   Error reports go to Sentry, a bug-tracking service. Visit counts go to Sentry and Google
   Analytics. Neither gets your file, its name, or the music in it. How Google uses data ↗
+  Who runs this site, and how to change your answer: Privacy notice
 ```
 
 - **Where:** a floating card, centred at the bottom. On `/play` it sits 12 px above the 80 px
@@ -163,7 +166,8 @@ Details ▾
 - **Answering** saves the choice, hides the card and starts what it allows at once — no reload.
 - **Details** is a button with `aria-expanded`, closed by default. "How Google uses data" links to
   [Google's page for sites that use its services](https://policies.google.com/technologies/partner-sites),
-  opens in a new tab, and says so to screen readers.
+  and "Privacy notice" links to `/privacy`. Both open in a new tab, so an open score is not lost,
+  and say so to screen readers.
 - **Screen readers:** the card is a labelled region ("Privacy choice"), announced politely when it
   appears.
 - **Themes:** light and dark from the design tokens; no new colour.
@@ -325,6 +329,13 @@ After:
   This site counts visits with Google Analytics (it uses a cookie) and sends an error report when
   something breaks. Neither includes your file, its name, or the music in it — only facts like its
   type and size and the kinds of instrument. Visitors in Europe are asked first.
+  How Google uses data ↗ · Privacy notice
+
+Privacy notice (new page, /privacy, linked from the home note and the popup's Details):
+  Notation Hero is run by <name> (<contact>). Error reports go to Sentry, which keeps them 30
+  days. Visit counts go to Sentry and Google Analytics, which keeps visit-level data 14 months and
+  sets a cookie (_ga). Neither gets your file, its name, or the music in it. In Europe nothing is
+  sent until you answer. Change your answer at any time: <the Privacy choices link (NH-349)>.
   How Google uses data ↗
 
 Before (NH-124 spec, both error.tsx files and global-error.tsx):
@@ -340,6 +351,10 @@ After:
   to Google's page (G9). Sentry stays "an error report" (G9).
 - The error pages stop claiming a report was sent: for a visitor in Europe who chose "No, send
   nothing", none was.
+- The privacy notice gives what EU guidance counts as the minimum for an informed "Yes" — who runs
+  the site and how to reach them, what each tool receives and keeps, the cookie, and how to change an
+  answer — and is the posted privacy policy Google Analytics' terms require. leocaseiro picks the
+  name and contact before go-live; the page is public.
 
 ## 8. Setup — done by leocaseiro, by hand
 
@@ -398,6 +413,8 @@ Sentry's fixture answers its fake DSN, so no test reaches Google.
   body — contains any of them, and `dt` stays `Notation Hero`.
 - **No overlap:** the popup's box never intersects ▶ or the transport row, at desktop and phone
   width, measured the way `web/e2e/toast-occlusion.e2e.ts` measures the toaster.
+- **Privacy notice:** the popup's Details and the home note both link to `/privacy`, which names who
+  runs the site and how to change an answer.
 
 **Screenshots and accessibility (the `web` job):**
 
@@ -405,6 +422,7 @@ Sentry's fixture answers its fake DSN, so no test reaches Google.
   `timezoneId: 'Australia/Sydney'` in the config, the popup would appear in all ten existing shots.
 - New shots, in `Europe/Berlin`: `/` and `/play` with the popup, and `/play` at phone width.
 - An axe scan with the popup open, in both themes.
+- An axe scan of `/privacy`.
 
 ## 10. Documents that change
 
