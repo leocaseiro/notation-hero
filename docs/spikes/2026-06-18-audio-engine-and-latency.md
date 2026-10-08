@@ -206,4 +206,4 @@ Reference links cited in those sessions:
 - Apple CoreMIDI — <https://developer.apple.com/documentation/coremidi/>
 - Round-trip audio latency meter — <https://onyx3.com/LatencyMeter/>
 - Audio latency iOS vs OSX (Loopy Pro) — <https://forum.loopypro.com/discussion/38870/audio-latency-ios-vs-osx>
-- Reference fork (prior art, MPL-2.0): `~/Sites/alphaTabWebsite` `rhythm-game` branch — AlphaTab init with `includeNoteBounds`, Web MIDI listener, scoring against `AlphaSynth.positionChanged`, ring overlay via `boundsLookup`.
+- Reference fork (prior art, MPL-2.0): the local alphaTab fork `rhythm-game` branch — AlphaTab init with `includeNoteBounds`, Web MIDI listener, scoring against `AlphaSynth.positionChanged`, ring overlay via `boundsLookup`.

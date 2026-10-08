@@ -3,7 +3,7 @@
 - **Date:** 2026-06-24
 - **Status:** Research only — no schema or app changes. Feeds **SD-26** (instrument family) and **SD-28** (role), and surfaces candidate new schema deltas.
 - **De-risks:** Notation Hero currently derives `track.instrument`, `track.role`, and `playable.family` partly from **free-text UGC track names** ("Guitarra Solo", "Gtr 2", "Overdrive", "String Ensemble 1"). Names are unreliable (foreign-language, player-named, abbreviated, blank). This spike asks: _what STRUCTURED, controlled instrument metadata does each source format carry that we can use as the PRIMARY signal instead?_
-- **Sources (high-signal, local):** AlphaTab fork `~/Sites/alphaTabWebsite/node_modules/@coderline/alphatab/dist/alphaTab.d.ts` + `alphaTab.core.mjs` (the importer that ships in our pipeline); the 5 real GuitarPro extractions in `docs/wireframe/data/gp-extract-*.json`; the extractor `docs/wireframe/tools/gp-extract.mjs`; the hand-authored wireframe seed `docs/wireframe/index.html`; the per-track schema `docs/wireframe/2026-06-21-per-track-profiles-and-seed-draft.sql`.
+- **Sources (high-signal, local):** AlphaTab fork `<alphatab-fork>/node_modules/@coderline/alphatab/dist/alphaTab.d.ts` + `alphaTab.core.mjs` (the importer that ships in our pipeline); the 5 real GuitarPro extractions in `docs/wireframe/data/gp-extract-*.json`; the extractor `docs/wireframe/tools/gp-extract.mjs`; the hand-authored wireframe seed `docs/wireframe/index.html`; the per-track schema `docs/wireframe/2026-06-21-per-track-profiles-and-seed-draft.sql`.
 - **Sources (web):** MusicXML 4.0 Standard Sounds (`sounds.xml`), General MIDI Level 1, MuseScore `instruments.xml` (`main` branch).
 
 ---
@@ -264,7 +264,7 @@ The 128 GM Level-1 instruments in 16 families of 8 (verified verbatim from Alpha
 
 ## Sources
 
-- **AlphaTab (the importer in our pipeline):** `~/Sites/alphaTabWebsite/node_modules/@coderline/alphatab/dist/alphaTab.d.ts` — `Track` (15977), `PlaybackInformation` (13458), `Staff` (15524), `Tuning` (16227), `InstrumentArticulation` (9761); `alphaTab.core.mjs` — `GeneralMidi._values` (12013), `isPiano/isGuitar/isBass` (12158–12166), `SynthConstants.PercussionChannel = 9` (3837).
+- **AlphaTab (the importer in our pipeline):** `<alphatab-fork>/node_modules/@coderline/alphatab/dist/alphaTab.d.ts` — `Track` (15977), `PlaybackInformation` (13458), `Staff` (15524), `Tuning` (16227), `InstrumentArticulation` (9761); `alphaTab.core.mjs` — `GeneralMidi._values` (12013), `isPiano/isGuitar/isBass` (12158–12166), `SynthConstants.PercussionChannel = 9` (3837).
 - **Real extractions:** `docs/wireframe/data/gp-extract-{imyours,yellow,bohemian,zoio,angra}.json`; extractor `docs/wireframe/tools/gp-extract.mjs`.
 - **Current schema + hand-seed:** `docs/wireframe/2026-06-21-per-track-profiles-and-seed-draft.sql`; `docs/wireframe/index.html` (track instrument/role hand-assignment, lines ~353–357).
 - **General MIDI Level 1** instrument families (0–127, 16×8) and channel-10 percussion — GM spec, mirrored exactly by AlphaTab's `GeneralMidi` map.

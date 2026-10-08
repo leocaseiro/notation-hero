@@ -559,7 +559,7 @@ First real catalog seed: `docs/wireframe/2026-06-21-per-track-profiles-and-seed-
 
 The 5 seed songs are now grounded in their **real Guitar Pro files** via
 `docs/wireframe/tools/gp-extract.mjs` (`@coderline/alphatab`, run from
-`~/Sites/alphaTabWebsite`). Raw extractions: `docs/wireframe/data/gp-extract-*.json`.
+the local alphaTab fork). Raw extractions: `docs/wireframe/data/gp-extract-*.json`.
 Objective fields are now real in **both** the wireframe (`index.html`) and the SQL seed.
 
 **Real values applied (high confidence):** tempo, bar count, time signature, full track
@@ -609,7 +609,7 @@ list (names + percussion flag), section markers + bar ranges.
    artist comes from the filename. Zoio artist (Charlie Brown Jr.) still unconfirmed.
 
 **Available but NOT imported (decided seed is the 5 above):** the folder
-`/Users/leocaseiro/Music/AlphaTab-RhythmGame/` also has real `.gp` for Toto – Africa,
+`<local-music-library>/` also has real `.gp` for Toto – Africa,
 Hotel California, Black Sabbath – Paranoid, Bob Marley – Is This Love, Green Day, Michael
 Jackson – Man In The Mirror, Mamonas, etc. → catalog-expansion follow-up.
 

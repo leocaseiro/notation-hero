@@ -185,6 +185,27 @@ test('the error-code gate runs in the lint job', () => {
   assert.match(workflow('ci.yml'), /^\s+run: pnpm run check:error-codes$/m);
 });
 
+test('the machine-path gate runs in the lint job, not quality', () => {
+  // `quality` is gated on the `code` paths filter, which excludes docs/**, and machine paths
+  // arrive almost exclusively in docs-only pull requests — the very set `quality` skips. Placing
+  // this gate there would make it a no-op for the changes it exists to catch.
+  const ci = workflow('ci.yml');
+  const lintJob = ci.slice(ci.indexOf('\n  lint:'), ci.indexOf('\n  build:'));
+  assert.match(lintJob, /^\s+run: pnpm run check:machine-paths$/m);
+});
+
+test('the code paths filter covers the deps-cve allowlist', () => {
+  // deps-cve is gated on `code`. A pull request that edits ONLY osv-scanner.toml — exactly the
+  // shape of a CVE risk-acceptance change — would otherwise leave `code` false and skip the gate,
+  // and `CI Green` counts a skip as OK, so the allowlist would reach master never once exercised.
+  const ci = workflow('ci.yml');
+  const codeFilter = ci.slice(
+    ci.indexOf('\n            code:'),
+    ci.indexOf('\n            infra:'),
+  );
+  assert.match(codeFilter, /^\s+- 'osv-scanner\.toml'$/m);
+});
+
 test('lint is a job ci-green waits on, so the error-code gate can block a merge', () => {
   assert.match(workflow('ci.yml'), /^\s+lint,$/m);
 });

@@ -88,16 +88,16 @@ in the same change if we change it. (we are very likely to change it, and we 'll
 
 ## READ FOR CONTEXT (full paths)
 
-- Repo: `/Users/leocaseiro/Sites/notation-hero` — esp. `AGENTS.md`,
+- Repo: `leocaseiro/notation-hero` — esp. `AGENTS.md`,
   `docs/feature-freeze.md`, `docs/aws-learning-map.md`, `docs/decisions/`
   (decision-registry, the Neon catalog-store decision, the file-structure ADR),
   `docs/specs/2026-06-10-catalog-schema.md`, `apps/handler-hello`, `infra/`.
 - The two framework spikes (the "door" comparison that led to NestJS) — **worktree paths
   as of 2026-06-17; may already be merged into the main repo's `docs/` by the time you
   read this**:
-  - NestJS plan: `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/charming-varahamihira-afff7f/docs/plans/2026-06-16-001-feat-catalog-crud-nestjs-plan.md`
-  - Fastify plan: `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/competent-torvalds-c13c5c/docs/plans/2026-06-16-001-feat-catalog-crud-fastify-plan.md`
-  - Cognito spike: `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/charming-varahamihira-afff7f/docs/spikes/2026-06-16-cognito-auth-spike.md`
+  - NestJS plan: `.claude/worktrees/charming-varahamihira-afff7f/docs/plans/2026-06-16-001-feat-catalog-crud-nestjs-plan.md`
+  - Fastify plan: `.claude/worktrees/competent-torvalds-c13c5c/docs/plans/2026-06-16-001-feat-catalog-crud-fastify-plan.md`
+  - Cognito spike: `.claude/worktrees/charming-varahamihira-afff7f/docs/spikes/2026-06-16-cognito-auth-spike.md`
 
 ## HOW TO RUN
 

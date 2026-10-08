@@ -18,7 +18,7 @@
 - [ ] **Step 1: Auth helper (token NEVER on the command line → use `--netrc`)**
 
 ```bash
-set +a; . /Users/leocaseiro/Sites/notation-hero/jira.env; set +a
+set +a; . jira.env; set +a
 BASE="https://leocaseiro.atlassian.net"
 NETRC=$(mktemp); chmod 600 "$NETRC"
 printf 'machine leocaseiro.atlassian.net login %s password %s\n' "$JIRA_EMAIL" "$JIRA_TOKEN" > "$NETRC"

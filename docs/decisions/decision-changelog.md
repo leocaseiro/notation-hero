@@ -172,6 +172,53 @@ GitHub Actions job.
 
 **Status:** ✅ decided · 📄 prose-only — the spec is the contract until the implementation PR, which
 flips L11-sentry from ⏳ pending.
+### 2026-09-29 — One maintainer's folder layout is out of the public repo, and a gate keeps it out (NH-345)
+
+**270 lines across 64 tracked files named the maintainer's local folder layout.** The handle is
+unavoidably public — CODEOWNERS, the pull-request template and the repo URL all need it — so the
+handle was never the concern. What the sweep exposed was the layout: which folder the checkout sits
+in, the numeric user id inside an agent scratchpad path, and above all **what else is cloned beside
+it** — `tablatures`, `tablatures-api`, `sightread`, `alpha-drums`, `PHPMusicXML`, `drum-tutor-clone`,
+`base-skill`, plus a private resources repo cited down to a subfolder. One `grep` over `docs/`
+returned all of it.
+
+**The task that prompted this understated the scope by twelve times**, listing 8 files and ~22 lines;
+the author had produced that list with `head` and later retracted it. An independent sweep and the
+author's corrected one agreed on ~64 files. Worth recording because the first instinct — trust the
+inventory in the brief — would have left 248 lines published behind a gate that then could not be
+made repo-wide.
+
+**The scrub removes only the machine prefix and deletes nothing.** A first pass that also dropped the
+`.claude/worktrees/<name>/` segment turned a bullet pointing into a _stale_ worktree into a bare
+`scope.md` — a file that does not exist here — and orphaned the `<!-- SUPERSEDED: stale worktree
+path -->` comment beside it. That pass was reverted. Keeping the worktree segment is both faithful and
+never invents a path. For the same reason no frontmatter key was dropped: once the value is
+worktree-relative, `home:`, `cwd:`, `worktree_path:` and `artifact_abs` each record _which worktree
+authored the document_, which is history rather than duplication. Two table-shaped files are the one
+exception, and only because each has a separate `Worktree(s)` column that already carries the name.
+
+**Enforcement — `pnpm run check:machine-paths`, live in CI.** It sits in the **`lint`** job, not
+`quality`: `quality` is gated on the `code` paths filter, which excludes `docs/**`, and these lines
+arrive almost exclusively in docs-only pull requests — exactly the set `quality` skips. That is the
+same trap NH-331's error-code gate had to avoid. Angle-bracket placeholders (`/Users/<your-name>/`)
+and `/home/runner/` pass, so docs can still teach a path shape. `tooling/check-machine-paths.test.mjs`
+plants a violation in a throwaway repository and asserts a non-zero exit — the gate has been watched
+failing, not merely written. It excludes its own two files by exact path, since they must contain the
+patterns; a test pins that exclusion list at exactly two entries so it cannot be widened into a
+hiding place. Follow-up to NH-318, which git-ignored the untracked reference map but left the
+already-committed paths in place.
+
+### 2026-10-04 — Two unfixable advisories get a dated deferral, not a fix (NH-347)
+
+leocaseiro approved this in conversation, after being shown the exposure for each one: do the ignores, put them in their own PR, and set a reminder to re-check in a few weeks.
+
+`deps-cve` went red on `master` — and therefore on every open PR — over two advisories published 2026-09-18 for which **no patched version exists**: `GHSA-vfj7-8cjw-p6xm` (`braces` <=3.0.3, stack-exhaustion DoS through deeply nested patterns) and `GHSA-ch52-4w7c-c8xp` (`http-cache-semantics` <=4.2.0, `max-stale` handling can disclose cross-user cached responses). Both packages already sit at the newest version npm publishes, so the `overrides` route that closed NH-231 and NH-346 has nothing to aim at — osv-scanner reports `0 vulnerabilities can be fixed`.
+
+- **What was decided:** two `[[IgnoredVulns]]` entries in `osv-scanner.toml`, each carrying `ignoreUntil = 2026-11-03T00:00:00Z` and a reason that states no patch exists. NH-348 is the reminder to re-argue them, due a week before that date.
+- **Why an ignore rather than a real fix,** against the standing NH-231 preference: there is no version to move to. That file's own closing rule already carves out this case — "reach for an ignore only when no patched version exists".
+- **Why the risk is acceptable:** neither package sits on a request path. `braces` reaches the tree only through `micromatch@4.0.8` (build and dev glob matching, whose patterns come from this repo's own config files), and `http-cache-semantics` only through `@nestjs/cli` / `@swc/cli` devDependencies and `@pulumi/pulumi`'s npm internals. Nothing here serves user HTTP traffic through it.
+- **Why it is dated rather than permanent:** the gate goes red again on 2026-11-04 on its own, and osv-scanner reports a stale entry as an "unused ignores" warning if either advisory is fixed sooner. The deferral cannot quietly become the status quo.
+- **What did NOT change:** `E-osv-scanner` stays locked-active and enforced in [`decision-registry.md`](decision-registry.md). The gate still fails the build on every other CVE; these are two dated exceptions inside it, not a weakening of it.
 
 ### 2026-10-03 — The web pixel gate ships with four execution-time decisions (NH-320)
 
@@ -2133,7 +2180,7 @@ Reworded `.github/pull_request_template.md` from "I am aware I must … (if …)
 
 ### 2026-06-18 — Architecture ADR approved + foundation supersession ratified (NH-194)
 
-Expert review of `2026-06-17-architecture-decisions.md` complete (6-engineer ce-doc-review panel, NH-194); **leocaseiro approved the ADR.** 20 review findings applied or resolved — incl. **SEC-4:** AlphaTab ships no WebAssembly (verified in `~/Sites/alphaTab`) → no `wasm-unsafe-eval`; **Next.js confirmed dropped** (not a portfolio need + SSR fights the AWS $0 free tier). The W2 deferral (DACI/ADR text rewrites) is now executed:
+Expert review of `2026-06-17-architecture-decisions.md` complete (6-engineer ce-doc-review panel, NH-194); **leocaseiro approved the ADR.** 20 review findings applied or resolved — incl. **SEC-4:** AlphaTab ships no WebAssembly (verified in the local alphaTab source) → no `wasm-unsafe-eval`; **Next.js confirmed dropped** (not a portfolio need + SSR fights the AWS $0 free tier). The W2 deferral (DACI/ADR text rewrites) is now executed:
 
 - **Foundation decisions superseded** (banners added to both legacy docs):
   - `L1` (Nx), `L2-tags` (`@nx/enforce-module-boundaries`), `L7-set-shas` (nx-set-shas), `FOLD-tagmap` (Nx tag map) → **⛔ superseded by `ARCH-MONO-1`** (Nx dropped → plain pnpm workspaces).

@@ -4,13 +4,13 @@ created_at: '2026-09-16T12:00:00Z'
 title: 'v0 Plan A review, lap 3 — triage handoff'
 summary: 'Lap 2 finished (6 findings) and lap 3 ran (7 personas, 18 findings). Five decisions and four mechanical fixes are applied across 5 commits; 6 findings are still to triage, then lap 4.'
 keywords: ['nh-291', 'v0a', 'plan-a', 'ce-doc-review', 'triage', 'alphatab', 'handoff']
-cwd: '/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/alphatab-spike'
+cwd: '.claude/worktrees/alphatab-spike'
 resume_focus: 'Triage the 6 open lap-3 findings with the spec-triage-loop triage skill, then run lap 4. Two decisions outside the plan also wait: the deps-cve advisories blocking PR #154, and merging PR #154 itself.'
 repository: 'leocaseiro/notation-hero'
 repo_root_sha: '2a593aa2d597'
 branch: 'spike/alphatab-nextjs-poc'
 head: '426167a7'
-worktree_path: '/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/alphatab-spike'
+worktree_path: '.claude/worktrees/alphatab-spike'
 ---
 
 # v0 Plan A review, lap 3 — triage handoff
@@ -243,5 +243,5 @@ The lap-3 reviewer prompts and the primer used for them are outside the repo, in
 scratchpad:
 
 ```text
-/private/tmp/claude-501/-Users-leocaseiro-Sites-notation-hero/d29c3304-5265-46cb-a317-37a89e194b9e/scratchpad/lap3/
+<session-scratchpad>/lap3/
 ```

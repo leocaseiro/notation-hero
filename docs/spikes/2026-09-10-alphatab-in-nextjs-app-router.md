@@ -371,5 +371,5 @@ Read directly out of the installed package rather than from documentation:
 `_detectScriptFile`, `Environment.alphaTabWorker`), `alphaTab.d.ts` (API surface),
 and `package.json` (`exports`). Next.js behaviour from the version-exact bundled docs at
 `web/node_modules/next/dist/docs/`. Prototype prior art:
-`/Users/leocaseiro/Sites/alphaTabWebsite` (branch `rhythm-game`). Prior AlphaTab research:
+the local alphaTab fork (branch `rhythm-game`). Prior AlphaTab research:
 [`2026-06-18-alphatab-integration.md`](2026-06-18-alphatab-integration.md).

@@ -119,7 +119,7 @@ Plan-local — work that will be done separately:
 The repo is **greenfield**. Two adjacent artifacts to align with:
 
 - **`vigorous-goldwasser-73ccca/`** sibling worktree has an executed Wave 1 (React 19 + Vite 6 + Vitest + bun workspaces + path-filtered CI) — _this gets superseded by this plan's U1_. Reference for proven config patterns (Vite version, ESLint setup, CI workflow shape) but not for code copy.
-- **`alphaTabWebsite` fork** (`~/Sites/alphaTabWebsite`, MPL-2.0): NOT consumed by `K` directly. Phase 0 rhythm-game patterns are for the player PWA, not the CMS. Mentioned only because `core/catalog/FileRules.ts` magic-byte detection mirrors what `H-10` will eventually need for user uploads.
+- **`alphaTabWebsite` fork** (the local alphaTab fork, MPL-2.0): NOT consumed by `K` directly. Phase 0 rhythm-game patterns are for the player PWA, not the CMS. Mentioned only because `core/catalog/FileRules.ts` magic-byte detection mirrors what `H-10` will eventually need for user uploads.
 
 ### Institutional Learnings
 

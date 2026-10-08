@@ -1,9 +1,12 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   DEFAULT_TRANSPORT_VALUES,
   loadStoredTransport,
+  persistTransport,
+  readStoredTransport,
   serializeTransport,
+  TRANSPORT_STORAGE_KEY,
 } from './transport-storage';
 
 const ON = { metronomeVolume: 1, countInVolume: 0.5, masterVolume: 0.8, isLooping: true };
@@ -122,5 +125,110 @@ describe('the repair signal', () => {
     const loaded = loadStoredTransport('{not json');
     expect(loaded.reset).toBe(true);
     expect(loaded.repaired).toEqual([]);
+  });
+});
+
+describe('readStoredTransport', () => {
+  beforeEach(() => {
+    globalThis.localStorage.clear();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  // The literal, pinned. This string is a CONTRACT with every browser that already holds a stored
+  // transport: renaming the constant is a refactor, but renaming its value strands every one of
+  // those documents — the reader finds nothing, falls back to the shipped defaults, reports no
+  // repair, and the drummer's metronome and master volume are silently back to zero and one with
+  // nothing anywhere having failed. Nothing else in the suite can notice, because every other case
+  // passes the raw document in by hand.
+  it('is keyed on the literal string a stored document already lives under', () => {
+    expect(TRANSPORT_STORAGE_KEY).toBe('notation-hero.transport');
+
+    const stored = { metronomeVolume: 1, countInVolume: 0, masterVolume: 0.3, isLooping: true };
+    globalThis.localStorage.setItem('notation-hero.transport', serializeTransport(stored));
+    expect(readStoredTransport().values).toEqual(stored);
+  });
+
+  // The case the try/catch in this function exists for, and the one no other test can reach: a
+  // browser with site data blocked throws from the localStorage GETTER itself, not only from
+  // setItem. Uncaught, it takes the whole render down — the restore runs during render, so the
+  // player never mounts at all.
+  it('falls back to the defaults when the browser blocks storage', () => {
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new DOMException('The operation is insecure.', 'SecurityError');
+    });
+
+    const loaded = readStoredTransport();
+
+    expect(loaded.values).toEqual(DEFAULT_TRANSPORT_VALUES);
+    // Storage being unreadable is not a REPAIR: nothing stored was wrong, so no warning fires.
+    // Reporting it as one would accuse a drummer in private browsing of corrupt settings on every
+    // single load.
+    expect(loaded.reset).toBe(false);
+    expect(loaded.repaired).toEqual([]);
+  });
+});
+
+describe('persistTransport', () => {
+  beforeEach(() => {
+    globalThis.localStorage.clear();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  // Why this function reads storage instead of taking all four values from its caller. A second
+  // open /play tab holds its own React state; if this wrote a whole document from THAT state, the
+  // tab that wrote last would silently revert the other. Here the stored document carries a
+  // metronome and a master volume this caller never saw, and a Loop change must leave all three of
+  // them exactly as they are.
+  it('merges the one changed value into the document already in storage', () => {
+    globalThis.localStorage.setItem(
+      TRANSPORT_STORAGE_KEY,
+      serializeTransport({
+        metronomeVolume: 1,
+        countInVolume: 0.5,
+        masterVolume: 0.3,
+        isLooping: false,
+      }),
+    );
+
+    persistTransport({ isLooping: true });
+
+    expect(readStoredTransport().values).toEqual({
+      metronomeVolume: 1,
+      countInVolume: 0.5,
+      masterVolume: 0.3,
+      isLooping: true,
+    });
+  });
+
+  // A first visit has no document to merge into, so the other three come from the shipped defaults
+  // rather than from nothing — the write must still be a COMPLETE document.
+  it('writes a complete document when nothing is stored yet', () => {
+    persistTransport({ masterVolume: 0.25 });
+
+    expect(readStoredTransport().values).toEqual({
+      ...DEFAULT_TRANSPORT_VALUES,
+      masterVolume: 0.25,
+    });
+  });
+
+  // The other half of the pair with readStoredTransport's catch above, and the one the toggles
+  // depend on: private browsing and a full quota both throw from setItem. Losing persistence is
+  // survivable, losing the transport is not — an uncaught throw here propagates out of the click
+  // handler that called it, so pressing Loop would break the button instead of just failing to
+  // remember it.
+  it('swallows a storage write the browser refuses', () => {
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('The quota has been exceeded.', 'QuotaExceededError');
+    });
+
+    expect(() => {
+      persistTransport({ isLooping: true });
+    }).not.toThrow();
   });
 });

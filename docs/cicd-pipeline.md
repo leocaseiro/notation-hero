@@ -260,7 +260,7 @@ are **M1**, not now.
 - `deploy.yml` + OIDC (Wave 2, Track 2) — after the local `pulumi up` flow works.
 - Per-app CI build matrix — when build time warrants (currently one `build` job).
 - Advanced PR policy (Danger, VR-required-on-UI, Storybook-on-new-components)
-  via `/plan-eng-review`. (`~/Sites/alpha-drums`, cited in the handoff, is **not
+  via `/plan-eng-review`. (`a local clone of alpha-drums`, cited in the handoff, is **not
   on disk** — source elsewhere.)
 - CodeQL (free on public repos); Dependabot vs Renovate (confirm bun support).
 - CI-driven `pulumi up` with a broader-scoped OIDC role (after local flow solid).

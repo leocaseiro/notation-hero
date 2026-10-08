@@ -254,7 +254,7 @@ worker-src 'self' blob:; manifest-src 'self'; upgrade-insecure-requests
 
 **Key points:** the Cognito Hosted-UI domain must appear in **three** directives — `connect-src` (token/JWKS fetch), `frame-src` (the `oidc-client-ts` silent-renew iframe navigates _to_ Cognito), and `form-action` (Hosted-UI login + Google button). Google federation is brokered by Cognito → the SPA never calls Google directly, so **no** Google hosts. `script-src 'self'` (no `unsafe-inline`/`unsafe-eval`) is achievable by **externalizing Vite's inline bootstrap** (`build.modulePreload.polyfill:false`) or SHA-256-hashing it; `oidc-client-ts` uses Web Crypto (no WASM). Roll out as `Content-Security-Policy-Report-Only` first, then enforce.
 **Input "sanitization" = validation, not scrubbing:** oRPC + **Zod** validates every API input at the Lambda boundary; rely on React's default escaping in the UI and add **DOMPurify only** in the admin-CMS rich-text render path (if it ever renders authored HTML). Don't bolt string sanitizers onto Zod.
-**Confirm before enforcing:** (a) **[resolved 2026-06-18]** AlphaTab ships **no** WASM build (verified in the local source `~/Sites/alphaTab` — no `.wasm` files in the repo, no `WebAssembly`/`wasm` references in src/dist) → **`script-src` needs no `wasm-unsafe-eval`**; re-confirm only if AlphaTab is later upgraded to a WASM build. (b) **[resolved by ARCH-OFFLINE-1]** sync is the Dexie insert-outbox POSTing to same-origin `/api/sync/batch` (no separate host, no `wss://`) → **no extra `connect-src` needed**.
+**Confirm before enforcing:** (a) **[resolved 2026-06-18]** AlphaTab ships **no** WASM build (verified in the local source the local alphaTab source — no `.wasm` files in the repo, no `WebAssembly`/`wasm` references in src/dist) → **`script-src` needs no `wasm-unsafe-eval`**; re-confirm only if AlphaTab is later upgraded to a WASM build. (b) **[resolved by ARCH-OFFLINE-1]** sync is the Dexie insert-outbox POSTing to same-origin `/api/sync/batch` (no separate host, no `wss://`) → **no extra `connect-src` needed**.
 
 ---
 
@@ -353,7 +353,7 @@ Until then: ✅ decided · ⏳ no repo code/config changed.
 A couple of items are intentionally scoped out of v1 — recorded here so they're tracked, not overlooked:
 
 - **DynamoDB single-table key design → deferred to M1.** v1 (the admin catalog CMS) stores no per-user data — scores/settings/sync are M1 features — so no DynamoDB table is provisioned in v1. This is **not a v1 refactor risk:** the per-user store slots in as an _additive_ adapter behind a new repository port (ARCH-HEX-1); nothing is provisioned yet (so "a partition key can't change in place" doesn't bite); and the one cross-store seam — stable, client-mintable catalog IDs (R13) — is already locked, so a future `SCORE#<songId>` reference is safe. **Guardrail:** lock the key schema _before_ provisioning at M1 — starter sketch: PK=`USER#<sub>`; append-only `SCORE#<songId>#<ulid>`; `SONGSTAT#` rollup via DynamoDB Streams; `GSI1` for pull-since. Tracked in NH-120.
-- **CSP × AlphaTab WASM — resolved 2026-06-18.** AlphaTab ships **no** WebAssembly build (verified in the local source `~/Sites/alphaTab`: no `.wasm` files, no `WebAssembly`/`wasm` references), so `script-src` needs **no** `wasm-unsafe-eval` (ARCH-SEC-2, flag a). Re-confirm only if AlphaTab is later upgraded to a WASM build.
+- **CSP × AlphaTab WASM — resolved 2026-06-18.** AlphaTab ships **no** WebAssembly build (verified in the local source the local alphaTab source: no `.wasm` files, no `WebAssembly`/`wasm` references), so `script-src` needs **no** `wasm-unsafe-eval` (ARCH-SEC-2, flag a). Re-confirm only if AlphaTab is later upgraded to a WASM build.
 
 The offline-sync design — conflict handling (none, by the insert-only constraint), un-synced-write durability, and v1 wiring — is **decided in `ARCH-OFFLINE-1`**, not open. The locked decisions + these deferrals feed the implementation-planning stage and the parallel schema/data-layer redesign.
 
@@ -363,7 +363,7 @@ The ce-doc-review panel's judgment calls (NH-194) were walked with leocaseiro an
 
 - **SCOPE-1** → R13/R15/R16 are schema seams; **R14 (`/sync/batch`) marked as M1**, not v1 (data-layer doc).
 - **SCOPE-4** → the core-purity **canary is now a required CI check** (§11 Phase 0).
-- **SEC-4** → **resolved:** AlphaTab ships no WebAssembly (verified in `~/Sites/alphaTab`), so no `wasm-unsafe-eval` (ARCH-SEC-2).
+- **SEC-4** → **resolved:** AlphaTab ships no WebAssembly (verified in the local alphaTab source), so no `wasm-unsafe-eval` (ARCH-SEC-2).
 - **PROD-1** → **Next.js dropped on purpose;** the SPA UI + AWS depth is the portfolio, no replacement needed (ARCH-FE-1).
 - **ADV-1** → "cheapest moment" reworded — the Nx setup cost is itself a reason to drop it; removal is real work but cheaper now (§0).
 - **ADV-2** → the drop-Nx reason now leads with "Nx earns nothing here"; the friction claim is softened (§0).

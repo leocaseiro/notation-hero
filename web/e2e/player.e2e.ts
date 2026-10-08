@@ -1898,6 +1898,73 @@ test('a corrupt stored value resets with a toast, and the player still starts', 
     .toBe(1);
 });
 
+// The same pair again for the OTHER stored document. The transport values live under their own key
+// — they are AlphaTabApi properties, so they cannot ride the settings JSON — and they are restored
+// by their own hook, during render rather than in an effect. Nothing above covers a bad document
+// under that key, and the failure it guards against is the worst one this player has: the restore
+// runs during render, so anything it throws takes the whole page down before the player mounts.
+//
+// 9 is outside the metronome volume's 0-1 range, which a tab closed mid-drag really can store.
+// `isLooping` rides along at a non-default value to prove this is a per-key repair and not a
+// whole-document reset — with the metronome alone it could not be told apart, because a clamped
+// master volume lands on the very number the default already holds.
+test('a single out-of-range transport value is corrected and the warning NAMES it', async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    globalThis.localStorage.setItem(
+      'notation-hero.transport',
+      JSON.stringify({ version: 1, settings: { metronomeVolume: 9, isLooping: true } }),
+    );
+  });
+  await page.goto('/play');
+
+  const toast = page.locator('[data-sonner-toast]');
+  await expect(toast).toContainText('Metronome volume');
+  await expect(toast).toContainText('Error E601');
+  // It must NOT claim a reset: Loop was untouched, and the metronome landed on its maximum rather
+  // than on its default of off.
+  await expect(toast).not.toContainText('reset to the defaults');
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+
+  // Clamped to the top of its range — 1, where the shipped default is 0 — and Loop survived intact.
+  await expect
+    .poll(async () => {
+      const state = await engineState(page);
+      return state?.metronomeVolume;
+    })
+    .toBe(1);
+  await expect(page.getByTestId('toggle-metronome')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('toggle-loop')).toHaveAttribute('aria-pressed', 'true');
+});
+
+// A bad stored transport must never stop the player mounting — the one thing v0 exists to do — and
+// must not vanish quietly either. The buttons are asserted as well as the engine because the whole
+// point of restoring during render is that the two agree: a page that fell back in the engine while
+// painting a pressed Loop button is the lying button this feature exists to prevent.
+test('a corrupt stored transport resets with a toast, and the player still starts', async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    globalThis.localStorage.setItem('notation-hero.transport', '{broken');
+  });
+  await page.goto('/play');
+
+  await expect(page.locator('[data-sonner-toast]')).toContainText('reset to the defaults');
+  await expect(page.locator('[data-sonner-toast]')).toContainText('Error E603');
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+
+  await expect(page.getByTestId('toggle-loop')).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.getByTestId('toggle-metronome')).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.getByTestId('toggle-countin')).toHaveAttribute('aria-pressed', 'false');
+  await expect
+    .poll(async () => {
+      const state = await engineState(page);
+      return [state?.metronomeVolume, state?.masterVolume];
+    })
+    .toEqual([0, 1]);
+});
+
 // Punk.gp parses to three tracks — 0:Drumkit (percussion), 1:Distortion Guitar, 2:Drumkit Left
 // (percussion) — so the popover has three rows to audit, not one, even though only two render.
 test('the Tracks popover lists every track in the score, not only the rendered ones', async ({

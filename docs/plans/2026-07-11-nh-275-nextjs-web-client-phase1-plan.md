@@ -965,9 +965,9 @@ Task 3 client mutation) and the `quality`/`lint`/`build` jobs now covering `web/
   Postgres FTS · R2 blobs (ADR later milestones).
 - A `web/` unit-test harness, theme toggle, extra routes/pages, `next/font`, favicon polish.
 - Deleting the leftover `notation-hero-client/node_modules/` in the **primary checkout**
-  (`/Users/leocaseiro/Sites/notation-hero/notation-hero-client/` — untracked, git-invisible).
+  (`notation-hero-client/` — untracked, git-invisible).
   That path is outside any worktree an executor should touch; Leo can remove it manually with
-  `rm -rf /Users/leocaseiro/Sites/notation-hero/notation-hero-client` whenever convenient.
+  `rm -rf notation-hero-client` whenever convenient.
 
 ## Risks & contingencies
 

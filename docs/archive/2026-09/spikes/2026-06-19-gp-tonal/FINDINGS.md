@@ -61,7 +61,7 @@ bytes ──► AlphaTab ScoreLoader.loadScoreFromBytes ──► Score (auto-de
 | F15 | ⚠️ **Multi-key songs** (Toto Africa — 3 keys, no markers) need **windowed** key detection → a key-change timeline; whole-song single key is misleading. Approximate without markers; no LLM in v1.                                                                                                           |
 | F16 | Meter changes captured (Africa `4/4 → 2/4 → 4/4 → 2/4 → 4/4`).                                                                                                                                                                                                                                               |
 
-## Test corpus (`/Users/leocaseiro/Music/AlphaTab-RhythmGame/`)
+## Test corpus (`<local-music-library>/`)
 
 | File                                           | Has chords | Real key (detected)    | Notable                                  |
 | ---------------------------------------------- | ---------- | ---------------------- | ---------------------------------------- |

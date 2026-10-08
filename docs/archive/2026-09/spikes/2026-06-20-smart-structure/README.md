@@ -50,6 +50,6 @@ Drop any file to analyse it; tune `window`/`minSeg` and press Re-run. Optionally
 
 ## Corpus
 
-External (not committed): `/Users/leocaseiro/Music/AlphaTab-RhythmGame/`. Ground
+External (not committed): `<local-music-library>/`. Ground
 truth = files with real markers (I'm Yours, Yellow); targets = marker-less
 (Africa, Bohemian Rhapsody, Happiness is a Warm Gun).

@@ -6,7 +6,7 @@
 >
 > **Multi-zone MIDI mapping is covered in the WebMIDI spike** — only cross-referenced here.
 >
-> **Sources:** `drum-tutor-clone` sessions — design-stack doc + its plan-eng-review/spec-review subagents (`53466813…`, subagents `agent-a4…`, `agent-ad…`), client brainstorm (`c9615811…`), and the original `scope.md`. The working prior-art is the `rhythm-game` branch of `~/Sites/alphaTabWebsite` (live demo existed; MPL-2.0).
+> **Sources:** `drum-tutor-clone` sessions — design-stack doc + its plan-eng-review/spec-review subagents (`53466813…`, subagents `agent-a4…`, `agent-ad…`), client brainstorm (`c9615811…`), and the original `scope.md`. The working prior-art is the `rhythm-game` branch of the local alphaTab fork (live demo existed; MPL-2.0).
 
 ---
 
@@ -109,7 +109,7 @@
 
 ## 6. Proven-in-the-fork prior art (demonstrated, not speculated)
 
-The `rhythm-game` branch of `~/Sites/alphaTabWebsite` (`@coderline/alphatab@^1.8.1`, MPL-2.0) already had, working in-browser with acceptable latency:
+The `rhythm-game` branch of the local alphaTab fork (`@coderline/alphatab@^1.8.1`, MPL-2.0) already had, working in-browser with acceptable latency:
 
 - AlphaTab drum rendering
 - **Web MIDI scoring**

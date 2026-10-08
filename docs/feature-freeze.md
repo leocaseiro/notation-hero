@@ -7,7 +7,7 @@
 > **Status:** 🔒 **LOCKED 2026-06-05** — per-feature milestones frozen (one row open: `H-10` upload policy = TBD). Folded into design-stack.md.
 > **Created:** 2026-06-05 · **Owner:** leocaseiro
 > **Companions:** [docs/design-stack.md](design-stack.md) · [scope.md](../scope.md) · [docs/aws-learning-map.md](aws-learning-map.md)
-> **Fork (Phase 0):** `~/Sites/alphaTabWebsite` (branch `rhythm-game`) — live: <https://leocaseiro.github.io/alphaTabWebsite/docs/rhythm-game>
+> **Fork (Phase 0):** the local alphaTab fork (branch `rhythm-game`) — live: <https://leocaseiro.github.io/alphaTabWebsite/docs/rhythm-game>
 
 Single canonical per-feature go/no-go. Each row has a **Milestone** (your decision), fork-reuse status, effort, AWS candidacy, and a **Status**. Reference any feature by **ID** (e.g. `A-1`, `D-2-a`). Children (`X-n-a`) decompose a parent feature.
 
@@ -248,6 +248,6 @@ Per the **sync model**: per-user data is localStorage in Alpha/Beta; DynamoDB _c
 ## Sources
 
 - **scope.md** · **docs/design-stack.md** · **docs/aws-learning-map.md**
-- **Fork plans** (`~/Sites/alphaTabWebsite/.../AlphaTabRhythmGame/`): FEATURES.md · AUTO_BPM.md · PERFORMANCE.md · PRACTICE_MODAL_PLAN.md · IMPLEMENTATION_SUMMARY.md · MIDI_MAPPING_PLAN(.md/\_SUMMARY/\_QUICK_REF/\_VISUAL_GUIDE) · IMPLEMENTATION_COMPLETE.md · IMPROVEMENTS_SUMMARY.md
+- **Fork plans** (`<alphatab-fork>/.../AlphaTabRhythmGame/`): FEATURES.md · AUTO_BPM.md · PERFORMANCE.md · PRACTICE_MODAL_PLAN.md · IMPLEMENTATION_SUMMARY.md · MIDI_MAPPING_PLAN(.md/\_SUMMARY/\_QUICK_REF/\_VISUAL_GUIDE) · IMPLEMENTATION_COMPLETE.md · IMPROVEMENTS_SUMMARY.md
 - **Brainstorms** (`serene-grothendieck-fb5e67/`): stack-aws-brainstorm.md · stack-brainstorm.md (§6 friendly-view UI)
 - **Internal reference screenshots:** tracked privately in `docs/.private/` and the project's ~~Linear Document~~ <!-- Linear retired 2026-06-11; tracker is now Jira project NH — see docs/decisions/2026-06-11-tracker-linear-to-jira.md. The "Linear Document" artifact is historical; re-home under the Jira/NH equivalent. -->; not in the public repo.

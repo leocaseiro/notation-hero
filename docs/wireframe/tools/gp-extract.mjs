@@ -1,6 +1,6 @@
 // gp-extract.mjs — parse a Guitar Pro file to the raw JSON the seed needs.
 // REQUIRES @coderline/alphatab. Run from a dir where it resolves, e.g.:
-//   cp this script into ~/Sites/alphaTabWebsite/ and run:  node gp-extract.mjs <file.gp>
+//   cp this script into <alphatab-fork>/ and run:  node gp-extract.mjs <file.gp>
 // Emits objective data only (title/artist/tempo/timeSig/tracks/sections/key/CHORDS).
 // Chords are the real symbols in the .gp (per track: distinct set + change sequence).
 // Subjective fields (per-track difficulty, techniques) are NOT in the file — never invented here.

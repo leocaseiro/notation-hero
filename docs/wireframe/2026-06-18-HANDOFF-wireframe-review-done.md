@@ -6,7 +6,7 @@ the locked model + the **Round-5/6 deltas** to the **real spec**.
 
 ## Where to work
 
-- Worktree: `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/wireframe-pattern-lesson-model`
+- Worktree: `.claude/worktrees/wireframe-pattern-lesson-model`
 - Branch: `docs/wireframe-pattern-lesson-model` (on origin).
 - Serve: preview `wireframe` (port 8780) in repo `.claude/launch.json`, or
   `python3 -m http.server 8780 --directory <worktree>`. Wireframe: `http://localhost:8780/docs/wireframe/index.html`.

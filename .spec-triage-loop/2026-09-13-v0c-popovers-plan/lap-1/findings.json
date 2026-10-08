@@ -1,6 +1,6 @@
 {
   "artifact": "docs/plans/2026-09-13-v0c-popovers-plan.md",
-  "worktree": "/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/admiring-northcutt-763a69",
+  "worktree": ".claude/worktrees/admiring-northcutt-763a69",
   "branch": "claude/plan-c-review-updates-fcd111",
   "commit": "dc34d297",
   "lap": 1,
@@ -23,7 +23,7 @@
     "P0": "the feature ships silently broken",
     "P1": "wrong but recoverable",
     "P2": "cosmetic or wording",
-    "the reference / the fork": "READ-ONLY MPL-2.0 clean-room reference at /Users/leocaseiro/Sites/alphaTabWebsite branch rhythm-game, src/components/AlphaTabRhythmGame/playground-settings.tsx"
+    "the reference / the fork": "READ-ONLY MPL-2.0 clean-room reference at the local alphaTab fork branch rhythm-game, src/components/AlphaTabRhythmGame/playground-settings.tsx"
   },
   "triaged_this_lap": [
     {

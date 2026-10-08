@@ -26,7 +26,7 @@
 
 ## File map
 
-~~Every path is relative to the worktree root `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/blissful-khorana-9fa438`.~~ <!-- SUPERSEDED: stale worktree path — blissful-khorana-9fa438 no longer the active checkout; plan shipped as PR #7 (commit 3060171) on master. Do not cd into this ROOT. -->
+~~Every path is relative to the worktree root `.claude/worktrees/blissful-khorana-9fa438`.~~ <!-- SUPERSEDED: stale worktree path — blissful-khorana-9fa438 no longer the active checkout; plan shipped as PR #7 (commit 3060171) on master. Do not cd into this ROOT. -->
 
 **Modified — root config**
 
@@ -54,7 +54,7 @@
 **Created — `infra` tag + root agent doc**
 
 - `infra/project.json` — adds `tags: ["type:infra"]` to the existing `@notation-hero/infra` package (no source change).
-- `AGENTS.md` — tag map + commands + "Working with leocaseiro" section (folds in untracked `~/Sites/notation-hero/AGENTS.md`).
+- `AGENTS.md` — tag map + commands + "Working with leocaseiro" section (folds in untracked `AGENTS.md`).
 
 **Removed**
 
@@ -70,13 +70,13 @@
 
 > **Global preflight (run once, do not commit anything yet).** Confirm branch + base, and that the remote is reachable.
 >
-> - [ ] Run: `git -C /Users/leocaseiro/Sites/notation-hero/.claude/worktrees/blissful-khorana-9fa438 rev-parse --abbrev-ref HEAD`
+> - [ ] Run: `git -C .claude/worktrees/blissful-khorana-9fa438 rev-parse --abbrev-ref HEAD`
 >       **Expected output:** `chore/nx-init`
-> - [ ] **Guard: confirm `origin/master` is reachable from this worktree** (so the later `nx affected` gate fails loudly here, not mid-verification with a confusing "invalid base"). Run: `git -C /Users/leocaseiro/Sites/notation-hero/.claude/worktrees/blissful-khorana-9fa438 ls-remote --exit-code origin master`
+> - [ ] **Guard: confirm `origin/master` is reachable from this worktree** (so the later `nx affected` gate fails loudly here, not mid-verification with a confusing "invalid base"). Run: `git -C .claude/worktrees/blissful-khorana-9fa438 ls-remote --exit-code origin master`
 >       **Expected:** prints a sha for `refs/heads/master`, exit 0. (Verified reachable at plan-authoring time: `d244c48…`.) If this errors, STOP — the remote is unreachable and `nx affected --base=origin/master` cannot work.
-> - [ ] Run: `git -C /Users/leocaseiro/Sites/notation-hero/.claude/worktrees/blissful-khorana-9fa438 fetch origin master`
+> - [ ] Run: `git -C .claude/worktrees/blissful-khorana-9fa438 fetch origin master`
 >       **Expected:** fetch succeeds; `origin/master` resolves (used by `nx affected` later). No file changes.
-> - [ ] **CWD discipline.** The agent's shell resets between Bash calls. Every command below is written with an explicit `cd "$ROOT" && …` prefix where `ROOT=/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/blissful-khorana-9fa438`. Set `ROOT` at the top of each Bash call (it does NOT persist across calls) OR paste the absolute path literally. Do NOT rely on an implicit CWD.
+> - [ ] **CWD discipline.** The agent's shell resets between Bash calls. Every command below is written with an explicit `cd "$ROOT" && …` prefix where `ROOT=.claude/worktrees/blissful-khorana-9fa438`. Set `ROOT` at the top of each Bash call (it does NOT persist across calls) OR paste the absolute path literally. Do NOT rely on an implicit CWD.
 
 ---
 
@@ -945,11 +945,11 @@ Now that all four packages register real targets, swap the four root scripts fro
 
 ### Task 9: Root `AGENTS.md` stub (tag map + scoped leocaseiro section + fold-in)
 
-Create a tracked `AGENTS.md` at the worktree root. Fold in the content of the untracked `~/Sites/notation-hero/AGENTS.md` (the AskUserQuestion sub-question convention fragment) so nothing is lost, and scope those conventions to user-facing/orchestrator agents only.
+Create a tracked `AGENTS.md` at the worktree root. Fold in the content of the untracked `AGENTS.md` (the AskUserQuestion sub-question convention fragment) so nothing is lost, and scope those conventions to user-facing/orchestrator agents only.
 
 **Files:** Create `AGENTS.md` (worktree root).
 
-- [ ] **Read the untracked fragment to fold in.** Run: `cd "$ROOT" && cat /Users/leocaseiro/Sites/notation-hero/AGENTS.md`
+- [ ] **Read the untracked fragment to fold in.** Run: `cd "$ROOT" && cat AGENTS.md`
       **Expected:** prints the AskUserQuestion batching fragment (anti-pattern/correct-pattern block + a "provide What's wrong / Proposed fix / Why it works as context per question" addendum). If the file does not exist, proceed — the canonical convention text below already contains the full content; nothing is lost.
 - [ ] **Write `AGENTS.md`** at the worktree root with exactly (the tag-map import-direction columns mirror the ENFORCED `.dependency-cruiser.cjs` directions — `apps → core, adapters`; `infra → adapters, apps (composition root)`):
 
@@ -1154,7 +1154,7 @@ A decision was made (Approver: leocaseiro) to bump CI to **Node 24**, amending t
 
 ## Verification
 
-~~Run all six gates from the worktree root, in order. Each must be GREEN before the PR is opened. Set `ROOT=/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/blissful-khorana-9fa438` and prefix each command with `cd "$ROOT" &&` (the agent shell resets between calls — set `ROOT` at the top of each Bash call).~~ <!-- SUPERSEDED: stale worktree path — this ROOT points at blissful-khorana-9fa438, which is not the active checkout; the work already merged to master via PR #7 (commit 3060171). Do not re-run these gates against this path. -->
+~~Run all six gates from the worktree root, in order. Each must be GREEN before the PR is opened. Set `ROOT=.claude/worktrees/blissful-khorana-9fa438` and prefix each command with `cd "$ROOT" &&` (the agent shell resets between calls — set `ROOT` at the top of each Bash call).~~ <!-- SUPERSEDED: stale worktree path — this ROOT points at blissful-khorana-9fa438, which is not the active checkout; the work already merged to master via PR #7 (commit 3060171). Do not re-run these gates against this path. -->
 
 - [ ] **1. Frozen install.** Run: `cd "$ROOT" && pnpm install --frozen-lockfile`
       **Expected:** completes, no `ERR_PNPM_*`, no "lockfile not up to date" (Tasks 4/6 committed the regenerated lockfile). Exit 0.

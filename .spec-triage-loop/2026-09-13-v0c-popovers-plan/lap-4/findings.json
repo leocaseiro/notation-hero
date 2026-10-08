@@ -1,7 +1,7 @@
 {
   "artifact": "docs/plans/2026-09-13-v0c-popovers-plan.md",
-  "artifact_abs": "/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/admiring-northcutt-763a69/docs/plans/2026-09-13-v0c-popovers-plan.md",
-  "worktree": "/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/admiring-northcutt-763a69",
+  "artifact_abs": ".claude/worktrees/admiring-northcutt-763a69/docs/plans/2026-09-13-v0c-popovers-plan.md",
+  "worktree": ".claude/worktrees/admiring-northcutt-763a69",
   "branch": "claude/plan-c-review-updates-fcd111",
   "commit_reviewed": "201df44f",
   "pr": "#163",

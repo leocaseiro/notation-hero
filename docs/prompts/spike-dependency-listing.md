@@ -13,7 +13,7 @@ I'm OK keeping 2 tools (belt + suspenders); prove it's worth it. Decide with a m
 
 ## Repo & current state
 
-- Repo root: `/Users/leocaseiro/Sites/notation-hero` (default branch `master`). Hexagonal Layout 4 monorepo (`core/ adapters/ apps/ infra/`), **pnpm + Nx**, **legacy `.eslintrc.cjs`** (flat-config migration is the deferred `L3-eslint` lane / KAN-158 — **do NOT migrate flat config as part of this work**).
+- Repo root: this checkout (default branch `master`). Hexagonal Layout 4 monorepo (`core/ adapters/ apps/ infra/`), **pnpm + Nx**, **legacy `.eslintrc.cjs`** (flat-config migration is the deferred `L3-eslint` lane / KAN-158 — **do NOT migrate flat config as part of this work**).
 - Boundary mechanisms that may be live (enumerate the real ones first — they may differ between `master` and the latest enforcement PR, e.g. PR #25):
   - **dependency-cruiser** path-based rules (H8–H11) → `pnpm depcheck`
   - ESLint **`no-restricted-imports`** deny-list inside `core/`
@@ -28,11 +28,11 @@ What the article ACTUALLY says (don't misread it): it advocates using **both** t
 
 ## Read FIRST (sources of truth — don't re-derive, don't re-litigate)
 
-- `/Users/leocaseiro/Sites/notation-hero/AGENTS.md` (agent contract: test layout, naming, run commands)
-- `/Users/leocaseiro/Sites/notation-hero/docs/decisions/decision-registry.md` (rows: `L2-tags`, `DEPCR-files`, `H8`–`H11`, `FOLD-hex`, `L3-eslint`)
-- `/Users/leocaseiro/Sites/notation-hero/docs/decisions/2026-06-09-tooling-stack-daci.md`
+- `AGENTS.md` (agent contract: test layout, naming, run commands)
+- `docs/decisions/decision-registry.md` (rows: `L2-tags`, `DEPCR-files`, `H8`–`H11`, `FOLD-hex`, `L3-eslint`)
+- `docs/decisions/2026-06-09-tooling-stack-daci.md`
 - Live configs: `.dependency-cruiser.cjs`, `.eslintrc.cjs`, `nx.json` + project tags
-- Prior session that built + probe-verified the enforcement bundle: `/Users/leocaseiro/.claude/projects/-Users-leocaseiro-Sites-notation-hero/8f12561d-cc7c-4a44-b930-ce44c9e9228d.jsonl`
+- Prior session that built + probe-verified the enforcement bundle: `<agent-projects-dir>/8f12561d-cc7c-4a44-b930-ce44c9e9228d.jsonl`
 
 ## LOCKED — do not re-open (per the DACI)
 
@@ -128,7 +128,7 @@ For each proposed rule, identify the best owner:
 - A comparison **MATRIX** (capability rows × {ESLint-tools, dependency-cruiser, Nx, layout guard} cols) with caught/missed/partial + evidence per cell.
 - A clear **recommendation**: KEEP dependency-cruiser (name the unique capabilities that justify it — likely orphan-via-tests + visualization) OR DROP it (give the exact validated ESLint-only config that replaces H8–H11 at equal precision).
 - A 2–3 sentence **"why we run both"** justification fit for the decision-registry AND as a Staff-FE interview answer.
-- Write the report to `/Users/leocaseiro/Sites/notation-hero/docs/spikes/2026-06-12-file-level-structure-enforcement.md` (adjust date).
+- Write the report to `docs/spikes/2026-06-12-file-level-structure-enforcement.md` (adjust date).
 - **Propose** the decision-registry update (`DEPCR-files` / `L2-tags` plus a new suffix/file-strictness decision row if needed) but DON'T change enforcement config without my explicit OK.
 
 ## Working style
