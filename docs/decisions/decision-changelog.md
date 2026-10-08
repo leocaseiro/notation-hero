@@ -54,8 +54,8 @@ the ticket.
 - **G10 — this spec now; the code after NH-124 merges.** Both change the home page's privacy note,
   so the code rebases on NH-124's text.
 
-Recorded for the launch: GDPR Article 7(3) needs a way to withdraw consent, so NH-349's link should
-land before or with this ticket's go-live in Europe.
+Recorded for the launch: GDPR Article 7(3) needs a way to withdraw consent, so this ticket goes live
+only together with NH-349's link (NH-349 blocks NH-51).
 
 ### 2026-09-29 — One maintainer's folder layout is out of the public repo, and a gate keeps it out (NH-345)
 

@@ -2,7 +2,8 @@
 
 Date: 2026-10-08
 Status: Design approved by leocaseiro section by section (seven sections, ten decisions), 2026-10-05
-to 2026-10-08. Not implemented. The plan comes next; the code waits for NH-124 to merge.
+to 2026-10-08. Not implemented. The plan comes next; the code waits for NH-124 to merge, and this
+pull request merges only together with NH-349's (see "Known limits").
 Ticket: [NH-51](https://leocaseiro.atlassian.net/browse/NH-51) — "[J-8] Google Analytics 4 — usage
 and click events (client)".
 Builds on: the Sentry spec, `docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md`, on
@@ -406,9 +407,9 @@ Sentry's fixture answers its fake DSN, so no test reaches Google.
 - `docs/decisions/decision-registry.md` — a new row, `L11-analytics`, ⏳ pending. It flips to ✅ in
   the implementation.
 - `web/README.md` — `NEXT_PUBLIC_GA_ID` in the Deploy section.
-- **Jira:** NH-51 rewritten and NH-349 narrowed (both done on 2026-10-05). The future same-origin
-  privacy test on [NH-298](https://leocaseiro.atlassian.net/browse/NH-298) must allow Google's hosts
-  as well as Sentry's.
+- **Jira:** NH-51 rewritten and NH-349 narrowed (both done on 2026-10-05); NH-349 blocks NH-51. The
+  future same-origin privacy test on [NH-298](https://leocaseiro.atlassian.net/browse/NH-298) must
+  allow Google's hosts as well as Sentry's.
 
 ## Extending later
 
@@ -424,9 +425,9 @@ Sentry's fixture answers its fake DSN, so no test reaches Google.
 
 - **A time zone is a guess.** A visitor in Europe whose computer says `Australia/Sydney` is counted
   without being asked; a traveller from Australia in Berlin is asked.
-- **Until NH-349 ships**, a visitor in Europe can change their answer only by clearing the site's
-  data. GDPR Article 7(3) requires withdrawing to be as easy as agreeing, so NH-349 should land
-  before or with this ticket's go-live.
+- **Withdrawing needs NH-349.** GDPR Article 7(3) requires withdrawing to be as easy as agreeing,
+  so this ticket goes live only with NH-349's "Privacy choices" link. That link's pull request is
+  stacked on this branch and merged into it first, so one merge to master ships both.
 - **Ad blockers** stop Google Analytics, as they stop Sentry; those visitors are not counted.
 - **The home note is on `/` only.** A visitor who opens `/play` directly does not see it; in Europe,
   the popup still asks.
