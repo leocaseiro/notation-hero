@@ -1,0 +1,65 @@
+{
+  "reviewer": "adversarial",
+  "findings": [
+    {
+      "title": "One-second font clock fails the existing 60 s backstop case",
+      "severity": "P1",
+      "section": "Task 14 — The music-font clock, and AlphaTab's own error event (Step 3), and Choice 7 — the one-second E204 counter",
+      "why_it_matters": "After Task 14, the existing player.e2e.ts:230 case ('a music font that arrives after the 60 s backstop clears the error') turns red, but Step 3 says it passes. That case moves Playwright's installed clock with page.clock.fastForward(61_000) inside a 20-second toPass. In the installed Playwright 1.61.1, fastForward 'only fires due timers at most once', so the new 1-second setInterval counts about one second per call, plus about one per real second, and never reaches 60 before the retry gives up. The plan reasons only about visibility and gives the implementer no guidance. The quickest local repairs, going back to a plain 60 s timer or weakening the assertion, would undo the settled visible-time rule. runFor fires every due tick, so the counter sees 61 visible seconds and the guard still tests the same thing.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "Add web/e2e/player.e2e.ts's 60 s backstop case to Task 14's Files and Step 3. Replace its page.clock.fastForward(61_000) with page.clock.runFor(61_000): runFor fires every due timer, so the one-second counter counts 61 visible seconds. Keep the toPass retry, which covers the api arriving late, and reword the comment above it to say why runFor is used instead of fastForward.",
+      "confidence": 100,
+      "evidence": [
+        "const clock = globalThis.setInterval(() => {",
+        "if (visibleSeconds < 60) return;",
+        "Expected: PASS — including the existing 60-second backstop case"
+      ]
+    },
+    {
+      "title": "vi.resetModules keeps the stand-in SDK; report tests accumulate calls",
+      "severity": "P2",
+      "section": "Task 5 — The reporting functions, report.ts (Step 2, web/lib/monitoring/report.test.ts)",
+      "why_it_matters": "About half of report.test.ts fails as written. Every case after the first that reads captured() also sees the captureException calls of earlier cases, so Step 5's 'PASS — 22 tests' and Step 6's whole-lane run cannot pass. The beforeEach assumes vi.resetModules() gives each case a fresh stand-in SDK. Vitest 4.1.11 (installed in web/) skips module ids that start with mock: when it resets, so the factory mock from web/vitest.setup.ts and its vi.fn()s last for the whole file, and vitest.config.ts sets no clearMocks. Every other test file in this plan already clears its Sentry mocks by hand (transport-storage, live-settings, OpenFileControl, PlayerShell), and the same fix works here.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "In report.test.ts's beforeEach, after `sentry = await import('@sentry/nextjs');`, add `vi.mocked(sentry.captureException).mockClear();` and `vi.mocked(sentry.addBreadcrumb).mockClear();`. Reword the comment: vi.resetModules() gives a fresh report.ts, but Vitest keeps the setup file's mocked @sentry/nextjs, so its calls are cleared by hand.",
+      "confidence": 100,
+      "evidence": [
+        "copy of it — and of the stand-in SDK from web/vitest.setup.ts, whose two mocks it calls.",
+        "const captured = () => vi.mocked(sentry.captureException).mock.calls;",
+        "Expected: PASS — 22 tests."
+      ]
+    },
+    {
+      "title": "NotationSurface stand-in api {} makes renderFinished throw",
+      "severity": "P2",
+      "section": "Task 14 — The music-font clock (Step 1, web/app/play/NotationSurface.test.tsx)",
+      "why_it_matters": "The case 'once a render has finished, hiding and showing the tab raises nothing a minute later' fails with a TypeError, so Step 2's 'PASS — 6 tests' cannot hold. Delivering renderFinished runs the handler's last line, which Task 14 leaves unchanged: setRenderedTrackCount(api?.tracks.length ?? 0) at NotationSurface.tsx:166. The optional chain guards only api. The stand-in api is {}, so api.tracks is undefined and reading .length on it throws. The comment saying the component 'only needs an api to exist' holds for the clock and the font listener, but not for this handler.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "Declare the stand-in as `const STAND_IN_API: unknown = { tracks: [] };`. Reword its comment: the clock and the font listener need only an api, but the renderFinished handler also reads api.tracks.",
+      "confidence": 100,
+      "evidence": [
+        "const STAND_IN_API: unknown = {};",
+        "act(() => handlers.get('renderFinished')?.(undefined));",
+        "Expected: PASS — 6 tests."
+      ]
+    },
+    {
+      "title": "Home-page copy snippet puts a stray semicolon into the JSX",
+      "severity": "P2",
+      "section": "Task 7 — The three error pages, and the copy (Step 6, web/app/page.tsx)",
+      "why_it_matters": "Pasted as written after the closing </Button>, the new paragraph's code block adds a literal ';' text node to the home page. Step 7 then bakes it into the regenerated landing baseline, and no lint rule, type-check or test rejects stray JSX text. Prettier reformatted this code block as two statements: the comment became a { } block and </p> gained a semicolon. The plan treats its code blocks as copy-verbatim, and this one no longer is.",
+      "finding_type": "error",
+      "autofix_class": "safe_auto",
+      "suggested_fix": "Rewrite the second Step 6 code block as the JSX children it is: the comment as {/* … */}, and the paragraph ending in </p> with no trailing semicolon. Add one line saying that nothing follows </p>.",
+      "confidence": 75,
+      "evidence": ["and, after the closing `</Button>`:", "</p>;"]
+    }
+  ],
+  "residual_risks": [
+    "A production build that has SENTRY_AUTH_TOKEN but no `project` slug skips both the release and the source-map upload, with only a warning. In @sentry/bundler-plugins 11.0.0 (read from the lap-3 spike install), canUploadSourceMaps and createRelease warn and return, so errorHandler never fires. With an organization token (sntrys_), `org` is optional; `project` is the slug that matters. The registry row F7-sentry asks for the token in Vercel before NH-124 merges. If the merged next.config.ts lacks the slugs, production deploys succeed with unreadable frames, which is exactly the failure spec section 4 rejects. Task 17 Step 2 is the only guard against it."
+  ],
+  "deferred_questions": []
+}
