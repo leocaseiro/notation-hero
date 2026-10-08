@@ -422,8 +422,12 @@ hands Google, in `window.dataLayer`; what Google's script sends is checked by ha
 - **Berlin:** the popup shows, and **no** request reaches Google or Sentry before an answer. "No,
   send nothing": still none, also after a reload. "Report errors only": a forced error reaches
   Sentry, and nothing reaches Google. "Yes, …": both. The answer survives a reload.
-- **Privacy:** open a fixture with a known title and track names. No Google request — address or
-  body — contains any of them, and `dt` stays `Notation Hero`.
+- **Privacy:** open a fixture with a known title and track names, and press Solo and Mute on one of
+  its tracks (both buttons are named after the track). Wait until `window.dataLayer` holds the
+  `score_loaded` event, with the score's `track_count`, and both `mixer_change` events. Only then
+  check that no entry contains the title or a track name, that `document.title` stays
+  `Notation Hero` (Google's script sends it as `dt`), and that the page address holds neither.
+  Without the wait, an empty queue would pass.
 - **No overlap:** the popup's box never intersects ▶ or the transport row, at desktop and phone
   width, measured the way `web/e2e/toast-occlusion.e2e.ts` measures the toaster.
 - **Privacy notice:** the popup's Details and the home note both link to `/privacy`, which names who
