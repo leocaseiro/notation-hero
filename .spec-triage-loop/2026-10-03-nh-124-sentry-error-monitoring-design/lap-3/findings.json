@@ -73,8 +73,8 @@
     },
     "severity_note": "Lap 3 holds no P0 or P1 after verification: F-33 was merged at adversarial's P1 and corrected to P2 (nothing ships broken; it breaks only when the domain moves).",
     "triage_progress": {
-      "decided": ["F-32", "F-34", "F-31", "F-33", "FYI-16"],
-      "undecided": ["FYI-15", "FYI-17", "FYI-18", "FYI-19"],
+      "decided": ["F-32", "F-34", "F-31", "F-33", "FYI-16", "FYI-15", "FYI-17", "FYI-18", "FYI-19"],
+      "undecided": [],
       "pending_apply": []
     },
     "triage_status": "NOT TRIAGED. Review half done (2026-10-05): 4 findings and 5 observations, all verified. NEXT: the triage half, in a new session."
@@ -1447,6 +1447,32 @@
       "decision": "APPLIED — option 1, chosen by the owner: `errorHandler` rethrows, so a failed release or upload step fails the production build.",
       "what_changed": "Section 4 gains the bullet \"A failed upload stops the deploy\" (Vercel keeps the previous deployment live; a redeploy retries; the cost: no production deploy succeeds while Sentry is down or the token is revoked). The next.config.ts snippet gains `errorHandler: (error) => { throw error; }`.",
       "untested": "The runtime behaviour was read from Sentry 11.0.0's source, not run: it needs a production build with a token. Type-checked only."
+    },
+    {
+      "id": "FYI-15",
+      "severity": "P3",
+      "decision": "APPLIED — approved by the owner on the round-3 multi-select card.",
+      "what_changed": "Known limits: reports are kept 30 days (the Developer plan); Sentry deletes only a whole issue, so a report holding a name means deleting its issue and alert email at once and fixing the names filter before the next deploy.",
+      "untested": "Settled from Sentry's public docs; deleting an issue needs a Sentry project."
+    },
+    {
+      "id": "FYI-17",
+      "severity": "P3",
+      "decision": "APPLIED — approved by the owner on the round-3 multi-select card.",
+      "what_changed": "Section 2.3: E101–E103 replace the exception message (value and `message`) with a fixed sentence of ours — the code, then its meaning from docs/reference/error-codes.md — so issue titles and alert subjects say what failed. Section 3.1's row and two section 6 cases follow.",
+      "plan_note": "The sentences are new runtime strings: shared/src/error-codes.ts holds the meanings only as comments, and tooling/check-error-codes.mjs compares codes, not wording."
+    },
+    {
+      "id": "FYI-18",
+      "severity": "P3",
+      "decision": "APPLIED — approved by the owner on the round-3 multi-select card.",
+      "what_changed": "Section 6: the existing out-of-range Zoom case (web/e2e/player.e2e.ts:1856) asserts one E601 warning and the corrupt-settings case (:1885) one E603 warning; the transport restore's E601/E603 stays untested, and the text says so. Section 1's player.e2e.ts bullet follows."
+    },
+    {
+      "id": "FYI-19",
+      "severity": "P3",
+      "decision": "APPLIED — approved by the owner on the round-3 multi-select card.",
+      "what_changed": "web/AGENTS.md joins section 1's changed files and section 7: one bullet stating that every catch and .catch() callback in web/ calls reportError or noteError, the exact opt-out comment, and that lint enforces it."
     }
   ]
 }

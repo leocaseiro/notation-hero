@@ -99,9 +99,10 @@ Each `lib/monitoring` file has its unit test beside it, and so do the three erro
 **Changed files:** `web/next.config.ts` (the `withSentryConfig` wrapper), `web/package.json` (the
 dependency, and the token check at the end of its `build` script), both `error.tsx` files, the 16
 catch sites and 4 failure paths listed in section 2.4, `web/app/page.tsx` (copy),
-`web/eslint.config.mjs` (the rule), `web/e2e/page-errors.ts` (reads the shared list), the `/`
-screenshot baseline, `web/README.md` (the environment variables), `web/playwright.e2e.config.ts`
-(a fake DSN), `cspell.json`, and the decision registry and changelog. Also:
+`web/eslint.config.mjs` (the rule), `web/AGENTS.md` (the rule, in words), `web/e2e/page-errors.ts`
+(reads the shared list), the `/` screenshot baseline, `web/README.md` (the environment variables),
+`web/playwright.e2e.config.ts` (a fake DSN), `cspell.json`, and the decision registry and
+changelog. Also:
 
 - `web/app/play/OpenFileControl.tsx` and `web/app/play/PlayerShell.tsx`, beyond their catch sites:
   picking or dropping a file remembers its name (3.2) and takes the `instruments` tag off until the
@@ -111,8 +112,8 @@ screenshot baseline, `web/README.md` (the environment variables), `web/playwrigh
   `readNotation` and `LoadedNotation` carry the file's extension (2.3). The function that turns a
   file name into that type lives in `OpenFileControl.tsx`, beside the `ACCEPT` list it checks, and
   is exported like `readNotation`, so the drop path in `PlayerShell.tsx` uses the same list.
-- `web/e2e/player.e2e.ts` — one assertion each on the font and SoundFont failures it already
-  forces (section 6).
+- `web/e2e/player.e2e.ts` — one assertion each on the failures it already forces: the font and
+  SoundFont downloads, and the out-of-range and corrupt stored settings (section 6).
 - `shared/src/error-codes.ts` and `docs/reference/error-codes.md` — the new E105 (section 2.4).
 
 ## 2. How each error reaches Sentry
@@ -196,9 +197,13 @@ export function addInstrumentsTag(event: SentryEvent): void; // Sentry's `Event`
   The shorter `{ tags, mechanism }` form fails the type-check and, forced through, stays handled.
 - `code` becomes the Sentry tag `code`, so a visitor who quotes "Error E203" maps straight to a
   Sentry search.
-- **E101, E102 and E103 drop the exception message** — from the exception's value and from the
-  event's `message` — and keep its type, its stack, and the file's type and size. The engine's parse
-  message can quote text from inside the file (section 3.1).
+- **E101, E102 and E103 replace the exception message** — in the exception's value and in the
+  event's `message` — with a fixed sentence of ours: the code, then its meaning from
+  `docs/reference/error-codes.md`, such as `E103: No AlphaTab importer accepts the bytes.` They keep
+  the type, the stack, and the file's type and size. The engine's parse message can quote text
+  from inside the file (section 3.1), so none of the original message is sent. Sentry titles an
+  issue with the exception's type and then its value, and the alert email's subject repeats that
+  title: without the sentence, E101 and E103 would read only `Error`.
 - **`FileFacts.type` is the file's extension**, lower-case, read from the name when the file is
   read and carried on `LoadedNotation`: browsers give `.gp`, `.gp5`, `.gpx` and `.atex` files an
   empty MIME type, and the code that reports E103 holds only the name and the bytes. Only an
@@ -373,7 +378,7 @@ and XHR callbacks, is lost; those errors still arrive through the same global ha
 | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | track names, title, artist, album              | **Verified in Sentry's source** (`packages/browser-utils/src/htmlTreeAsString.ts:156`): click breadcrumbs record each element's `aria-label`, `type`, `name`, `title` and `alt`. The Solo, Mute and Render buttons are labelled `` `Solo ${name}` `` (`client/src/components/ui/TrackRow/TrackRow.tsx:247`). An error's message could quote one too: none does today, but reading a value by a track name off a missing object gives `Cannot read properties of undefined (reading 'Lead Guitar')`. | click breadcrumbs are off (`dom: false`, 3.3), so no label is recorded; the names filter (3.2) replaces a name in an error's message with `[file]`                   |
 | the file name                                  | any error message that quotes it — none does today                                                                                                                                                                                                                                                                                                                                                                                                                                                  | the same filter                                                                                                                                                      |
-| the score's contents — notes, lyrics, alphaTex | AlphaTab's console logs, and its parse messages, can quote a broken alphaTex line                                                                                                                                                                                                                                                                                                                                                                                                                   | console breadcrumbs are off: the default `Console` integration is removed (3.3), since Sentry 11 has no `console` switch; E101–E103 drop the exception message (2.3) |
+| the score's contents — notes, lyrics, alphaTex | AlphaTab's console logs, and its parse messages, can quote a broken alphaTex line                                                                                                                                                                                                                                                                                                                                                                                                                   | console breadcrumbs are off: the default `Console` integration is removed (3.3), since Sentry 11 has no `console` switch; E101–E103 send our own fixed message (2.3) |
 | kinds of instrument                            | the `instruments` tag (2.3) — sent on purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                       | only `drums`, `sample` and the General MIDI numbers 000–127 can be sent, never text from the file, so no name can reach the tag                                      |
 | the file's type and size                       | `FileFacts` (2.3) on E101–E103 and E105 — sent on purpose                                                                                                                                                                                                                                                                                                                                                                                                                                           | only an extension the open-file picker accepts, or `other`, and a size in bytes; never the file name                                                                 |
 | IP address, cookies, the Referer header        | collected by Sentry's defaults                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | `dataCollection` turns off each one — the Referer is sent as `[Filtered]` — **and** the project setting "Prevent Storing of IP Addresses" is on (section 5)          |
@@ -603,8 +608,8 @@ secret. The upload now runs inside Vercel's build, so neither GitHub mechanism a
     the event's `message` and in its exception's value comes out as `[file]` in both;
   - the address scrub: `/play?fbclid=abc#x` comes out as `/play`, in the event's address and in a
     navigation breadcrumb;
-  - `reportError`: the default level, the `code` tag, and E101–E103 dropping the message, also from
-    the event's `message`;
+  - `reportError`: the default level, the `code` tag, and E101–E103 replacing the message with the
+    code's fixed sentence, also in the event's `message`;
   - `instrumentsValue`: a percussion track and a Distortion Guitar track (program 30) give
     `drums,030`; program 5 gives `005`; two tracks on the same program give one number;
   - the tag's lifecycle, read through `addInstrumentsTag`: `suspendInstruments` takes the tag off
@@ -622,10 +627,11 @@ secret. The upload now runs inside Vercel's build, so neither GitHub mechanism a
   once with the stub error and code E901. (Rendering `global-error.tsx` prints one development
   warning, `<html>` inside a `<div>`; it does not fail the test.)
 - **The open-file catches**, a test beside `web/app/play/OpenFileControl.tsx`: a read that fails
-  shows E102 and reports a warning without the message; an `onNotation` that fails shows E105 and
-  reports an error that keeps its message; neither report carries the `instruments` tag, and once
-  the open ends the tag is back to the value for the score on screen; and the file type:
-  `Song.GP5` gives `gp5`, while `notes.txt` and a name with no extension give `other`.
+  shows E102 and reports a warning whose message is E102's fixed sentence; an `onNotation` that
+  fails shows E105 and reports an error that keeps its message; neither report carries the
+  `instruments` tag, and once the open ends the tag is back to the value for the score on screen;
+  and the file type: `Song.GP5` gives `gp5`, while `notes.txt` and a name with no extension give
+  `other`.
 - **The names arrive before the swap**, a case in `web/app/play/PlayerShell.test.tsx`: open
   `Punk.gp` and make the step after the parse throw with a message that quotes `Distortion Guitar`;
   once filtered, the E105 report's message reads `[file]` where it quoted the name.
@@ -662,9 +668,12 @@ secret. The upload now runs inside Vercel's build, so neither GitHub mechanism a
     answers it, and records the envelope, so nothing reaches the network and the real SDK is under
     test with no test code in the app.
   - **Cases that already force a failure** get one extra assertion each: the font abort
-    (`web/e2e/player.e2e.ts:218`) must produce E203, and the SoundFont abort
-    (`web/e2e/player.e2e.ts:267`) E202. No case in `player.e2e.ts` aborts the engine module, so
-    E201 gets a case of its own (case 8 below).
+    (`web/e2e/player.e2e.ts:218`) must produce E203, the SoundFont abort
+    (`web/e2e/player.e2e.ts:267`) E202, the out-of-range stored Zoom
+    (`web/e2e/player.e2e.ts:1856`) one E601 `warning`, and the corrupt stored settings
+    (`web/e2e/player.e2e.ts:1885`) one E603 `warning`. No case in `player.e2e.ts` aborts the
+    engine module, so E201 gets a case of its own (case 8 below), and none stores a bad transport
+    value, so the transport restore's E601/E603 stays untested.
   - **New cases in `web/e2e/error-reporting.e2e.ts`:**
     1. On `/play`, once the bundled sample is drawn and before any file is opened, a throw the test
        schedules with `setTimeout` inside `page.evaluate` sends an `error` that carries the tag
@@ -710,6 +719,11 @@ secret. The upload now runs inside Vercel's build, so neither GitHub mechanism a
   L11-envsecret superseded; F7-sentry rewritten for Vercel. Flips to ✅ happen in the implementation
   PR.
 - `web/README.md` — the Deploy section names both environment variables.
+- `web/AGENTS.md` — one bullet in its "This package" list, beside the AlphaTab import fence: every
+  `catch` and `.catch()` callback in `web/` calls `reportError` or `noteError` from
+  `web/lib/monitoring/report.ts`, a deliberate silence is
+  `// eslint-disable-next-line no-restricted-syntax -- <reason>`, and lint enforces the rule
+  (section 2.5).
 - `shared/src/error-codes.ts` and `docs/reference/error-codes.md` — the new E105 (section 2.4).
 - **Jira, at implementation:** the two NH-298 checklist items "Sentry integration" and "Test the
   'Nothing you open leaves this device' claim" change. The second's future same-origin test must now
@@ -736,6 +750,11 @@ secret. The upload now runs inside Vercel's build, so neither GitHub mechanism a
   loop. If volume ever grows, the setting to turn is `sampleRate`. On the free plan, per-key rate
   limits and spike protection are not available.
 - **Release Health pings on every visit**, not only on a crash. The home-page copy says so.
+- **Reports are kept for 30 days**, the error retention of the free Developer plan (Sentry's
+  data-retention docs). Sentry cannot delete one report, only the whole issue that holds it, with
+  the trash icon on the issue's page. If a report ever holds a name or any text from a score,
+  delete its issue and its alert email immediately, and fix the names filter before the next
+  deploy.
 
 ## To verify at plan time
 
