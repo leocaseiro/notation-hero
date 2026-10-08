@@ -216,7 +216,7 @@ export function startAnalytics(): void {
 
 ## 5. Events
 
-Every name starts with a verb and avoids Google's reserved names (`click`, `error`,
+Every name except Google's own `page_view` avoids Google's reserved names (`click`, `error`,
 `file_download`, …). Every field comes from a fixed list or is a number, so text from the file
 cannot reach Google. Sliders send their final value only; seeking and volume are not tracked.
 
