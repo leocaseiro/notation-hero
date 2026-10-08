@@ -68,8 +68,8 @@
       "P3": "worth fixing — small, cheap"
     },
     "triage_progress": {
-      "undecided": ["PF-7", "PF-8", "PQ-1", "PQ-2", "PQ-3", "PQ-4", "PF-6", "PO-1", "PO-2"],
-      "decided": []
+      "undecided": ["PQ-1", "PQ-2", "PQ-3", "PQ-4", "PF-6", "PO-1", "PO-2"],
+      "decided": ["PF-7", "PF-8"]
     }
   },
   "already_applied": [
@@ -133,118 +133,6 @@
   ],
   "ambiguity_fixes": [],
   "undecided_findings": [
-    {
-      "id": "PF-7",
-      "kind": "proposed fix",
-      "severity": "P2",
-      "severity_meaning": "a real gap an implementer will hit",
-      "confidence": 75,
-      "confidence_meaning": "double-checked by one reviewer; the facts behind it verified in source and docs; not run against a real token (none may be used)",
-      "reviewers": ["security-lens"],
-      "section": "Task 1 Step 4 (the withSentryConfig options); Choice 2; Task 16's README; Task 17 Step 1",
-      "title": "A SENTRY_AUTH_TOKEN in a developer's shell turns every local build into an upload attempt",
-      "terms_first": "SENTRY_AUTH_TOKEN: the secret that lets a build upload source maps to Sentry. VERCEL_ENV: a variable Vercel sets at build time — production, preview or development; web/scripts/app-version.mjs already relies on it.",
-      "scenario": "You (or an agent) follow your own sentry skill's advice and export SENTRY_AUTH_TOKEN in your shell, so you can read Sentry's issues from the terminal. From then on, every local `pnpm build` and every end-to-end run tries to create a release and upload source maps. With that read-only token, Sentry refuses, the plan's errorHandler rethrows, and every local build and the whole e2e lane fail. With a broader token, local builds upload maps named `local` into the production project, using your credential — which the spec's \"an agent may not handle the token\" exists to prevent.",
-      "whats_wrong": "The plan uses the token's presence as the only gate. The user-level sentry skill tells the owner to set exactly that variable; Playwright's webServer passes the shell's environment into its `pnpm build`.",
-      "before_after": [
-        {
-          "where": "Task 1 Step 4, web/next.config.ts",
-          "before": "// Sentry's build step: it uploads the production build's source maps to Sentry, then deletes them\n// from the deploy. Only Vercel's Production environment holds SENTRY_AUTH_TOKEN, so previews, CI\n// and local builds upload nothing — and, with the hook off, print nothing about it either.\nexport default withSentryConfig(nextConfig, {\n  authToken: process.env.SENTRY_AUTH_TOKEN,\n  ...\n  sourcemaps: { disable: !process.env.SENTRY_AUTH_TOKEN },\n  useRunAfterProductionCompileHook: Boolean(process.env.SENTRY_AUTH_TOKEN),",
-          "after": "// Sentry's build step: it uploads the production build's source maps to Sentry, then deletes them\n// from the deploy. Only a production build on Vercel reads the token: Sentry's own command-line\n// tools read a variable of the same name from a developer's shell, and a local build must never\n// upload with it. VERCEL_ENV needs Vercel's system environment variables on, which the version\n// in the wordmark (web/scripts/app-version.mjs) already relies on.\nconst uploadToken =\n  process.env.VERCEL_ENV === 'production' ? process.env.SENTRY_AUTH_TOKEN : undefined;\n\nexport default withSentryConfig(nextConfig, {\n  authToken: uploadToken,\n  ...\n  sourcemaps: { disable: !uploadToken },\n  useRunAfterProductionCompileHook: Boolean(uploadToken),"
-        }
-      ],
-      "proposed_fix": "Gate the token on VERCEL_ENV === 'production' for all three options; keep assert-no-auth-token.mjs reading SENTRY_AUTH_TOKEN directly (a leaked shell token is still worth catching); add a plan Choice (12) recording the departure from spec section 4's snippet; Task 17 Step 1 asks the owner to confirm Vercel's \"Enable access to System Environment Variables\" is on (the wordmark tooltip reads v0.… on production, not `local`); the README sentence names the gate.",
-      "why_it_works": "\"Only Vercel's production build uploads\" becomes true by construction instead of depending on a clean shell. Vercel documents VERCEL_ENV as available at build time with the value production for production deployments.",
-      "new_risk": "With Vercel's system variables switched off, VERCEL_ENV is unset: no maps are built, nothing uploads, nothing warns, and errorHandler never fires — production frames stay unreadable. Guards: Task 17 Step 1's check of the setting, and Step 7's readable-frame check after the first deploy. (verify-B's correction.)",
-      "spec_change": "Yes — spec section 4's snippet gates on the token alone. If approved, record it in the NH-124 changelog entry under a \"Changed by the plan review, lap 1\" list.",
-      "drop_consequence": "Drop it: a developer who exports the token for the sentry skill gets failing local builds and e2e runs, or quiet uploads into production under their credential.",
-      "options": [
-        {
-          "label": "Apply (recommended)",
-          "what": "The gate as above, plus the Choice entry, the Task 17 check and the README line."
-        },
-        {
-          "label": "Skip — decide later",
-          "what": "Leave it open; nothing changes now."
-        },
-        {
-          "label": "Drop",
-          "what": "Keep the token-only gate the spec wrote."
-        }
-      ],
-      "recommendation": "Apply. The owner's own sentry skill makes the exported variable likely, and the fix is one line.",
-      "verification": "verify-B: app-version.mjs reads VERCEL_ENV; Playwright 1.61.1 merges process.env into the webServer command's environment; the user-level sentry skill says to set SENTRY_AUTH_TOKEN as an environment variable; Vercel docs: VERCEL_ENV is available at build and runtime. next.config.ts with the gate passes ESLint. Not run against a real token.",
-      "evidence_quotes": [
-        "sourcemaps: { disable: !process.env.SENTRY_AUTH_TOKEN },",
-        "useRunAfterProductionCompileHook: Boolean(process.env.SENTRY_AUTH_TOKEN),",
-        "Only Vercel's Production environment holds SENTRY_AUTH_TOKEN, so previews, CI and local builds upload nothing",
-        "previews, CI and local builds have neither, so they send nothing and upload nothing",
-        "Expected: PASS, with nothing printed by the new step (no token, nothing to check)."
-      ],
-      "raw_reviewer_findings": [
-        {
-          "title": "A shell-held SENTRY_AUTH_TOKEN turns local builds into uploads",
-          "severity": "P2",
-          "section": "Task 1 — Install @sentry/nextjs, wrap the build (Step 4, the withSentryConfig options); echoed by Task 16's README text",
-          "why_it_matters": "If the owner exports SENTRY_AUTH_TOKEN, every local build and every e2e run tries to create a release and upload source maps. The installed `sentry` skill tells the owner to set a variable with exactly that name, system-wide, holding a read-only API token, and Playwright 1.61.1's web server passes the shell's environment into its `pnpm build`. With that read-only token, Sentry refuses the release and `errorHandler` rethrows, so local builds and the whole e2e lane fail. With a broader token, local and agent builds upload maps as release `local` into the production project, using the owner's credential, which the spec's rule that an agent may not handle the token exists to prevent. `web/scripts/app-version.mjs` already trusts VERCEL_ENV to tell a production build from a local one. Gating the token on it makes 'only Vercel's production build uploads' true by construction, not just when the shell happens to be clean.",
-          "finding_type": "error",
-          "autofix_class": "gated_auto",
-          "suggested_fix": "In Task 1 Step 4, read the token through a production gate and use the result for all three options: `const uploadToken = process.env.VERCEL_ENV === 'production' ? process.env.SENTRY_AUTH_TOKEN : undefined;`, then `authToken: uploadToken`, `sourcemaps: { disable: !uploadToken }` and `useRunAfterProductionCompileHook: Boolean(uploadToken)`. Add a comment that Sentry's own API tooling reads the same variable name from a developer's shell. Leave `assert-no-auth-token.mjs` reading SENTRY_AUTH_TOKEN as it does now. Record the change from spec section 4's snippet in the plan, as its Spec line requires.",
-          "confidence": 75,
-          "evidence": [
-            "sourcemaps: { disable: !process.env.SENTRY_AUTH_TOKEN },",
-            "useRunAfterProductionCompileHook: Boolean(process.env.SENTRY_AUTH_TOKEN),",
-            "Only Vercel's Production environment holds SENTRY_AUTH_TOKEN, so previews, CI and local builds upload nothing",
-            "previews, CI and local builds have neither, so they send nothing and upload nothing",
-            "Expected: PASS, with nothing printed by the new step (no token, nothing to check)."
-          ]
-        }
-      ]
-    },
-    {
-      "id": "PF-8",
-      "kind": "proposed fix (the lead's, from a verified residual)",
-      "severity": "P2",
-      "severity_meaning": "a real gap an implementer will hit",
-      "confidence": 75,
-      "confidence_meaning": "raised by the adversarial reviewer as a residual risk; verified in @sentry/bundler-plugins 11.0.0 and 11.1.0 source by verify-B; the fix itself not run",
-      "reviewers": ["adversarial (residual)", "lead (fix)"],
-      "section": "Task 1 Step 4 (web/next.config.ts); Task 17 Step 2; Choice 2",
-      "title": "A production build with the token but no project slug deploys with unreadable frames, silently",
-      "terms_first": "Slug: the short name Sentry gives an organization or project (not secret). Choice 2 leaves `org` and `project` out of next.config.ts until the owner has them.",
-      "scenario": "You add SENTRY_AUTH_TOKEN to Vercel (as the registry row F7-sentry asks, before the code merges), but next.config.ts still has no `project` slug. The production build passes; Sentry's plugin only warns \"No project provided. Will not upload source maps\", builds the maps anyway and deletes them. Every production error then shows minified frames — exactly the outcome the owner rejected when choosing \"a failed upload stops the deploy\".",
-      "whats_wrong": "errorHandler fires only on a thrown error; a missing project is a warning and a quiet return (canUploadSourceMaps and createRelease in build-plugin-manager). Task 17 Step 2 — committing the slugs first — is the only guard, and it is a person remembering an order.",
-      "before_after": [
-        {
-          "where": "Task 1 Step 4, web/next.config.ts (the options object moves into a named const sentryBuildOptions so it can be checked)",
-          "before": "(absent — nothing checks the slugs)",
-          "after": "if (uploadToken && !(sentryBuildOptions.org && sentryBuildOptions.project)) {\n  // Sentry's plugin only warns about a missing slug, then deploys with the maps deleted: the very\n  // outcome errorHandler exists to prevent. Fail the production build instead.\n  throw new Error('web/next.config.ts: set org and project before SENTRY_AUTH_TOKEN reaches a production build.');\n}"
-        }
-      ],
-      "proposed_fix": "In next.config.ts, name the options object, and throw when an upload token is present (after PF-7, a production build with the token) but org or project is missing. Choice 2 and Task 17 Step 2 say the build now enforces the order.",
-      "why_it_works": "The spec chose a failing deploy over a silent one; this extends that choice to the one silent path errorHandler cannot see. A missing slug becomes a red production build with a message saying what to set.",
-      "depends_on": "Written against PF-7's uploadToken. Without PF-7, the same check reads process.env.SENTRY_AUTH_TOKEN.",
-      "drop_consequence": "Drop it: if the token reaches Vercel before the slugs reach the code, production deploys succeed with unreadable stack traces, and nothing says so until someone opens an issue.",
-      "options": [
-        {
-          "label": "Apply (recommended)",
-          "what": "The build check above; Choice 2 and Task 17 Step 2 updated."
-        },
-        {
-          "label": "Skip — decide later",
-          "what": "Leave it open."
-        },
-        {
-          "label": "Drop",
-          "what": "Rely on Task 17 Step 2's ordering alone."
-        }
-      ],
-      "recommendation": "Apply: four lines that turn a silent failure into a loud one, in line with the decision the owner already made.",
-      "verification": "verify-B, in @sentry/bundler-plugins 11.0.0 (the lap-3 spike install) and 11.1.0 (GitHub tag): canUploadSourceMaps warns \"No project provided. Will not upload source maps\" and returns false; createRelease warns and returns; errorHandler is called only from catch blocks and validateOptions, which does not reject a missing project; deleteArtifacts runs whether or not anything uploaded. The fix is untested.",
-      "evidence_quotes": [
-        "A production build that has SENTRY_AUTH_TOKEN but no `project` slug skips both the release and the source-map upload, with only a warning. In @sentry/bundler-plugins 11.0.0 (read from the lap-3 spike install), canUploadSourceMaps and createRelease warn and return, so errorHandler never fires. With an organization token (sntrys_), `org` is optional; `project` is the slug that matters. The registry row F7-sentry asks for the token in Vercel before NH-124 merges. If the merged next.config.ts lacks the slugs, production deploys succeed with unreadable frames, which is exactly the failure spec section 4 rejects. Task 17 Step 2 is the only guard against it."
-      ]
-    },
     {
       "id": "PQ-1",
       "kind": "decision (the plan's open question QP-1)",
@@ -498,7 +386,8 @@
     {
       "id": "R-1",
       "concern": "If PF-7 is applied: with Vercel's \"Enable access to System Environment Variables\" off, VERCEL_ENV is unset — no maps are built, nothing uploads, nothing warns. Guarded by Task 17 Step 1's check of the setting and Step 7's readable-frame check after the first production deploy.",
-      "source": "verify-B (correction to PF-7)"
+      "source": "verify-B (correction to PF-7)",
+      "status": "Checked 2026-10-09 during triage: production already exposes VERCEL_ENV to its build (its bundle prints a v0. version). Task 17 Step 1 now re-checks the wordmark before code review."
     }
   ],
   "deferred_questions": [],
@@ -547,5 +436,126 @@
     "plan_path_from_root": ".claude/worktrees/nh-320-vr-spec-lap-4-92e22a/docs/plans/2026-10-08-nh-124-sentry-error-monitoring-plan.md",
     "artifact_path_from_root": ".claude/worktrees/nh-320-vr-spec-lap-4-92e22a/.spec-triage-loop/2026-10-08-nh-124-sentry-error-monitoring-plan/lap-1/findings.json"
   },
-  "decided_findings": []
+  "decided_findings": [
+    {
+      "id": "PF-7",
+      "kind": "proposed fix",
+      "severity": "P2",
+      "severity_meaning": "a real gap an implementer will hit",
+      "confidence": 75,
+      "confidence_meaning": "double-checked by one reviewer; the facts behind it verified in source and docs; not run against a real token (none may be used)",
+      "reviewers": ["security-lens"],
+      "section": "Task 1 Step 4 (the withSentryConfig options); Choice 2; Task 16's README; Task 17 Step 1",
+      "title": "A SENTRY_AUTH_TOKEN in a developer's shell turns every local build into an upload attempt",
+      "terms_first": "SENTRY_AUTH_TOKEN: the secret that lets a build upload source maps to Sentry. VERCEL_ENV: a variable Vercel sets at build time — production, preview or development; web/scripts/app-version.mjs already relies on it.",
+      "scenario": "You (or an agent) follow your own sentry skill's advice and export SENTRY_AUTH_TOKEN in your shell, so you can read Sentry's issues from the terminal. From then on, every local `pnpm build` and every end-to-end run tries to create a release and upload source maps. With that read-only token, Sentry refuses, the plan's errorHandler rethrows, and every local build and the whole e2e lane fail. With a broader token, local builds upload maps named `local` into the production project, using your credential — which the spec's \"an agent may not handle the token\" exists to prevent.",
+      "whats_wrong": "The plan uses the token's presence as the only gate. The user-level sentry skill tells the owner to set exactly that variable; Playwright's webServer passes the shell's environment into its `pnpm build`.",
+      "before_after": [
+        {
+          "where": "Task 1 Step 4, web/next.config.ts",
+          "before": "// Sentry's build step: it uploads the production build's source maps to Sentry, then deletes them\n// from the deploy. Only Vercel's Production environment holds SENTRY_AUTH_TOKEN, so previews, CI\n// and local builds upload nothing — and, with the hook off, print nothing about it either.\nexport default withSentryConfig(nextConfig, {\n  authToken: process.env.SENTRY_AUTH_TOKEN,\n  ...\n  sourcemaps: { disable: !process.env.SENTRY_AUTH_TOKEN },\n  useRunAfterProductionCompileHook: Boolean(process.env.SENTRY_AUTH_TOKEN),",
+          "after": "// Sentry's build step: it uploads the production build's source maps to Sentry, then deletes them\n// from the deploy. Only a production build on Vercel reads the token: Sentry's own command-line\n// tools read a variable of the same name from a developer's shell, and a local build must never\n// upload with it. VERCEL_ENV needs Vercel's system environment variables on, which the version\n// in the wordmark (web/scripts/app-version.mjs) already relies on.\nconst uploadToken =\n  process.env.VERCEL_ENV === 'production' ? process.env.SENTRY_AUTH_TOKEN : undefined;\n\nexport default withSentryConfig(nextConfig, {\n  authToken: uploadToken,\n  ...\n  sourcemaps: { disable: !uploadToken },\n  useRunAfterProductionCompileHook: Boolean(uploadToken),"
+        }
+      ],
+      "proposed_fix": "Gate the token on VERCEL_ENV === 'production' for all three options; keep assert-no-auth-token.mjs reading SENTRY_AUTH_TOKEN directly (a leaked shell token is still worth catching); add a plan Choice (12) recording the departure from spec section 4's snippet; Task 17 Step 1 asks the owner to confirm Vercel's \"Enable access to System Environment Variables\" is on (the wordmark tooltip reads v0.… on production, not `local`); the README sentence names the gate.",
+      "why_it_works": "\"Only Vercel's production build uploads\" becomes true by construction instead of depending on a clean shell. Vercel documents VERCEL_ENV as available at build time with the value production for production deployments.",
+      "new_risk": "With Vercel's system variables switched off, VERCEL_ENV is unset: no maps are built, nothing uploads, nothing warns, and errorHandler never fires — production frames stay unreadable. Guards: Task 17 Step 1's check of the setting, and Step 7's readable-frame check after the first deploy. (verify-B's correction.)",
+      "spec_change": "Yes — spec section 4's snippet gates on the token alone. If approved, record it in the NH-124 changelog entry under a \"Changed by the plan review, lap 1\" list.",
+      "drop_consequence": "Drop it: a developer who exports the token for the sentry skill gets failing local builds and e2e runs, or quiet uploads into production under their credential.",
+      "options": [
+        {
+          "label": "Apply (recommended)",
+          "what": "The gate as above, plus the Choice entry, the Task 17 check and the README line."
+        },
+        {
+          "label": "Skip — decide later",
+          "what": "Leave it open; nothing changes now."
+        },
+        {
+          "label": "Drop",
+          "what": "Keep the token-only gate the spec wrote."
+        }
+      ],
+      "recommendation": "Apply. The owner's own sentry skill makes the exported variable likely, and the fix is one line.",
+      "verification": "verify-B: app-version.mjs reads VERCEL_ENV; Playwright 1.61.1 merges process.env into the webServer command's environment; the user-level sentry skill says to set SENTRY_AUTH_TOKEN as an environment variable; Vercel docs: VERCEL_ENV is available at build and runtime. next.config.ts with the gate passes ESLint. Not run against a real token.",
+      "evidence_quotes": [
+        "sourcemaps: { disable: !process.env.SENTRY_AUTH_TOKEN },",
+        "useRunAfterProductionCompileHook: Boolean(process.env.SENTRY_AUTH_TOKEN),",
+        "Only Vercel's Production environment holds SENTRY_AUTH_TOKEN, so previews, CI and local builds upload nothing",
+        "previews, CI and local builds have neither, so they send nothing and upload nothing",
+        "Expected: PASS, with nothing printed by the new step (no token, nothing to check)."
+      ],
+      "raw_reviewer_findings": [
+        {
+          "title": "A shell-held SENTRY_AUTH_TOKEN turns local builds into uploads",
+          "severity": "P2",
+          "section": "Task 1 — Install @sentry/nextjs, wrap the build (Step 4, the withSentryConfig options); echoed by Task 16's README text",
+          "why_it_matters": "If the owner exports SENTRY_AUTH_TOKEN, every local build and every e2e run tries to create a release and upload source maps. The installed `sentry` skill tells the owner to set a variable with exactly that name, system-wide, holding a read-only API token, and Playwright 1.61.1's web server passes the shell's environment into its `pnpm build`. With that read-only token, Sentry refuses the release and `errorHandler` rethrows, so local builds and the whole e2e lane fail. With a broader token, local and agent builds upload maps as release `local` into the production project, using the owner's credential, which the spec's rule that an agent may not handle the token exists to prevent. `web/scripts/app-version.mjs` already trusts VERCEL_ENV to tell a production build from a local one. Gating the token on it makes 'only Vercel's production build uploads' true by construction, not just when the shell happens to be clean.",
+          "finding_type": "error",
+          "autofix_class": "gated_auto",
+          "suggested_fix": "In Task 1 Step 4, read the token through a production gate and use the result for all three options: `const uploadToken = process.env.VERCEL_ENV === 'production' ? process.env.SENTRY_AUTH_TOKEN : undefined;`, then `authToken: uploadToken`, `sourcemaps: { disable: !uploadToken }` and `useRunAfterProductionCompileHook: Boolean(uploadToken)`. Add a comment that Sentry's own API tooling reads the same variable name from a developer's shell. Leave `assert-no-auth-token.mjs` reading SENTRY_AUTH_TOKEN as it does now. Record the change from spec section 4's snippet in the plan, as its Spec line requires.",
+          "confidence": 75,
+          "evidence": [
+            "sourcemaps: { disable: !process.env.SENTRY_AUTH_TOKEN },",
+            "useRunAfterProductionCompileHook: Boolean(process.env.SENTRY_AUTH_TOKEN),",
+            "Only Vercel's Production environment holds SENTRY_AUTH_TOKEN, so previews, CI and local builds upload nothing",
+            "previews, CI and local builds have neither, so they send nothing and upload nothing",
+            "Expected: PASS, with nothing printed by the new step (no token, nothing to check)."
+          ]
+        }
+      ],
+      "decision": "Apply",
+      "decided_on": "2026-10-09",
+      "triage_round": 1,
+      "decision_note": "Applied. Task 1 Step 4's next.config.ts gates the token on VERCEL_ENV === 'production' (uploadToken); Choice 12 added; Task 16's README and Task 17 Step 1 (the wordmark check) updated; changelog line under 'Changed by the plan review, lap 1'. Spiked during triage: the production bundle (deployed 2026-10-04) carries the version v0.26.10.04-0821.2f83752, which app-version.mjs prints only when VERCEL_ENV is production at build time, so R-1's precondition holds today. The final snippet (with PF-8) passes tsc, ESLint (--max-warnings 0) and Prettier with @sentry/nextjs 11.1.0 installed in a throwaway worktree, and the full web build passes with no Sentry output and 0 .map files."
+    },
+    {
+      "id": "PF-8",
+      "kind": "proposed fix (the lead's, from a verified residual)",
+      "severity": "P2",
+      "severity_meaning": "a real gap an implementer will hit",
+      "confidence": 75,
+      "confidence_meaning": "raised by the adversarial reviewer as a residual risk; verified in @sentry/bundler-plugins 11.0.0 and 11.1.0 source by verify-B; the fix itself not run",
+      "reviewers": ["adversarial (residual)", "lead (fix)"],
+      "section": "Task 1 Step 4 (web/next.config.ts); Task 17 Step 2; Choice 2",
+      "title": "A production build with the token but no project slug deploys with unreadable frames, silently",
+      "terms_first": "Slug: the short name Sentry gives an organization or project (not secret). Choice 2 leaves `org` and `project` out of next.config.ts until the owner has them.",
+      "scenario": "You add SENTRY_AUTH_TOKEN to Vercel (as the registry row F7-sentry asks, before the code merges), but next.config.ts still has no `project` slug. The production build passes; Sentry's plugin only warns \"No project provided. Will not upload source maps\", builds the maps anyway and deletes them. Every production error then shows minified frames — exactly the outcome the owner rejected when choosing \"a failed upload stops the deploy\".",
+      "whats_wrong": "errorHandler fires only on a thrown error; a missing project is a warning and a quiet return (canUploadSourceMaps and createRelease in build-plugin-manager). Task 17 Step 2 — committing the slugs first — is the only guard, and it is a person remembering an order.",
+      "before_after": [
+        {
+          "where": "Task 1 Step 4, web/next.config.ts (the options object moves into a named const sentryBuildOptions so it can be checked)",
+          "before": "(absent — nothing checks the slugs)",
+          "after": "if (uploadToken && !(sentryBuildOptions.org && sentryBuildOptions.project)) {\n  // Sentry's plugin only warns about a missing slug, then deploys with the maps deleted: the very\n  // outcome errorHandler exists to prevent. Fail the production build instead.\n  throw new Error('web/next.config.ts: set org and project before SENTRY_AUTH_TOKEN reaches a production build.');\n}"
+        }
+      ],
+      "proposed_fix": "In next.config.ts, name the options object, and throw when an upload token is present (after PF-7, a production build with the token) but org or project is missing. Choice 2 and Task 17 Step 2 say the build now enforces the order.",
+      "why_it_works": "The spec chose a failing deploy over a silent one; this extends that choice to the one silent path errorHandler cannot see. A missing slug becomes a red production build with a message saying what to set.",
+      "depends_on": "Written against PF-7's uploadToken. Without PF-7, the same check reads process.env.SENTRY_AUTH_TOKEN.",
+      "drop_consequence": "Drop it: if the token reaches Vercel before the slugs reach the code, production deploys succeed with unreadable stack traces, and nothing says so until someone opens an issue.",
+      "options": [
+        {
+          "label": "Apply (recommended)",
+          "what": "The build check above; Choice 2 and Task 17 Step 2 updated."
+        },
+        {
+          "label": "Skip — decide later",
+          "what": "Leave it open."
+        },
+        {
+          "label": "Drop",
+          "what": "Rely on Task 17 Step 2's ordering alone."
+        }
+      ],
+      "recommendation": "Apply: four lines that turn a silent failure into a loud one, in line with the decision the owner already made.",
+      "verification": "verify-B, in @sentry/bundler-plugins 11.0.0 (the lap-3 spike install) and 11.1.0 (GitHub tag): canUploadSourceMaps warns \"No project provided. Will not upload source maps\" and returns false; createRelease warns and returns; errorHandler is called only from catch blocks and validateOptions, which does not reject a missing project; deleteArtifacts runs whether or not anything uploaded. The fix is untested.",
+      "evidence_quotes": [
+        "A production build that has SENTRY_AUTH_TOKEN but no `project` slug skips both the release and the source-map upload, with only a warning. In @sentry/bundler-plugins 11.0.0 (read from the lap-3 spike install), canUploadSourceMaps and createRelease warn and return, so errorHandler never fires. With an organization token (sntrys_), `org` is optional; `project` is the slug that matters. The registry row F7-sentry asks for the token in Vercel before NH-124 merges. If the merged next.config.ts lacks the slugs, production deploys succeed with unreadable frames, which is exactly the failure spec section 4 rejects. Task 17 Step 2 is the only guard against it."
+      ],
+      "decision": "Apply",
+      "decided_on": "2026-10-09",
+      "triage_round": 1,
+      "decision_note": "Applied. The options move into const sentryBuildOptions: SentryBuildOptions (exported as a type from @sentry/nextjs/config in 11.1.0, checked in the package); a production build with the token but without org and project throws, naming them. Choice 2, Task 1's org/project note, Task 17 Step 2 and the README's failure list updated; changelog line added. The throw itself was not exercised: that needs SENTRY_AUTH_TOKEN set, which no agent may do."
+    }
+  ]
 }

@@ -269,9 +269,12 @@ review can overturn any of them.
 1. **The SDK is pinned exactly** (`--save-exact`), as `next` and AlphaTab are: the spec's behaviour
    was measured against exact versions, and an upgrade should be a deliberate change.
 2. **`org` and `project` go into `next.config.ts` as soon as the owner has them** (not secret). Until
-   then they are left out: without a token the build uploads nothing, so they are unused. The
-   upload looks up the EU region by the `org` slug, so they must be in before the token is in
-   Vercel (Task 17).
+   then they are left out: only a production build on Vercel reads the token, so they are unused.
+   The upload looks up the EU region by the `org` slug, so they must be in before the token is in
+   Vercel (Task 17) — and the build enforces that order. Sentry's plugin only warns about a missing
+   project, then deploys with the maps deleted, which `errorHandler` never sees; so a production
+   build that has the token but not both slugs throws, naming them. Approved in the plan review,
+   lap 1.
 3. **`FileFacts` travels twice:** as the tag `file_type`, so an issue's Tags panel shows the spread
    of file types, and as a `file` context `{ type, bytes }`, shown on each event.
 4. **For E101–E103, `reportError` sends a fresh `Error`** holding the fixed sentence, with the
@@ -297,6 +300,16 @@ review can overturn any of them.
     case (lap 2's R37).
 11. **Case 7's fragment is `#anchor-probe-456`,** not `#frag`: four letters could appear in an envelope
     for reasons unrelated to the page address.
+12. **Only a production build on Vercel reads the upload token** (`VERCEL_ENV === 'production'`),
+    where spec section 4's snippet read the token alone. Sentry's own command-line tools read a
+    variable of the same name from a developer's shell, and Playwright passes the shell's variables
+    to the build it starts, so a token exported for reading issues would turn every local build and
+    end-to-end run into an upload attempt — a refused one with a read-only token, or uploads into
+    the production project with a broader one. The token check (Task 2) still reads the raw
+    variable: a token in a shell is still worth catching in a browser file. `VERCEL_ENV` needs
+    Vercel's system environment variables exposed to the build; the wordmark's version already
+    relies on them, and on 2026-10-09 the production bundle carried a `v0.` version, which only a
+    `production` build prints. Approved in the plan review, lap 1.
 
 ## Commit order
 
@@ -350,7 +363,8 @@ only exists until the SDK is installed.
 
 - Consumes: nothing.
 - Produces: `@sentry/nextjs` in `web/`'s dependencies; `withSentryConfig` around the existing Next
-  config, imported from `@sentry/nextjs/config`.
+  config, imported from `@sentry/nextjs/config`; the options in a named
+  `const sentryBuildOptions: SentryBuildOptions`, which Task 17 gives `org` and `project`.
 
 - [ ] **Step 1: Measure the JavaScript a cold `/play` load transfers today**
 
@@ -428,6 +442,7 @@ Replace `web/next.config.ts` with:
 ```ts
 import { withSentryConfig } from '@sentry/nextjs/config';
 
+import type { SentryBuildOptions } from '@sentry/nextjs/config';
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
@@ -442,14 +457,20 @@ const nextConfig: NextConfig = {
 };
 
 // Sentry's build step: it uploads the production build's source maps to Sentry, then deletes them
-// from the deploy. Only Vercel's Production environment holds SENTRY_AUTH_TOKEN, so previews, CI
-// and local builds upload nothing — and, with the hook off, print nothing about it either.
-export default withSentryConfig(nextConfig, {
-  authToken: process.env.SENTRY_AUTH_TOKEN,
+// from the deploy. Only a production build on Vercel reads the token: Sentry's own command-line
+// tools read a variable of the same name from a developer's shell, and a local build must never
+// upload with it. VERCEL_ENV needs Vercel's system environment variables on, which the version
+// in the wordmark (scripts/app-version.mjs) already relies on. Previews, CI and local builds
+// upload nothing — and, with the hook off, print nothing about it either.
+const uploadToken =
+  process.env.VERCEL_ENV === 'production' ? process.env.SENTRY_AUTH_TOKEN : undefined;
+
+const sentryBuildOptions: SentryBuildOptions = {
+  authToken: uploadToken,
   // The same variable the build script sets for `next build`, so a report always matches its maps.
   release: { name: process.env.NEXT_PUBLIC_APP_VERSION },
-  sourcemaps: { disable: !process.env.SENTRY_AUTH_TOKEN },
-  useRunAfterProductionCompileHook: Boolean(process.env.SENTRY_AUTH_TOKEN),
+  sourcemaps: { disable: !uploadToken },
+  useRunAfterProductionCompileHook: Boolean(uploadToken),
   // Sentry's own default only logs a failed release or upload step, deploys anyway and deletes
   // the maps, so that release's frames stay unreadable. Throwing fails the production build
   // instead, and Vercel keeps the previous deployment live. (Sentry's doc comment says the
@@ -460,15 +481,28 @@ export default withSentryConfig(nextConfig, {
   // That hook is for navigation tracing, and this site sends errors only.
   suppressOnRouterTransitionStartWarning: true,
   telemetry: false,
-});
+};
+
+if (uploadToken && !(sentryBuildOptions.org && sentryBuildOptions.project)) {
+  // Sentry's plugin only warns about a missing slug, then deploys with the maps deleted: the very
+  // outcome errorHandler exists to prevent. Fail the production build instead.
+  throw new Error(
+    'web/next.config.ts: set org and project before SENTRY_AUTH_TOKEN reaches a production build.',
+  );
+}
+
+export default withSentryConfig(nextConfig, sentryBuildOptions);
 ```
 
-The comment lines above `nextConfig`'s three options are today's, unchanged.
+The comment lines above `nextConfig`'s three options are today's, unchanged. `uploadToken` departs
+from spec section 4's snippet, which read the token alone (Choice 12); the slug check is Choice 2.
 
 **`org` and `project`:** if the owner has already created the Sentry project (setup step 1), ask for
-the two slugs — they are not secret — and add them as the first two options:
-`org: '<organization slug>', project: '<project slug>',`. If not, leave them out: without a token
-nothing uploads, so nothing reads them. Task 17 adds them before the token reaches Vercel.
+the two slugs — they are not secret — and add them as the first two options of
+`sentryBuildOptions`: `org: '<organization slug>', project: '<project slug>',`. If not, leave them
+out: only a production build on Vercel reads the token, so nothing here reads them, and a
+production build that has the token without them stops with the error above. Task 17 adds them
+before the token reaches Vercel.
 
 - [ ] **Step 5: Build — the go/no-go**
 
@@ -4661,9 +4695,12 @@ nothing:
 | `SENTRY_AUTH_TOKEN`      | The organization token the production build uses to upload source maps. Marked **Secret** (Vercel's name for what it called Sensitive). Never in chat, never in the repository. |
 
 A production deploy **fails**, and the previous one stays live, when the source-map upload fails —
-Sentry is down, or the token was revoked or has expired — and when the token's value reaches a file
-a browser downloads (`scripts/assert-no-auth-token.mjs`). Redeploy once Sentry answers; replace the
-token in Vercel if it was revoked. The one-time setup is section 5 of
+Sentry is down, or the token was revoked or has expired — when the token is set but
+`next.config.ts` names no Sentry `org` and `project`, and when the token's value reaches a file a
+browser downloads (`scripts/assert-no-auth-token.mjs`). Redeploy once Sentry answers; replace the
+token in Vercel if it was revoked. Only a production build reads the token (`VERCEL_ENV` is
+`production`), so a `SENTRY_AUTH_TOKEN` in your own shell — Sentry's command-line tools read that
+name — never makes a local build upload. The one-time setup is section 5 of
 [the spec](../docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md).
 ```
 
@@ -4748,11 +4785,20 @@ Storing of IP Addresses" on; Allowed Domains `*.notationhero.com` and
 print it. While they are there, ask them to look at Settings › Notifications › Spend (the 80% and
 100% quota emails).
 
+Then check one thing yourself, without asking: the production site's wordmark tooltip reads
+`v0.…`, not `local`. The upload reads the token only when `VERCEL_ENV` is `production` (Choice
+12), and `VERCEL_ENV` reaches the build only while Vercel exposes its system environment
+variables; `scripts/app-version.mjs` prints `v0` from the same variable, so the tooltip proves it.
+If it reads `local`, stop and ask the owner to switch that Vercel setting back on: without it,
+production deploys upload nothing and say nothing.
+
 - [ ] **Step 2: The slugs**
 
 If `web/next.config.ts` has no `org` and `project` yet, ask for the two slugs (not secret) and add
-them as the first two options of `withSentryConfig`. The upload finds the EU region by the `org`
-slug, so they must be in place before the token reaches a production build.
+them as the first two options of `sentryBuildOptions`. The upload finds the EU region by the `org`
+slug, so they must be in place before the token reaches a production build. The build enforces
+that order (Choice 2): a production build that has the token without both slugs fails, naming
+them, and Vercel keeps the previous deployment live.
 
 ```bash
 pnpm --filter @notation-hero/web run build
@@ -4842,7 +4888,7 @@ Every section of the spec, and the task that carries it.
 | 3.2 — the names filter                                      | 4, 12                                                                                                          |
 | 3.3 — SDK settings                                          | 6                                                                                                              |
 | 3.4 — the copy                                              | 7                                                                                                              |
-| 4 — releases, environments, source maps, the token check    | 1, 2, 17                                                                                                       |
+| 4 — releases, environments, source maps, the token check    | 1 (production builds only, Choice 12; the slug check, Choice 2), 2, 17                                         |
 | 5 — setup by the owner                                      | 17                                                                                                             |
 | 6 — unit cases                                              | 3, 4, 5, 7, 8, 9, 10, 11, 12, 13, 14                                                                           |
 | 6 — end-to-end cases 1–8                                    | 13 (1, 4), 10 (2), 12 (3), 8 (5), 6 (6, 7), 9 (8)                                                              |

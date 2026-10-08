@@ -166,6 +166,21 @@ again, because lap 3's review was not clean, but nothing above P2 remained, and 
 change was spiked or type-checked before it landed. The implementation plan and its own review
 loop come next.
 
+**Changed by the plan review, lap 1** — each approved by leocaseiro in the triage, 2026-10-09:
+
+- **Only a production build on Vercel reads the upload token.** `next.config.ts` hands
+  `SENTRY_AUTH_TOKEN` to Sentry only when `VERCEL_ENV` is `production`, where section 4's snippet
+  read the token alone. Sentry's own command-line tools read a variable of that name from a
+  developer's shell, and Playwright passes the shell's variables to the build it starts, so a
+  token exported for reading issues would have turned every local build and end-to-end run into an
+  upload attempt. The token check still reads the raw variable. Production already exposes
+  `VERCEL_ENV` to its build: on 2026-10-09 its bundle carried a `v0.` version, which only a
+  production build prints.
+- **A production build with the token but no `org` and `project` slugs fails.** Sentry's plugin
+  only warns about a missing project, then deploys with the maps deleted, which `errorHandler`
+  never sees. The build now throws instead, carrying lap 3's "a failed source-map upload stops the
+  deploy" to that one quiet path.
+
 **Registry:** L11-sentry points at the spec; L11-srcmap reworded (D4); L11-envsecret ⛔ superseded
 and F7-sentry rewritten, because the source-map upload runs inside Vercel's build rather than a
 GitHub Actions job.
