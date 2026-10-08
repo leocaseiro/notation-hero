@@ -99,13 +99,17 @@ Each `lib` file and the popup has its unit test beside it.
 
 ## 2. The privacy choice
 
-| Visitor                                          | Error reports (Sentry) | Visit count (Sentry's Release Health) | Google Analytics |
-| ------------------------------------------------ | ---------------------- | ------------------------------------- | ---------------- |
-| Outside Europe                                   | ✅                     | ✅                                    | ✅               |
-| In Europe, "Yes, count visits and report errors" | ✅                     | ✅                                    | ✅               |
-| In Europe, "Report errors only"                  | ✅                     | —                                     | —                |
-| In Europe, "No, send nothing"                    | —                      | —                                     | —                |
-| In Europe, before answering                      | —                      | —                                     | —                |
+| Visitor                                        | Error reports (Sentry) | Visit count (Sentry's Release Health) | Google Analytics |
+| ---------------------------------------------- | ---------------------- | ------------------------------------- | ---------------- |
+| Outside Europe, no answer given                | ✅                     | ✅                                    | ✅               |
+| Answered "Yes, count visits and report errors" | ✅                     | ✅                                    | ✅               |
+| Answered "Report errors only"                  | ✅                     | —                                     | —                |
+| Answered "No, send nothing"                    | —                      | —                                     | —                |
+| In Europe, before answering                    | —                      | —                                     | —                |
+
+An answer holds in every time zone once it is given; the time zone decides only while there is
+none. A "No" given in Berlin still holds when the laptop later shows New York time, and NH-349's
+link can stop both tools for a visitor outside Europe.
 
 ```ts
 // web/lib/privacy/choice.ts
@@ -117,7 +121,7 @@ export function asksFirst(timeZone?: string): boolean;
 /** The saved answer; null when there is none, the value is corrupt, or storage is blocked. */
 export function savedChoice(): PrivacyChoice | null;
 export function saveChoice(choice: PrivacyChoice): void;
-/** The table above, for this visitor. */
+/** The table above: an answer, saved or kept in memory, wins in any time zone. */
 export function allowed(purpose: Purpose): boolean;
 ```
 
@@ -373,7 +377,8 @@ An agent may not create accounts.
   empty value ask first; `Australia/Sydney`, `America/New_York` and `Asia/Tokyo` do not.
 - `savedChoice()` and `saveChoice()`: each valid value; a corrupt value and blocked storage read as
   `null`; an answer that cannot be saved still holds for the visit; both failures reach `noteError()`.
-- `allowed()`: the 15 cells of section 2's table.
+- `allowed()`: the 15 cells of section 2's table, each answered row in both `Europe/Berlin` and
+  `Australia/Sydney`: a saved `none` in Sydney allows nothing.
 - `startAnalytics()`: nothing without an ID or without permission; the queue's order; one script
   only, added after `load`; a second call does nothing.
 - `track()`: nothing before the start; `['event', name, fields]` after it.
