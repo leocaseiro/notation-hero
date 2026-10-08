@@ -55,7 +55,10 @@ the ticket.
   so the code rebases on NH-124's text.
 
 Recorded for the launch: GDPR Article 7(3) needs a way to withdraw consent, so this ticket goes live
-only together with NH-349's link (NH-349 blocks NH-51).
+only together with NH-349's link (NH-349 blocks NH-51). Sentry (NH-124) goes live first, with no
+popup, so until this ticket ships it reports visitors in Europe without asking; leocaseiro accepted
+that on 2026-10-09 because the app has no visitors yet and is published only after this ticket is
+live.
 
 ### 2026-09-29 — One maintainer's folder layout is out of the public repo, and a gate keeps it out (NH-345)
 

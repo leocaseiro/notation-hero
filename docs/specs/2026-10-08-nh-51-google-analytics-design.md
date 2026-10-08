@@ -433,6 +433,10 @@ Sentry's fixture answers its fake DSN, so no test reaches Google.
 - **Withdrawing needs NH-349.** GDPR Article 7(3) requires withdrawing to be as easy as agreeing,
   so this ticket goes live only with NH-349's "Privacy choices" link. That link's pull request is
   stacked on this branch and merged into it first, so one merge to master ships both.
+- **Between NH-124's deploy and this one,** Sentry reports every visitor, in Europe too, without
+  asking — the Sentry spec's "No choice popup yet". G5 holds from this ticket's deploy on.
+  leocaseiro accepted this on 2026-10-09: the app has no visitors yet, and it is published only
+  after this ticket is live.
 - **Ad blockers** stop Google Analytics, as they stop Sentry; those visitors are not counted.
 - **The home note is on `/` only.** A visitor who opens `/play` directly does not see it; in Europe,
   the popup still asks.
