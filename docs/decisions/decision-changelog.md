@@ -172,6 +172,7 @@ GitHub Actions job.
 
 **Status:** ✅ decided · 📄 prose-only — the spec is the contract until the implementation PR, which
 flips L11-sentry from ⏳ pending.
+
 ### 2026-09-29 — One maintainer's folder layout is out of the public repo, and a gate keeps it out (NH-345)
 
 **270 lines across 64 tracked files named the maintainer's local folder layout.** The handle is
