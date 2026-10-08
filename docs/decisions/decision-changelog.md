@@ -135,6 +135,32 @@ unless marked as applied without asking:
   own frame, and the engine's frames stay minified (a new known limit); and the file lists are
   complete again.
 
+**Changed by the spec review, lap 3** — each approved by leocaseiro in the triage, 2026-10-05/08,
+unless marked as applied without asking:
+
+- **Crash reports carry the `instruments` tag.** The tag is no longer removed when the player
+  unmounts: React runs that cleanup before the error page reports, so no E901 carried the tag, and
+  it stayed off for the rest of the visit. A one-line Sentry integration now adds it when an error
+  is captured, only on `/play` and only while no file opens, so home-page reports still never
+  carry it. Spiked on the real SDK at leocaseiro's request; chosen over adding it in `beforeSend`,
+  which reads the page late under `next dev`, and over clearing it on navigation. This replaces
+  lap 2's "The player removes the tag when it unmounts".
+- **The site moves to `notationhero.com`.** Allowed Domains lists `*.notationhero.com` and keeps
+  `notation-hero-web.vercel.app`, which will redirect there, so reports arrive whichever lands
+  first: leocaseiro's direction, given instead of either option offered. The domain work is
+  [NH-278](https://leocaseiro.atlassian.net/browse/NH-278); its API half moved to
+  [NH-350](https://leocaseiro.atlassian.net/browse/NH-350).
+- **A failed source-map upload stops the deploy:** `errorHandler` rethrows, so the production
+  build fails and the previous deployment stays live. Chosen over Sentry's default, which logs one
+  line, deploys, and deletes the maps.
+- **Four smaller changes:** reports are kept 30 days, and only a whole issue can be deleted (a
+  known limit); E101–E103 send a fixed sentence instead of no message, so an issue's title says
+  what failed; two existing end-to-end cases assert the E601 and E603 warnings; `web/AGENTS.md`
+  states the rule that every catch reports.
+- **Applied without asking, each reported:** the token check also reads the prerendered pages
+  under `.next/server` and the files in `public/`, which browsers download too; a failed
+  music-font download (E203) stops the E204 clock, so it sends no false E204.
+
 **Registry:** L11-sentry points at the spec; L11-srcmap reworded (D4); L11-envsecret ⛔ superseded
 and F7-sentry rewritten, because the source-map upload runs inside Vercel's build rather than a
 GitHub Actions job.

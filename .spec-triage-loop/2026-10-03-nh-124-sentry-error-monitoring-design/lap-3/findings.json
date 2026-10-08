@@ -64,7 +64,7 @@
       "verify-C.json",
       "findings.json"
     ],
-    "triaged": false,
+    "triaged": true,
     "triage_cap": "12 findings or 5 picker rounds, whichever comes first (shared review-loop rule). 4 findings and 5 observations fit one triage invocation.",
     "severity_scale": {
       "P1": "should fix before planning — something would ship broken, or a promise in the spec would be false",
@@ -77,7 +77,8 @@
       "undecided": [],
       "pending_apply": []
     },
-    "triage_status": "NOT TRIAGED. Review half done (2026-10-05): 4 findings and 5 observations, all verified. NEXT: the triage half, in a new session."
+    "triage_status": "TRIAGED (2026-10-05/08): all 9 decided, all applied — F-32 and F-34 without a picker (0de0f45f); F-31 as an integration after a real-SDK spike (a3009b9d); F-33 per the owner's direction and FYI-16 option 1 (26947202); FYI-15, 17, 18 and 19 (d5d56ca3). Spec frontmatter: lap 3, last_applied P2. Step 7 is put to the owner: the exit signal was not clean, so the rule re-laps.",
+    "triage_rounds": "Five picker rounds: F-31 (the owner asked for a real-SDK spike); round 2 sent while the spike ran, lost when the owner's computer slept; F-31 again (1b); round 2 again (F-33, FYI-16); round 3 (the four observations, one multi-select card). A separate picker on the domain setup (primary address, splitting NH-278) was the owner's own request, outside the triage."
   },
   "already_applied": [],
   "ambiguity_fixes": [],

@@ -1,6 +1,6 @@
 ---
-lap: 2
-last_applied: P1
+lap: 3
+last_applied: P2
 ---
 
 # Sentry error monitoring for `web/` — NH-124
