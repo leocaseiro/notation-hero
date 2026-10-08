@@ -49,7 +49,7 @@
       "dropped_anchor_0_25": 0,
       "silent_engine_edits": 0
     },
-    "finding_count_undecided": 17,
+    "finding_count_undecided": 14,
     "finding_count_note": "13 findings to triage + 2 ambiguity fixes + 5 FYI observations + R1 + Q1 = 22 items. The triage cap (12 findings or 5 picker rounds per invocation) means two triage invocations.",
     "exit_signal_raw": "NOT CLEAN — the headless envelope carries an Entailed corrections block (7 items), Proposed fixes (4) and Decisions (4), and ends with the documented `Review complete` line. See engine-envelope.txt.",
     "silent_autofixes_by_engine": "none — this invocation was report-only (the loop's REVIEW-MODE), so the engine applied nothing. F-14, the only one-answer fix at anchor 100, is carried as an ambiguity fix for the triage half. The spec is byte-identical to f9c1fdf6.",
@@ -70,579 +70,12 @@
       "P2": "should fix — a real gap an implementer will hit",
       "P3": "worth fixing — small and cheap"
     },
-    "triage_progress": "invocation 1: step 0 done (F-15, F-14); round 1 (F-2 option 1, F-1 applied; F-3 clarified); round 2 (F-3 option B applied; a memory rule saved: every Jira key gets a short summary at least once per message). Picker rounds used: 2 of 5; finding cap used: 4 of 12 (F-3 counts twice).",
-    "finding_count_decided": 5
+    "triage_progress": "invocation 1: step 0 (F-15, F-14); round 1 (F-2 option 1, F-1; F-3 clarified); round 2 (F-3 option B; memory rule saved); round 3 (F-4 option 1, F-5 'No Google script', F-6). Picker rounds used: 3 of 5; finding cap used: 7 of 12 (F-3 counts twice). Next: round 4 = F-7, F-8, F-9; round 5 = F-10, F-11; F-12 then waits for invocation 2.",
+    "finding_count_decided": 8
   },
   "already_applied": [],
   "ambiguity_fixes": [],
   "undecided_findings": [
-    {
-      "id": "F-4",
-      "title": "No privacy notice: the popup never says who runs the site or that an answer can be withdrawn",
-      "area": "Area 1 - who is asked, and when it goes live",
-      "severity": "P2",
-      "severity_as_filed": "P2",
-      "severity_plain": "should fix — a real gap an implementer will hit",
-      "severity_note": "A real gap at launch that the spec does not mention; which name and contact to publish is leocaseiro's decision.",
-      "confidence": 75,
-      "confidence_plain": "double-checked by reading the spec, the repo and the sources; will be hit in practice (not all of it run)",
-      "route": "decision",
-      "finding_type": "omission",
-      "reviewers": ["adversarial"],
-      "recommended_action": "Decide",
-      "verdict": "CONFIRMED",
-      "correction": "",
-      "section": "## 3. The popup",
-      "section_lines": "141-168",
-      "section_exists": true,
-      "quotes_verbatim": true,
-      "quotes": [
-        {
-          "quote": "Can we count visits (with a cookie) and get error reports? Your scores stay on your device.",
-          "verbatim": true,
-          "line": 144,
-          "note": ""
-        },
-        {
-          "quote": "Error reports go to Sentry, a bug-tracking service. Visit counts go to Sentry and Google Analytics. Neither gets your file, its name, or the music in it. How Google uses data ↗",
-          "verbatim": true,
-          "line": 147,
-          "note": "spans lines 147-148"
-        },
-        {
-          "quote": "The home page names Google Analytics because its terms require the site to disclose it and link to Google's page (G9).",
-          "verbatim": true,
-          "line": 331,
-          "note": "spans lines 331-332"
-        },
-        {
-          "quote": "No way yet to change an answer.",
-          "verbatim": true,
-          "line": 24,
-          "note": "Non-goals"
-        }
-      ],
-      "scenario": "You live in Vienna. The card asks 'Can we count visits (with a cookie) and get error reports?', and you press 'Yes'. Nothing tells you who is asking, how to reach them, or that you can change your mind later, and the site has no privacy page where you could check. Under EU guidance, a 'Yes' given without those facts may not count as consent. Google Analytics' own terms also ask the site to post a privacy policy.",
-      "whats_wrong": "EU guidance says a person must know at least who is asking, each purpose, what data, and that they can withdraw, for consent to count as informed; Article 7(3) of the GDPR (the EU General Data Protection Regulation) adds that they hear about withdrawing before they agree. The approved words give the purposes and the tools, not who runs the site or that an answer can be withdrawn, and web/ has no privacy page. G9 rests on the part of Google Analytics' terms that asks for a disclosure link, but the same section says 'You must post a Privacy Policy'.",
-      "before": [
-        {
-          "lines": "147-148",
-          "text": "  Error reports go to Sentry, a bug-tracking service. Visit counts go to Sentry and Google\n  Analytics. Neither gets your file, its name, or the music in it. How Google uses data ↗"
-        },
-        {
-          "lines": "27",
-          "text": "- **No server code.** `web/` stays two static pages: no location headers, no Measurement Protocol."
-        },
-        {
-          "lines": "320",
-          "text": "  How Google uses data ↗"
-        },
-        {
-          "lines": "after 80",
-          "text": "(absent — section 1 lists no privacy page)"
-        },
-        {
-          "lines": "after 429",
-          "text": "(absent — Known limits says nothing about a privacy notice)"
-        }
-      ],
-      "options": [
-        {
-          "label": "1 — A short privacy notice page",
-          "what": "A new static page, /privacy, linked from the popup's Details and from the home note. It says who runs Notation Hero and how to reach them; what Sentry and Google Analytics receive and how long each keeps it (Sentry 30 days, from the Sentry spec; Google Analytics 14 months, section 8); the cookie; and how to change an answer.",
-          "pros": [
-            "Meets the EDPB's minimum content for informed consent (paragraph 64) and Google Analytics' 'post a Privacy Policy' term, for every visitor, not only in Europe.",
-            "One place for later changes (NH-349, NH-54) while the card stays short."
-          ],
-          "cons": [
-            "A third page: Non-goals line 27 ('two static pages') changes; the page needs its own accessibility scan, and maybe a screenshot.",
-            "New words to approve, and a name and a contact become public; which ones is leocaseiro's choice.",
-            "Its 'change your answer' line depends on NH-349 (F-2)."
-          ],
-          "cost": "One static page, two links and their tests; edits to Non-goals and sections 1, 3, 7 and 9.",
-          "after": [
-            {
-              "replaces_lines": "147-148",
-              "text": "  Error reports go to Sentry, a bug-tracking service. Visit counts go to Sentry and Google\n  Analytics. Neither gets your file, its name, or the music in it. How Google uses data ↗\n  Who runs this site, and how to change your answer: Privacy notice"
-            },
-            {
-              "replaces_lines": "new block in section 7, after 320",
-              "text": "Privacy notice (new page, /privacy, linked from the home note and the popup's Details):\n  Notation Hero is run by <name> (<contact>). Error reports go to Sentry, which keeps them 30\n  days. Visit counts go to Sentry and Google Analytics, which keeps visit-level data 14 months and\n  sets a cookie (_ga). Neither gets your file, its name, or the music in it. In Europe nothing is\n  sent until you answer. Change your answer at any time: <the Privacy choices link (NH-349)>.\n  How Google uses data ↗"
-            },
-            {
-              "replaces_lines": "new row in section 1, after 80",
-              "text": "| `web/app/privacy/page.tsx`      | the privacy notice (section 7)                                                                          |"
-            },
-            {
-              "replaces_lines": "27",
-              "text": "- **No server code.** `web/` stays three static pages: no location headers, no Measurement\n  Protocol."
-            },
-            {
-              "replaces_lines": "320",
-              "text": "  How Google uses data ↗ · Privacy notice"
-            }
-          ]
-        },
-        {
-          "label": "2 — A few more words in Details only",
-          "what": "Details gains one sentence: who runs the site, with a contact, and how to change the answer.",
-          "pros": [
-            "Smallest change; no new page.",
-            "The facts sit next to the buttons, before the visitor agrees."
-          ],
-          "cons": [
-            "Does not meet Google Analytics' 'post a Privacy Policy' term.",
-            "The card grows on a phone; until NH-349 the 'how' is 'clear this site's data', which reads badly.",
-            "Reopens words approved after two rounds."
-          ],
-          "cost": "One or two sentences, approved by leocaseiro.",
-          "after": [
-            {
-              "replaces_lines": "147-148",
-              "text": "  Error reports go to Sentry, a bug-tracking service. Visit counts go to Sentry and Google\n  Analytics. Neither gets your file, its name, or the music in it. How Google uses data ↗\n  Notation Hero is run by <name> (<contact>). You can change your answer at any time:\n  <the Privacy choices link, or clear this site's data>."
-            }
-          ]
-        },
-        {
-          "label": "3 — Defer",
-          "what": "Known limits records the gap, and a new ticket adds the notice later.",
-          "pros": ["No work now; the approved words stay."],
-          "cons": [
-            "From go-live, a 'Yes' given in Europe may not count as informed consent.",
-            "Google Analytics' terms are not met for any visitor, also outside Europe."
-          ],
-          "cost": "One bullet and a ticket.",
-          "after": [
-            {
-              "replaces_lines": "new bullet after 429",
-              "text": "- **No privacy notice yet.** The popup does not say who runs the site or that an answer can be\n  withdrawn, and Google Analytics' terms ask for a posted privacy policy. NH-<new> adds one."
-            }
-          ]
-        }
-      ],
-      "recommendation": "Option 1. Only a posted notice meets Google Analytics' 'post a Privacy Policy' term, which applies to every visitor, and it carries what the card cannot hold (who, how to reach them, how long data is kept, how to change an answer) while the card stays short.",
-      "flip_condition": "Choose option 2 if leocaseiro wants no third page in v0 and accepts that the Google Analytics term stays unmet until one exists. Choose option 3 only if go-live in Europe is postponed anyway.",
-      "proposed_fix": "Add a short privacy notice page, linked from the popup's Details and from the home note, that names who runs Notation Hero and how to reach them, what each tool receives and how long it keeps it, the cookie, and how to change an answer.",
-      "why_it_works": "A visitor gets, before pressing 'Yes', the facts EU guidance counts as the minimum for informed consent, and the site has the posted privacy policy that Google Analytics' terms require.",
-      "plain_terms": {
-        "EDPB": "the European Data Protection Board, which writes the EU guidance on consent",
-        "GDPR": "the EU data-protection law",
-        "controller": "whoever decides why and how the data is used — here, whoever runs Notation Hero",
-        "G9": "decision G9: the home page names Google Analytics (its terms require it); Sentry is named only in the popup's Details",
-        "G5": "decision G5: in Europe nothing loads, Sentry included, until the visitor answers (\"whatever is good by law\", in the changelog)",
-        "CNIL": "France's data-protection authority",
-        "v0": "the first public version of web/, now being built",
-        "NH-54": "the later ticket for an AWS analytics pipeline, a second destination for the same events"
-      },
-      "central_claim_check": "True. EDPB Guidelines 05/2020 on consent, paragraph 64: valid consent needs at least 'the controller's identity', 'the purpose of each of the processing operations', 'what (type of) data will be collected and used' and 'the existence of the right to withdraw consent' (read on https://gdpr-text.com/guidelines/consent/, a mirror; edpb.europa.eu did not resolve from this machine). GDPR Article 7(3): 'Prior to giving consent, the data subject shall be informed thereof' (https://gdpr-info.eu/art-7-gdpr/). The CNIL (https://www.cnil.fr/fr/cookies-et-autres-traceurs/regles/cookies/que-dit-la-loi) lists 'l'identité des responsables du ou des traitements' and the means to 'retirer son consentement'. Google Analytics' terms, section 7 (https://marketingplatform.google.com/about/analytics/terms/us/, updated 15 May 2023): 'You will have and abide by an appropriate Privacy Policy…' and 'You must post a Privacy Policy and that Privacy Policy must provide notice of Your use of cookies…'; the separate disclosure of Google Analytics 'can be done by displaying a prominent link' — the only part G9 relies on. The popup's words (144-148) give purposes and tools, not who runs the site or that an answer can be withdrawn, and web/app has two pages only (page.tsx, play/page.tsx), so no privacy page exists. GDPR Article 13 lists what a notice holds: identity and contact, purposes, recipients, storage period, the right to withdraw, the right to complain (https://gdpr-info.eu/art-13-gdpr/).",
-      "contradicts": "Option 1 conflicts with Non-goals line 27 ('`web/` stays two static pages'), which changes with it; section 1 gains a file and section 9 an accessibility scan. Option 2 reopens the words approved on 2026-10-08 (166-168). Checked G9 (64), section 3 (141-168), section 7 (309-334), section 9 (393-398) and Known limits (424-429).",
-      "spike": {
-        "ran": false,
-        "why": "A legal and wording decision; the EDPB guidelines, GDPR Articles 7 and 13, the CNIL page and the Google Analytics terms were read instead.",
-        "mark": "(untested)"
-      },
-      "cross_fix": [
-        "F-2 — the notice's 'change your answer' line depends on NH-349: with F-2's option 1 it names the 'Privacy choices' link; otherwise it says 'clear this site's data'."
-      ],
-      "synthesis_note": "Manual as filed: which name and contact to publish, and whether a short notice page is in scope, are leocaseiro's to decide. Needs the legal claims checked (EDPB Guidelines 05/2020 minimum content; Google Analytics terms section 7).",
-      "verified_by": "verify-A.json",
-      "raw_constituents": [
-        {
-          "raw_id": "adversarial#3",
-          "reviewer": "adversarial",
-          "title": "No privacy notice: consent lacks controller and withdrawal right",
-          "severity": "P2",
-          "confidence": 75,
-          "autofix_class": "manual",
-          "why_it_matters": "A 'Yes' given in Europe may not be valid consent, and valid consent is the outcome G3 and G5 ('whatever is good by law') exist to secure. The EDPB's consent guidelines (05/2020) and the CNIL's cookie guidelines count consent as informed only when the visitor is told at least who is asking, each purpose, the data used, and that they can withdraw. The approved words name the purposes and tools but not who runs the site or the right to withdraw, and the site has no privacy page to hold that information; Google Analytics' terms (section 7) also require 'an appropriate Privacy Policy', not only the disclosure link G9 relies on. The words are leocaseiro's, and which name and contact to publish is leocaseiro's decision.",
-          "suggested_fix": "Add a short privacy notice that says who runs Notation Hero and how to reach them, what each tool receives and for how long, and how to change the answer. Link it from the popup's Details and from the home note.",
-          "evidence": [
-            "Can we count visits (with a cookie) and get error reports? Your scores stay on your device.",
-            "Error reports go to Sentry, a bug-tracking service. Visit counts go to Sentry and Google Analytics. Neither gets your file, its name, or the music in it. How Google uses data ↗",
-            "The home page names Google Analytics because its terms require the site to disclose it and link to Google's page (G9).",
-            "No way yet to change an answer."
-          ]
-        }
-      ],
-      "triage_decision": null,
-      "applied_in_commit": null
-    },
-    {
-      "id": "F-5",
-      "title": "The end-to-end tests would reach Google, and the source of Google's script in tests is undecided",
-      "area": "Area 2 - the end-to-end tests",
-      "severity": "P2",
-      "severity_as_filed": "P2",
-      "severity_plain": "should fix — a real gap an implementer will hit",
-      "severity_note": "Nothing a visitor sees changes, but section 9's claim would be false on the first run: about a hundred cases would send real hits to Google from CI, and the gcs/npa/dt checks have no script to run.",
-      "confidence": 100,
-      "confidence_plain": "certain — the spec states it outright, or a spike confirmed it, or independent reviewers agree on airtight text",
-      "route": "decision",
-      "finding_type": "error",
-      "reviewers": ["adversarial", "feasibility"],
-      "recommended_action": "Decide",
-      "verdict": "CONFIRMED_WITH_CORRECTION",
-      "correction": "Two changes to the reviewers' fixes. (1) The committed snapshot of gtag.js (Google's tracking script) is not a workable option: Google Analytics' terms, section 4, forbid copying the 'Software', which they define to include the Google Analytics Measurement Code, and the script itself opens with 'Copyright 2012 Google Inc. All rights reserved.' So only two options remain. (2) The leak is closed in the config, by Chromium's resolver rule, in both options, instead of a call added to each of the four existing test files: the rule also covers every future test file, and the spike shows it fails no existing case. The rule must also list www.google.com, because Google's script sent an event there when the page closed.",
-      "section": "## 9. Testing",
-      "section_lines": "364-398 (the end-to-end paragraph is 380-391; also ## 1. Packages and files, lines 81 and 94-95, and ## The spike, line 451)",
-      "section_exists": true,
-      "quotes_verbatim": false,
-      "quotes": [
-        {
-          "quote": "`web/playwright.e2e.config.ts`: `timezoneId: 'Australia/Sydney'` for every project, and a fake Google Analytics ID.",
-          "verbatim": true,
-          "line": 94,
-          "note": "lines 94-95"
-        },
-        {
-          "quote": "the shared fixture: answers Google's hosts locally and records every request",
-          "verbatim": true,
-          "line": 81,
-          "note": ""
-        },
-        {
-          "quote": "`web/e2e/google-analytics.ts` answers Google's hosts locally, the way Sentry's fixture answers its fake DSN, so no test reaches Google.",
-          "verbatim": true,
-          "line": 380,
-          "note": "lines 380-381"
-        },
-        {
-          "quote": "afterLoad(() => addScript(`https://www.googletagmanager.com/gtag/js?id=${id}`));",
-          "verbatim": true,
-          "line": 194,
-          "note": ""
-        },
-        {
-          "quote": "Sydney: no popup; a page view with `gcs=G101` and `npa=1`",
-          "verbatim": false,
-          "line": 383,
-          "note": "The words are exact; only the Markdown bold markers are missing (the spec has **Sydney:**). Not a misquote."
-        },
-        {
-          "quote": "**Sydney:** no popup; a page view with `gcs=G101` and `npa=1`",
-          "verbatim": true,
-          "line": 383,
-          "note": ""
-        },
-        {
-          "quote": "No Google request — address or body — contains any of them, and `dt` stays `Notation Hero`.",
-          "verbatim": true,
-          "line": 388,
-          "note": "lines 388-389"
-        },
-        {
-          "quote": "Google's collect requests answered locally, so nothing reached Google.",
-          "verbatim": true,
-          "line": 451,
-          "note": ""
-        }
-      ],
-      "scenario": "You push a one-line fix to the player. While the merge check runs, its test browser opens Notation Hero's pages about a hundred times, each time as a visitor in Sydney. Each time, Google's tracking script downloads from Google and sends a page view under the tests' made-up ID — from a test, to Google. The spec says no test reaches Google. Nearly every test does.",
-      "whats_wrong": "Section 9 says the new fixture keeps every test away from Google, but only privacy-choice.e2e.ts uses it. The lane's one build gets the fake ID and every project runs as Sydney, so Google Analytics starts on every page of the 98 existing cases, in four files that never install the fixture. Sentry's fake address can never resolve; Google's addresses do, so those pages download Google's script and send real hits. Also, the spec never says where the fixture gets Google's script: the gcs, npa and dt checks need the real one, while 'answers Google's hosts locally' rules it out. A copy kept in the repository is not possible: Google Analytics' terms forbid copying its measurement code.",
-      "before": [
-        {
-          "lines": "81",
-          "text": "| `web/e2e/google-analytics.ts`   | the shared fixture: answers Google's hosts locally and records every request                            |"
-        },
-        {
-          "lines": "94-95",
-          "text": "- `web/playwright.e2e.config.ts`: `timezoneId: 'Australia/Sydney'` for every project, and a fake\n  Google Analytics ID."
-        },
-        {
-          "lines": "359-362",
-          "text": "6. **After the first production deploy, in the Realtime report:** a page view on `/`; **a page view\n   after clicking Play** — the one thing the spike could not show (if it is missing, the fallback in\n   section 4); an `open_file` and a `score_loaded` with their fields; and, with the browser's time\n   zone set to Berlin, the popup, with nothing reaching Google until \"Yes\"."
-        },
-        {
-          "lines": "380-384",
-          "text": "**End to end (Playwright).** `web/e2e/google-analytics.ts` answers Google's hosts locally, the way\nSentry's fixture answers its fake DSN, so no test reaches Google.\n\n- **Sydney:** no popup; a page view with `gcs=G101` and `npa=1`; `open_file` and `score_loaded` with\n  the right fields after opening a fixture; `play` after pressing ▶."
-        },
-        {
-          "lines": "388-389",
-          "text": "- **Privacy:** open a fixture with a known title and track names. No Google request — address or\n  body — contains any of them, and `dt` stays `Notation Hero`."
-        },
-        {
-          "lines": "451",
-          "text": "Sydney and as Berlin; Google's collect requests answered locally, so nothing reached Google."
-        }
-      ],
-      "options": [
-        {
-          "label": "Live script, hits kept local",
-          "what": "Tests run Google's real script. The fixture downloads it and answers everything else locally: `if (url.pathname === '/gtag/js') return route.fulfill({ response: await route.fetch() }); record(request); return route.fulfill({ status: 204 });`. The config adds `launchOptions: { args: ['--host-resolver-rules=MAP www.googletagmanager.com ~NOTFOUND, MAP *.google-analytics.com ~NOTFOUND, …'] }` so any case without the fixture reaches nothing. Section 9's claim becomes 'no test sends Google a hit'.",
-          "pros": [
-            "CI checks Google's real output on every run: gcs=G101, npa=1 and dt on the wire, as section 9 asks today.",
-            "The privacy case checks the requests Google would really receive, address and body.",
-            "Proven in this review's spike (cases 2 and 4)."
-          ],
-          "cons": [
-            "The merge-blocking `web` job depends on www.googletagmanager.com for the fixture cases. When Google is slow or unavailable, or changes its script (its cache lifetime is 15 minutes), a pull request fails for a reason it cannot fix.",
-            "Each fixture case downloads a 440 KB script and waits about 5 s for each batch of events.",
-            "'No test reaches Google' stops being true: Google sees a script download from the CI machine on every run."
-          ],
-          "cost": "One config line; about 15 lines of fixture (route, script download, local answers, reading batched bodies); waits of about 5 s in the Sydney and Privacy cases.",
-          "after": [
-            {
-              "replaces_lines": "81",
-              "text": "| `web/e2e/google-analytics.ts`   | the shared fixture: fetches Google's real script, answers every other Google request locally and records it |"
-            },
-            {
-              "replaces_lines": "94-95",
-              "text": "- `web/playwright.e2e.config.ts`: `timezoneId: 'Australia/Sydney'` for every project, a fake Google\n  Analytics ID, and Chromium's `--host-resolver-rules` launch argument, which makes Google's hosts\n  unresolvable in the test browser."
-            },
-            {
-              "replaces_lines": "380-381",
-              "text": "**End to end (Playwright).** The lane's one build carries the fake Google Analytics ID and every\nproject runs as Sydney, so every page in every case starts Google Analytics. The config makes\n`www.googletagmanager.com`, `*.google-analytics.com`, `analytics.google.com` and `www.google.com`\nunresolvable in the test browser: in a case without the fixture, Google's script fails to load and\nnothing is sent, as for a visitor with an ad blocker. The loader must accept that without an error\n— no throw and no uncaught rejection — or `failOnUnexpectedPageErrors()` fails the case.\n`web/e2e/google-analytics.ts` routes Google's hosts before any lookup. It fetches the real\n`gtag.js` with `route.fetch()`, which runs in Node and ignores the rule, and answers every other\nrequest locally and records it. Google sends events in batches about 5 s later, so a case waits\nfor each event it checks. No test sends Google a hit; the cases that use the fixture download\nGoogle's script."
-            },
-            {
-              "replaces_lines": "451",
-              "text": "Sydney and as Berlin; Google's collect requests answered locally, so no hit reached Google."
-            }
-          ]
-        },
-        {
-          "label": "No Google script in tests",
-          "what": "The fixture answers Google's script with an empty one — `route.fulfill({ contentType: 'application/javascript', body: '' })` — and records every request. The cases read `window.dataLayer`, the queue our own code fills and Google's script reads. The same resolver rule in the config covers cases without the fixture. Google's output (gcs=G101, npa=1, dt) is checked by hand at launch, in section 8 step 6.",
-          "pros": [
-            "Nothing in tests reaches Google; section 9's promise stays true as written.",
-            "No network dependency in the merge-blocking `web` job, whose container is pinned by digest.",
-            "No waits: our queue fills at once, so each check runs immediately.",
-            "It checks exactly what this repository controls: every field our code hands Google."
-          ],
-          "cons": [
-            "CI never sees Google's real output. If Google changes how its script encodes consent or the title, nothing fails until a person looks.",
-            "The privacy case checks what we hand Google plus the two things Google's script reads from the page (the title and the address), not the final requests.",
-            "Google's cookies and its automatic events cannot be seen in tests."
-          ],
-          "cost": "One config line; about 10 lines of fixture; one more sentence in section 8 step 6, a by-hand check at launch.",
-          "after": [
-            {
-              "replaces_lines": "81",
-              "text": "| `web/e2e/google-analytics.ts`   | the shared fixture: answers Google's hosts locally (an empty script for `gtag.js`) and records every request |"
-            },
-            {
-              "replaces_lines": "94-95",
-              "text": "- `web/playwright.e2e.config.ts`: `timezoneId: 'Australia/Sydney'` for every project, a fake Google\n  Analytics ID, and Chromium's `--host-resolver-rules` launch argument, which makes Google's hosts\n  unresolvable in the test browser."
-            },
-            {
-              "replaces_lines": "359-362",
-              "text": "6. **After the first production deploy, in the Realtime report:** a page view on `/`; **a page view\n   after clicking Play** — the one thing the spike could not show (if it is missing, the fallback in\n   section 4); an `open_file` and a `score_loaded` with their fields; and, with the browser's time\n   zone set to Berlin, the popup, with nothing reaching Google until \"Yes\". **In the browser's\n   Network panel:** the first `collect` request carries `gcs=G101`, `npa=1` and `dt=Notation Hero`.\n   The tests answer Google's script with an empty one, so this is the only check of what it sends."
-            },
-            {
-              "replaces_lines": "380-381",
-              "text": "**End to end (Playwright).** The lane's one build carries the fake Google Analytics ID and every\nproject runs as Sydney, so every page in every case starts Google Analytics. The config makes\n`www.googletagmanager.com`, `*.google-analytics.com`, `analytics.google.com` and `www.google.com`\nunresolvable in the test browser: in a case without the fixture, Google's script fails to load and\nnothing is sent, as for a visitor with an ad blocker. The loader must accept that without an error\n— no throw and no uncaught rejection — or `failOnUnexpectedPageErrors()` fails the case.\n`web/e2e/google-analytics.ts` routes Google's hosts before any lookup, answers `gtag.js` with an\nempty script and records every request. No test reaches Google. The cases check what our code\nhands Google, in `window.dataLayer`; what Google's script sends is checked by hand at launch\n(section 8, step 6)."
-            },
-            {
-              "replaces_lines": "383-384",
-              "text": "- **Sydney:** no popup; one request for `gtag.js`, after `load`; the queue matches section 4 — the\n  consent default first (ad signals denied, analytics granted), Google signals and ad\n  personalisation off, `release` set; `open_file` and `score_loaded` with the right fields after\n  opening a fixture; `play` after pressing ▶."
-            },
-            {
-              "replaces_lines": "388-389",
-              "text": "- **Privacy:** open a fixture with a known title and track names. No entry in `window.dataLayer`\n  contains any of them, `document.title` stays `Notation Hero` (Google's script sends it as `dt`),\n  and the page address holds none of them."
-            },
-            {
-              "replaces_lines": "451",
-              "text": "Sydney and as Berlin; Google's collect requests answered locally, so no hit reached Google."
-            }
-          ]
-        }
-      ],
-      "recommendation": "'No Google script in tests'. The `web` job blocks every merge and pins even its container by digest. A live script, which Google can change at any time (its cache lifetime is 15 minutes), would let Google's uptime and Google's own changes fail pull requests that cannot fix them. The privacy promise is about what our code hands Google, and this option checks all of it, at once, with no 5-second waits. Google's encoding has been seen twice (the 2026-10-05 spike and this review's spike: gcs=G101, npa=1, dt=Notation Hero), and section 8 step 6 checks it again on the real property, which no test with a made-up ID can show.",
-      "flip_condition": "Choose 'Live script, hits kept local' if you want CI to notice by itself when Google changes how its script encodes consent or the title, and you accept that the privacy cases fail when www.googletagmanager.com is slow or unavailable (CI retries each failure twice).",
-      "proposed_fix": "Close the leak in the config, for every case at once: Chromium's --host-resolver-rules launch argument makes Google's hosts unresolvable inside the test browser, so a case without the fixture cannot reach Google and fails nothing. Then decide where the fixture's gtag.js comes from: the live script through route.fetch(), with every other request answered locally, or an empty script, with the checks moved to what our code queues and Google's output checked by hand at launch.",
-      "why_it_works": "The resolver rule is the same idea as Sentry's .invalid address: inside the test browser the hosts cannot be found, so a case that forgets the fixture sends nothing, and a new test file is covered without any edit. Playwright's routes act before the address lookup, so the fixture still sees and answers every request (spike case 2). route.fetch() runs in Node, not in the browser, so the live script still arrives when that option is chosen.",
-      "plain_terms": {
-        "the lane / the web job": "the merge-blocking browser tests for web/: behaviour, accessibility and screenshots, all from one build",
-        "gtag.js": "Google's tracking script, downloaded from www.googletagmanager.com",
-        "hit / collect request": "one message from Google's script to Google that counts a page view or an event",
-        "fixture (test code)": "shared test code a test file uses; here web/e2e/google-analytics.ts, which records Google's requests",
-        "fixture (score file)": "a test score in web/e2e/fixtures/; 'open a fixture' in section 9 means opening one",
-        "resolver rule": "a Chromium start-up setting (--host-resolver-rules) that makes chosen web addresses impossible to look up, inside the test browser only",
-        "route.fetch()": "a Playwright call that downloads a request from the test program (Node) instead of the browser",
-        "failOnUnexpectedPageErrors()": "the lane's helper (web/e2e/page-errors.ts) that fails a test when the page throws an uncaught error",
-        "gcs=G101": "Google's consent value: ad storage denied, analytics storage granted",
-        "npa=1": "Google's flag for 'no ad personalisation'",
-        "dt": "the page title Google records with every hit",
-        "window.dataLayer": "the queue our code fills and Google's script reads",
-        "Sydney / Berlin": "the time zones the tests pretend to be in; Berlin counts as Europe, where the popup asks first",
-        "GAMC": "the Google Analytics Measurement Code, which Google's terms count as its 'Software'"
-      },
-      "central_claim_check": "Confirmed. (a) The lane is one build for two projects: web/playwright.e2e.config.ts:24-53 (projects `e2e` for *.e2e.ts and `chromium` for *.vr.ts) over one webServer whose env is inlined at build time (lines 55-68). With the spec's fake ID and Sydney for every project, every page of every case starts Google Analytics. (b) Four files import `test` straight from @playwright/test and never install a Google fixture: web/e2e/player.e2e.ts:3, web/e2e/a11y.e2e.ts:2, web/e2e/pages.vr.ts:3 and web/e2e/toast-occlusion.e2e.ts:14. They hold 98 cases today (76 + 9 + 10 + 3; the last file loops over three widths at line 37). None is named in section 1's changed files. (c) failOnUnexpectedPageErrors() (web/e2e/page-errors.ts:90-123) listens to 'pageerror' only (line 97): not console errors, not failed requests. player.e2e.ts:10, a11y.e2e.ts:16 and pages.vr.ts:65 call it; toast-occlusion.e2e.ts does not. The lane's only console listener (player.e2e.ts:25) filters for AlphaTab lines. No lane test installs a catch-all route (all routes in player-states.ts and player.e2e.ts target the app's own paths). (d) The Sentry spec (PR #191), section 6: every build gets the fake DSN https://public@sentry.invalid/1 and 'One shared fixture routes every request to that host'; a case without that fixture is harmless only because a .invalid host never resolves (this review's spike: an unrouted POST to sentry.invalid is rejected). Google's hosts do resolve. (e) The 2026-10-05 spike (throwaway, not in the repo) routed only Google's collect hosts, so its gtag.js came live from Google: line 451's 'so nothing reached Google' is not exact. (f) A made-up ID gets a working script: about 440 KB, served with cache-control 'private, max-age=900', and it sends a page view (spike case 2). (g) Google Analytics terms, sections 1 and 4 (https://marketingplatform.google.com/about/analytics/terms/us/): the 'Software' includes the GAMC (the Google Analytics Measurement Code, which is gtag.js), and section 4 forbids copying it, changing it or making derivative works of it. (h) The `web` job runs in a Playwright container pinned by sha256 digest (.github/workflows/ci.yml:436-458) and blocks merge (AGENTS.md, 'VR & a11y testing'); CI retries a failing case twice (playwright.e2e.config.ts:18).",
-      "contradicts": "none — checked section 1 (line 81 and lines 94-95), section 4 (lines 172-215: the loader sketch, 'The order is verified', 'The tab title'), section 6 (the Google hosts, lines 298-300), section 8 step 6 (lines 359-362), section 9 (lines 380-391), Non-goals 'No ad-blocker bypass' (line 28), Known limits 'Ad blockers' (line 427) and 'The spike' (line 451). One wording fix is folded into both options: line 451 says 'nothing reached Google', but that spike downloaded Google's script live; 'no hit reached Google' is exact.",
-      "spike": {
-        "ran": true,
-        "what": "A local page that runs section 4's startAnalytics() sketch as written (a made-up ID, the spec's consent default, `config` with Google signals and ad personalisation off and `release`, the script added after `load`), driven by the installed Playwright 1.61.1 and its Chromium 149 as Sydney. Chromium started with --host-resolver-rules making www.googletagmanager.com and *.google-analytics.com unresolvable (and once with a wider set adding analytics.google.com, www.google.com and *.doubleclick.net). Case 1: no route. Case 2: a context route that downloads gtag.js with route.fetch() and answers every other Google request locally with 204. Case 3: a route that answers gtag.js with an empty script. Then four script-loader shapes under the rule, to see which raise a Playwright page error. Nothing left the machine but downloads of gtag.js (case 2, and two direct downloads to read its header); no hit was sent.",
-        "result": "Case 1: the script request fails (net::ERR_NAME_NOT_RESOLVED); no page error; one console error ('Failed to load resource'); no hit; no cookie. Case 2: route.fetch() returns the real script (status 200, 440,795 bytes) although the browser cannot resolve the host; requests to the unresolvable hosts are still routed and recorded. The page view arrives about 0.9 s after the page starts loading, with gcs=G101, npa=1, dt=Notation Hero and ep.release. Two custom events sent together arrive in one batched request 5,010 ms later (5,006 ms on the rerun with the wide rules). Leaving the page sends user_engagement to both www.google-analytics.com and www.google.com/g/collect. Cookies _ga and _ga_<ID> are set. Case 3: no request besides the script, no cookie; window.dataLayer holds exactly the consent default, js, config and the two events. Loader shapes: appending the script, or an onerror that reports and returns, raise no page error; an uncaught promise rejection or a throwing onerror each raise one, which would fail every case in the three gated files.",
-        "fix_holds": true
-      },
-      "cross_fix": [
-        "F-6 — its After replaces the privacy bullet (lines 388-389) with one text per option here, and each already includes this option's change. Apply F-6's text, not both.",
-        "F-12 (group C) — this spike ran section 4's sketch as written (both ad settings inside `config`, no separate `set` call) and still saw gcs=G101 and npa=1 on the first page view, and no Google-signals request. The 'No Google script' Sydney text says 'the queue matches section 4', so it holds whichever way F-12 goes.",
-        "FYI-4 (group C) — Google's script also sent user_engagement to www.google.com/g/collect when the page closed; section 6's breadcrumb filter names only the www.google.com/ccm path.",
-        "FYI-5 (group A) — it also adds a by-hand check to section 8 step 6. With 'No Google script', merge both additions into one step text.",
-        "Side results for 'To verify at plan time' (lines 439-440), with a made-up ID: `release` set in `config` arrived as ep.release on the page view, on each custom event and on user_engagement; the boolean `on: true` arrived as the text ep.on=true.",
-        "The Sentry spec's 'To verify' item 'That Playwright can route a request to the .invalid host before any DNS lookup' holds: this review's spike routed and recorded a POST to sentry.invalid."
-      ],
-      "synthesis_note": "Merged: one strategy resolves all three. Feasibility#1 (anchor 100) and adversarial#4 describe the same leak (existing test files never install the fixture; Google's hosts resolve, unlike Sentry's .invalid DSN) with different mechanisms (a call in every file, versus a fail-closed resolver rule in the config). Feasibility#2 adds that the gcs/npa/dt assertions need Google's real gtag.js and nothing says where the fixture gets it (snapshot committed, or live). Choosing the script source is a real trade-off (Google-owned code in a public repo, versus a merge-blocking lane that depends on googletagmanager.com), so the merged finding is a decision. Coherence's deferred question 1 restates it.",
-      "verified_by": "verify-B.json",
-      "raw_constituents": [
-        {
-          "raw_id": "feasibility#1",
-          "reviewer": "feasibility",
-          "title": "Every existing lane test would still reach Google",
-          "severity": "P2",
-          "confidence": 100,
-          "autofix_class": "gated_auto",
-          "why_it_matters": "Every existing test in the `web` lane would download Google's gtag.js and send page-view hits to Google on every CI and local run. The fake Google Analytics ID and the Sydney time zone apply to the whole one-build lane, but only `privacy-choice.e2e.ts` installs the fixture that answers Google's hosts. `player.e2e.ts`, `a11y.e2e.ts`, `toast-occlusion.e2e.ts` and `pages.vr.ts` import `test` straight from `@playwright/test`, and none of them is on the changed-files list. Sentry's opt-in fixture is safe only because its fake DSN host is `.invalid` and never resolves. `www.googletagmanager.com` does resolve, and the spike showed that a made-up ID still gets a working script that sends a page view. A module-scope call that every lane file makes, the same shape `failOnUnexpectedPageErrors()` already has, keeps 'no test reaches Google' true and keeps a live third-party host out of the merge-blocking lane.",
-          "suggested_fix": "Have web/e2e/google-analytics.ts export a module-scope call, the same shape as failOnUnexpectedPageErrors(), that answers Google's hosts for every test in the calling file. Add web/e2e/player.e2e.ts, a11y.e2e.ts, toast-occlusion.e2e.ts and pages.vr.ts to 'Changed files' as callers of it. State in section 9 that every test in the lane answers Google's hosts locally, not only privacy-choice.e2e.ts.",
-          "evidence": [
-            "`web/playwright.e2e.config.ts`: `timezoneId: 'Australia/Sydney'` for every project, and a fake Google Analytics ID.",
-            "the shared fixture: answers Google's hosts locally and records every request",
-            "`web/e2e/google-analytics.ts` answers Google's hosts locally, the way Sentry's fixture answers its fake DSN, so no test reaches Google."
-          ]
-        },
-        {
-          "raw_id": "adversarial#4",
-          "reviewer": "adversarial",
-          "title": "Existing e2e cases will send real hits to Google",
-          "severity": "P2",
-          "confidence": 75,
-          "autofix_class": "gated_auto",
-          "why_it_matters": "About a hundred existing cases (player, accessibility, toast and the ten screenshots) will download Google's script and send real hits to Google from CI, which contradicts 'no test reaches Google'. The lane's one build gets the fake Google Analytics ID and every project runs as Sydney, so startAnalytics() runs on each page load. Only cases that install the new fixture get local answers, and the four existing files import test directly from @playwright/test. Sentry's fake DSN never had this gap because it is on .invalid, which cannot resolve, while Google's hosts do resolve; the spec also does not say where the fixture gets the real gtag.js that the gcs, npa and dt assertions need, and the spike answered only Google's collect requests locally.",
-          "suggested_fix": "In web/playwright.e2e.config.ts, make Google's hosts (www.googletagmanager.com, *.google-analytics.com, analytics.google.com, www.google.com) unresolvable for both projects with Chromium's --host-resolver-rules launch argument, so a case without the fixture fails closed like Sentry's .invalid DSN. The fixture fetches the real gtag.js with route.fetch(), which runs in Node and so is not affected by that rule, and answers every hit locally. Change section 9's claim to 'no test sends Google a hit'.",
-          "evidence": [
-            "`web/e2e/google-analytics.ts` answers Google's hosts locally, the way Sentry's fixture answers its fake DSN, so no test reaches Google.",
-            "`web/playwright.e2e.config.ts`: `timezoneId: 'Australia/Sydney'` for every project, and a fake Google Analytics ID.",
-            "afterLoad(() => addScript(`https://www.googletagmanager.com/gtag/js?id=${id}`));",
-            "Sydney: no popup; a page view with `gcs=G101` and `npa=1`"
-          ]
-        },
-        {
-          "raw_id": "feasibility#2",
-          "reviewer": "feasibility",
-          "title": "E2E assertions need Google's real gtag.js; its source is undecided",
-          "severity": "P2",
-          "confidence": 75,
-          "autofix_class": "manual",
-          "why_it_matters": "The Sydney, 'Yes' and privacy cases check `gcs=G101`, `npa=1` and `dt`. Only Google's own gtag.js puts those values on its collect requests. Yet section 9 answers every Google host locally and never says what the fixture returns for the script itself. If the fixture serves a stub script, the page sends no collect request at all: the Sydney case cannot pass, and the privacy case ('no Google request contains the title') passes while checking nothing. leocaseiro needs to choose between two options. (1) Commit a snapshot of the gtag.js that Google serves for the fake ID as a test fixture: no test reaches Google, but a Google-owned script then sits in a public repository, and the tests run a frozen copy until someone refreshes it. (2) Let only the script download through to Google, as the spike did: the tests run the live script, but the merge-blocking `web` job then depends on googletagmanager.com, and section 9's promise becomes 'no hit reaches Google'. Whichever is chosen, the privacy case should also check that at least one collect request was recorded.",
-          "suggested_fix": null,
-          "evidence": [
-            "**Sydney:** no popup; a page view with `gcs=G101` and `npa=1`",
-            "No Google request — address or body — contains any of them, and `dt` stays `Notation Hero`.",
-            "`web/e2e/google-analytics.ts` answers Google's hosts locally, the way Sentry's fixture answers its fake DSN, so no test reaches Google.",
-            "Google's collect requests answered locally, so nothing reached Google."
-          ]
-        }
-      ],
-      "triage_decision": null,
-      "applied_in_commit": null,
-      "quotes_note": "Every quote that fails strict matching fails only because the spec puts its opening words in bold; the words themselves match."
-    },
-    {
-      "id": "F-6",
-      "title": "The privacy test can pass before any Google request has arrived",
-      "area": "Area 2 - the end-to-end tests",
-      "severity": "P2",
-      "severity_as_filed": "P2",
-      "severity_plain": "should fix — a real gap an implementer will hit",
-      "severity_note": "The only automated check that no title or track name reaches Google can pass while one does; an implementer who follows the text writes exactly that test.",
-      "confidence": 75,
-      "confidence_plain": "double-checked by reading the spec, the repo and the sources; will be hit in practice (not all of it run)",
-      "route": "proposed_fix",
-      "finding_type": "omission",
-      "reviewers": ["adversarial"],
-      "recommended_action": "Apply",
-      "verdict": "CONFIRMED_WITH_CORRECTION",
-      "correction": "The fix is right for F-5's 'Live script' option. Under F-5's 'No Google script' option there is no batch to wait for: the same idea reads window.dataLayer, which fills at once, and also checks the two things Google's script reads from the page. Both texts are given. The measured delay is about 5 s (5,010 ms and 5,006 ms), not only 'a few seconds'.",
-      "section": "## 9. Testing",
-      "section_lines": "364-398 (the Privacy bullet is 388-389)",
-      "section_exists": true,
-      "quotes_verbatim": false,
-      "quotes": [
-        {
-          "quote": "Privacy: open a fixture with a known title and track names. No Google request — address or body — contains any of them, and `dt` stays `Notation Hero`.",
-          "verbatim": false,
-          "line": 388,
-          "note": "lines 388-389. The words are exact; only the Markdown bold markers are missing (the spec has **Privacy:**). Not a misquote."
-        },
-        {
-          "quote": "sent, batched a few seconds later",
-          "verbatim": true,
-          "line": 458,
-          "note": ""
-        },
-        {
-          "quote": "automatic click tracking (button labels hold track names — the reason Sentry turned click breadcrumbs off)",
-          "verbatim": true,
-          "line": 63,
-          "note": ""
-        }
-      ],
-      "scenario": "A later change makes the Solo button send the track's name to Google. You open your song 'Moonlight Practice' and press Solo on 'Lead Guitar'. Five seconds later, Google receives 'Lead Guitar'. The privacy test was there to stop this, but it never presses Solo, and it reads the requests before Google's batch leaves — so it passes.",
-      "whats_wrong": "The privacy case opens a fixture and checks what was recorded, with nothing to wait for. Google sends events in batches about 5 s later, so the check can run when only the page view has arrived; it then proves nothing about the events, and passes. The case also never presses a control named after a track, although Solo and Mute are named 'Solo <track>' and 'Mute <track>' — the risk G8 names as the reason for typed events.",
-      "before": [
-        {
-          "lines": "388-389",
-          "text": "- **Privacy:** open a fixture with a known title and track names. No Google request — address or\n  body — contains any of them, and `dt` stays `Notation Hero`."
-        }
-      ],
-      "after": [
-        {
-          "replaces_lines": "388-389",
-          "variant": "if F-5 picks 'No Google script in tests' (the F-5 recommendation)",
-          "text": "- **Privacy:** open a fixture with a known title and track names, and press Solo and Mute on one of\n  its tracks (both buttons are named after the track). Wait until `window.dataLayer` holds the\n  `score_loaded` event, with the score's `track_count`, and both `mixer_change` events. Only then\n  check that no entry contains the title or a track name, that `document.title` stays\n  `Notation Hero` (Google's script sends it as `dt`), and that the page address holds neither.\n  Without the wait, an empty queue would pass."
-        },
-        {
-          "replaces_lines": "388-389",
-          "variant": "if F-5 picks 'Live script, hits kept local'",
-          "text": "- **Privacy:** open a fixture with a known title and track names, and press Solo and Mute on one of\n  its tracks (both buttons are named after the track). Wait until `web/e2e/google-analytics.ts`\n  has recorded the `score_loaded` event, with the score's `track_count`, and both `mixer_change`\n  events — Google sends events in batches about 5 s later. Only then check that no recorded Google\n  request — address or body — contains the title or a track name, and that `dt` stays\n  `Notation Hero`. Without the wait, a recorder that has caught only the page view would pass."
-        }
-      ],
-      "proposed_fix": "In the privacy case, press Solo and Mute on one track. Wait until the score_loaded event (with the score's track count) and both mixer_change events have been recorded. Only then check that nothing recorded holds the title or a track name.",
-      "why_it_works": "Waiting for three known events proves the recorder caught the events, not only the page view — the same reason the Sentry spec ends each 'nothing sent' case with a sentinel. Pressing Solo and Mute sends the one event that is built next to a track's name, so a change that puts the name into it fails the case.",
-      "plain_terms": {
-        "G8": "decision G8: a typed list of twelve events, every field from a fixed list or a number, because button labels hold track names",
-        "score_loaded / mixer_change": "two of the twelve events: a score reaches the screen; a mixer control changes",
-        "track_count": "the number of tracks, a field of score_loaded",
-        "dt": "the page title Google records with every hit",
-        "sentinel": "a known event a test waits for, to prove its recorder works before it checks for absence",
-        "fixture (score file)": "a test score in web/e2e/fixtures/; 'open a fixture' in section 9 means opening one",
-        "window.dataLayer": "the queue our code fills and Google's script reads"
-      },
-      "central_claim_check": "Confirmed. Batching: this review's spike, running the spec's own loader sketch, sent two mixer_change events back to back; both arrived in one batched request 5,010 ms later (5,006 ms on a rerun), while the page view arrived about 0.9 s after the page started loading. A check made right after a file opens therefore sees only the page view. The spec's own spike table says the same (line 458). Labels: the Tracks popover passes `name={track.name}` to the design system's TrackRow (web/app/play/TracksPopover.tsx:348), which labels the toggles `Solo ${name}` and `Mute ${name}` (client/src/components/ui/TrackRow/TrackRow.tsx:247 and :257), and TransportToggle makes that the aria-label (client/src/components/ui/TransportToggle/TransportToggle.tsx:71). So Solo and Mute are named after the track. The Sentry spec (PR #191), section 6, ends every 'nothing sent' case with a sentinel because 'Without the sentinel, a recorder that captured nothing would pass.'",
-      "contradicts": "none — checked section 4 'The tab title' (lines 213-215: the privacy test must fail if a title reaches Google; the wait makes that true), section 5 (the score_loaded and mixer_change fields), G8 (line 63), section 9's Sydney and Berlin bullets, and the spike table (line 458).",
-      "spike": {
-        "ran": true,
-        "what": "F-5's spike case 2 measured how long Google's script holds custom events before sending them, and that waiting for a named event in the recorded requests works.",
-        "result": "Two events were held and sent together 5.0 s after the calls; polling the recorder for them succeeded. The Solo and Mute presses were checked in source only (untested): the player was not built, because a read-only review runs no next build.",
-        "fix_holds": true
-      },
-      "cross_fix": [
-        "F-5 — pick the After that matches F-5's choice. Each variant already includes F-5's own change to lines 388-389, so apply one text only.",
-        "F-13 (group C) — if mixer_change becomes a union on `control`, Solo and Mute still carry `instrument`; no change here."
-      ],
-      "synthesis_note": "Unique. Coupled with F-5: the waits it adds assume the fixture records real collect requests.",
-      "verified_by": "verify-B.json",
-      "raw_constituents": [
-        {
-          "raw_id": "adversarial#5",
-          "reviewer": "adversarial",
-          "title": "Privacy e2e case can pass before any hit arrives",
-          "severity": "P2",
-          "confidence": 75,
-          "autofix_class": "gated_auto",
-          "why_it_matters": "The only automated check that no title or track name reaches Google can pass while a name leaks. Google batches custom events and sends them a few seconds later (the spike's table), so a case that opens a fixture and then reads the recorded requests may find only the page view, and an empty match proves nothing. The case also never presses a control whose label holds a track name, such as Solo and Mute, which TrackRow labels with the track's name; that is the leak path G8 cites. Sentry's spec closes the same hole by making each 'nothing sent' case wait for a sentinel, because 'a recorder that captured nothing would pass'.",
-          "suggested_fix": "In the privacy case, click one track's Solo and Mute. Wait until the fixture has recorded the score_loaded hit with the fixture's track_count and both mixer_change hits, and only then assert that no recorded Google request contains the title or any track name.",
-          "evidence": [
-            "Privacy: open a fixture with a known title and track names. No Google request — address or body — contains any of them, and `dt` stays `Notation Hero`.",
-            "sent, batched a few seconds later",
-            "automatic click tracking (button labels hold track names — the reason Sentry turned click breadcrumbs off)"
-          ]
-        }
-      ],
-      "triage_decision": null,
-      "applied_in_commit": null,
-      "quotes_note": "Every quote that fails strict matching fails only because the spec puts its opening words in bold; the words themselves match."
-    },
     {
       "id": "F-7",
       "title": "'Report errors only' is never checked for the absence of Sentry's visit ping",
@@ -1063,7 +496,8 @@
         }
       ],
       "triage_decision": null,
-      "applied_in_commit": null
+      "applied_in_commit": null,
+      "anchor_note": "Section 9's e2e list now ends with F-4's '**Privacy notice:**' bullet, after '**No overlap:**' (commit abc6e760). Re-anchor any 'after 391' insertion by text."
     },
     {
       "id": "F-11",
@@ -1879,7 +1313,8 @@
         }
       ],
       "triage_decision": null,
-      "applied_in_commit": null
+      "applied_in_commit": null,
+      "anchor_note": "ANCHOR CHANGED (2026-10-09, F-5 commit 09d09284): section 8 step 6 now ends with F-5's Network-panel check ('**In the browser's Network panel:** the first `collect` request carries `gcs=G101`, `npa=1` and `dt=Notation Hero`. The tests answer Google's script with an empty one, so this is the only check of what it sends.'). This item's step-6 Before no longer matches: merge its fbclid probe sentence into that new step 6 (the cross-fix rule). Its Addresses (209-212) and step 3 (350-352) Befores are unchanged."
     }
   ],
   "residual_concerns": [
@@ -2039,7 +1474,8 @@
         "F-10: both options keep the card outside the drop zone, so F-10's fix is needed either way. The Keyboard bullets go right after F-10's bullets in sections 3 and 9."
       ],
       "verified_by": "verify-C.json",
-      "triage_decision": null
+      "triage_decision": null,
+      "anchor_note": "Section 9's e2e list now ends with F-4's '**Privacy notice:**' bullet, after '**No overlap:**' (commit abc6e760). Re-anchor any 'after 391' insertion by text."
     }
   ],
   "rejected_findings": [],
@@ -3029,6 +2465,622 @@
           "applied_in_commit": "03581edd",
           "date": "2026-10-09",
           "note": "Round 1 asked for clarification (see triage_rounds[0]). Applied as a Known-limits bullet after 'Withdrawing needs NH-349', plus one sentence in the changelog entry's launch paragraph, dated 2026-10-09 (the day of the answer). Sentry's pull request (#191) is unchanged, as the chosen option said. The Sentry spec's stale Non-goals line (it names NH-349 as the popup) is still open for PR #191 — see plan_notes."
+        }
+      ]
+    },
+    {
+      "id": "F-4",
+      "title": "No privacy notice: the popup never says who runs the site or that an answer can be withdrawn",
+      "area": "Area 1 - who is asked, and when it goes live",
+      "severity": "P2",
+      "severity_as_filed": "P2",
+      "severity_plain": "should fix — a real gap an implementer will hit",
+      "severity_note": "A real gap at launch that the spec does not mention; which name and contact to publish is leocaseiro's decision.",
+      "confidence": 75,
+      "confidence_plain": "double-checked by reading the spec, the repo and the sources; will be hit in practice (not all of it run)",
+      "route": "decision",
+      "finding_type": "omission",
+      "reviewers": ["adversarial"],
+      "recommended_action": "Decide",
+      "verdict": "CONFIRMED",
+      "correction": "",
+      "section": "## 3. The popup",
+      "section_lines": "141-168",
+      "section_exists": true,
+      "quotes_verbatim": true,
+      "quotes": [
+        {
+          "quote": "Can we count visits (with a cookie) and get error reports? Your scores stay on your device.",
+          "verbatim": true,
+          "line": 144,
+          "note": ""
+        },
+        {
+          "quote": "Error reports go to Sentry, a bug-tracking service. Visit counts go to Sentry and Google Analytics. Neither gets your file, its name, or the music in it. How Google uses data ↗",
+          "verbatim": true,
+          "line": 147,
+          "note": "spans lines 147-148"
+        },
+        {
+          "quote": "The home page names Google Analytics because its terms require the site to disclose it and link to Google's page (G9).",
+          "verbatim": true,
+          "line": 331,
+          "note": "spans lines 331-332"
+        },
+        {
+          "quote": "No way yet to change an answer.",
+          "verbatim": true,
+          "line": 24,
+          "note": "Non-goals"
+        }
+      ],
+      "scenario": "You live in Vienna. The card asks 'Can we count visits (with a cookie) and get error reports?', and you press 'Yes'. Nothing tells you who is asking, how to reach them, or that you can change your mind later, and the site has no privacy page where you could check. Under EU guidance, a 'Yes' given without those facts may not count as consent. Google Analytics' own terms also ask the site to post a privacy policy.",
+      "whats_wrong": "EU guidance says a person must know at least who is asking, each purpose, what data, and that they can withdraw, for consent to count as informed; Article 7(3) of the GDPR (the EU General Data Protection Regulation) adds that they hear about withdrawing before they agree. The approved words give the purposes and the tools, not who runs the site or that an answer can be withdrawn, and web/ has no privacy page. G9 rests on the part of Google Analytics' terms that asks for a disclosure link, but the same section says 'You must post a Privacy Policy'.",
+      "before": [
+        {
+          "lines": "147-148",
+          "text": "  Error reports go to Sentry, a bug-tracking service. Visit counts go to Sentry and Google\n  Analytics. Neither gets your file, its name, or the music in it. How Google uses data ↗"
+        },
+        {
+          "lines": "27",
+          "text": "- **No server code.** `web/` stays two static pages: no location headers, no Measurement Protocol."
+        },
+        {
+          "lines": "320",
+          "text": "  How Google uses data ↗"
+        },
+        {
+          "lines": "after 80",
+          "text": "(absent — section 1 lists no privacy page)"
+        },
+        {
+          "lines": "after 429",
+          "text": "(absent — Known limits says nothing about a privacy notice)"
+        }
+      ],
+      "options": [
+        {
+          "label": "1 — A short privacy notice page",
+          "what": "A new static page, /privacy, linked from the popup's Details and from the home note. It says who runs Notation Hero and how to reach them; what Sentry and Google Analytics receive and how long each keeps it (Sentry 30 days, from the Sentry spec; Google Analytics 14 months, section 8); the cookie; and how to change an answer.",
+          "pros": [
+            "Meets the EDPB's minimum content for informed consent (paragraph 64) and Google Analytics' 'post a Privacy Policy' term, for every visitor, not only in Europe.",
+            "One place for later changes (NH-349, NH-54) while the card stays short."
+          ],
+          "cons": [
+            "A third page: Non-goals line 27 ('two static pages') changes; the page needs its own accessibility scan, and maybe a screenshot.",
+            "New words to approve, and a name and a contact become public; which ones is leocaseiro's choice.",
+            "Its 'change your answer' line depends on NH-349 (F-2)."
+          ],
+          "cost": "One static page, two links and their tests; edits to Non-goals and sections 1, 3, 7 and 9.",
+          "after": [
+            {
+              "replaces_lines": "147-148",
+              "text": "  Error reports go to Sentry, a bug-tracking service. Visit counts go to Sentry and Google\n  Analytics. Neither gets your file, its name, or the music in it. How Google uses data ↗\n  Who runs this site, and how to change your answer: Privacy notice"
+            },
+            {
+              "replaces_lines": "new block in section 7, after 320",
+              "text": "Privacy notice (new page, /privacy, linked from the home note and the popup's Details):\n  Notation Hero is run by <name> (<contact>). Error reports go to Sentry, which keeps them 30\n  days. Visit counts go to Sentry and Google Analytics, which keeps visit-level data 14 months and\n  sets a cookie (_ga). Neither gets your file, its name, or the music in it. In Europe nothing is\n  sent until you answer. Change your answer at any time: <the Privacy choices link (NH-349)>.\n  How Google uses data ↗"
+            },
+            {
+              "replaces_lines": "new row in section 1, after 80",
+              "text": "| `web/app/privacy/page.tsx`      | the privacy notice (section 7)                                                                          |"
+            },
+            {
+              "replaces_lines": "27",
+              "text": "- **No server code.** `web/` stays three static pages: no location headers, no Measurement\n  Protocol."
+            },
+            {
+              "replaces_lines": "320",
+              "text": "  How Google uses data ↗ · Privacy notice"
+            }
+          ]
+        },
+        {
+          "label": "2 — A few more words in Details only",
+          "what": "Details gains one sentence: who runs the site, with a contact, and how to change the answer.",
+          "pros": [
+            "Smallest change; no new page.",
+            "The facts sit next to the buttons, before the visitor agrees."
+          ],
+          "cons": [
+            "Does not meet Google Analytics' 'post a Privacy Policy' term.",
+            "The card grows on a phone; until NH-349 the 'how' is 'clear this site's data', which reads badly.",
+            "Reopens words approved after two rounds."
+          ],
+          "cost": "One or two sentences, approved by leocaseiro.",
+          "after": [
+            {
+              "replaces_lines": "147-148",
+              "text": "  Error reports go to Sentry, a bug-tracking service. Visit counts go to Sentry and Google\n  Analytics. Neither gets your file, its name, or the music in it. How Google uses data ↗\n  Notation Hero is run by <name> (<contact>). You can change your answer at any time:\n  <the Privacy choices link, or clear this site's data>."
+            }
+          ]
+        },
+        {
+          "label": "3 — Defer",
+          "what": "Known limits records the gap, and a new ticket adds the notice later.",
+          "pros": ["No work now; the approved words stay."],
+          "cons": [
+            "From go-live, a 'Yes' given in Europe may not count as informed consent.",
+            "Google Analytics' terms are not met for any visitor, also outside Europe."
+          ],
+          "cost": "One bullet and a ticket.",
+          "after": [
+            {
+              "replaces_lines": "new bullet after 429",
+              "text": "- **No privacy notice yet.** The popup does not say who runs the site or that an answer can be\n  withdrawn, and Google Analytics' terms ask for a posted privacy policy. NH-<new> adds one."
+            }
+          ]
+        }
+      ],
+      "recommendation": "Option 1. Only a posted notice meets Google Analytics' 'post a Privacy Policy' term, which applies to every visitor, and it carries what the card cannot hold (who, how to reach them, how long data is kept, how to change an answer) while the card stays short.",
+      "flip_condition": "Choose option 2 if leocaseiro wants no third page in v0 and accepts that the Google Analytics term stays unmet until one exists. Choose option 3 only if go-live in Europe is postponed anyway.",
+      "proposed_fix": "Add a short privacy notice page, linked from the popup's Details and from the home note, that names who runs Notation Hero and how to reach them, what each tool receives and how long it keeps it, the cookie, and how to change an answer.",
+      "why_it_works": "A visitor gets, before pressing 'Yes', the facts EU guidance counts as the minimum for informed consent, and the site has the posted privacy policy that Google Analytics' terms require.",
+      "plain_terms": {
+        "EDPB": "the European Data Protection Board, which writes the EU guidance on consent",
+        "GDPR": "the EU data-protection law",
+        "controller": "whoever decides why and how the data is used — here, whoever runs Notation Hero",
+        "G9": "decision G9: the home page names Google Analytics (its terms require it); Sentry is named only in the popup's Details",
+        "G5": "decision G5: in Europe nothing loads, Sentry included, until the visitor answers (\"whatever is good by law\", in the changelog)",
+        "CNIL": "France's data-protection authority",
+        "v0": "the first public version of web/, now being built",
+        "NH-54": "the later ticket for an AWS analytics pipeline, a second destination for the same events"
+      },
+      "central_claim_check": "True. EDPB Guidelines 05/2020 on consent, paragraph 64: valid consent needs at least 'the controller's identity', 'the purpose of each of the processing operations', 'what (type of) data will be collected and used' and 'the existence of the right to withdraw consent' (read on https://gdpr-text.com/guidelines/consent/, a mirror; edpb.europa.eu did not resolve from this machine). GDPR Article 7(3): 'Prior to giving consent, the data subject shall be informed thereof' (https://gdpr-info.eu/art-7-gdpr/). The CNIL (https://www.cnil.fr/fr/cookies-et-autres-traceurs/regles/cookies/que-dit-la-loi) lists 'l'identité des responsables du ou des traitements' and the means to 'retirer son consentement'. Google Analytics' terms, section 7 (https://marketingplatform.google.com/about/analytics/terms/us/, updated 15 May 2023): 'You will have and abide by an appropriate Privacy Policy…' and 'You must post a Privacy Policy and that Privacy Policy must provide notice of Your use of cookies…'; the separate disclosure of Google Analytics 'can be done by displaying a prominent link' — the only part G9 relies on. The popup's words (144-148) give purposes and tools, not who runs the site or that an answer can be withdrawn, and web/app has two pages only (page.tsx, play/page.tsx), so no privacy page exists. GDPR Article 13 lists what a notice holds: identity and contact, purposes, recipients, storage period, the right to withdraw, the right to complain (https://gdpr-info.eu/art-13-gdpr/).",
+      "contradicts": "Option 1 conflicts with Non-goals line 27 ('`web/` stays two static pages'), which changes with it; section 1 gains a file and section 9 an accessibility scan. Option 2 reopens the words approved on 2026-10-08 (166-168). Checked G9 (64), section 3 (141-168), section 7 (309-334), section 9 (393-398) and Known limits (424-429).",
+      "spike": {
+        "ran": false,
+        "why": "A legal and wording decision; the EDPB guidelines, GDPR Articles 7 and 13, the CNIL page and the Google Analytics terms were read instead.",
+        "mark": "(untested)"
+      },
+      "cross_fix": [
+        "F-2 — the notice's 'change your answer' line depends on NH-349: with F-2's option 1 it names the 'Privacy choices' link; otherwise it says 'clear this site's data'."
+      ],
+      "synthesis_note": "Manual as filed: which name and contact to publish, and whether a short notice page is in scope, are leocaseiro's to decide. Needs the legal claims checked (EDPB Guidelines 05/2020 minimum content; Google Analytics terms section 7).",
+      "verified_by": "verify-A.json",
+      "raw_constituents": [
+        {
+          "raw_id": "adversarial#3",
+          "reviewer": "adversarial",
+          "title": "No privacy notice: consent lacks controller and withdrawal right",
+          "severity": "P2",
+          "confidence": 75,
+          "autofix_class": "manual",
+          "why_it_matters": "A 'Yes' given in Europe may not be valid consent, and valid consent is the outcome G3 and G5 ('whatever is good by law') exist to secure. The EDPB's consent guidelines (05/2020) and the CNIL's cookie guidelines count consent as informed only when the visitor is told at least who is asking, each purpose, the data used, and that they can withdraw. The approved words name the purposes and tools but not who runs the site or the right to withdraw, and the site has no privacy page to hold that information; Google Analytics' terms (section 7) also require 'an appropriate Privacy Policy', not only the disclosure link G9 relies on. The words are leocaseiro's, and which name and contact to publish is leocaseiro's decision.",
+          "suggested_fix": "Add a short privacy notice that says who runs Notation Hero and how to reach them, what each tool receives and for how long, and how to change the answer. Link it from the popup's Details and from the home note.",
+          "evidence": [
+            "Can we count visits (with a cookie) and get error reports? Your scores stay on your device.",
+            "Error reports go to Sentry, a bug-tracking service. Visit counts go to Sentry and Google Analytics. Neither gets your file, its name, or the music in it. How Google uses data ↗",
+            "The home page names Google Analytics because its terms require the site to disclose it and link to Google's page (G9).",
+            "No way yet to change an answer."
+          ]
+        }
+      ],
+      "triage_decision": {
+        "round": 3,
+        "decision": "Apply",
+        "option": "1 — A short privacy notice page",
+        "applied_in_commit": "abc6e760",
+        "date": "2026-10-09",
+        "note": "Applied the five Afters, plus what the option implied: the popup's Details bullet says both links open in a new tab (so an open score is not lost), section 7 gains a bullet on why the notice exists and that leocaseiro picks the published name and contact, and section 9 gains an e2e 'Privacy notice' link case and 'An axe scan of /privacy.' (after the both-themes axe line, which F-8 still targets verbatim). The notice keeps <name> (<contact>) placeholders."
+      },
+      "applied_in_commit": "abc6e760",
+      "triage_rounds": [
+        {
+          "round": 3,
+          "decision": "Apply",
+          "option": "1 — A short privacy notice page",
+          "applied_in_commit": "abc6e760",
+          "date": "2026-10-09",
+          "note": "Applied the five Afters, plus what the option implied: the popup's Details bullet says both links open in a new tab (so an open score is not lost), section 7 gains a bullet on why the notice exists and that leocaseiro picks the published name and contact, and section 9 gains an e2e 'Privacy notice' link case and 'An axe scan of /privacy.' (after the both-themes axe line, which F-8 still targets verbatim). The notice keeps <name> (<contact>) placeholders."
+        }
+      ]
+    },
+    {
+      "id": "F-5",
+      "title": "The end-to-end tests would reach Google, and the source of Google's script in tests is undecided",
+      "area": "Area 2 - the end-to-end tests",
+      "severity": "P2",
+      "severity_as_filed": "P2",
+      "severity_plain": "should fix — a real gap an implementer will hit",
+      "severity_note": "Nothing a visitor sees changes, but section 9's claim would be false on the first run: about a hundred cases would send real hits to Google from CI, and the gcs/npa/dt checks have no script to run.",
+      "confidence": 100,
+      "confidence_plain": "certain — the spec states it outright, or a spike confirmed it, or independent reviewers agree on airtight text",
+      "route": "decision",
+      "finding_type": "error",
+      "reviewers": ["adversarial", "feasibility"],
+      "recommended_action": "Decide",
+      "verdict": "CONFIRMED_WITH_CORRECTION",
+      "correction": "Two changes to the reviewers' fixes. (1) The committed snapshot of gtag.js (Google's tracking script) is not a workable option: Google Analytics' terms, section 4, forbid copying the 'Software', which they define to include the Google Analytics Measurement Code, and the script itself opens with 'Copyright 2012 Google Inc. All rights reserved.' So only two options remain. (2) The leak is closed in the config, by Chromium's resolver rule, in both options, instead of a call added to each of the four existing test files: the rule also covers every future test file, and the spike shows it fails no existing case. The rule must also list www.google.com, because Google's script sent an event there when the page closed.",
+      "section": "## 9. Testing",
+      "section_lines": "364-398 (the end-to-end paragraph is 380-391; also ## 1. Packages and files, lines 81 and 94-95, and ## The spike, line 451)",
+      "section_exists": true,
+      "quotes_verbatim": false,
+      "quotes": [
+        {
+          "quote": "`web/playwright.e2e.config.ts`: `timezoneId: 'Australia/Sydney'` for every project, and a fake Google Analytics ID.",
+          "verbatim": true,
+          "line": 94,
+          "note": "lines 94-95"
+        },
+        {
+          "quote": "the shared fixture: answers Google's hosts locally and records every request",
+          "verbatim": true,
+          "line": 81,
+          "note": ""
+        },
+        {
+          "quote": "`web/e2e/google-analytics.ts` answers Google's hosts locally, the way Sentry's fixture answers its fake DSN, so no test reaches Google.",
+          "verbatim": true,
+          "line": 380,
+          "note": "lines 380-381"
+        },
+        {
+          "quote": "afterLoad(() => addScript(`https://www.googletagmanager.com/gtag/js?id=${id}`));",
+          "verbatim": true,
+          "line": 194,
+          "note": ""
+        },
+        {
+          "quote": "Sydney: no popup; a page view with `gcs=G101` and `npa=1`",
+          "verbatim": false,
+          "line": 383,
+          "note": "The words are exact; only the Markdown bold markers are missing (the spec has **Sydney:**). Not a misquote."
+        },
+        {
+          "quote": "**Sydney:** no popup; a page view with `gcs=G101` and `npa=1`",
+          "verbatim": true,
+          "line": 383,
+          "note": ""
+        },
+        {
+          "quote": "No Google request — address or body — contains any of them, and `dt` stays `Notation Hero`.",
+          "verbatim": true,
+          "line": 388,
+          "note": "lines 388-389"
+        },
+        {
+          "quote": "Google's collect requests answered locally, so nothing reached Google.",
+          "verbatim": true,
+          "line": 451,
+          "note": ""
+        }
+      ],
+      "scenario": "You push a one-line fix to the player. While the merge check runs, its test browser opens Notation Hero's pages about a hundred times, each time as a visitor in Sydney. Each time, Google's tracking script downloads from Google and sends a page view under the tests' made-up ID — from a test, to Google. The spec says no test reaches Google. Nearly every test does.",
+      "whats_wrong": "Section 9 says the new fixture keeps every test away from Google, but only privacy-choice.e2e.ts uses it. The lane's one build gets the fake ID and every project runs as Sydney, so Google Analytics starts on every page of the 98 existing cases, in four files that never install the fixture. Sentry's fake address can never resolve; Google's addresses do, so those pages download Google's script and send real hits. Also, the spec never says where the fixture gets Google's script: the gcs, npa and dt checks need the real one, while 'answers Google's hosts locally' rules it out. A copy kept in the repository is not possible: Google Analytics' terms forbid copying its measurement code.",
+      "before": [
+        {
+          "lines": "81",
+          "text": "| `web/e2e/google-analytics.ts`   | the shared fixture: answers Google's hosts locally and records every request                            |"
+        },
+        {
+          "lines": "94-95",
+          "text": "- `web/playwright.e2e.config.ts`: `timezoneId: 'Australia/Sydney'` for every project, and a fake\n  Google Analytics ID."
+        },
+        {
+          "lines": "359-362",
+          "text": "6. **After the first production deploy, in the Realtime report:** a page view on `/`; **a page view\n   after clicking Play** — the one thing the spike could not show (if it is missing, the fallback in\n   section 4); an `open_file` and a `score_loaded` with their fields; and, with the browser's time\n   zone set to Berlin, the popup, with nothing reaching Google until \"Yes\"."
+        },
+        {
+          "lines": "380-384",
+          "text": "**End to end (Playwright).** `web/e2e/google-analytics.ts` answers Google's hosts locally, the way\nSentry's fixture answers its fake DSN, so no test reaches Google.\n\n- **Sydney:** no popup; a page view with `gcs=G101` and `npa=1`; `open_file` and `score_loaded` with\n  the right fields after opening a fixture; `play` after pressing ▶."
+        },
+        {
+          "lines": "388-389",
+          "text": "- **Privacy:** open a fixture with a known title and track names. No Google request — address or\n  body — contains any of them, and `dt` stays `Notation Hero`."
+        },
+        {
+          "lines": "451",
+          "text": "Sydney and as Berlin; Google's collect requests answered locally, so nothing reached Google."
+        }
+      ],
+      "options": [
+        {
+          "label": "Live script, hits kept local",
+          "what": "Tests run Google's real script. The fixture downloads it and answers everything else locally: `if (url.pathname === '/gtag/js') return route.fulfill({ response: await route.fetch() }); record(request); return route.fulfill({ status: 204 });`. The config adds `launchOptions: { args: ['--host-resolver-rules=MAP www.googletagmanager.com ~NOTFOUND, MAP *.google-analytics.com ~NOTFOUND, …'] }` so any case without the fixture reaches nothing. Section 9's claim becomes 'no test sends Google a hit'.",
+          "pros": [
+            "CI checks Google's real output on every run: gcs=G101, npa=1 and dt on the wire, as section 9 asks today.",
+            "The privacy case checks the requests Google would really receive, address and body.",
+            "Proven in this review's spike (cases 2 and 4)."
+          ],
+          "cons": [
+            "The merge-blocking `web` job depends on www.googletagmanager.com for the fixture cases. When Google is slow or unavailable, or changes its script (its cache lifetime is 15 minutes), a pull request fails for a reason it cannot fix.",
+            "Each fixture case downloads a 440 KB script and waits about 5 s for each batch of events.",
+            "'No test reaches Google' stops being true: Google sees a script download from the CI machine on every run."
+          ],
+          "cost": "One config line; about 15 lines of fixture (route, script download, local answers, reading batched bodies); waits of about 5 s in the Sydney and Privacy cases.",
+          "after": [
+            {
+              "replaces_lines": "81",
+              "text": "| `web/e2e/google-analytics.ts`   | the shared fixture: fetches Google's real script, answers every other Google request locally and records it |"
+            },
+            {
+              "replaces_lines": "94-95",
+              "text": "- `web/playwright.e2e.config.ts`: `timezoneId: 'Australia/Sydney'` for every project, a fake Google\n  Analytics ID, and Chromium's `--host-resolver-rules` launch argument, which makes Google's hosts\n  unresolvable in the test browser."
+            },
+            {
+              "replaces_lines": "380-381",
+              "text": "**End to end (Playwright).** The lane's one build carries the fake Google Analytics ID and every\nproject runs as Sydney, so every page in every case starts Google Analytics. The config makes\n`www.googletagmanager.com`, `*.google-analytics.com`, `analytics.google.com` and `www.google.com`\nunresolvable in the test browser: in a case without the fixture, Google's script fails to load and\nnothing is sent, as for a visitor with an ad blocker. The loader must accept that without an error\n— no throw and no uncaught rejection — or `failOnUnexpectedPageErrors()` fails the case.\n`web/e2e/google-analytics.ts` routes Google's hosts before any lookup. It fetches the real\n`gtag.js` with `route.fetch()`, which runs in Node and ignores the rule, and answers every other\nrequest locally and records it. Google sends events in batches about 5 s later, so a case waits\nfor each event it checks. No test sends Google a hit; the cases that use the fixture download\nGoogle's script."
+            },
+            {
+              "replaces_lines": "451",
+              "text": "Sydney and as Berlin; Google's collect requests answered locally, so no hit reached Google."
+            }
+          ]
+        },
+        {
+          "label": "No Google script in tests",
+          "what": "The fixture answers Google's script with an empty one — `route.fulfill({ contentType: 'application/javascript', body: '' })` — and records every request. The cases read `window.dataLayer`, the queue our own code fills and Google's script reads. The same resolver rule in the config covers cases without the fixture. Google's output (gcs=G101, npa=1, dt) is checked by hand at launch, in section 8 step 6.",
+          "pros": [
+            "Nothing in tests reaches Google; section 9's promise stays true as written.",
+            "No network dependency in the merge-blocking `web` job, whose container is pinned by digest.",
+            "No waits: our queue fills at once, so each check runs immediately.",
+            "It checks exactly what this repository controls: every field our code hands Google."
+          ],
+          "cons": [
+            "CI never sees Google's real output. If Google changes how its script encodes consent or the title, nothing fails until a person looks.",
+            "The privacy case checks what we hand Google plus the two things Google's script reads from the page (the title and the address), not the final requests.",
+            "Google's cookies and its automatic events cannot be seen in tests."
+          ],
+          "cost": "One config line; about 10 lines of fixture; one more sentence in section 8 step 6, a by-hand check at launch.",
+          "after": [
+            {
+              "replaces_lines": "81",
+              "text": "| `web/e2e/google-analytics.ts`   | the shared fixture: answers Google's hosts locally (an empty script for `gtag.js`) and records every request |"
+            },
+            {
+              "replaces_lines": "94-95",
+              "text": "- `web/playwright.e2e.config.ts`: `timezoneId: 'Australia/Sydney'` for every project, a fake Google\n  Analytics ID, and Chromium's `--host-resolver-rules` launch argument, which makes Google's hosts\n  unresolvable in the test browser."
+            },
+            {
+              "replaces_lines": "359-362",
+              "text": "6. **After the first production deploy, in the Realtime report:** a page view on `/`; **a page view\n   after clicking Play** — the one thing the spike could not show (if it is missing, the fallback in\n   section 4); an `open_file` and a `score_loaded` with their fields; and, with the browser's time\n   zone set to Berlin, the popup, with nothing reaching Google until \"Yes\". **In the browser's\n   Network panel:** the first `collect` request carries `gcs=G101`, `npa=1` and `dt=Notation Hero`.\n   The tests answer Google's script with an empty one, so this is the only check of what it sends."
+            },
+            {
+              "replaces_lines": "380-381",
+              "text": "**End to end (Playwright).** The lane's one build carries the fake Google Analytics ID and every\nproject runs as Sydney, so every page in every case starts Google Analytics. The config makes\n`www.googletagmanager.com`, `*.google-analytics.com`, `analytics.google.com` and `www.google.com`\nunresolvable in the test browser: in a case without the fixture, Google's script fails to load and\nnothing is sent, as for a visitor with an ad blocker. The loader must accept that without an error\n— no throw and no uncaught rejection — or `failOnUnexpectedPageErrors()` fails the case.\n`web/e2e/google-analytics.ts` routes Google's hosts before any lookup, answers `gtag.js` with an\nempty script and records every request. No test reaches Google. The cases check what our code\nhands Google, in `window.dataLayer`; what Google's script sends is checked by hand at launch\n(section 8, step 6)."
+            },
+            {
+              "replaces_lines": "383-384",
+              "text": "- **Sydney:** no popup; one request for `gtag.js`, after `load`; the queue matches section 4 — the\n  consent default first (ad signals denied, analytics granted), Google signals and ad\n  personalisation off, `release` set; `open_file` and `score_loaded` with the right fields after\n  opening a fixture; `play` after pressing ▶."
+            },
+            {
+              "replaces_lines": "388-389",
+              "text": "- **Privacy:** open a fixture with a known title and track names. No entry in `window.dataLayer`\n  contains any of them, `document.title` stays `Notation Hero` (Google's script sends it as `dt`),\n  and the page address holds none of them."
+            },
+            {
+              "replaces_lines": "451",
+              "text": "Sydney and as Berlin; Google's collect requests answered locally, so no hit reached Google."
+            }
+          ]
+        }
+      ],
+      "recommendation": "'No Google script in tests'. The `web` job blocks every merge and pins even its container by digest. A live script, which Google can change at any time (its cache lifetime is 15 minutes), would let Google's uptime and Google's own changes fail pull requests that cannot fix them. The privacy promise is about what our code hands Google, and this option checks all of it, at once, with no 5-second waits. Google's encoding has been seen twice (the 2026-10-05 spike and this review's spike: gcs=G101, npa=1, dt=Notation Hero), and section 8 step 6 checks it again on the real property, which no test with a made-up ID can show.",
+      "flip_condition": "Choose 'Live script, hits kept local' if you want CI to notice by itself when Google changes how its script encodes consent or the title, and you accept that the privacy cases fail when www.googletagmanager.com is slow or unavailable (CI retries each failure twice).",
+      "proposed_fix": "Close the leak in the config, for every case at once: Chromium's --host-resolver-rules launch argument makes Google's hosts unresolvable inside the test browser, so a case without the fixture cannot reach Google and fails nothing. Then decide where the fixture's gtag.js comes from: the live script through route.fetch(), with every other request answered locally, or an empty script, with the checks moved to what our code queues and Google's output checked by hand at launch.",
+      "why_it_works": "The resolver rule is the same idea as Sentry's .invalid address: inside the test browser the hosts cannot be found, so a case that forgets the fixture sends nothing, and a new test file is covered without any edit. Playwright's routes act before the address lookup, so the fixture still sees and answers every request (spike case 2). route.fetch() runs in Node, not in the browser, so the live script still arrives when that option is chosen.",
+      "plain_terms": {
+        "the lane / the web job": "the merge-blocking browser tests for web/: behaviour, accessibility and screenshots, all from one build",
+        "gtag.js": "Google's tracking script, downloaded from www.googletagmanager.com",
+        "hit / collect request": "one message from Google's script to Google that counts a page view or an event",
+        "fixture (test code)": "shared test code a test file uses; here web/e2e/google-analytics.ts, which records Google's requests",
+        "fixture (score file)": "a test score in web/e2e/fixtures/; 'open a fixture' in section 9 means opening one",
+        "resolver rule": "a Chromium start-up setting (--host-resolver-rules) that makes chosen web addresses impossible to look up, inside the test browser only",
+        "route.fetch()": "a Playwright call that downloads a request from the test program (Node) instead of the browser",
+        "failOnUnexpectedPageErrors()": "the lane's helper (web/e2e/page-errors.ts) that fails a test when the page throws an uncaught error",
+        "gcs=G101": "Google's consent value: ad storage denied, analytics storage granted",
+        "npa=1": "Google's flag for 'no ad personalisation'",
+        "dt": "the page title Google records with every hit",
+        "window.dataLayer": "the queue our code fills and Google's script reads",
+        "Sydney / Berlin": "the time zones the tests pretend to be in; Berlin counts as Europe, where the popup asks first",
+        "GAMC": "the Google Analytics Measurement Code, which Google's terms count as its 'Software'"
+      },
+      "central_claim_check": "Confirmed. (a) The lane is one build for two projects: web/playwright.e2e.config.ts:24-53 (projects `e2e` for *.e2e.ts and `chromium` for *.vr.ts) over one webServer whose env is inlined at build time (lines 55-68). With the spec's fake ID and Sydney for every project, every page of every case starts Google Analytics. (b) Four files import `test` straight from @playwright/test and never install a Google fixture: web/e2e/player.e2e.ts:3, web/e2e/a11y.e2e.ts:2, web/e2e/pages.vr.ts:3 and web/e2e/toast-occlusion.e2e.ts:14. They hold 98 cases today (76 + 9 + 10 + 3; the last file loops over three widths at line 37). None is named in section 1's changed files. (c) failOnUnexpectedPageErrors() (web/e2e/page-errors.ts:90-123) listens to 'pageerror' only (line 97): not console errors, not failed requests. player.e2e.ts:10, a11y.e2e.ts:16 and pages.vr.ts:65 call it; toast-occlusion.e2e.ts does not. The lane's only console listener (player.e2e.ts:25) filters for AlphaTab lines. No lane test installs a catch-all route (all routes in player-states.ts and player.e2e.ts target the app's own paths). (d) The Sentry spec (PR #191), section 6: every build gets the fake DSN https://public@sentry.invalid/1 and 'One shared fixture routes every request to that host'; a case without that fixture is harmless only because a .invalid host never resolves (this review's spike: an unrouted POST to sentry.invalid is rejected). Google's hosts do resolve. (e) The 2026-10-05 spike (throwaway, not in the repo) routed only Google's collect hosts, so its gtag.js came live from Google: line 451's 'so nothing reached Google' is not exact. (f) A made-up ID gets a working script: about 440 KB, served with cache-control 'private, max-age=900', and it sends a page view (spike case 2). (g) Google Analytics terms, sections 1 and 4 (https://marketingplatform.google.com/about/analytics/terms/us/): the 'Software' includes the GAMC (the Google Analytics Measurement Code, which is gtag.js), and section 4 forbids copying it, changing it or making derivative works of it. (h) The `web` job runs in a Playwright container pinned by sha256 digest (.github/workflows/ci.yml:436-458) and blocks merge (AGENTS.md, 'VR & a11y testing'); CI retries a failing case twice (playwright.e2e.config.ts:18).",
+      "contradicts": "none — checked section 1 (line 81 and lines 94-95), section 4 (lines 172-215: the loader sketch, 'The order is verified', 'The tab title'), section 6 (the Google hosts, lines 298-300), section 8 step 6 (lines 359-362), section 9 (lines 380-391), Non-goals 'No ad-blocker bypass' (line 28), Known limits 'Ad blockers' (line 427) and 'The spike' (line 451). One wording fix is folded into both options: line 451 says 'nothing reached Google', but that spike downloaded Google's script live; 'no hit reached Google' is exact.",
+      "spike": {
+        "ran": true,
+        "what": "A local page that runs section 4's startAnalytics() sketch as written (a made-up ID, the spec's consent default, `config` with Google signals and ad personalisation off and `release`, the script added after `load`), driven by the installed Playwright 1.61.1 and its Chromium 149 as Sydney. Chromium started with --host-resolver-rules making www.googletagmanager.com and *.google-analytics.com unresolvable (and once with a wider set adding analytics.google.com, www.google.com and *.doubleclick.net). Case 1: no route. Case 2: a context route that downloads gtag.js with route.fetch() and answers every other Google request locally with 204. Case 3: a route that answers gtag.js with an empty script. Then four script-loader shapes under the rule, to see which raise a Playwright page error. Nothing left the machine but downloads of gtag.js (case 2, and two direct downloads to read its header); no hit was sent.",
+        "result": "Case 1: the script request fails (net::ERR_NAME_NOT_RESOLVED); no page error; one console error ('Failed to load resource'); no hit; no cookie. Case 2: route.fetch() returns the real script (status 200, 440,795 bytes) although the browser cannot resolve the host; requests to the unresolvable hosts are still routed and recorded. The page view arrives about 0.9 s after the page starts loading, with gcs=G101, npa=1, dt=Notation Hero and ep.release. Two custom events sent together arrive in one batched request 5,010 ms later (5,006 ms on the rerun with the wide rules). Leaving the page sends user_engagement to both www.google-analytics.com and www.google.com/g/collect. Cookies _ga and _ga_<ID> are set. Case 3: no request besides the script, no cookie; window.dataLayer holds exactly the consent default, js, config and the two events. Loader shapes: appending the script, or an onerror that reports and returns, raise no page error; an uncaught promise rejection or a throwing onerror each raise one, which would fail every case in the three gated files.",
+        "fix_holds": true
+      },
+      "cross_fix": [
+        "F-6 — its After replaces the privacy bullet (lines 388-389) with one text per option here, and each already includes this option's change. Apply F-6's text, not both.",
+        "F-12 (group C) — this spike ran section 4's sketch as written (both ad settings inside `config`, no separate `set` call) and still saw gcs=G101 and npa=1 on the first page view, and no Google-signals request. The 'No Google script' Sydney text says 'the queue matches section 4', so it holds whichever way F-12 goes.",
+        "FYI-4 (group C) — Google's script also sent user_engagement to www.google.com/g/collect when the page closed; section 6's breadcrumb filter names only the www.google.com/ccm path.",
+        "FYI-5 (group A) — it also adds a by-hand check to section 8 step 6. With 'No Google script', merge both additions into one step text.",
+        "Side results for 'To verify at plan time' (lines 439-440), with a made-up ID: `release` set in `config` arrived as ep.release on the page view, on each custom event and on user_engagement; the boolean `on: true` arrived as the text ep.on=true.",
+        "The Sentry spec's 'To verify' item 'That Playwright can route a request to the .invalid host before any DNS lookup' holds: this review's spike routed and recorded a POST to sentry.invalid."
+      ],
+      "synthesis_note": "Merged: one strategy resolves all three. Feasibility#1 (anchor 100) and adversarial#4 describe the same leak (existing test files never install the fixture; Google's hosts resolve, unlike Sentry's .invalid DSN) with different mechanisms (a call in every file, versus a fail-closed resolver rule in the config). Feasibility#2 adds that the gcs/npa/dt assertions need Google's real gtag.js and nothing says where the fixture gets it (snapshot committed, or live). Choosing the script source is a real trade-off (Google-owned code in a public repo, versus a merge-blocking lane that depends on googletagmanager.com), so the merged finding is a decision. Coherence's deferred question 1 restates it.",
+      "verified_by": "verify-B.json",
+      "raw_constituents": [
+        {
+          "raw_id": "feasibility#1",
+          "reviewer": "feasibility",
+          "title": "Every existing lane test would still reach Google",
+          "severity": "P2",
+          "confidence": 100,
+          "autofix_class": "gated_auto",
+          "why_it_matters": "Every existing test in the `web` lane would download Google's gtag.js and send page-view hits to Google on every CI and local run. The fake Google Analytics ID and the Sydney time zone apply to the whole one-build lane, but only `privacy-choice.e2e.ts` installs the fixture that answers Google's hosts. `player.e2e.ts`, `a11y.e2e.ts`, `toast-occlusion.e2e.ts` and `pages.vr.ts` import `test` straight from `@playwright/test`, and none of them is on the changed-files list. Sentry's opt-in fixture is safe only because its fake DSN host is `.invalid` and never resolves. `www.googletagmanager.com` does resolve, and the spike showed that a made-up ID still gets a working script that sends a page view. A module-scope call that every lane file makes, the same shape `failOnUnexpectedPageErrors()` already has, keeps 'no test reaches Google' true and keeps a live third-party host out of the merge-blocking lane.",
+          "suggested_fix": "Have web/e2e/google-analytics.ts export a module-scope call, the same shape as failOnUnexpectedPageErrors(), that answers Google's hosts for every test in the calling file. Add web/e2e/player.e2e.ts, a11y.e2e.ts, toast-occlusion.e2e.ts and pages.vr.ts to 'Changed files' as callers of it. State in section 9 that every test in the lane answers Google's hosts locally, not only privacy-choice.e2e.ts.",
+          "evidence": [
+            "`web/playwright.e2e.config.ts`: `timezoneId: 'Australia/Sydney'` for every project, and a fake Google Analytics ID.",
+            "the shared fixture: answers Google's hosts locally and records every request",
+            "`web/e2e/google-analytics.ts` answers Google's hosts locally, the way Sentry's fixture answers its fake DSN, so no test reaches Google."
+          ]
+        },
+        {
+          "raw_id": "adversarial#4",
+          "reviewer": "adversarial",
+          "title": "Existing e2e cases will send real hits to Google",
+          "severity": "P2",
+          "confidence": 75,
+          "autofix_class": "gated_auto",
+          "why_it_matters": "About a hundred existing cases (player, accessibility, toast and the ten screenshots) will download Google's script and send real hits to Google from CI, which contradicts 'no test reaches Google'. The lane's one build gets the fake Google Analytics ID and every project runs as Sydney, so startAnalytics() runs on each page load. Only cases that install the new fixture get local answers, and the four existing files import test directly from @playwright/test. Sentry's fake DSN never had this gap because it is on .invalid, which cannot resolve, while Google's hosts do resolve; the spec also does not say where the fixture gets the real gtag.js that the gcs, npa and dt assertions need, and the spike answered only Google's collect requests locally.",
+          "suggested_fix": "In web/playwright.e2e.config.ts, make Google's hosts (www.googletagmanager.com, *.google-analytics.com, analytics.google.com, www.google.com) unresolvable for both projects with Chromium's --host-resolver-rules launch argument, so a case without the fixture fails closed like Sentry's .invalid DSN. The fixture fetches the real gtag.js with route.fetch(), which runs in Node and so is not affected by that rule, and answers every hit locally. Change section 9's claim to 'no test sends Google a hit'.",
+          "evidence": [
+            "`web/e2e/google-analytics.ts` answers Google's hosts locally, the way Sentry's fixture answers its fake DSN, so no test reaches Google.",
+            "`web/playwright.e2e.config.ts`: `timezoneId: 'Australia/Sydney'` for every project, and a fake Google Analytics ID.",
+            "afterLoad(() => addScript(`https://www.googletagmanager.com/gtag/js?id=${id}`));",
+            "Sydney: no popup; a page view with `gcs=G101` and `npa=1`"
+          ]
+        },
+        {
+          "raw_id": "feasibility#2",
+          "reviewer": "feasibility",
+          "title": "E2E assertions need Google's real gtag.js; its source is undecided",
+          "severity": "P2",
+          "confidence": 75,
+          "autofix_class": "manual",
+          "why_it_matters": "The Sydney, 'Yes' and privacy cases check `gcs=G101`, `npa=1` and `dt`. Only Google's own gtag.js puts those values on its collect requests. Yet section 9 answers every Google host locally and never says what the fixture returns for the script itself. If the fixture serves a stub script, the page sends no collect request at all: the Sydney case cannot pass, and the privacy case ('no Google request contains the title') passes while checking nothing. leocaseiro needs to choose between two options. (1) Commit a snapshot of the gtag.js that Google serves for the fake ID as a test fixture: no test reaches Google, but a Google-owned script then sits in a public repository, and the tests run a frozen copy until someone refreshes it. (2) Let only the script download through to Google, as the spike did: the tests run the live script, but the merge-blocking `web` job then depends on googletagmanager.com, and section 9's promise becomes 'no hit reaches Google'. Whichever is chosen, the privacy case should also check that at least one collect request was recorded.",
+          "suggested_fix": null,
+          "evidence": [
+            "**Sydney:** no popup; a page view with `gcs=G101` and `npa=1`",
+            "No Google request — address or body — contains any of them, and `dt` stays `Notation Hero`.",
+            "`web/e2e/google-analytics.ts` answers Google's hosts locally, the way Sentry's fixture answers its fake DSN, so no test reaches Google.",
+            "Google's collect requests answered locally, so nothing reached Google."
+          ]
+        }
+      ],
+      "triage_decision": {
+        "round": 3,
+        "decision": "Apply",
+        "option": "No Google script in tests",
+        "applied_in_commit": "09d09284",
+        "date": "2026-10-09",
+        "note": "Applied lines 81, 94-95, 359-362, 380-384 and 451; lines 388-389 went to F-6's matching variant instead. The fixture-row cell was shortened to fit the table's column ('(an empty `gtag.js`)'), so Prettier did not re-pad the table."
+      },
+      "applied_in_commit": "09d09284",
+      "quotes_note": "Every quote that fails strict matching fails only because the spec puts its opening words in bold; the words themselves match.",
+      "triage_rounds": [
+        {
+          "round": 3,
+          "decision": "Apply",
+          "option": "No Google script in tests",
+          "applied_in_commit": "09d09284",
+          "date": "2026-10-09",
+          "note": "Applied lines 81, 94-95, 359-362, 380-384 and 451; lines 388-389 went to F-6's matching variant instead. The fixture-row cell was shortened to fit the table's column ('(an empty `gtag.js`)'), so Prettier did not re-pad the table."
+        }
+      ]
+    },
+    {
+      "id": "F-6",
+      "title": "The privacy test can pass before any Google request has arrived",
+      "area": "Area 2 - the end-to-end tests",
+      "severity": "P2",
+      "severity_as_filed": "P2",
+      "severity_plain": "should fix — a real gap an implementer will hit",
+      "severity_note": "The only automated check that no title or track name reaches Google can pass while one does; an implementer who follows the text writes exactly that test.",
+      "confidence": 75,
+      "confidence_plain": "double-checked by reading the spec, the repo and the sources; will be hit in practice (not all of it run)",
+      "route": "proposed_fix",
+      "finding_type": "omission",
+      "reviewers": ["adversarial"],
+      "recommended_action": "Apply",
+      "verdict": "CONFIRMED_WITH_CORRECTION",
+      "correction": "The fix is right for F-5's 'Live script' option. Under F-5's 'No Google script' option there is no batch to wait for: the same idea reads window.dataLayer, which fills at once, and also checks the two things Google's script reads from the page. Both texts are given. The measured delay is about 5 s (5,010 ms and 5,006 ms), not only 'a few seconds'.",
+      "section": "## 9. Testing",
+      "section_lines": "364-398 (the Privacy bullet is 388-389)",
+      "section_exists": true,
+      "quotes_verbatim": false,
+      "quotes": [
+        {
+          "quote": "Privacy: open a fixture with a known title and track names. No Google request — address or body — contains any of them, and `dt` stays `Notation Hero`.",
+          "verbatim": false,
+          "line": 388,
+          "note": "lines 388-389. The words are exact; only the Markdown bold markers are missing (the spec has **Privacy:**). Not a misquote."
+        },
+        {
+          "quote": "sent, batched a few seconds later",
+          "verbatim": true,
+          "line": 458,
+          "note": ""
+        },
+        {
+          "quote": "automatic click tracking (button labels hold track names — the reason Sentry turned click breadcrumbs off)",
+          "verbatim": true,
+          "line": 63,
+          "note": ""
+        }
+      ],
+      "scenario": "A later change makes the Solo button send the track's name to Google. You open your song 'Moonlight Practice' and press Solo on 'Lead Guitar'. Five seconds later, Google receives 'Lead Guitar'. The privacy test was there to stop this, but it never presses Solo, and it reads the requests before Google's batch leaves — so it passes.",
+      "whats_wrong": "The privacy case opens a fixture and checks what was recorded, with nothing to wait for. Google sends events in batches about 5 s later, so the check can run when only the page view has arrived; it then proves nothing about the events, and passes. The case also never presses a control named after a track, although Solo and Mute are named 'Solo <track>' and 'Mute <track>' — the risk G8 names as the reason for typed events.",
+      "before": [
+        {
+          "lines": "388-389",
+          "text": "- **Privacy:** open a fixture with a known title and track names. No Google request — address or\n  body — contains any of them, and `dt` stays `Notation Hero`."
+        }
+      ],
+      "after": [
+        {
+          "replaces_lines": "388-389",
+          "variant": "if F-5 picks 'No Google script in tests' (the F-5 recommendation)",
+          "text": "- **Privacy:** open a fixture with a known title and track names, and press Solo and Mute on one of\n  its tracks (both buttons are named after the track). Wait until `window.dataLayer` holds the\n  `score_loaded` event, with the score's `track_count`, and both `mixer_change` events. Only then\n  check that no entry contains the title or a track name, that `document.title` stays\n  `Notation Hero` (Google's script sends it as `dt`), and that the page address holds neither.\n  Without the wait, an empty queue would pass."
+        },
+        {
+          "replaces_lines": "388-389",
+          "variant": "if F-5 picks 'Live script, hits kept local'",
+          "text": "- **Privacy:** open a fixture with a known title and track names, and press Solo and Mute on one of\n  its tracks (both buttons are named after the track). Wait until `web/e2e/google-analytics.ts`\n  has recorded the `score_loaded` event, with the score's `track_count`, and both `mixer_change`\n  events — Google sends events in batches about 5 s later. Only then check that no recorded Google\n  request — address or body — contains the title or a track name, and that `dt` stays\n  `Notation Hero`. Without the wait, a recorder that has caught only the page view would pass."
+        }
+      ],
+      "proposed_fix": "In the privacy case, press Solo and Mute on one track. Wait until the score_loaded event (with the score's track count) and both mixer_change events have been recorded. Only then check that nothing recorded holds the title or a track name.",
+      "why_it_works": "Waiting for three known events proves the recorder caught the events, not only the page view — the same reason the Sentry spec ends each 'nothing sent' case with a sentinel. Pressing Solo and Mute sends the one event that is built next to a track's name, so a change that puts the name into it fails the case.",
+      "plain_terms": {
+        "G8": "decision G8: a typed list of twelve events, every field from a fixed list or a number, because button labels hold track names",
+        "score_loaded / mixer_change": "two of the twelve events: a score reaches the screen; a mixer control changes",
+        "track_count": "the number of tracks, a field of score_loaded",
+        "dt": "the page title Google records with every hit",
+        "sentinel": "a known event a test waits for, to prove its recorder works before it checks for absence",
+        "fixture (score file)": "a test score in web/e2e/fixtures/; 'open a fixture' in section 9 means opening one",
+        "window.dataLayer": "the queue our code fills and Google's script reads"
+      },
+      "central_claim_check": "Confirmed. Batching: this review's spike, running the spec's own loader sketch, sent two mixer_change events back to back; both arrived in one batched request 5,010 ms later (5,006 ms on a rerun), while the page view arrived about 0.9 s after the page started loading. A check made right after a file opens therefore sees only the page view. The spec's own spike table says the same (line 458). Labels: the Tracks popover passes `name={track.name}` to the design system's TrackRow (web/app/play/TracksPopover.tsx:348), which labels the toggles `Solo ${name}` and `Mute ${name}` (client/src/components/ui/TrackRow/TrackRow.tsx:247 and :257), and TransportToggle makes that the aria-label (client/src/components/ui/TransportToggle/TransportToggle.tsx:71). So Solo and Mute are named after the track. The Sentry spec (PR #191), section 6, ends every 'nothing sent' case with a sentinel because 'Without the sentinel, a recorder that captured nothing would pass.'",
+      "contradicts": "none — checked section 4 'The tab title' (lines 213-215: the privacy test must fail if a title reaches Google; the wait makes that true), section 5 (the score_loaded and mixer_change fields), G8 (line 63), section 9's Sydney and Berlin bullets, and the spike table (line 458).",
+      "spike": {
+        "ran": true,
+        "what": "F-5's spike case 2 measured how long Google's script holds custom events before sending them, and that waiting for a named event in the recorded requests works.",
+        "result": "Two events were held and sent together 5.0 s after the calls; polling the recorder for them succeeded. The Solo and Mute presses were checked in source only (untested): the player was not built, because a read-only review runs no next build.",
+        "fix_holds": true
+      },
+      "cross_fix": [
+        "F-5 — pick the After that matches F-5's choice. Each variant already includes F-5's own change to lines 388-389, so apply one text only.",
+        "F-13 (group C) — if mixer_change becomes a union on `control`, Solo and Mute still carry `instrument`; no change here."
+      ],
+      "synthesis_note": "Unique. Coupled with F-5: the waits it adds assume the fixture records real collect requests.",
+      "verified_by": "verify-B.json",
+      "raw_constituents": [
+        {
+          "raw_id": "adversarial#5",
+          "reviewer": "adversarial",
+          "title": "Privacy e2e case can pass before any hit arrives",
+          "severity": "P2",
+          "confidence": 75,
+          "autofix_class": "gated_auto",
+          "why_it_matters": "The only automated check that no title or track name reaches Google can pass while a name leaks. Google batches custom events and sends them a few seconds later (the spike's table), so a case that opens a fixture and then reads the recorded requests may find only the page view, and an empty match proves nothing. The case also never presses a control whose label holds a track name, such as Solo and Mute, which TrackRow labels with the track's name; that is the leak path G8 cites. Sentry's spec closes the same hole by making each 'nothing sent' case wait for a sentinel, because 'a recorder that captured nothing would pass'.",
+          "suggested_fix": "In the privacy case, click one track's Solo and Mute. Wait until the fixture has recorded the score_loaded hit with the fixture's track_count and both mixer_change hits, and only then assert that no recorded Google request contains the title or any track name.",
+          "evidence": [
+            "Privacy: open a fixture with a known title and track names. No Google request — address or body — contains any of them, and `dt` stays `Notation Hero`.",
+            "sent, batched a few seconds later",
+            "automatic click tracking (button labels hold track names — the reason Sentry turned click breadcrumbs off)"
+          ]
+        }
+      ],
+      "triage_decision": {
+        "round": 3,
+        "decision": "Apply",
+        "option": "variant for 'No Google script in tests'",
+        "applied_in_commit": "f587f2e2",
+        "date": "2026-10-09"
+      },
+      "applied_in_commit": "f587f2e2",
+      "quotes_note": "Every quote that fails strict matching fails only because the spec puts its opening words in bold; the words themselves match.",
+      "triage_rounds": [
+        {
+          "round": 3,
+          "decision": "Apply",
+          "option": "variant for 'No Google script in tests'",
+          "applied_in_commit": "f587f2e2",
+          "date": "2026-10-09"
         }
       ]
     }
