@@ -68,8 +68,8 @@
       "P3": "worth fixing — small, cheap"
     },
     "triage_progress": {
-      "undecided": ["PQ-1", "PQ-2", "PQ-3", "PQ-4", "PF-6", "PO-1", "PO-2"],
-      "decided": ["PF-7", "PF-8"]
+      "undecided": ["PQ-3", "PQ-4", "PF-6", "PO-1", "PO-2"],
+      "decided": ["PF-7", "PF-8", "PQ-1", "PQ-2"]
     }
   },
   "already_applied": [
@@ -133,88 +133,6 @@
   ],
   "ambiguity_fixes": [],
   "undecided_findings": [
-    {
-      "id": "PQ-1",
-      "kind": "decision (the plan's open question QP-1)",
-      "severity": "P3",
-      "section": "Questions the spec left to the plan — QP-1; Task 5 (report.ts); Task 14 (the error event)",
-      "title": "An E202 whose message is empty is titled only \"Error\" in Sentry",
-      "scenario": "A visitor on a flaky network opens /play and the SoundFont download fails. The banner reads \"Error E202: Error\". In Sentry, the issue's title — and the alert email's subject — is just \"Error\", with an empty message. The code:E202 tag still finds it, but the list of issues tells you nothing at a glance.",
-      "whats_wrong": "AlphaTab raises a SoundFont network failure as an error whose message is \"\" (measured in the plan-time spike). The spec says E201–E204 keep their message.",
-      "before_after": [
-        {
-          "where": "Task 5 report.ts, plus one report.test.ts case",
-          "before": "E202 sends whatever AlphaTab passed — here an empty message, so the issue title is \"Error\".",
-          "after": "In report.ts, a code whose error arrives with an empty message sends that code's sentence from docs/reference/error-codes.md instead, e.g. `E202: AlphaTab raised its own error event — in practice, the soundfont download.` (E101–E103 keep their fixed sentences as now; a non-empty E202 keeps its own message.)"
-        }
-      ],
-      "options": [
-        {
-          "label": "1 — Fill an empty message with the code's sentence (recommended)",
-          "pros": "Readable issue titles and alert subjects; removes no text, so no privacy cost; a few lines in report.ts",
-          "cons": "One more rule in report.ts, and the sentence must stay in step with the reference page (the existing test pattern covers it)"
-        },
-        {
-          "label": "2 — Keep the spec as written",
-          "pros": "Zero change",
-          "cons": "An \"Error\" issue with an empty value, found only by the code tag"
-        }
-      ],
-      "recommendation": "1 — it only ever replaces nothing with something.",
-      "drop_consequence": "Leaving it: SoundFont failures stay titled \"Error\" in the issue list and the alert email."
-    },
-    {
-      "id": "PQ-2",
-      "kind": "decision (the plan's open question Q8, with security-lens's recommendation)",
-      "severity": "P3",
-      "section": "Questions the spec left to the plan — Q8; Task 5 (reportError's file context)",
-      "title": "The exact byte count can identify a well-known file",
-      "scenario": "A visitor downloads a popular tab file from a big tab site — thousands of people have the same file, byte for byte — and it fails to open. The report says gp5 and, say, 48,213 bytes, and Sentry keeps it for 30 days. The name never leaves the device, but someone who knows that site could match the exact size and work out which song it was.",
-      "whats_wrong": "The spec sends \"a size in bytes\" — exact. The extension plus an exact size is close to a unique key for a widely shared file.",
-      "before_after": [
-        {
-          "where": "Task 5 reportError, one place every report passes through; tests change 31→32, 5→8, 29→32",
-          "before": "file: { type: 'gp5', bytes: 48213 }",
-          "after": "file: { type: 'gp5', bytes: 65536 } — rounded up to the next power of two (0 stays 0)"
-        }
-      ],
-      "options": [
-        {
-          "label": "1 — Round up to the next power of two (recommended by security-lens)",
-          "pros": "One line in reportError, no call site changes; still tells empty, tiny, ordinary and over-the-limit apart; the home copy's \"type and size\" stays true",
-          "cons": "Loses exact sizes, which nothing uses today"
-        },
-        {
-          "label": "2 — Keep exact bytes (the spec)",
-          "pros": "No change",
-          "cons": "An exact size plus the type can point at one known file"
-        },
-        {
-          "label": "3 — Named buckets (e.g. under 16 KB, under 256 KB, under 1 MB, under 25 MB, over)",
-          "pros": "Readable at a glance",
-          "cons": "A table to keep in step with the 25 MB limit"
-        }
-      ],
-      "recommendation": "1 — the same protection as buckets for one line of code. Flip to 2 if exact sizes ever turn out to be needed to tell two importer failures apart.",
-      "spec_change": "Yes — \"a size in bytes\" becomes a rounded size; record it in the changelog entry if chosen.",
-      "raw_reviewer_findings": [
-        {
-          "title": "Exact byte count fingerprints the file (Q8)",
-          "severity": "P3",
-          "section": "Left open for the plan review — Lap 2's Q8, the file size (sent by Task 5's reportError)",
-          "why_it_matters": "A report with the file name removed can still say which song failed to open. An exact byte count plus the extension is close to a unique key for a tab file that many visitors download from the same site. These reports are kept for 30 days and can only be deleted as a whole issue. For E101–E103 and E105, the useful distinctions are empty, tiny, ordinary and over the limit, and a coarse size keeps all four. Rounding once inside reportError, which every report passes through, needs no change at the call sites, and the home page's 'the file's type and size' stays true.",
-          "finding_type": "omission",
-          "autofix_class": "manual",
-          "suggested_fix": "Round the size inside reportError before it is sent: `contexts.file.bytes` becomes the next power of two at or above the real size (0 stays 0). Update the expected sizes in report.test.ts (31 → 32), OpenFileControl.test.tsx (5 → 8) and end-to-end case 2 (29 → 32).",
-          "confidence": 50,
-          "evidence": [
-            "The spec sends the exact byte count. An exact size and the extension together could identify a well-known downloaded tab file. Option: round it into ranges.",
-            "const facts = { type: fileType(file.name), bytes: file.size };",
-            "file: { type: next.type, bytes: next.bytes.byteLength },"
-          ]
-        }
-      ]
-    },
     {
       "id": "PQ-3",
       "kind": "decision (the plan's open question Q12, lap 3 of the spec)",
@@ -556,6 +474,96 @@
       "decided_on": "2026-10-09",
       "triage_round": 1,
       "decision_note": "Applied. The options move into const sentryBuildOptions: SentryBuildOptions (exported as a type from @sentry/nextjs/config in 11.1.0, checked in the package); a production build with the token but without org and project throws, naming them. Choice 2, Task 1's org/project note, Task 17 Step 2 and the README's failure list updated; changelog line added. The throw itself was not exercised: that needs SENTRY_AUTH_TOKEN set, which no agent may do."
+    },
+    {
+      "id": "PQ-1",
+      "kind": "decision (the plan's open question QP-1)",
+      "severity": "P3",
+      "section": "Questions the spec left to the plan — QP-1; Task 5 (report.ts); Task 14 (the error event)",
+      "title": "An E202 whose message is empty is titled only \"Error\" in Sentry",
+      "scenario": "A visitor on a flaky network opens /play and the SoundFont download fails. The banner reads \"Error E202: Error\". In Sentry, the issue's title — and the alert email's subject — is just \"Error\", with an empty message. The code:E202 tag still finds it, but the list of issues tells you nothing at a glance.",
+      "whats_wrong": "AlphaTab raises a SoundFont network failure as an error whose message is \"\" (measured in the plan-time spike). The spec says E201–E204 keep their message.",
+      "before_after": [
+        {
+          "where": "Task 5 report.ts, plus one report.test.ts case",
+          "before": "E202 sends whatever AlphaTab passed — here an empty message, so the issue title is \"Error\".",
+          "after": "In report.ts, a code whose error arrives with an empty message sends that code's sentence from docs/reference/error-codes.md instead, e.g. `E202: AlphaTab raised its own error event — in practice, the soundfont download.` (E101–E103 keep their fixed sentences as now; a non-empty E202 keeps its own message.)"
+        }
+      ],
+      "options": [
+        {
+          "label": "1 — Fill an empty message with the code's sentence (recommended)",
+          "pros": "Readable issue titles and alert subjects; removes no text, so no privacy cost; a few lines in report.ts",
+          "cons": "One more rule in report.ts, and the sentence must stay in step with the reference page (the existing test pattern covers it)"
+        },
+        {
+          "label": "2 — Keep the spec as written",
+          "pros": "Zero change",
+          "cons": "An \"Error\" issue with an empty value, found only by the code tag"
+        }
+      ],
+      "recommendation": "1 — it only ever replaces nothing with something.",
+      "drop_consequence": "Leaving it: SoundFont failures stay titled \"Error\" in the issue list and the alert email.",
+      "decision": "Option 1 — fill an empty message with the code's sentence",
+      "decided_on": "2026-10-09",
+      "triage_round": 2,
+      "decision_note": "Applied. report.ts gains SENTENCES_WHEN_EMPTY (E202 only), messageOf and fixedSentence: an E202 whose message is empty is sent through withFixedMessage with E202's sentence; a non-empty E202 keeps its message; E101-E103 unchanged. New report.test.ts case (with an eslint-disable for unicorn/error-message, which rejects new Error('') — the input under test); Choice 4, the Questions table, Task 5's Interfaces and Task 14's comment updated; changelog line added. Run during triage with @sentry/nextjs 11.1.0 in a throwaway worktree: report.test.ts 24/24, ESLint 0 (--max-warnings 0), tsc and Prettier pass."
+    },
+    {
+      "id": "PQ-2",
+      "kind": "decision (the plan's open question Q8, with security-lens's recommendation)",
+      "severity": "P3",
+      "section": "Questions the spec left to the plan — Q8; Task 5 (reportError's file context)",
+      "title": "The exact byte count can identify a well-known file",
+      "scenario": "A visitor downloads a popular tab file from a big tab site — thousands of people have the same file, byte for byte — and it fails to open. The report says gp5 and, say, 48,213 bytes, and Sentry keeps it for 30 days. The name never leaves the device, but someone who knows that site could match the exact size and work out which song it was.",
+      "whats_wrong": "The spec sends \"a size in bytes\" — exact. The extension plus an exact size is close to a unique key for a widely shared file.",
+      "before_after": [
+        {
+          "where": "Task 5 reportError, one place every report passes through; tests change 31→32, 5→8, 29→32",
+          "before": "file: { type: 'gp5', bytes: 48213 }",
+          "after": "file: { type: 'gp5', bytes: 65536 } — rounded up to the next power of two (0 stays 0)"
+        }
+      ],
+      "options": [
+        {
+          "label": "1 — Round up to the next power of two (recommended by security-lens)",
+          "pros": "One line in reportError, no call site changes; still tells empty, tiny, ordinary and over-the-limit apart; the home copy's \"type and size\" stays true",
+          "cons": "Loses exact sizes, which nothing uses today"
+        },
+        {
+          "label": "2 — Keep exact bytes (the spec)",
+          "pros": "No change",
+          "cons": "An exact size plus the type can point at one known file"
+        },
+        {
+          "label": "3 — Named buckets (e.g. under 16 KB, under 256 KB, under 1 MB, under 25 MB, over)",
+          "pros": "Readable at a glance",
+          "cons": "A table to keep in step with the 25 MB limit"
+        }
+      ],
+      "recommendation": "1 — the same protection as buckets for one line of code. Flip to 2 if exact sizes ever turn out to be needed to tell two importer failures apart.",
+      "spec_change": "Yes — \"a size in bytes\" becomes a rounded size; record it in the changelog entry if chosen.",
+      "raw_reviewer_findings": [
+        {
+          "title": "Exact byte count fingerprints the file (Q8)",
+          "severity": "P3",
+          "section": "Left open for the plan review — Lap 2's Q8, the file size (sent by Task 5's reportError)",
+          "why_it_matters": "A report with the file name removed can still say which song failed to open. An exact byte count plus the extension is close to a unique key for a tab file that many visitors download from the same site. These reports are kept for 30 days and can only be deleted as a whole issue. For E101–E103 and E105, the useful distinctions are empty, tiny, ordinary and over the limit, and a coarse size keeps all four. Rounding once inside reportError, which every report passes through, needs no change at the call sites, and the home page's 'the file's type and size' stays true.",
+          "finding_type": "omission",
+          "autofix_class": "manual",
+          "suggested_fix": "Round the size inside reportError before it is sent: `contexts.file.bytes` becomes the next power of two at or above the real size (0 stays 0). Update the expected sizes in report.test.ts (31 → 32), OpenFileControl.test.tsx (5 → 8) and end-to-end case 2 (29 → 32).",
+          "confidence": 50,
+          "evidence": [
+            "The spec sends the exact byte count. An exact size and the extension together could identify a well-known downloaded tab file. Option: round it into ranges.",
+            "const facts = { type: fileType(file.name), bytes: file.size };",
+            "file: { type: next.type, bytes: next.bytes.byteLength },"
+          ]
+        }
+      ],
+      "decision": "Option 1 — round up to the next power of two",
+      "decided_on": "2026-10-09",
+      "triage_round": 2,
+      "decision_note": "Applied. report.ts gains roundedSize (an integer loop, no floating point; 0 stays 0) used for contexts.file.bytes. Tests: report.test.ts 31->32 plus a new rounding case (0,1,5,32,48_213 -> 0,1,8,32,65_536); Task 10's e2e case 2 29->32; Task 11's OpenFileControl E105 case 5->8 (its E102 case stays 1). Choice 3, the Questions table, Task 5's Interfaces and Task 17 Step 7 updated; changelog line added. Over-the-limit keeps its own code (E101), checked in docs/reference/error-codes.md."
     }
   ]
 }

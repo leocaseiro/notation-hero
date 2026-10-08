@@ -180,6 +180,13 @@ loop come next.
   only warns about a missing project, then deploys with the maps deleted, which `errorHandler`
   never sees. The build now throws instead, carrying lap 3's "a failed source-map upload stops the
   deploy" to that one quiet path.
+- **An E202 that arrives with no message sends E202's meaning instead.** A SoundFont network
+  failure reaches AlphaTab's `error` event with an empty message, which titled its Sentry issue and
+  alert email only "Error". `reportError` now sends E202's sentence from the reference page in that
+  one case; an E202 with a message keeps it, and no text from the visitor is added.
+- **The file size is rounded up to the next power of two.** The spec sent the exact byte count, and
+  with the type an exact size could single out a widely shared tab file. A 48,213-byte file is now
+  sent as 65,536; 0 stays 0, and a file over the limit already has its own code, E101.
 
 **Registry:** L11-sentry points at the spec; L11-srcmap reworded (D4); L11-envsecret ⛔ superseded
 and F7-sentry rewritten, because the source-map upload runs inside Vercel's build rather than a

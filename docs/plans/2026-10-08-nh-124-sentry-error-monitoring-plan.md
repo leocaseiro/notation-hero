@@ -235,27 +235,23 @@ recorded notes for this stage. Each one, and where it lands:
 
 ## Questions the spec left to the plan
 
-| Question                                                            | Answer                                                                                                                                                                                                                                                                                   |
-| ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Q2 — does pnpm need `allowBuilds` entries for `@sentry/nextjs`?     | **No.** No install scripts anywhere in its tree (verified).                                                                                                                                                                                                                              |
-| Q3 — re-check the SDK's behaviour against the version pnpm resolves | Done for 11.1.0: the four integration names, the `unhandled` session status, the `page` session lifecycle, `attachStacktrace` on, permissive `dataCollection` defaults. Task 6's test keeps checking the names on every later version.                                                   |
-| Q5 — how are the three error pages seen in a real browser?          | Task 7: a temporary throw (never committed) under `next dev`, looked at desktop and phone width, screenshots in the PR.                                                                                                                                                                  |
-| Q6 — how does the open-file code key E105?                          | Task 11: the `read` flag chooses the code, the toast id, and (for a drop) the announcement.                                                                                                                                                                                              |
-| Q7 — blank every chained exception's message for E101–E103?         | Moot: the error sent for those codes is built fresh, with no `cause` (Task 5).                                                                                                                                                                                                           |
-| Q9 — which end-to-end tests install the envelope recorder?          | `error-reporting.e2e.ts` and the six `player.e2e.ts` cases that gain a reporting assertion. Every other page load sends its session ping to `sentry.invalid`, which never resolves (the `.invalid` domain is reserved, RFC 6761): it fails at the DNS lookup and sends nothing anywhere. |
-| Q10 — how does `@sentry/nextjs` load under Vitest?                  | As the Node build. `web/vitest.setup.ts` replaces it for every unit test (Task 5): no unit test talks to the real SDK.                                                                                                                                                                   |
-| Q11 — repeat setup step 6 from the new domain                       | Belongs to NH-278.                                                                                                                                                                                                                                                                       |
-| Q14 — in which order do the commits land?                           | The task order below.                                                                                                                                                                                                                                                                    |
+| Question                                                            | Answer                                                                                                                                                                                                                                                                                                                |
+| ------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Q2 — does pnpm need `allowBuilds` entries for `@sentry/nextjs`?     | **No.** No install scripts anywhere in its tree (verified).                                                                                                                                                                                                                                                           |
+| Q3 — re-check the SDK's behaviour against the version pnpm resolves | Done for 11.1.0: the four integration names, the `unhandled` session status, the `page` session lifecycle, `attachStacktrace` on, permissive `dataCollection` defaults. Task 6's test keeps checking the names on every later version.                                                                                |
+| Q5 — how are the three error pages seen in a real browser?          | Task 7: a temporary throw (never committed) under `next dev`, looked at desktop and phone width, screenshots in the PR.                                                                                                                                                                                               |
+| Q6 — how does the open-file code key E105?                          | Task 11: the `read` flag chooses the code, the toast id, and (for a drop) the announcement.                                                                                                                                                                                                                           |
+| Q7 — blank every chained exception's message for E101–E103?         | Moot: the error sent for those codes is built fresh, with no `cause` (Task 5).                                                                                                                                                                                                                                        |
+| Q9 — which end-to-end tests install the envelope recorder?          | `error-reporting.e2e.ts` and the six `player.e2e.ts` cases that gain a reporting assertion. Every other page load sends its session ping to `sentry.invalid`, which never resolves (the `.invalid` domain is reserved, RFC 6761): it fails at the DNS lookup and sends nothing anywhere.                              |
+| Q10 — how does `@sentry/nextjs` load under Vitest?                  | As the Node build. `web/vitest.setup.ts` replaces it for every unit test (Task 5): no unit test talks to the real SDK.                                                                                                                                                                                                |
+| Q11 — repeat setup step 6 from the new domain                       | Belongs to NH-278.                                                                                                                                                                                                                                                                                                    |
+| Q14 — in which order do the commits land?                           | The task order below.                                                                                                                                                                                                                                                                                                 |
+| QP-1 (new) — an E202 whose message is empty                         | **Decided in the plan review, lap 1:** a SoundFont network failure reaches the `error` event with the message `""`, which titles its issue only `Error`; `reportError` sends E202's sentence from the reference page in that case, as E101–E103 always do (Task 5, Choice 4). A non-empty E202 keeps its own message. |
+| Q8 (lap 2) — how exact is the file size?                            | **Decided in the plan review, lap 1:** rounded up to the next power of two in `reportError` (Task 5, Choice 3); 0 stays 0. An exact size and the type together could identify a widely shared tab file, and a file over the limit already has its own code, E101.                                                     |
 
 **Left open for the plan review** — the plan builds what the spec says today; each of these would
 change what a visitor sees or what is sent, so it is the owner's call:
 
-- **QP-1 (new) — an E202 with an empty message.** A SoundFont network failure reaches the `error`
-  event as an error whose message is `""`, so its Sentry issue is titled only `Error`. The `code:E202`
-  tag still finds it. Option: when the message is empty, send E202's sentence from the reference
-  page instead, as E101–E103 do. It removes no text, so it costs no privacy.
-- **Lap 2's Q8 — the file size.** The spec sends the exact byte count. An exact size and the
-  extension together could identify a well-known downloaded tab file. Option: round it into ranges.
 - **Lap 3's Q12 — the E105 toast after the swap.** An E105 thrown after the new score replaced the
   open one says "could not be opened" about a score that is now on screen.
 - **Lap 3's Q13 — the picker's announcement.** A drop writes E105 into the player's screen-reader
@@ -276,10 +272,15 @@ review can overturn any of them.
    build that has the token but not both slugs throws, naming them. Approved in the plan review,
    lap 1.
 3. **`FileFacts` travels twice:** as the tag `file_type`, so an issue's Tags panel shows the spread
-   of file types, and as a `file` context `{ type, bytes }`, shown on each event.
+   of file types, and as a `file` context `{ type, bytes }`, shown on each event. `bytes` is
+   rounded up to the next power of two (0 stays 0), where the spec sent the exact count: an exact
+   size and the type together could single out a widely shared file, and nothing needs the exact
+   number. Approved in the plan review, lap 1.
 4. **For E101–E103, `reportError` sends a fresh `Error`** holding the fixed sentence, with the
    original's `name` and stack frames and **no `cause`**. No text from the file can travel in the
-   message or in a chained error.
+   message or in a chained error. E202 does the same only when its error arrives with an empty
+   message, as a SoundFont network failure does, so its issue is not titled just `Error`; a
+   non-empty E202 keeps its own words. Approved in the plan review, lap 1.
 5. **`isStorageRefusal` and `noteError` read an error's `name` by shape,** not with
    `instanceof Error`: jsdom's `DOMException` is not an `Error`. The breadcrumb carries the error's
    name, never its message.
@@ -1338,7 +1339,9 @@ build, so the unit lane replaces it once, in `web/vitest.setup.ts`, for every te
     — calls `captureException(sent, { captureContext })`, or
     `captureException(sent, { mechanism: { handled: false }, captureContext })` when `handled` is
     `false`. `captureContext` is `{ level, tags }` plus `contexts: { file: { type, bytes } }` when
-    `file` is given; `tags` holds `code` and `file_type` when given.
+    `file` is given, `bytes` rounded up to a power of two; `tags` holds `code` and `file_type` when
+    given. E101–E103 send their fixed sentence in place of the message, and E202 sends its own
+    sentence when its message is empty.
   - `noteError(error: unknown, what: string): void` — a breadcrumb
     `{ category: 'notation-hero', level: 'warning', message: what, data: { error: <its name> } }`
   - `isStorageRefusal(error: unknown): boolean`
@@ -1425,16 +1428,31 @@ describe('reportError', () => {
     ]);
   });
 
-  it("sends the file's type and size, never its name", () => {
+  it("sends the file's type and its rounded size, never its name", () => {
     report.reportError(new Error('x'), { code: 'E103', file: { type: 'gp5', bytes: 31 } });
     const [[, hint]] = captured();
     expect(hint).toEqual({
       captureContext: {
         level: 'error',
         tags: { code: 'E103', file_type: 'gp5' },
-        contexts: { file: { type: 'gp5', bytes: 31 } },
+        contexts: { file: { type: 'gp5', bytes: 32 } },
       },
     });
+  });
+
+  it('rounds the size up to a power of two, so an exact size cannot point at one file', () => {
+    for (const bytes of [0, 1, 5, 32, 48_213]) {
+      report.reportError(new Error('x'), { file: { type: 'gp5', bytes } });
+    }
+    expect(captured().map(([, hint]) => hint)).toEqual(
+      [0, 1, 8, 32, 65_536].map((bytes) => ({
+        captureContext: {
+          level: 'error',
+          tags: { file_type: 'gp5' },
+          contexts: { file: { type: 'gp5', bytes } },
+        },
+      })),
+    );
   });
 
   for (const code of ['E101', 'E102', 'E103'] as const) {
@@ -1465,6 +1483,17 @@ describe('reportError', () => {
     const error = new Error('Soundfont is not a valid Soundfont2 file');
     report.reportError(error, { code: 'E202', handled: false });
     expect(captured()[0]?.[0]).toBe(error);
+  });
+
+  it('sends E202 its meaning when AlphaTab gives it no message at all', () => {
+    // eslint-disable-next-line unicorn/error-message -- the input under test: AlphaTab reports a SoundFont network failure with exactly this empty message
+    report.reportError(new Error(''), { code: 'E202', handled: false });
+    const [[sent, hint]] = captured();
+    expect((sent as Error).message).toBe(`E202: ${meaningOf('E202')}`);
+    expect(hint).toEqual({
+      mechanism: { handled: false },
+      captureContext: { level: 'error', tags: { code: 'E202' } },
+    });
   });
 });
 
@@ -1631,10 +1660,42 @@ const FIXED_MESSAGES: Partial<Record<ErrorCode, string>> = {
   [ERROR.notAScore]: 'E103: No AlphaTab importer accepts the bytes.',
 };
 
+// E202 keeps AlphaTab's own message, which is the useful part, except that a SoundFont network
+// failure arrives with none, and an empty message titles the issue only "Error". In that one case
+// the report sends E202's meaning, from the same reference page.
+const SENTENCES_WHEN_EMPTY: Partial<Record<ErrorCode, string>> = {
+  [ERROR.engineRuntime]:
+    'E202: AlphaTab raised its own error event — in practice, the soundfont download.',
+};
+
 /** An error's `name`, read by shape: jsdom's DOMException, for one, is not an `Error`. */
 function nameOf(error: unknown): string | undefined {
   if (typeof error !== 'object' || error === null || !('name' in error)) return undefined;
   return typeof error.name === 'string' ? error.name : undefined;
+}
+
+/** An error's `message`, read by shape, as `nameOf` reads its name. */
+function messageOf(error: unknown): string | undefined {
+  if (typeof error !== 'object' || error === null || !('message' in error)) return undefined;
+  return typeof error.message === 'string' ? error.message : undefined;
+}
+
+/** The sentence a report sends in place of the error's own message, or undefined to keep it. */
+function fixedSentence(code: ErrorCode | undefined, error: unknown): string | undefined {
+  if (code === undefined) return undefined;
+  return FIXED_MESSAGES[code] ?? (messageOf(error) === '' ? SENTENCES_WHEN_EMPTY[code] : undefined);
+}
+
+/**
+ * The size a report sends: rounded up to a power of two, so the type and an exact size cannot
+ * single out one widely shared file. It still tells an empty file, a tiny one and an ordinary one
+ * apart; a file over the limit has its own code, E101.
+ */
+function roundedSize(bytes: number): number {
+  if (bytes <= 0) return 0;
+  let size = 1;
+  while (size < bytes) size *= 2;
+  return size;
 }
 
 /**
@@ -1665,7 +1726,7 @@ export function reportError(
   } = {},
 ): void {
   const { code, level = 'error', file, handled } = options;
-  const sentence = code === undefined ? undefined : FIXED_MESSAGES[code];
+  const sentence = fixedSentence(code, error);
   const sent = sentence === undefined ? error : withFixedMessage(error, sentence);
   const tags: Record<string, string> = {};
   if (code !== undefined) tags.code = code;
@@ -1673,7 +1734,9 @@ export function reportError(
   const captureContext = {
     level,
     tags,
-    ...(file === undefined ? {} : { contexts: { file: { type: file.type, bytes: file.bytes } } }),
+    ...(file === undefined
+      ? {}
+      : { contexts: { file: { type: file.type, bytes: roundedSize(file.bytes) } } }),
   };
   // Only the error pages (E901) and the player failures E201–E204 pass `handled: false`. It marks
   // the visit unhandled, which is what the interim health number counts.
@@ -1756,7 +1819,7 @@ export function addInstrumentsTag(event: SentryEvent): void {
 - [ ] **Step 5: Run the test again**
 
 Run: `pnpm --filter @notation-hero/web exec vitest run lib/monitoring/report.test.ts`
-Expected: PASS — 22 tests.
+Expected: PASS — 24 tests.
 
 - [ ] **Step 6: The whole unit lane still passes with the stand-in SDK**
 
@@ -3057,7 +3120,8 @@ test('a file that is not a score sends an E103 warning with its type and size, n
   const e103 = withCode(sentry, 'E103')[0] ?? {};
   expect(e103.level).toBe('warning');
   expect(e103.tags?.file_type).toBe('gp5');
-  expect(e103.contexts?.file).toEqual({ type: 'gp5', bytes: bytes.length });
+  // 29 bytes, sent rounded up to the next power of two.
+  expect(e103.contexts?.file).toEqual({ type: 'gp5', bytes: 32 });
   // The fixed sentence, not the engine's parse message, which can quote the file.
   expect(messageOf(e103)).toBe('E103: No AlphaTab importer accepts the bytes.');
   expect(sentry.raw().join('\n')).not.toContain('secret-song-name');
@@ -3242,7 +3306,8 @@ describe('the open-file catch', () => {
           captureContext: {
             level: 'error',
             tags: { code: 'E105', file_type: 'gp' },
-            contexts: { file: { type: 'gp', bytes: 5 } },
+            // Five bytes, sent rounded up to the next power of two.
+            contexts: { file: { type: 'gp', bytes: 8 } },
           },
         },
       ],
@@ -4404,7 +4469,7 @@ The `error` subscription (`:140-143`) becomes:
 useAlphaTabEvent(api, 'error', (cause) => {
   // E202, unhandled, as it arrived. AlphaTab passes an Error in every case measured, though its
   // class and type field do not survive the worker, and a SoundFont network failure carries an
-  // empty message.
+  // empty message, which reportError replaces with E202's meaning.
   reportError(cause, { code: ERROR.engineRuntime, handled: false });
   setRuntimeError(`Error ${ERROR.engineRuntime}: ${String(cause)}`);
   setDismissed(false);
@@ -4854,8 +4919,8 @@ The first production deploy proves what no test here can. Setup step 6, in a bro
 blocker** (one would block Sentry just as decision D3 accepts for visitors): open the site at a
 domain step 3 lists and open a file that is not a score.
 
-- An E103 warning appears in Sentry, with `file_type` and the size and without the name; its
-  alert email arrives.
+- An E103 warning appears in Sentry, with `file_type` and the size rounded up to a power of two,
+  and without the name; its alert email arrives.
 - Its stack shows our own `PlayerShell.tsx` frame, readable, with the code around it — the source
   maps reached the **EU** region with the token and the `org` slug alone. AlphaTab's frames above
   it stay minified (a known limit).
