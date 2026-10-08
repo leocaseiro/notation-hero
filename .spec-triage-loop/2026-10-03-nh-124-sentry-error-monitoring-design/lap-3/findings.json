@@ -77,8 +77,14 @@
       "undecided": [],
       "pending_apply": []
     },
-    "triage_status": "TRIAGED (2026-10-05/08): all 9 decided, all applied — F-32 and F-34 without a picker (0de0f45f); F-31 as an integration after a real-SDK spike (a3009b9d); F-33 per the owner's direction and FYI-16 option 1 (26947202); FYI-15, 17, 18 and 19 (d5d56ca3). Spec frontmatter: lap 3, last_applied P2. Step 7 is put to the owner: the exit signal was not clean, so the rule re-laps.",
-    "triage_rounds": "Five picker rounds: F-31 (the owner asked for a real-SDK spike); round 2 sent while the spike ran, lost when the owner's computer slept; F-31 again (1b); round 2 again (F-33, FYI-16); round 3 (the four observations, one multi-select card). A separate picker on the domain setup (primary address, splitting NH-278) was the owner's own request, outside the triage."
+    "triage_status": "TRIAGED (2026-10-05/08): all 9 decided, all applied — F-32 and F-34 without a picker (0de0f45f); F-31 as an integration after a real-SDK spike (a3009b9d); F-33 per the owner's direction and FYI-16 option 1 (26947202); FYI-15, 17, 18 and 19 (d5d56ca3). Spec frontmatter: lap 3, last_applied P2. Step 7: the owner moved on to the plan over the rule's re-lap (see header.step7).",
+    "triage_rounds": "Five picker rounds: F-31 (the owner asked for a real-SDK spike); round 2 sent while the spike ran, lost when the owner's computer slept; F-31 again (1b); round 2 again (F-33, FYI-16); round 3 (the four observations, one multi-select card). A separate picker on the domain setup (primary address, splitting NH-278) was the owner's own request, outside the triage.",
+    "step7": {
+      "decided_by": "the owner, 2026-10-08",
+      "decision": "EXIT to PLAN, overriding the rule as written (which re-laps, because lap 3's review was not clean).",
+      "evidence_shown": "Lap 3 of at most 5; open P0/P1 findings 0 after lap 2 and 0 after lap 3; severity fell from P1 (laps 1-2) to P2; every lap-3 change was spiked or type-checked; the plan and the code each get their own review loop; the v0 spec ran all 5 laps without coming back clean.",
+      "next": "NH-124 -> PLAN; write the implementation plan in docs/plans/, then its doc-review loop (PLAN REVIEW)."
+    }
   },
   "already_applied": [],
   "ambiguity_fixes": [],

@@ -161,6 +161,11 @@ unless marked as applied without asking:
   under `.next/server` and the files in `public/`, which browsers download too; a failed
   music-font download (E203) stops the E204 clock, so it sends no false E204.
 
+**The spec review ends after lap 3** (leocaseiro, 2026-10-08). The loop's rule would review
+again, because lap 3's review was not clean, but nothing above P2 remained, and every lap-3
+change was spiked or type-checked before it landed. The implementation plan and its own review
+loop come next.
+
 **Registry:** L11-sentry points at the spec; L11-srcmap reworded (D4); L11-envsecret ⛔ superseded
 and F7-sentry rewritten, because the source-map upload runs inside Vercel's build rather than a
 GitHub Actions job.
