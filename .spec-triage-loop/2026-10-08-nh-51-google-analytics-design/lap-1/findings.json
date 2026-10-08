@@ -49,7 +49,7 @@
       "dropped_anchor_0_25": 0,
       "silent_engine_edits": 0
     },
-    "finding_count_undecided": 18,
+    "finding_count_undecided": 17,
     "finding_count_note": "13 findings to triage + 2 ambiguity fixes + 5 FYI observations + R1 + Q1 = 22 items. The triage cap (12 findings or 5 picker rounds per invocation) means two triage invocations.",
     "exit_signal_raw": "NOT CLEAN — the headless envelope carries an Entailed corrections block (7 items), Proposed fixes (4) and Decisions (4), and ends with the documented `Review complete` line. See engine-envelope.txt.",
     "silent_autofixes_by_engine": "none — this invocation was report-only (the loop's REVIEW-MODE), so the engine applied nothing. F-14, the only one-answer fix at anchor 100, is carried as an ambiguity fix for the triage half. The spec is byte-identical to f9c1fdf6.",
@@ -70,212 +70,12 @@
       "P2": "should fix — a real gap an implementer will hit",
       "P3": "worth fixing — small and cheap"
     },
-    "triage_progress": "invocation 1: step 0 done (F-15, F-14); round 1 done (F-2 option 1, F-1 applied; F-3 re-asked in round 2)",
-    "finding_count_decided": 4
+    "triage_progress": "invocation 1: step 0 done (F-15, F-14); round 1 (F-2 option 1, F-1 applied; F-3 clarified); round 2 (F-3 option B applied; a memory rule saved: every Jira key gets a short summary at least once per message). Picker rounds used: 2 of 5; finding cap used: 4 of 12 (F-3 counts twice).",
+    "finding_count_decided": 5
   },
   "already_applied": [],
   "ambiguity_fixes": [],
   "undecided_findings": [
-    {
-      "id": "F-3",
-      "title": "Sentry reports visitors in Europe before this ticket's popup exists",
-      "area": "Area 1 - who is asked, and when it goes live",
-      "severity": "P2",
-      "severity_as_filed": "P2",
-      "severity_plain": "should fix — a real gap an implementer will hit",
-      "severity_note": "A real gap in the launch order that breaks G5 for a period; the fix is a choice about another ticket's go-live.",
-      "confidence": 75,
-      "confidence_plain": "double-checked by reading the spec, the repo and the sources; will be hit in practice (not all of it run)",
-      "route": "decision",
-      "finding_type": "omission",
-      "reviewers": ["feasibility"],
-      "recommended_action": "Decide",
-      "verdict": "CONFIRMED",
-      "correction": "",
-      "section": "## 6. Changes to Sentry's design",
-      "section_lines": "289-307",
-      "section_exists": true,
-      "quotes_verbatim": true,
-      "quotes": [
-        {
-          "quote": "This spec now; the code after NH-124 merges, then a rebase",
-          "verbatim": true,
-          "line": 65,
-          "note": "decision G10"
-        },
-        {
-          "quote": "In Europe nothing loads — Sentry included — until the visitor answers",
-          "verbatim": true,
-          "line": 60,
-          "note": "decision G5"
-        },
-        {
-          "quote": "Made in this ticket's pull request, after NH-124 merges:",
-          "verbatim": true,
-          "line": 291,
-          "note": "section 6"
-        },
-        {
-          "quote": "NH-349 should land before or with this ticket's go-live.",
-          "verbatim": true,
-          "line": 425,
-          "note": "spans lines 425-426"
-        }
-      ],
-      "scenario": "You live in Madrid. In the week NH-124 goes live, you open Notation Hero and a font fails to load. Sentry receives an error report and a visit ping from your browser, and nobody asked you: the question for visitors in Europe arrives only with this later ticket. The spec says that in Europe nothing loads, Sentry included, until you answer. For that week, it is not true.",
-      "whats_wrong": "G5 promises that in Europe nothing loads, Sentry included, until the visitor answers. But this ticket's code follows NH-124, and NH-124 goes live first, with Sentry's address set and a live check right after its first deploy. From NH-124's deploy to this ticket's, every visitor in Europe is reported, with a visit ping, without being asked. The Sentry spec accepts this in its Non-goals but names NH-349 as the popup, which G7 moved here; this spec does not mention the gap.",
-      "before": [
-        {
-          "lines": "357-358",
-          "text": "5. **Vercel → Environment Variables, Production only:** `NEXT_PUBLIC_GA_ID`. Public by design — it\n   ships inside the page. Then redeploy: variables reach new deployments only."
-        },
-        {
-          "lines": "after 307",
-          "text": "(absent — section 6 lists only what changes after NH-124 merges; nothing covers the time between the two deploys)"
-        },
-        {
-          "lines": "after 430",
-          "text": "(absent — Known limits has no line about the time between NH-124's deploy and this ticket's)"
-        },
-        {
-          "lines": "75",
-          "text": "| `web/lib/privacy/choice.ts`     | `asksFirst()`, `savedChoice()`, `saveChoice()`, `allowed()`: the one rule both tools follow (section 2) |"
-        },
-        {
-          "lines": "94-95",
-          "text": "- `web/playwright.e2e.config.ts`: `timezoneId: 'Australia/Sydney'` for every project, and a fake\n  Google Analytics ID."
-        }
-      ],
-      "options": [
-        {
-          "label": "A — Hold Sentry's DSN until this ticket's deploy",
-          "what": "NH-124 goes live without NEXT_PUBLIC_SENTRY_DSN, so its SDK sends nothing. The owner adds the DSN in this ticket's section 8, step 5, beside the Google Analytics ID. Also changes the Sentry spec's section 5 (steps 5-6) and NH-124's plan, Task 17 (Steps 1 and 7).",
-          "pros": [
-            "No new code anywhere.",
-            "G5 holds from the first report ever sent.",
-            "Nothing to undo later."
-          ],
-          "cons": [
-            "No error reports from anyone, anywhere, until this ticket ships — longer if F-2's option 1 makes it wait for NH-349.",
-            "NH-124's own launch proves less: its live E103 check, the readable stack and the alert email move to this ticket's deploy (the source-map upload still runs, because it needs only the token)."
-          ],
-          "cost": "Two sentences here; one setup step and one after-merge step in NH-124's spec and plan.",
-          "after": [
-            {
-              "replaces_lines": "357-358",
-              "text": "5. **Vercel → Environment Variables, Production only:** `NEXT_PUBLIC_GA_ID`, and Sentry's\n   `NEXT_PUBLIC_SENTRY_DSN` with it: NH-124 goes live without its DSN, so its SDK sends nothing until\n   this ticket's popup can ask. Both are public by design — they ship inside the page. Then redeploy:\n   variables reach new deployments only. The Sentry spec's first live check (its section 5, step 6)\n   runs after this deploy."
-            },
-            {
-              "replaces_lines": "new bullet after 430",
-              "text": "- **No error reports before this ticket ships.** NH-124 goes live without its DSN (section 8, step\n  5), so from NH-124's deploy to this one, Sentry reports nothing from anyone."
-            }
-          ]
-        },
-        {
-          "label": "B — Accept the window and record it",
-          "what": "NH-124 goes live as planned and reports every visitor, Europe included, until this ticket's popup ships. This spec's Known limits records it, and the Sentry spec's Non-goals line is corrected to name this ticket, not NH-349, as the popup.",
-          "pros": [
-            "No delay for NH-124 and nothing new to build.",
-            "Error reports from everyone from day one."
-          ],
-          "cons": [
-            "For the whole window, G5 is false: visitors in Europe are reported, and send visit pings, without being asked. The European Data Protection Board's (EDPB) Guidelines 2/2023 and France's regulator, the CNIL, do not exempt error reporting from consent (the reason given for G5).",
-            "The window grows if F-2 makes this ticket wait for NH-349."
-          ],
-          "cost": "One bullet here; one corrected line in the Sentry spec.",
-          "after": [
-            {
-              "replaces_lines": "new bullet after 430",
-              "text": "- **Between NH-124's deploy and this one,** Sentry reports every visitor, in Europe too, without\n  asking — the Sentry spec's \"No choice popup yet\". G5 holds from this ticket's deploy on;\n  leocaseiro accepted the gap on <date>."
-            }
-          ]
-        },
-        {
-          "label": "C — NH-124 ships 'no Sentry in Europe' first",
-          "what": "NH-124 starts Sentry only when asksFirst() is false. asksFirst() — section 2's time-zone rule, with its list of zones from the IANA time-zone database and its unit test — lands with NH-124 in web/lib/privacy/choice.ts, and NH-124's Playwright config gets timezoneId: 'Australia/Sydney' (the continuous-integration (CI) machines run in UTC, which asksFirst() treats as Europe; without it, NH-124's own end-to-end reporting cases would see no Sentry). This ticket then adds the rest of choice.ts and replaces the check with allowed('errors').",
-          "pros": [
-            "G5 holds from NH-124's first deploy, and NH-124's 'report every error' (S1) holds outside Europe from day one.",
-            "NH-124's live check, run from Sydney, is unchanged.",
-            "The code is code this ticket needs anyway, written earlier — little is thrown away."
-          ],
-          "cons": [
-            "Reopens NH-124's spec and its plan (written 2026-10-08, now at PLAN REVIEW) to add a task.",
-            "Visitors in Europe send no error reports at all until this ticket ships.",
-            "NH-124's home note ('This site counts visits and crashes…') overstates for visitors in Europe until then; harmless."
-          ],
-          "cost": "In NH-124: one function with its zone list and unit test, a two-line start condition, one Playwright config line. Here: one paragraph in section 6, and section 1 lists choice.ts and the time-zone line as changes to NH-124's files.",
-          "after": [
-            {
-              "replaces_lines": "new paragraph after 307",
-              "text": "**Before this ticket ships, NH-124 already skips Europe.** Its `instrumentation-client.ts` starts\nSentry only when `asksFirst()` is false; `asksFirst()`, its unit test, and\n`timezoneId: 'Australia/Sydney'` in `web/playwright.e2e.config.ts` land with NH-124. This ticket adds\nthe rest of `web/lib/privacy/choice.ts` and replaces that check with `allowed('errors')`."
-            },
-            {
-              "replaces_lines": "94-95",
-              "text": "- `web/playwright.e2e.config.ts` (NH-124 already sets `timezoneId: 'Australia/Sydney'`): a fake\n  Google Analytics ID."
-            }
-          ]
-        }
-      ],
-      "recommendation": "Option C. It keeps both promises from the first deploy: G5 in Europe, and NH-124's 'report every error' outside it. The code is code this ticket needs anyway (asksFirst() and the Sydney time zone for the end-to-end tests), written earlier, and NH-124 is still at plan review, the cheapest moment to add a task. It matters more if F-2's option 1 makes this ticket wait for NH-349. Whatever the option, correct the Sentry spec's Non-goals line that still names NH-349 as the popup.",
-      "flip_condition": "Choose option A if leocaseiro prefers not to reopen NH-124's reviewed plan and this ticket will follow NH-124 within days. Choose option B if leocaseiro judges a short window acceptable and records it.",
-      "proposed_fix": "Close the window between NH-124's deploy and this ticket's: NH-124 starts Sentry only outside Europe until the popup exists (option C), and this spec says so in section 6.",
-      "why_it_works": "With no popup to ask, 'in Europe nothing loads until the visitor answers' means 'in Europe nothing loads'. A time-zone check in NH-124 does exactly that, and this ticket later replaces it with allowed('errors').",
-      "plain_terms": {
-        "G5": "decision G5: in Europe nothing loads, Sentry included, until the visitor answers",
-        "G7": "decision G7: the popup is built in this ticket; NH-349 is narrowed to a \"Privacy choices\" link",
-        "G10": "decision G10: this spec now; the code after NH-124 merges, then a rebase",
-        "S1": "NH-124's decision S1: report every error",
-        "NH-124": "the Jira ticket for Sentry error reporting in web/, specified in the Sentry spec (PR #191); it merges and goes live before this ticket",
-        "DSN": "Sentry's project address (NEXT_PUBLIC_SENTRY_DSN); without it, Sentry sends nothing",
-        "asksFirst()": "section 2's rule: true when the browser's time zone is in Europe (or UTC, or unknown)",
-        "Release Health": "Sentry's visit count: a small ping on every visit",
-        "SDK": "software development kit — here, Sentry's library in the browser",
-        "E103": "the error code for a file that is not a score; the Sentry spec's first live check opens such a file",
-        "IANA time-zone database": "the standard list of time-zone names, such as Europe/Berlin",
-        "PLAN REVIEW": "the Jira status of a ticket whose implementation plan is being reviewed"
-      },
-      "central_claim_check": "True. G5 (line 60) says in Europe nothing loads, Sentry included, until the visitor answers; G10 (65) and section 6 (291) put this ticket's code after NH-124 merges. NH-124 goes live first with reporting on: the Sentry spec (PR #191) sets NEXT_PUBLIC_SENTRY_DSN in Vercel Production (its section 5, step 5, lines 581-583) and checks a live E103 report after its first production deploy (step 6, lines 584-591). NH-124's plan (PR #191's branch, docs/plans/2026-10-08-nh-124-sentry-error-monitoring-plan.md, Task 17, Steps 1 and 7, lines 4680-4688 and 4744-4760) asks the owner before code review whether both Sentry variables are in Vercel Production and runs that check after merge; it never mentions Europe, NH-51 or NH-349. Section 8 (Setup) and Known limits of this spec are silent on it too. A merge to master deploys to production (web/README.md:31). Release Health pings on every visit (Sentry spec, line 752), so each visitor in Europe also sends a visit ping. The Sentry spec accepts the window itself — its Non-goals, lines 39-41: 'Until it ships, every production visit reports as this spec describes' — but names NH-349 as the popup, which G7 moved to this ticket. This spec says nothing about the time between the two deploys.",
-      "contradicts": "none — checked G5 (60), G10 (65: 'the code after NH-124 merges' still holds in all three options), section 2 (137-139), section 6 (291-307), section 8 (357-362), section 9 (395-396) and Known limits (424-430). Option C changes section 1: web/lib/privacy/choice.ts and the Playwright time-zone line become changes to files NH-124 adds.",
-      "spike": {
-        "ran": false,
-        "why": "A launch-order decision across two tickets; there is nothing to run. NH-124's spec and its plan on PR #191's branch were read instead (GitHub API, read-only).",
-        "mark": "(untested)"
-      },
-      "cross_fix": [
-        "F-2 — F-2's option 1 (ship with NH-349) makes this window longer. Option A here plus F-2's option 2 still leaves a Sentry 'Yes' impossible to withdraw at this ticket's deploy, unless the DSN also waits for NH-349.",
-        "Option C moves timezoneId: 'Australia/Sydney' into NH-124's Playwright config; the screenshot note in section 9 (395-396) then describes NH-124's config, not a change made here."
-      ],
-      "synthesis_note": "Reviewer filed gated_auto with one remedy (hold the Sentry DSN until the popup's deploy). Reclassified as a decision: every remedy changes NH-124's go-live (no Sentry anywhere until NH-51 ships, or an interim window in Europe, or an interim Europe-off rule inside NH-124), which is leocaseiro's call, not an entailed correction. Coupled with F-2.",
-      "verified_by": "verify-A.json",
-      "raw_constituents": [
-        {
-          "raw_id": "feasibility#4",
-          "reviewer": "feasibility",
-          "title": "NH-124 going live first reports Europe without asking",
-          "severity": "P2",
-          "confidence": 75,
-          "autofix_class": "gated_auto",
-          "why_it_matters": "NH-124's merge deploys to production. From then until this ticket's code ships, every visitor in Europe is reported to Sentry without being asked, Release Health's visit ping included. G5 forbids exactly this: in Europe nothing loads, Sentry included, until the visitor answers (leocaseiro's 'whatever is good by law'). G10 places this code after NH-124 merges. NH-124's own setup sets `NEXT_PUBLIC_SENTRY_DSN` in Production and checks a live report right after its first deploy. This spec's go-live note covers only NH-349. Holding back the DSN until the deploy that ships the popup closes the gap. The cost is that Sentry's first live check moves to this ticket's deploy.",
-          "suggested_fix": "Add to section 8 and 'Known limits': NEXT_PUBLIC_SENTRY_DSN is added to Vercel Production only with the deploy that ships this ticket's popup. Until then, NH-124 runs in production with no DSN, so no visitor in Europe is reported before they answer. NH-124's first live check moves to that deploy.",
-          "evidence": [
-            "This spec now; the code after NH-124 merges, then a rebase",
-            "In Europe nothing loads — Sentry included — until the visitor answers",
-            "Made in this ticket's pull request, after NH-124 merges:",
-            "NH-349 should land before or with this ticket's go-live."
-          ]
-        }
-      ],
-      "triage_decision": null,
-      "applied_in_commit": null,
-      "triage_rounds": [
-        {
-          "round": 1,
-          "decision": "not decided — leocaseiro asked for clarification",
-          "date": "2026-10-08",
-          "note": "Their answer: the popup should be in this PR (it is — G7); Jira ids need a short summary at least once per message; Sentry and Google Analytics should ship very soon, before the app is published; the app has no users today, so the window matters little. Re-asked in round 2 with that fact: the recommendation moves to option B (record the window; publish the app only after this ticket is live). Counts twice against the finding cap."
-        }
-      ]
-    },
     {
       "id": "F-4",
       "title": "No privacy notice: the popup never says who runs the site or that an answer can be withdrawn",
@@ -3014,6 +2814,221 @@
           "decision": "Apply",
           "applied_in_commit": "01889ee4",
           "date": "2026-10-08"
+        }
+      ]
+    },
+    {
+      "id": "F-3",
+      "title": "Sentry reports visitors in Europe before this ticket's popup exists",
+      "area": "Area 1 - who is asked, and when it goes live",
+      "severity": "P2",
+      "severity_as_filed": "P2",
+      "severity_plain": "should fix — a real gap an implementer will hit",
+      "severity_note": "A real gap in the launch order that breaks G5 for a period; the fix is a choice about another ticket's go-live.",
+      "confidence": 75,
+      "confidence_plain": "double-checked by reading the spec, the repo and the sources; will be hit in practice (not all of it run)",
+      "route": "decision",
+      "finding_type": "omission",
+      "reviewers": ["feasibility"],
+      "recommended_action": "Decide",
+      "verdict": "CONFIRMED",
+      "correction": "",
+      "section": "## 6. Changes to Sentry's design",
+      "section_lines": "289-307",
+      "section_exists": true,
+      "quotes_verbatim": true,
+      "quotes": [
+        {
+          "quote": "This spec now; the code after NH-124 merges, then a rebase",
+          "verbatim": true,
+          "line": 65,
+          "note": "decision G10"
+        },
+        {
+          "quote": "In Europe nothing loads — Sentry included — until the visitor answers",
+          "verbatim": true,
+          "line": 60,
+          "note": "decision G5"
+        },
+        {
+          "quote": "Made in this ticket's pull request, after NH-124 merges:",
+          "verbatim": true,
+          "line": 291,
+          "note": "section 6"
+        },
+        {
+          "quote": "NH-349 should land before or with this ticket's go-live.",
+          "verbatim": true,
+          "line": 425,
+          "note": "spans lines 425-426"
+        }
+      ],
+      "scenario": "You live in Madrid. In the week NH-124 goes live, you open Notation Hero and a font fails to load. Sentry receives an error report and a visit ping from your browser, and nobody asked you: the question for visitors in Europe arrives only with this later ticket. The spec says that in Europe nothing loads, Sentry included, until you answer. For that week, it is not true.",
+      "whats_wrong": "G5 promises that in Europe nothing loads, Sentry included, until the visitor answers. But this ticket's code follows NH-124, and NH-124 goes live first, with Sentry's address set and a live check right after its first deploy. From NH-124's deploy to this ticket's, every visitor in Europe is reported, with a visit ping, without being asked. The Sentry spec accepts this in its Non-goals but names NH-349 as the popup, which G7 moved here; this spec does not mention the gap.",
+      "before": [
+        {
+          "lines": "357-358",
+          "text": "5. **Vercel → Environment Variables, Production only:** `NEXT_PUBLIC_GA_ID`. Public by design — it\n   ships inside the page. Then redeploy: variables reach new deployments only."
+        },
+        {
+          "lines": "after 307",
+          "text": "(absent — section 6 lists only what changes after NH-124 merges; nothing covers the time between the two deploys)"
+        },
+        {
+          "lines": "after 430",
+          "text": "(absent — Known limits has no line about the time between NH-124's deploy and this ticket's)"
+        },
+        {
+          "lines": "75",
+          "text": "| `web/lib/privacy/choice.ts`     | `asksFirst()`, `savedChoice()`, `saveChoice()`, `allowed()`: the one rule both tools follow (section 2) |"
+        },
+        {
+          "lines": "94-95",
+          "text": "- `web/playwright.e2e.config.ts`: `timezoneId: 'Australia/Sydney'` for every project, and a fake\n  Google Analytics ID."
+        }
+      ],
+      "options": [
+        {
+          "label": "A — Hold Sentry's DSN until this ticket's deploy",
+          "what": "NH-124 goes live without NEXT_PUBLIC_SENTRY_DSN, so its SDK sends nothing. The owner adds the DSN in this ticket's section 8, step 5, beside the Google Analytics ID. Also changes the Sentry spec's section 5 (steps 5-6) and NH-124's plan, Task 17 (Steps 1 and 7).",
+          "pros": [
+            "No new code anywhere.",
+            "G5 holds from the first report ever sent.",
+            "Nothing to undo later."
+          ],
+          "cons": [
+            "No error reports from anyone, anywhere, until this ticket ships — longer if F-2's option 1 makes it wait for NH-349.",
+            "NH-124's own launch proves less: its live E103 check, the readable stack and the alert email move to this ticket's deploy (the source-map upload still runs, because it needs only the token)."
+          ],
+          "cost": "Two sentences here; one setup step and one after-merge step in NH-124's spec and plan.",
+          "after": [
+            {
+              "replaces_lines": "357-358",
+              "text": "5. **Vercel → Environment Variables, Production only:** `NEXT_PUBLIC_GA_ID`, and Sentry's\n   `NEXT_PUBLIC_SENTRY_DSN` with it: NH-124 goes live without its DSN, so its SDK sends nothing until\n   this ticket's popup can ask. Both are public by design — they ship inside the page. Then redeploy:\n   variables reach new deployments only. The Sentry spec's first live check (its section 5, step 6)\n   runs after this deploy."
+            },
+            {
+              "replaces_lines": "new bullet after 430",
+              "text": "- **No error reports before this ticket ships.** NH-124 goes live without its DSN (section 8, step\n  5), so from NH-124's deploy to this one, Sentry reports nothing from anyone."
+            }
+          ]
+        },
+        {
+          "label": "B — Accept the window and record it",
+          "what": "NH-124 goes live as planned and reports every visitor, Europe included, until this ticket's popup ships. This spec's Known limits records it, and the Sentry spec's Non-goals line is corrected to name this ticket, not NH-349, as the popup.",
+          "pros": [
+            "No delay for NH-124 and nothing new to build.",
+            "Error reports from everyone from day one."
+          ],
+          "cons": [
+            "For the whole window, G5 is false: visitors in Europe are reported, and send visit pings, without being asked. The European Data Protection Board's (EDPB) Guidelines 2/2023 and France's regulator, the CNIL, do not exempt error reporting from consent (the reason given for G5).",
+            "The window grows if F-2 makes this ticket wait for NH-349."
+          ],
+          "cost": "One bullet here; one corrected line in the Sentry spec.",
+          "after": [
+            {
+              "replaces_lines": "new bullet after 430",
+              "text": "- **Between NH-124's deploy and this one,** Sentry reports every visitor, in Europe too, without\n  asking — the Sentry spec's \"No choice popup yet\". G5 holds from this ticket's deploy on;\n  leocaseiro accepted the gap on <date>."
+            }
+          ]
+        },
+        {
+          "label": "C — NH-124 ships 'no Sentry in Europe' first",
+          "what": "NH-124 starts Sentry only when asksFirst() is false. asksFirst() — section 2's time-zone rule, with its list of zones from the IANA time-zone database and its unit test — lands with NH-124 in web/lib/privacy/choice.ts, and NH-124's Playwright config gets timezoneId: 'Australia/Sydney' (the continuous-integration (CI) machines run in UTC, which asksFirst() treats as Europe; without it, NH-124's own end-to-end reporting cases would see no Sentry). This ticket then adds the rest of choice.ts and replaces the check with allowed('errors').",
+          "pros": [
+            "G5 holds from NH-124's first deploy, and NH-124's 'report every error' (S1) holds outside Europe from day one.",
+            "NH-124's live check, run from Sydney, is unchanged.",
+            "The code is code this ticket needs anyway, written earlier — little is thrown away."
+          ],
+          "cons": [
+            "Reopens NH-124's spec and its plan (written 2026-10-08, now at PLAN REVIEW) to add a task.",
+            "Visitors in Europe send no error reports at all until this ticket ships.",
+            "NH-124's home note ('This site counts visits and crashes…') overstates for visitors in Europe until then; harmless."
+          ],
+          "cost": "In NH-124: one function with its zone list and unit test, a two-line start condition, one Playwright config line. Here: one paragraph in section 6, and section 1 lists choice.ts and the time-zone line as changes to NH-124's files.",
+          "after": [
+            {
+              "replaces_lines": "new paragraph after 307",
+              "text": "**Before this ticket ships, NH-124 already skips Europe.** Its `instrumentation-client.ts` starts\nSentry only when `asksFirst()` is false; `asksFirst()`, its unit test, and\n`timezoneId: 'Australia/Sydney'` in `web/playwright.e2e.config.ts` land with NH-124. This ticket adds\nthe rest of `web/lib/privacy/choice.ts` and replaces that check with `allowed('errors')`."
+            },
+            {
+              "replaces_lines": "94-95",
+              "text": "- `web/playwright.e2e.config.ts` (NH-124 already sets `timezoneId: 'Australia/Sydney'`): a fake\n  Google Analytics ID."
+            }
+          ]
+        }
+      ],
+      "recommendation": "Option C. It keeps both promises from the first deploy: G5 in Europe, and NH-124's 'report every error' outside it. The code is code this ticket needs anyway (asksFirst() and the Sydney time zone for the end-to-end tests), written earlier, and NH-124 is still at plan review, the cheapest moment to add a task. It matters more if F-2's option 1 makes this ticket wait for NH-349. Whatever the option, correct the Sentry spec's Non-goals line that still names NH-349 as the popup.",
+      "flip_condition": "Choose option A if leocaseiro prefers not to reopen NH-124's reviewed plan and this ticket will follow NH-124 within days. Choose option B if leocaseiro judges a short window acceptable and records it.",
+      "proposed_fix": "Close the window between NH-124's deploy and this ticket's: NH-124 starts Sentry only outside Europe until the popup exists (option C), and this spec says so in section 6.",
+      "why_it_works": "With no popup to ask, 'in Europe nothing loads until the visitor answers' means 'in Europe nothing loads'. A time-zone check in NH-124 does exactly that, and this ticket later replaces it with allowed('errors').",
+      "plain_terms": {
+        "G5": "decision G5: in Europe nothing loads, Sentry included, until the visitor answers",
+        "G7": "decision G7: the popup is built in this ticket; NH-349 is narrowed to a \"Privacy choices\" link",
+        "G10": "decision G10: this spec now; the code after NH-124 merges, then a rebase",
+        "S1": "NH-124's decision S1: report every error",
+        "NH-124": "the Jira ticket for Sentry error reporting in web/, specified in the Sentry spec (PR #191); it merges and goes live before this ticket",
+        "DSN": "Sentry's project address (NEXT_PUBLIC_SENTRY_DSN); without it, Sentry sends nothing",
+        "asksFirst()": "section 2's rule: true when the browser's time zone is in Europe (or UTC, or unknown)",
+        "Release Health": "Sentry's visit count: a small ping on every visit",
+        "SDK": "software development kit — here, Sentry's library in the browser",
+        "E103": "the error code for a file that is not a score; the Sentry spec's first live check opens such a file",
+        "IANA time-zone database": "the standard list of time-zone names, such as Europe/Berlin",
+        "PLAN REVIEW": "the Jira status of a ticket whose implementation plan is being reviewed"
+      },
+      "central_claim_check": "True. G5 (line 60) says in Europe nothing loads, Sentry included, until the visitor answers; G10 (65) and section 6 (291) put this ticket's code after NH-124 merges. NH-124 goes live first with reporting on: the Sentry spec (PR #191) sets NEXT_PUBLIC_SENTRY_DSN in Vercel Production (its section 5, step 5, lines 581-583) and checks a live E103 report after its first production deploy (step 6, lines 584-591). NH-124's plan (PR #191's branch, docs/plans/2026-10-08-nh-124-sentry-error-monitoring-plan.md, Task 17, Steps 1 and 7, lines 4680-4688 and 4744-4760) asks the owner before code review whether both Sentry variables are in Vercel Production and runs that check after merge; it never mentions Europe, NH-51 or NH-349. Section 8 (Setup) and Known limits of this spec are silent on it too. A merge to master deploys to production (web/README.md:31). Release Health pings on every visit (Sentry spec, line 752), so each visitor in Europe also sends a visit ping. The Sentry spec accepts the window itself — its Non-goals, lines 39-41: 'Until it ships, every production visit reports as this spec describes' — but names NH-349 as the popup, which G7 moved to this ticket. This spec says nothing about the time between the two deploys.",
+      "contradicts": "none — checked G5 (60), G10 (65: 'the code after NH-124 merges' still holds in all three options), section 2 (137-139), section 6 (291-307), section 8 (357-362), section 9 (395-396) and Known limits (424-430). Option C changes section 1: web/lib/privacy/choice.ts and the Playwright time-zone line become changes to files NH-124 adds.",
+      "spike": {
+        "ran": false,
+        "why": "A launch-order decision across two tickets; there is nothing to run. NH-124's spec and its plan on PR #191's branch were read instead (GitHub API, read-only).",
+        "mark": "(untested)"
+      },
+      "cross_fix": [
+        "F-2 — F-2's option 1 (ship with NH-349) makes this window longer. Option A here plus F-2's option 2 still leaves a Sentry 'Yes' impossible to withdraw at this ticket's deploy, unless the DSN also waits for NH-349.",
+        "Option C moves timezoneId: 'Australia/Sydney' into NH-124's Playwright config; the screenshot note in section 9 (395-396) then describes NH-124's config, not a change made here."
+      ],
+      "synthesis_note": "Reviewer filed gated_auto with one remedy (hold the Sentry DSN until the popup's deploy). Reclassified as a decision: every remedy changes NH-124's go-live (no Sentry anywhere until NH-51 ships, or an interim window in Europe, or an interim Europe-off rule inside NH-124), which is leocaseiro's call, not an entailed correction. Coupled with F-2.",
+      "verified_by": "verify-A.json",
+      "raw_constituents": [
+        {
+          "raw_id": "feasibility#4",
+          "reviewer": "feasibility",
+          "title": "NH-124 going live first reports Europe without asking",
+          "severity": "P2",
+          "confidence": 75,
+          "autofix_class": "gated_auto",
+          "why_it_matters": "NH-124's merge deploys to production. From then until this ticket's code ships, every visitor in Europe is reported to Sentry without being asked, Release Health's visit ping included. G5 forbids exactly this: in Europe nothing loads, Sentry included, until the visitor answers (leocaseiro's 'whatever is good by law'). G10 places this code after NH-124 merges. NH-124's own setup sets `NEXT_PUBLIC_SENTRY_DSN` in Production and checks a live report right after its first deploy. This spec's go-live note covers only NH-349. Holding back the DSN until the deploy that ships the popup closes the gap. The cost is that Sentry's first live check moves to this ticket's deploy.",
+          "suggested_fix": "Add to section 8 and 'Known limits': NEXT_PUBLIC_SENTRY_DSN is added to Vercel Production only with the deploy that ships this ticket's popup. Until then, NH-124 runs in production with no DSN, so no visitor in Europe is reported before they answer. NH-124's first live check moves to that deploy.",
+          "evidence": [
+            "This spec now; the code after NH-124 merges, then a rebase",
+            "In Europe nothing loads — Sentry included — until the visitor answers",
+            "Made in this ticket's pull request, after NH-124 merges:",
+            "NH-349 should land before or with this ticket's go-live."
+          ]
+        }
+      ],
+      "triage_decision": {
+        "round": 2,
+        "decision": "Apply",
+        "option": "B — Accept the window and record it (shown as 1️⃣ 'Record it, publish after' in round 2)",
+        "applied_in_commit": "03581edd",
+        "date": "2026-10-09",
+        "note": "Round 1 asked for clarification (see triage_rounds[0]). Applied as a Known-limits bullet after 'Withdrawing needs NH-349', plus one sentence in the changelog entry's launch paragraph, dated 2026-10-09 (the day of the answer). Sentry's pull request (#191) is unchanged, as the chosen option said. The Sentry spec's stale Non-goals line (it names NH-349 as the popup) is still open for PR #191 — see plan_notes."
+      },
+      "applied_in_commit": "03581edd",
+      "triage_rounds": [
+        {
+          "round": 1,
+          "decision": "not decided — leocaseiro asked for clarification",
+          "date": "2026-10-08",
+          "note": "Their answer: the popup should be in this PR (it is — G7); Jira ids need a short summary at least once per message; Sentry and Google Analytics should ship very soon, before the app is published; the app has no users today, so the window matters little. Re-asked in round 2 with that fact: the recommendation moves to option B (record the window; publish the app only after this ticket is live). Counts twice against the finding cap."
+        },
+        {
+          "round": 2,
+          "decision": "Apply",
+          "option": "B — Accept the window and record it (shown as 1️⃣ 'Record it, publish after' in round 2)",
+          "applied_in_commit": "03581edd",
+          "date": "2026-10-09",
+          "note": "Round 1 asked for clarification (see triage_rounds[0]). Applied as a Known-limits bullet after 'Withdrawing needs NH-349', plus one sentence in the changelog entry's launch paragraph, dated 2026-10-09 (the day of the answer). Sentry's pull request (#191) is unchanged, as the chosen option said. The Sentry spec's stale Non-goals line (it names NH-349 as the popup) is still open for PR #191 — see plan_notes."
         }
       ]
     }
