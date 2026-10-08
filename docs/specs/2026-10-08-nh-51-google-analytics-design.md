@@ -81,7 +81,7 @@ No new dependency: the loader is our own (G2).
 | `web/lib/score-facts.ts`        | `instrumentsValue()`, moved out of Sentry's `report.ts` (section 6)                                     |
 | `web/app/PrivacyChoices.tsx`    | the popup (section 3)                                                                                   |
 | `web/app/privacy/page.tsx`      | the privacy notice (section 7)                                                                          |
-| `web/e2e/google-analytics.ts`   | the shared fixture: answers Google's hosts locally and records every request                            |
+| `web/e2e/google-analytics.ts`   | the shared fixture: answers Google's hosts locally (an empty `gtag.js`) and records every request       |
 | `web/e2e/privacy-choice.e2e.ts` | the consent, privacy and no-overlap cases (section 9)                                                   |
 
 Each `lib` file and the popup has its unit test beside it.
@@ -94,8 +94,9 @@ Each `lib` file and the popup has its unit test beside it.
 - `web/app/page.tsx`, both `error.tsx` files and `web/app/global-error.tsx` (Sentry's): the copy
   (section 7).
 - The call sites in section 5, under `web/app/play/`: one `track()` each.
-- `web/playwright.e2e.config.ts`: `timezoneId: 'Australia/Sydney'` for every project, and a fake
-  Google Analytics ID.
+- `web/playwright.e2e.config.ts`: `timezoneId: 'Australia/Sydney'` for every project, a fake Google
+  Analytics ID, and Chromium's `--host-resolver-rules` launch argument, which makes Google's hosts
+  unresolvable in the test browser.
 - Screenshot baselines: `/` (the new note) and three new shots with the popup (section 9).
 - `web/README.md` (the variable), `cspell.json`, and the decision registry and changelog.
 
@@ -382,7 +383,9 @@ An agent may not create accounts.
 6. **After the first production deploy, in the Realtime report:** a page view on `/`; **a page view
    after clicking Play** — the one thing the spike could not show (if it is missing, the fallback in
    section 4); an `open_file` and a `score_loaded` with their fields; and, with the browser's time
-   zone set to Berlin, the popup, with nothing reaching Google until "Yes".
+   zone set to Berlin, the popup, with nothing reaching Google until "Yes". **In the browser's
+   Network panel:** the first `collect` request carries `gcs=G101`, `npa=1` and `dt=Notation Hero`.
+   The tests answer Google's script with an empty one, so this is the only check of what it sends.
 
 ## 9. Testing
 
@@ -401,11 +404,21 @@ An agent may not create accounts.
 - `PrivacyChoices`: each button saves its answer; Details opens and closes; the card is hidden
   outside Europe, once answered, and when neither key is set.
 
-**End to end (Playwright).** `web/e2e/google-analytics.ts` answers Google's hosts locally, the way
-Sentry's fixture answers its fake DSN, so no test reaches Google.
+**End to end (Playwright).** The lane's one build carries the fake Google Analytics ID and every
+project runs as Sydney, so every page in every case starts Google Analytics. The config makes
+`www.googletagmanager.com`, `*.google-analytics.com`, `analytics.google.com` and `www.google.com`
+unresolvable in the test browser: in a case without the fixture, Google's script fails to load and
+nothing is sent, as for a visitor with an ad blocker. The loader must accept that without an error
+— no throw and no uncaught rejection — or `failOnUnexpectedPageErrors()` fails the case.
+`web/e2e/google-analytics.ts` routes Google's hosts before any lookup, answers `gtag.js` with an
+empty script and records every request. No test reaches Google. The cases check what our code
+hands Google, in `window.dataLayer`; what Google's script sends is checked by hand at launch
+(section 8, step 6).
 
-- **Sydney:** no popup; a page view with `gcs=G101` and `npa=1`; `open_file` and `score_loaded` with
-  the right fields after opening a fixture; `play` after pressing ▶.
+- **Sydney:** no popup; one request for `gtag.js`, after `load`; the queue matches section 4 — the
+  consent default first (ad signals denied, analytics granted), Google signals and ad
+  personalisation off, `release` set; `open_file` and `score_loaded` with the right fields after
+  opening a fixture; `play` after pressing ▶.
 - **Berlin:** the popup shows, and **no** request reaches Google or Sentry before an answer. "No,
   send nothing": still none, also after a reload. "Report errors only": a forced error reaches
   Sentry, and nothing reaches Google. "Yes, …": both. The answer survives a reload.
@@ -479,7 +492,7 @@ Each is a claim this design rests on that no one has run yet:
 
 `@next/third-parties` 16.3.6's `<GoogleAnalytics>` behind a time-zone check, with our settings
 queued first in `instrumentation-client.ts`; a production build; a headless browser visiting as
-Sydney and as Berlin; Google's collect requests answered locally, so nothing reached Google.
+Sydney and as Berlin; Google's collect requests answered locally, so no hit reached Google.
 
 | Checked                     | Sydney                                         | Berlin                                    |
 | --------------------------- | ---------------------------------------------- | ----------------------------------------- |
