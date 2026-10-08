@@ -285,7 +285,9 @@ review can overturn any of them.
    inside the same deferred callback, so React's development double-mount cannot send two.
 7. **The E204 clock is a one-second counter** that counts a second only while
    `document.visibilityState` is `visible`. It behaves as spec 2.4 describes, to within a second,
-   with no `visibilitychange` listener that could be left behind.
+   with no `visibilitychange` listener that could be left behind. Under Playwright's fake clock it
+   is advanced with `runFor`, which fires every tick; `fastForward` fires a due timer at most once,
+   so Task 14 edits the one existing case that used it.
 8. **Every unit test runs against a replaced `@sentry/nextjs`** (`web/vitest.setup.ts`).
 9. **The two transport-restore cases #185 added** get the same E601 and E603 assertions as the
    settings cases.
@@ -653,7 +655,7 @@ export function tokenLeakReport({ token, root = WEB }) {
   if (!token) return null;
   const leaks = BROWSER_FOLDERS.map((folder) => path.join(root, folder))
     .filter((folder) => existsSync(folder))
-    .flatMap(filesUnder)
+    .flatMap((folder) => filesUnder(folder))
     .filter((file) => readFileSync(file).includes(token))
     .map((file) => path.relative(root, file));
   if (leaks.length === 0) return null;
@@ -785,12 +787,13 @@ describe('isKnownEngineNoise, the Sentry filter', () => {
   });
 });
 
-describe('isKnownEngineNoiseStack, the end-to-end gate', () => {
-  const stack = (...frames: readonly string[]) =>
-    [`TypeError: ${voices}`, ...frames.map((frame) => `    at Jn.fromJson (${frame}:1:100)`)].join(
-      '\n',
-    );
+/** A V8 stack string for the known throw: its first line, then one frame in each file given. */
+const stack = (...frames: readonly string[]) =>
+  [`TypeError: ${voices}`, ...frames.map((frame) => `    at Jn.fromJson (${frame}:1:100)`)].join(
+    '\n',
+  );
 
+describe('isKnownEngineNoiseStack, the end-to-end gate', () => {
   it('lets the known throw through when every frame sits in the engine bundle', () => {
     expect(isKnownEngineNoiseStack(`TypeError: ${voices}`, stack(ENGINE, ENGINE))).toBe(true);
   });
@@ -873,7 +876,9 @@ const isEngineFile = (file: string): boolean => file.includes(ENGINE_BUNDLE);
  */
 export function isKnownEngineNoiseStack(message: string, stack: string): boolean {
   const frames = stack.split('\n').filter((line) => line.trimStart().startsWith('at '));
-  return isKnownMessage(message) && frames.length > 0 && frames.every(isEngineFile);
+  return (
+    isKnownMessage(message) && frames.length > 0 && frames.every((frame) => isEngineFile(frame))
+  );
 }
 
 /** The part of a Sentry event the filter reads. Sentry's own `ErrorEvent` fits this shape. */
@@ -1335,13 +1340,16 @@ import type * as Report from './report';
 import type * as Sentry from '@sentry/nextjs';
 
 // report.ts keeps the instruments tag's state for the whole tab, so each case starts from a fresh
-// copy of it — and of the stand-in SDK from web/vitest.setup.ts, whose two mocks it calls.
+// copy of it. vi.resetModules() does not renew the stand-in SDK from web/vitest.setup.ts — Vitest
+// keeps a mocked module across it — so the calls its two mocks recorded are cleared by hand.
 let report: typeof Report;
 let sentry: typeof Sentry;
 beforeEach(async () => {
   vi.resetModules();
   report = await import('./report');
   sentry = await import('@sentry/nextjs');
+  vi.mocked(sentry.captureException).mockClear();
+  vi.mocked(sentry.addBreadcrumb).mockClear();
 });
 
 const captured = () => vi.mocked(sentry.captureException).mock.calls;
@@ -1397,7 +1405,7 @@ describe('reportError', () => {
 
   for (const code of ['E101', 'E102', 'E103'] as const) {
     it(`${code} sends its fixed sentence in place of the message, keeping the type and frames`, () => {
-      const original = new TypeError('Unexpected token on line 3: \\title "Night Drive"', {
+      const original = new TypeError(String.raw`Unexpected token on line 3: \title "Night Drive"`, {
         cause: new Error('Night Drive'),
       });
       report.reportError(original, { code, level: 'warning' });
@@ -1414,7 +1422,7 @@ describe('reportError', () => {
   }
 
   it('sends only the fixed sentence when E103 arrives as text', () => {
-    report.reportError('Unexpected token: \\title "Night Drive"', { code: 'E103' });
+    report.reportError(String.raw`Unexpected token: \title "Night Drive"`, { code: 'E103' });
     const [[sent]] = captured();
     expect((sent as Error).message).toBe(`E103: ${meaningOf('E103')}`);
   });
@@ -1464,9 +1472,11 @@ describe('isStorageRefusal', () => {
   });
 });
 
+/** A track that is not percussion, on General MIDI `program`. */
+const track = (program: number) => ({ program, isPercussion: false });
+
 describe('instrumentsValue', () => {
   const kit = { program: 0, isPercussion: true };
-  const track = (program: number) => ({ program, isPercussion: false });
 
   it('names drums first, then each program in three digits, ascending', () => {
     expect(report.instrumentsValue([kit, track(30)])).toBe('drums,030');
@@ -1479,15 +1489,16 @@ describe('instrumentsValue', () => {
   });
 });
 
-describe('the instruments tag, as Sentry reads it at capture time', () => {
-  const tagOn = (pathname: string): unknown => {
-    // Vitest's jsdom page is `/`.
-    history.replaceState(null, '', pathname);
-    const event: Sentry.Event = {};
-    report.addInstrumentsTag(event);
-    return event.tags?.instruments;
-  };
+/** The instruments tag a report captured on `pathname` would carry right now. */
+const tagOn = (pathname: string): unknown => {
+  // Vitest's jsdom page is `/`.
+  history.replaceState(null, '', pathname);
+  const event: Sentry.Event = {};
+  report.addInstrumentsTag(event);
+  return event.tags?.instruments;
+};
 
+describe('the instruments tag, as Sentry reads it at capture time', () => {
   it('carries no tag before the player has set one', () => {
     expect(tagOn('/play')).toBeUndefined();
   });
@@ -1821,7 +1832,7 @@ export async function recordSentry(page: Page): Promise<SentryRecorder> {
     bodies.push(route.request().postData() ?? '');
     await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
   });
-  return { raw: () => [...bodies], events: () => bodies.flatMap(eventsIn) };
+  return { raw: () => [...bodies], events: () => bodies.flatMap((body) => eventsIn(body)) };
 }
 
 /** The events tagged with `code`. */
@@ -1901,7 +1912,9 @@ test('the SDK runs with exactly the integrations the spec chose', async ({ page 
   const sentry = await recordSentry(page);
   await page.goto('/');
   const sentinel = await throwSentinel(page, sentry, 'sentinel: integrations');
-  expect([...(sentinel.sdk?.integrations ?? [])].toSorted()).toEqual(EXPECTED_INTEGRATIONS);
+  expect([...(sentinel.sdk?.integrations ?? [])].toSorted((a, b) => a.localeCompare(b))).toEqual(
+    EXPECTED_INTEGRATIONS,
+  );
 });
 
 // Case 6. NH-338's throw breaks nothing a person can see; sent as it is, it would use the monthly
@@ -2302,30 +2315,45 @@ Expected: PASS — 3 tests.
 
 - [ ] **Step 6: The home page copy**
 
-In `web/app/page.tsx`, the tagline's second sentence changes, and a new paragraph follows the Play
-button (spec 3.4: the tagline keeps its two lines, because one paragraph would grow from 119 to 348
-characters):
+`web/app/page.tsx` becomes the file below (spec 3.4). The tagline's second sentence changes and
+keeps its two lines — as one paragraph the copy would grow from 119 to 348 characters — and a new
+paragraph follows the Play button. The whole file is given, not two fragments: Prettier, which also
+formats this plan's code blocks, turns a lone JSX comment followed by an element into statements
+and appends a `;` that would render on the page.
 
 ```tsx
-<p className="max-w-prose text-muted-foreground">
-  Open a score from your own computer, read it as standard notation, and play along. Your scores
-  never leave this device.
-</p>
-```
+import { Button } from '@notation-hero/client';
+import Link from 'next/link';
 
-and, after the closing `</Button>`:
-
-```tsx
-{
-  /* "Counts visits" is Release Health: a small ping on every visit, not only on a crash. The
+export default function Home() {
+  return (
+    <main className="mx-auto flex min-h-dvh max-w-3xl flex-col items-center justify-center gap-6 p-8 text-center">
+      <h1 className="text-3xl font-bold">Notation Hero</h1>
+      <p className="max-w-prose text-muted-foreground">
+        Open a score from your own computer, read it as standard notation, and play along. Your
+        scores never leave this device.
+      </p>
+      {/* min-h-11 = 44px, the minimum touch target (spec §4). The glyph keeps its drawn size;
+          only the hit area is padded. */}
+      {/* `render`, NOT `asChild`. client/src/components/ui/Button/Button.tsx types its props as
+          useRender.ComponentProps<'button'> & VariantProps<typeof buttonVariants> — `asChild`
+          appears nowhere in client/src, it was dropped in the Radix -> Base UI migration. The
+          precedent is Button.test.tsx:52 and the AsLink story. Passing `asChild` would land as a
+          stray DOM attribute and the Link would never render. */}
+      <Button render={<Link href="/play" />} className="min-h-11 px-8 text-base">
+        Play
+      </Button>
+      {/* "Counts visits" is Release Health: a small ping on every visit, not only on a crash. The
           kinds of instrument are the `instruments` tag; the type and size go only with a file
-          that fails to open. */
+          that fails to open. */}
+      <p className="text-sm text-muted-foreground">
+        This site counts visits and crashes anonymously, and sends an error report when something
+        goes wrong. Neither includes your file, its name, or the music in it — only the file&apos;s
+        type and size, and the kinds of instrument it uses.
+      </p>
+    </main>
+  );
 }
-<p className="text-sm text-muted-foreground">
-  This site counts visits and crashes anonymously, and sends an error report when something goes
-  wrong. Neither includes your file, its name, or the music in it — only the file&apos;s type and
-  size, and the kinds of instrument it uses.
-</p>;
 ```
 
 - [ ] **Step 7: Regenerate the landing screenshot, in the Linux container**
@@ -3268,13 +3296,14 @@ its `useAlphaTab` mock (lines 1–52 today) with the block below. The `settings-
 the imports and the new `handlers`.
 
 ```tsx
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+
 // eslint-disable-next-line @typescript-eslint/no-restricted-imports -- Vitest files are never bundled by Next, so the double-bundle reason for this fence does not apply
 import * as engine from '@coderline/alphatab';
 import { toast } from '@notation-hero/client';
 import { captureException } from '@sentry/nextjs';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
 // … the settings-paths, next/navigation and AlphaTabEngineContext mocks, unchanged …
@@ -3727,17 +3756,23 @@ import { addInstrumentsTag, tagInstruments } from '../../lib/monitoring/report';
 import type * as Sentry from '@sentry/nextjs';
 ```
 
-and the case, inside `describe('the open-file catch', …)`:
+a helper at module scope, above `describe('the open-file catch', …)`:
+
+```tsx
+/** The instruments tag Sentry's hook would add to a report captured right now. */
+const tagNow = () => {
+  const event: Sentry.Event = {};
+  addInstrumentsTag(event);
+  return event.tags?.instruments;
+};
+```
+
+and the case, inside that `describe`:
 
 ```tsx
 it('carries no instruments tag on either failure, and puts it back once the open ends', async () => {
   // What Sentry's hook reads at the moment of each report, on /play.
   history.replaceState(null, '', '/play');
-  const tagNow = () => {
-    const event: Sentry.Event = {};
-    addInstrumentsTag(event);
-    return event.tags?.instruments;
-  };
   const atCapture: unknown[] = [];
   vi.mocked(captureException).mockImplementation(() => {
     atCapture.push(tagNow());
@@ -3873,7 +3908,8 @@ test('an open left running across an unmount sets nothing when it ends', async (
   currentApi = standInApi();
   const file = fixture('Punk.gp');
   const bytes = await file.arrayBuffer();
-  let release: (value: ArrayBuffer) => void = () => {};
+  // Set as soon as the read starts: picking the file calls arrayBuffer() at once.
+  let release!: (value: ArrayBuffer) => void;
   file.arrayBuffer = () =>
     new Promise((resolve) => {
       release = resolve;
@@ -3951,7 +3987,8 @@ test('two opens at once: the one that returns early still puts the tag back', as
   // A picked file still being read…
   const picked = fixture('Punk.gp');
   const bytes = await picked.arrayBuffer();
-  let release: (value: ArrayBuffer) => void = () => {};
+  // Set as soon as the read starts: picking the file calls arrayBuffer() at once.
+  let release!: (value: ArrayBuffer) => void;
   picked.arrayBuffer = () =>
     new Promise((resolve) => {
       release = resolve;
@@ -4103,7 +4140,8 @@ stop that clock for good: the first finished render, an E203, or the E204 itself
 
 - Modify: `web/app/play/NotationSurface.tsx` (`:92-136`, `:140-143`, `:155-167`)
 - Create: `web/app/play/NotationSurface.test.tsx`
-- Test: `web/e2e/player.e2e.ts` (the cases at `:215` and `:266`)
+- Test: `web/e2e/player.e2e.ts` (the cases at `:215` and `:266`; the 60-second backstop case at
+  `:230` changes how it moves the fake clock)
 
 **Interfaces:**
 
@@ -4138,8 +4176,9 @@ import { NotationSurface } from './NotationSurface';
 
 import type * as AlphaTab from '@coderline/alphatab';
 
-// The component only needs an api to exist: the clock and the font listener start once it does.
-const STAND_IN_API: unknown = {};
+// The clock and the font listener start once an api exists; the renderFinished handler also reads
+// its `tracks`.
+const STAND_IN_API: unknown = { tracks: [] };
 let visibility: DocumentVisibilityState = 'visible';
 let fontFailed: ((event: { fontfaces: { family: string }[] }) => void) | undefined;
 
@@ -4208,7 +4247,7 @@ test('40 visible seconds, a hidden minute, then 20 more visible seconds raise on
 test('once a render has finished, hiding and showing the tab raises nothing a minute later', () => {
   mount();
   pass(10_000);
-  act(() => handlers.get('renderFinished')?.(undefined));
+  act(() => handlers.get('renderFinished')?.(null));
   visibility = 'hidden';
   pass(30_000);
   visibility = 'visible';
@@ -4229,7 +4268,7 @@ test('once an E204 has been raised, hiding and showing the tab raises no second 
   mount();
   pass(60_000);
   visibility = 'hidden';
-  pass(5_000);
+  pass(5000);
   visibility = 'visible';
   pass(120_000);
   expect(reports()).toEqual([{ code: 'E204', handled: false }]);
@@ -4369,13 +4408,35 @@ await expect.poll(() => withCode(sentry, 'E202').length).toBeGreaterThan(0);
 (The font abort may raise `loadingerror` more than once; Sentry drops an event identical to the one
 before it, so "at least one" is the honest assertion for both.)
 
+The existing case `a music font that arrives after the 60 s backstop clears the error` (`:230`)
+reaches E204 by jumping Playwright's fake clock. `fastForward` fires a due timer at most once, so
+the one-second counter would gain one second per jump and never reach 60 inside the case's
+20-second retry — measured on Playwright 1.61.1: repeated `fastForward(61_000)` calls counted 40
+seconds in 20, while one `runFor(61_000)` counted 60 and raised E204. `runFor` fires every tick on
+the way. In that case:
+
+```diff
+-  // RETRY the fast-forward. The backstop is armed in an effect keyed on the api, which does not
+-  // exist until the engine module has imported — fast-forwarding before that moment advances past
+-  // nothing, and the timer is then armed against the new clock.
++  // RETRY the run. The backstop is armed in an effect keyed on the api, which does not exist until
++  // the engine module has imported — running the clock before that moment advances past nothing,
++  // and the counter then starts against the new clock. runFor, not fastForward: the backstop is a
++  // one-second tick that counts visible seconds, and fastForward fires a due timer at most once.
+   await expect(async () => {
+-    await page.clock.fastForward(61_000);
++    await page.clock.runFor(61_000);
+     await expect(page.getByTestId('engine-error')).toContainText('Error E204', { timeout: 1000 });
+   }).toPass({ timeout: 20_000 });
+```
+
 ```bash
 lsof -nP -iTCP:4174 -sTCP:LISTEN
 pnpm --filter @notation-hero/web exec playwright test --config=playwright.e2e.config.ts --project=e2e e2e/player.e2e.ts -g "music-font download|stale engine-error|60 s backstop"
 ```
 
-Expected: PASS — including the existing 60-second backstop case, which headless Chromium runs in a
-page that is always visible.
+Expected: PASS — all three, the 60-second backstop case with its clock now advanced by `runFor`
+(headless Chromium keeps the page visible, so every second counts).
 
 - [ ] **Step 4: Lint, types, the unit lane, commit**
 
