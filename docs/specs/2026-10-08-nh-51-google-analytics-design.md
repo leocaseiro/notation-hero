@@ -266,8 +266,11 @@ export interface AnalyticsEvents {
   mixer_change: { control: MixerControl; on: boolean; instrument: Instrument };
   // …the rest of the table
 }
+
+// web/lib/analytics/track.ts (sketch)
 export function track<E extends keyof AnalyticsEvents>(event: E, fields: AnalyticsEvents[E]): void;
 
+// a call site, such as TracksPopover.tsx
 track('mixer_change', { control: 'solo', on: true, instrument: '025' }); // ✅
 track('mixer_change', { control: 'solo', on: true, track: 'Lead Guitar' }); // ❌ a type error
 ```
