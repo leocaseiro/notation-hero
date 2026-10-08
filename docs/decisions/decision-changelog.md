@@ -11,6 +11,52 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
+### 2026-10-08 — Google Analytics 4 for `web/`: design approved (NH-51)
+
+leocaseiro approved the design for [NH-51](https://leocaseiro.atlassian.net/browse/NH-51) section by
+section in a brainstorming session, 2026-10-05 to 2026-10-08: seven sections and ten decisions.
+Spec:
+[`docs/specs/2026-10-08-nh-51-google-analytics-design.md`](../specs/2026-10-08-nh-51-google-analytics-design.md).
+Goal, in leocaseiro's words: "measure usage, and click events too", aligned with the Sentry design
+of [NH-124](https://leocaseiro.atlassian.net/browse/NH-124). NH-51 was the AWS-pipeline emitter
+("emit usage events to the pipeline"); it was rewritten for this work, and its old text is kept in
+the ticket.
+
+- **G1 — Google Analytics 4, free tier, from the browser.** Rejected: Vercel Web Analytics (on the
+  free plan, page views only — no custom events, no returning visitors, one month of history) and
+  Google Analytics through a Vercel function (the Measurement Protocol only adds to the browser
+  tag). The AWS pipeline, [NH-54](https://leocaseiro.atlassian.net/browse/NH-54), stays later.
+- **G2 — our own small loader.** leocaseiro asked for a spike of the Next.js component, and whether
+  "experimental" still held in 2026. It does: the docs bundled with Next.js 16.3.6 say so. The spike
+  showed `@next/third-parties` works but removes none of our code here: it still needs a settings
+  script, a Europe wrapper and a `sendGAEvent` wrapper.
+- **G3, G4 — visitors in Europe are asked first, decided by the browser's time zone; everyone else
+  gets everything by default.** leocaseiro: "Popup for Europe only, everyone else is accepted by
+  default."
+- **G5 — in Europe nothing loads, Sentry included, until the visitor answers** — "whatever is good
+  by law" (leocaseiro). The EDPB's Guidelines 2/2023 and the CNIL's list of exempt trackers do not
+  exempt error reporting. This narrows NH-124's S1 ("report every error") to visitors outside
+  Europe, and its S4 health number to visits that allowed it.
+- **G6 — three answers: everything, error reports only, nothing.** leocaseiro asked for "Allow all,
+  allow minimal, reject". "Minimal" sends error reports only, without Sentry's visit count: the law
+  allows either if the label is honest, and one purpose per button is the cleaner consent.
+- **G7 — the popup is built here**, as a floating card above the player's controls, chosen from
+  three rendered placements. [NH-349](https://leocaseiro.atlassian.net/browse/NH-349) stays open,
+  narrowed to a "Privacy choices" link for every visitor and its "extra detail" idea. The words went
+  through two rounds: tool names in the first layer were rejected ("Musicians have no idea what
+  Sentry means"), and leocaseiro wrote the button labels: "Yes, count visits and report errors",
+  "Report errors only", "No, send nothing".
+- **G8 — twelve typed events**, every field from a fixed list or a number, so no text from a file can
+  reach Google; `release` on every event. Rejected: automatic click tracking — the button labels
+  hold track names, the reason NH-124 turned click breadcrumbs off.
+- **G9 — the home page names Google Analytics, not Sentry.** Google's terms require the disclosure;
+  leocaseiro: "I didn't want to say Sentry everywhere." Sentry is named in the popup's Details only.
+- **G10 — this spec now; the code after NH-124 merges.** Both change the home page's privacy note,
+  so the code rebases on NH-124's text.
+
+Recorded for the launch: GDPR Article 7(3) needs a way to withdraw consent, so NH-349's link should
+land before or with this ticket's go-live in Europe.
+
 ### 2026-09-29 — One maintainer's folder layout is out of the public repo, and a gate keeps it out (NH-345)
 
 **270 lines across 64 tracked files named the maintainer's local folder layout.** The handle is
