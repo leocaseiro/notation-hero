@@ -227,8 +227,9 @@ export function startAnalytics(): void {
   setting off and sends `page_view` from our code on each route change.
 - **Addresses:** Google Analytics receives the page address with its `?` part — the campaign tags
   on a link you share, which is how it reports where a visitor came from — and never the `#` part.
-  Sentry cuts addresses at `?` on purpose; only Google Analytics needs to know the source. No
-  address in `web/` carries anything of the visitor's.
+  Click IDs that other sites add (`fbclid`, `gclid`, `msclkid`) are redacted in the browser before
+  sending (section 8, step 3). Sentry cuts addresses at `?` on purpose; only Google Analytics needs
+  to know the source. No address in `web/` carries anything of the visitor's.
 - **The tab title:** Google Analytics sends `document.title` with every event; the spike saw
   `dt=Notation Hero`. It is fixed today, and the privacy test (section 9) fails if a score's title
   ever reaches it.
@@ -387,7 +388,8 @@ An agent may not create accounts.
    - **Granular location and device data: off.** Country and device category remain.
 3. **Enhanced measurement:** keep page views, including "page changes based on browser history
    events". Turn off scrolls, outbound clicks, site search, video, file downloads (their link text
-   can carry a title) and form interactions.
+   can carry a title) and form interactions. In the same Events section, **Redact data**: email on,
+   and the query parameters `fbclid`, `gclid` and `msclkid`.
 4. **Custom definitions, before launch** (data shows 24–48 hours after registering):
    - dimensions: `method`, `file_type`, `source`, `instruments`, `error_code`, `on`, `range`,
      `control`, `instrument`, `setting`, `format`, `release`;
@@ -398,8 +400,10 @@ An agent may not create accounts.
    after clicking Play** — the one thing the spike could not show (if it is missing, the fallback in
    section 4); an `open_file` and a `score_loaded` with their fields; and, with the browser's time
    zone set to Berlin, the popup, with nothing reaching Google until "Yes". **In the browser's
-   Network panel:** the first `collect` request carries `gcs=G101`, `npa=1` and `dt=Notation Hero`.
-   The tests answer Google's script with an empty one, so this is the only check of what it sends.
+   Network panel:** the first `collect` request carries `gcs=G101`, `npa=1` and `dt=Notation Hero`,
+   and opening `/?utm_source=probe&fbclid=probe123` sends one that keeps `utm_source` and has no
+   `probe123`. The tests answer Google's script with an empty one, so this is the only check of
+   what it sends.
 
 ## 9. Testing
 
