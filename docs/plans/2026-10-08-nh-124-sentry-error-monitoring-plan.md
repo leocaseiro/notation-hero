@@ -61,7 +61,8 @@ spec, or from the decision named beside them.
   only `drums`, `sample` and the General MIDI numbers `000`–`127`.
 - **Fixed sentences:** "E101, E102 and E103 replace the exception message … with a fixed sentence of
   ours: the code, then its meaning from `docs/reference/error-codes.md`". E105, E901 and E201–E204
-  keep their message.
+  keep their message, except that an E202 whose message is empty sends E202's sentence instead
+  (Choice 4).
 - **`handled: false`:** "Only the three error pages (E901) and the player failures E201–E204 pass
   it."
 - **Every catch reports:** every `catch` clause and `.catch()` callback in `web/` calls `reportError`
@@ -257,7 +258,7 @@ recorded notes for this stage. Each one, and where it lands:
 | QP-1 (new) — an E202 whose message is empty                         | **Decided in the plan review, lap 1:** a SoundFont network failure reaches the `error` event with the message `""`, which titles its issue only `Error`; `reportError` sends E202's sentence from the reference page in that case, as E101–E103 always do (Task 5, Choice 4). A non-empty E202 keeps its own message. |
 | Q8 (lap 2) — how exact is the file size?                            | **Decided in the plan review, lap 1:** rounded up to the next power of two in `reportError` (Task 5, Choice 3); 0 stays 0. An exact size and the type together could identify a widely shared tab file, and a file over the limit already has its own code, E101.                                                     |
 | Q12 (lap 3) — the E105 toast after the swap                         | **Decided in the plan review, lap 1:** its own sentence. A catch around the steps after the swap in `runRequestNotation` reports E105 and says `riff.gp opened, but something went wrong on our side. If the player misbehaves, reload the page. (Error E105)`, for a picked and a dropped file alike (Task 11).      |
-| Q13 (lap 3) — the picker's announcement                             | **Decided in the plan review, lap 1:** kept as it is. A picked file's E105 is announced by its toast alone, as E101 and E102 are: the toast is a polite live region, so the sentence is heard once. A drop also writes it into the player's announcement.                                                             |
+| Q13 (lap 3) — the picker's announcement                             | **Decided in the plan review, lap 1:** kept as it is. A picked file's E105 is announced by its toast alone, as E101 and E102 are: the toast is a polite live region, so the sentence is heard once. A drop also writes its E105 into the player's announcement, except one raised after the swap (Q12).               |
 
 Nothing the spec left to the plan is still open: the owner decided QP-1, Q8, Q12 and Q13 in the
 plan review's first lap.
@@ -3621,7 +3622,9 @@ Run: `pnpm --filter @notation-hero/web exec vitest run app/play/PlayerShell.test
 Expected: FAIL — the first case's last wait times out (the bar keeps pulsing: the throw skips both
 `setOpening(false)` calls), and the second never sees an E105 (the drop's catch reports nothing
 yet). Of the two after-the-swap cases, the picked file's toast says "could not be opened" (the
-throw reaches the picker's catch), and the dropped file's never sees an E105.
+throw reaches the picker's catch), and the dropped file's never sees an E105. Vitest reports the
+two that never see an E105 as `Test timed out in 5000ms`, not as a failed check: their wait
+allows the same 5 seconds as the test itself.
 
 - [ ] **Step 6: The drop path, and every exit lowers the opening state**
 
@@ -3660,18 +3663,19 @@ const requestNotation = useCallback(
 );
 ```
 
-In the comment block above `openInFlight`, delete the last line, "PRE-EXISTING: this path is
-unchanged by this feature, and the race predates it." — this change touches the path.
+In the comment block above `openInFlight`, delete its last two lines — the lone `//` and the line
+below it, "PRE-EXISTING: this path is unchanged by this feature, and the race predates it." — this
+change touches the path.
 
 In `runRequestNotation`, the lines after `setNotation({ name: next.name, score });` and
 `setOpening(false);` — `toast.success` through `playRef.current?.focus();`, with their comments
 unchanged — move inside their own `try`:
 
 ```tsx
-// The new score is on screen from here, so a bug of ours in the steps left must not say the file
-// "could not be opened": this catch reports it as E105 with its own sentence, and the open ends
-// here instead of reaching either open path's catch. No announcement: the toast is a polite live
-// region, as the picker's E105 already relies on.
+// The new score is on screen from here, so a bug of ours in the steps left must not say the
+// file "could not be opened": this catch reports it as E105 with its own sentence, and the
+// open ends here instead of reaching either open path's catch. No announcement: the toast is
+// a polite live region, as the picker's E105 already relies on.
 try {
   toast.success(`${next.name} loaded`, { id: 'notation-load' });
   // Success only. None of this is reachable from the cancel path or the parse failure (both
@@ -4819,10 +4823,11 @@ In `web/AGENTS.md`, under "This package", add after the first bullet:
   `// eslint-disable-next-line no-restricted-syntax -- <reason>` on the line above the `catch`.
   Storage the browser refuses is the visitor's, not a bug:
   `if (isStorageRefusal(error)) noteError(error, '…'); else reportError(error);`, written in place.
-  `reportError` keeps the error's message for every code except E101–E103, and the names filter
-  removes names, not a file's contents. A catch around code that reads or parses the visitor's
-  file, such as the cached-score path E104 is reserved for, needs a fixed sentence: add its code to
-  `FIXED_MESSAGES` in `web/lib/monitoring/report.ts`, and to the fixed-sentence test beside it.
+  `reportError` keeps the error's message for every code except E101–E103 (and an E202 whose message
+  is empty), and the names filter removes names, not a file's contents. A catch around code that
+  reads or parses the visitor's file, such as the cached-score path E104 is reserved for, needs a
+  fixed sentence: add its code to `FIXED_MESSAGES` in `web/lib/monitoring/report.ts`, and to the
+  fixed-sentence test beside it.
 ```
 
 - [ ] **Step 6: Lint the shell script, the docs, and commit**
