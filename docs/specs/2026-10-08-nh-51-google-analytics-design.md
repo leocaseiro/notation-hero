@@ -421,7 +421,10 @@ hands Google, in `window.dataLayer`; what Google's script sends is checked by ha
   opening a fixture; `play` after pressing ▶.
 - **Berlin:** the popup shows, and **no** request reaches Google or Sentry before an answer. "No,
   send nothing": still none, also after a reload. "Report errors only": a forced error reaches
-  Sentry, and nothing reaches Google. "Yes, …": both. The answer survives a reload.
+  Sentry; when it arrives, Sentry's fixture has recorded no `session` envelope (the visit ping), and
+  nothing reaches Google. "Yes, …": both, and a `session` envelope arrives. The answer survives a
+  reload. Unlike NH-124's cases, these read session envelopes on purpose: the visit ping is the one
+  thing "Report errors only" withholds from Sentry.
 - **Privacy:** open a fixture with a known title and track names, and press Solo and Mute on one of
   its tracks (both buttons are named after the track). Wait until `window.dataLayer` holds the
   `score_loaded` event, with the score's `track_count`, and both `mixer_change` events. Only then
