@@ -82,7 +82,7 @@ No new dependency: the loader is our own (G2).
 | `web/app/PrivacyChoices.tsx`    | the popup (section 3)                                                                                   |
 | `web/app/privacy/page.tsx`      | the privacy notice (section 7)                                                                          |
 | `web/e2e/google-analytics.ts`   | the shared fixture: answers Google's hosts locally (an empty `gtag.js`) and records every request       |
-| `web/e2e/privacy-choice.e2e.ts` | the consent, privacy and no-overlap cases (section 9)                                                   |
+| `web/e2e/privacy-choice.e2e.ts` | the consent, privacy, no-overlap and drop-through cases (section 9)                                     |
 
 Each `lib` file and the popup has its unit test beside it.
 
@@ -162,6 +162,12 @@ Details ▾
   phone, the full width less the 16 px gutters, with the buttons stacked.
 - **Non-blocking:** no backdrop and no focus trap. The player works while the card waits, and
   nothing is sent meanwhile. It returns on every page load until answered.
+- **Files pass through it:** the card floats over the player's drop zone but is not part of it.
+  While a file is dragged over the page, the card has `pointer-events: none`, so a file dropped on
+  it lands in the drop zone and opens, and "Drop to open" stays visible. A `dragenter` on the window
+  that carries files starts this; the drop, `dragend` or the next `pointermove` ends it, the signals
+  `PlayerShell.tsx` already uses to tell that a drag has ended. Clicks and the keyboard are
+  unaffected.
 - **Equal buttons:** the design system's `Button`, one variant for all three, each at least 44 px
   tall. Refusing is as easy as allowing.
 - **Answering** saves the choice, hides the card and starts what it allows at once — no reload.
@@ -434,6 +440,9 @@ hands Google, in `window.dataLayer`; what Google's script sends is checked by ha
   Without the wait, an empty queue would pass.
 - **No overlap:** the popup's box never intersects ▶ or the transport row, at desktop and phone
   width, measured the way `web/e2e/toast-occlusion.e2e.ts` measures the toaster.
+- **Drop through the card:** in Berlin, with the card showing, drop `Punk.gp` on the card's centre
+  through Chrome's own drag pipeline, as `web/e2e/player.e2e.ts` does. The file opens, and no new
+  tab opens.
 - **Privacy notice:** the popup's Details and the home note both link to `/privacy`, which names who
   runs the site and how to change an answer.
 
