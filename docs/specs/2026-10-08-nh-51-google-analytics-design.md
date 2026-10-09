@@ -1,3 +1,8 @@
+---
+lap: 1
+last_applied: P2
+---
+
 # Google Analytics 4 for `web/` — NH-51
 
 Date: 2026-10-08
