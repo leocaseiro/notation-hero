@@ -248,14 +248,11 @@ recorded notes for this stage. Each one, and where it lands:
 | Q14 — in which order do the commits land?                           | The task order below.                                                                                                                                                                                                                                                                                                 |
 | QP-1 (new) — an E202 whose message is empty                         | **Decided in the plan review, lap 1:** a SoundFont network failure reaches the `error` event with the message `""`, which titles its issue only `Error`; `reportError` sends E202's sentence from the reference page in that case, as E101–E103 always do (Task 5, Choice 4). A non-empty E202 keeps its own message. |
 | Q8 (lap 2) — how exact is the file size?                            | **Decided in the plan review, lap 1:** rounded up to the next power of two in `reportError` (Task 5, Choice 3); 0 stays 0. An exact size and the type together could identify a widely shared tab file, and a file over the limit already has its own code, E101.                                                     |
+| Q12 (lap 3) — the E105 toast after the swap                         | **Decided in the plan review, lap 1:** its own sentence. A catch around the steps after the swap in `runRequestNotation` reports E105 and says `riff.gp opened, but something went wrong on our side. If the player misbehaves, reload the page. (Error E105)`, for a picked and a dropped file alike (Task 11).      |
+| Q13 (lap 3) — the picker's announcement                             | **Decided in the plan review, lap 1:** kept as it is. A picked file's E105 is announced by its toast alone, as E101 and E102 are: the toast is a polite live region, so the sentence is heard once. A drop also writes it into the player's announcement.                                                             |
 
-**Left open for the plan review** — the plan builds what the spec says today; each of these would
-change what a visitor sees or what is sent, so it is the owner's call:
-
-- **Lap 3's Q12 — the E105 toast after the swap.** An E105 thrown after the new score replaced the
-  open one says "could not be opened" about a score that is now on screen.
-- **Lap 3's Q13 — the picker's announcement.** A drop writes E105 into the player's screen-reader
-  announcement; the picker does not, because `OpenFileControl` receives only `onNotation`.
+Nothing the spec left to the plan is still open: the owner decided QP-1, Q8, Q12 and Q13 in the
+plan review's first lap.
 
 ## Choices this plan makes
 
@@ -2476,13 +2473,15 @@ They render only after a crash, and no screenshot or accessibility lane reaches 
    the page at 1280 × 900 and at 375 × 812.
 2. Undo it: `git checkout -- web/app/play/PlayerShell.tsx`.
 3. Add the same line as the first line of `Home()` in `web/app/page.tsx`, open `/`, and screenshot
-   `web/app/error.tsx` the same way. Undo it the same way.
+   `web/app/error.tsx` the same way. Undo it by deleting the line you added — not with
+   `git checkout`, because `web/app/page.tsx` also holds Step 6's uncommitted copy.
 4. Add the same line as the first line of `RootLayout()` in `web/app/layout.tsx`, open `/`, and
-   screenshot `global-error.tsx` the same way. Undo it the same way.
+   screenshot `global-error.tsx` the same way. Undo it: `git checkout -- web/app/layout.tsx`.
 
 Expected: each page shows its heading, the new sentence, "Error E901" and a Try again button, styled
 like the app, with no horizontal scroll at 375 px. `git status` is clean of all three temporary
-lines. Put the six screenshots in the PR.
+lines, and `git diff web/app/page.tsx` shows only Step 6's copy change. Put the six screenshots in
+the PR.
 
 - [ ] **Step 9: Lint, types, the unit lane, commit**
 
@@ -3180,16 +3179,19 @@ git commit -m "feat(web): report a file that is not a score, with its type and s
 Both open paths — the picker (`OpenFileControl`) and a drop (`PlayerShell`) — set a flag between
 their two steps: a failure before it is the visitor's file (E101 or E102, a warning); after it, our
 own code failed loading a file that was read fine (E105, a new code, an error that keeps its
-message). And every exit of `requestNotation` now lowers the opening state, so an E105 no longer
-leaves the "Loading the player" bar pulsing. This task also gives `PlayerShell.test.tsx` the
-stand-in api the next two tasks use.
+message). A bug of ours after the swap, with the new score already on screen, is E105 too, but says
+so: a catch around the steps after the swap in `runRequestNotation`, which both paths call, reports
+it and says the file opened (the plan review, lap 1). And every exit of `requestNotation` now
+lowers the opening state, so an E105 no longer leaves the "Loading the player" bar pulsing. This
+task also gives `PlayerShell.test.tsx` the stand-in api the next two tasks use.
 
 **Files:**
 
 - Modify: `shared/src/error-codes.ts`, `docs/reference/error-codes.md` (E105)
 - Modify: `web/app/play/OpenFileControl.tsx` (`accept`; `loadFailureMessage`; `openFailureCode`'s
   type)
-- Modify: `web/app/play/PlayerShell.tsx` (`acceptDropped`; `requestNotation`'s `finally`)
+- Modify: `web/app/play/PlayerShell.tsx` (`acceptDropped`; `requestNotation`'s `finally`; the steps
+  after the swap in `runRequestNotation`)
 - Test: `web/app/play/OpenFileControl.test.tsx`, `web/app/play/PlayerShell.test.tsx`,
   `web/lib/monitoring/report.test.ts`
 
@@ -3381,7 +3383,8 @@ const accept = async (file: File | undefined) => {
 ```
 
 The picker writes no announcement for E105, as for E101 and E102: `OpenFileControl` receives only
-`onNotation` (spec 2.4; lap 3's Q13 is open for the plan review).
+`onNotation` (spec 2.4). Its toast is a polite live region, so the sentence is heard once; the plan
+review kept it that way (lap 3's Q13, decided in lap 1).
 
 Run: `pnpm --filter @notation-hero/web exec vitest run app/play/OpenFileControl.test.tsx`
 Expected: PASS — 4 tests.
@@ -3554,12 +3557,56 @@ test('a dropped file that fails after the read reports E105 and announces it', a
   await waitFor(() => expect(reported('E105')).toHaveLength(1), { timeout: 5000 });
   expect(await screen.findByText('Punk.gp could not be opened. Error E105.')).toBeInTheDocument();
 });
+
+test('a picked file whose open fails after the swap says it opened, and reports E105 once', async () => {
+  currentApi = standInApi();
+  const toastError = vi.spyOn(toast, 'error');
+  // The first step after the swap. A throw there stands for a bug of ours with the score on screen.
+  vi.spyOn(toast, 'success').mockImplementation(() => {
+    throw new Error('a bug of ours, after the swap');
+  });
+  render(<PlayerShell />);
+  act(() => deliver('playerReady'));
+  await loadingBarGone();
+
+  pick(fixture('Punk.gp'));
+  await waitFor(() => expect(reported('E105')).toHaveLength(1), { timeout: 5000 });
+  expect(toastError).toHaveBeenCalledWith(
+    'Punk.gp opened, but something went wrong on our side. If the player misbehaves, reload the page. (Error E105)',
+    { id: 'E105:Punk.gp' },
+  );
+  expect(toastError).not.toHaveBeenCalledWith(
+    expect.stringContaining('could not be opened'),
+    expect.anything(),
+  );
+  await loadingBarGone();
+});
+
+test('a dropped file whose open fails after the swap says it opened, not that it failed', async () => {
+  currentApi = standInApi();
+  const toastError = vi.spyOn(toast, 'error');
+  vi.spyOn(toast, 'success').mockImplementation(() => {
+    throw new Error('a bug of ours, after the swap');
+  });
+  render(<PlayerShell />);
+
+  fireEvent.drop(screen.getByTestId('drop-zone'), {
+    dataTransfer: { files: [fixture('Punk.gp')] },
+  });
+  await waitFor(() => expect(reported('E105')).toHaveLength(1), { timeout: 5000 });
+  expect(toastError).toHaveBeenCalledWith(
+    expect.stringContaining('Punk.gp opened, but something went wrong on our side.'),
+    { id: 'E105:Punk.gp' },
+  );
+  expect(screen.queryByText('Punk.gp could not be opened. Error E105.')).toBeNull();
+});
 ```
 
 Run: `pnpm --filter @notation-hero/web exec vitest run app/play/PlayerShell.test.tsx`
 Expected: FAIL — the first case's last wait times out (the bar keeps pulsing: the throw skips both
 `setOpening(false)` calls), and the second never sees an E105 (the drop's catch reports nothing
-yet).
+yet). Of the two after-the-swap cases, the picked file's toast says "could not be opened" (the
+throw reaches the picker's catch), and the dropped file's never sees an E105.
 
 - [ ] **Step 6: The drop path, and every exit lowers the opening state**
 
@@ -3600,6 +3647,43 @@ const requestNotation = useCallback(
 
 In the comment block above `openInFlight`, delete the last line, "PRE-EXISTING: this path is
 unchanged by this feature, and the race predates it." — this change touches the path.
+
+In `runRequestNotation`, the lines after `setNotation({ name: next.name, score });` and
+`setOpening(false);` — `toast.success` through `playRef.current?.focus();`, with their comments
+unchanged — move inside their own `try`:
+
+```tsx
+// The new score is on screen from here, so a bug of ours in the steps left must not say the file
+// "could not be opened": this catch reports it as E105 with its own sentence, and the open ends
+// here instead of reaching either open path's catch. No announcement: the toast is a polite live
+// region, as the picker's E105 already relies on.
+try {
+  toast.success(`${next.name} loaded`, { id: 'notation-load' });
+  // Success only. None of this is reachable from the cancel path or the parse failure (both
+  // returned above), from the read failures the picker catches, or for the bundled score —
+  // nobody asked for that one, so nothing is announced and nothing is focused at page load.
+  setAnnouncement(`Opened ${next.name}`);
+  // A later success contradicts an earlier open-a-file failure, so the stale 1xx toasts go.
+  // 2xx engine failures are NOT toasts — they render over the notation area — so nothing
+  // here reaches them.
+  dismissErrors((id) => id.startsWith('E1'));
+  playRef.current?.focus();
+} catch (error) {
+  reportError(error, {
+    code: ERROR.openFailedAfterRead,
+    file: { type: next.type, bytes: next.bytes.byteLength },
+  });
+  // The loading toast, or the "loaded" toast that replaced it, gives way to the error.
+  toast.dismiss('notation-load');
+  toast.error(
+    `${next.name} opened, but something went wrong on our side. If the player misbehaves, reload the page. (Error ${ERROR.openFailedAfterRead})`,
+    { id: `${ERROR.openFailedAfterRead}:${next.name}` },
+  );
+}
+```
+
+The toast keeps E105's id for that file, so it replaces a stale "could not be opened" toast for the
+same file, and a later successful open dismisses it with the other 1xx toasts.
 
 `acceptDropped` becomes:
 

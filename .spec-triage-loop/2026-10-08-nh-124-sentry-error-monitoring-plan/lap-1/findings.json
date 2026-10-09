@@ -68,8 +68,8 @@
       "P3": "worth fixing — small, cheap"
     },
     "triage_progress": {
-      "undecided": ["PQ-3", "PQ-4", "PF-6", "PO-1", "PO-2"],
-      "decided": ["PF-7", "PF-8", "PQ-1", "PQ-2"]
+      "undecided": ["PO-1", "PO-2"],
+      "decided": ["PF-7", "PF-8", "PQ-1", "PQ-2", "PQ-3", "PQ-4", "PF-6"]
     }
   },
   "already_applied": [
@@ -132,111 +132,7 @@
     }
   ],
   "ambiguity_fixes": [],
-  "undecided_findings": [
-    {
-      "id": "PQ-3",
-      "kind": "decision (the plan's open question Q12, lap 3 of the spec)",
-      "severity": "P3",
-      "section": "Questions the spec left to the plan — Q12; Task 11 (the E105 toast)",
-      "title": "An E105 after the new score is on screen says it \"could not be opened\"",
-      "scenario": "A visitor opens riff.gp. It parses, appears on screen and plays — then a bug of ours in the few lines after the swap (the success toast, the announcement, the focus) throws. The toast says \"riff.gp could not be opened. Something went wrong on our side…\" while the score is right there, playable.",
-      "whats_wrong": "The read flag tells the visitor's file from our bug, but not before the swap from after it; one E105 message covers both.",
-      "options": [
-        {
-          "label": "1 — Keep one message (recommended)",
-          "pros": "No new code path; after the swap only a toast, an announcement and a focus call can throw, so it is very unlikely",
-          "cons": "In that rare case the toast is wrong about the score on screen"
-        },
-        {
-          "label": "2 — A second message after the swap",
-          "pros": "Accurate: \"riff.gp opened, but something went wrong on our side. If the player misbehaves, reload the page. (Error E105)\"",
-          "cons": "A swap flag threaded from runRequestNotation to both open paths, a second toast id, and tests for both"
-        }
-      ],
-      "recommendation": "1 for now; flip to 2 if Sentry ever shows E105s from after the swap (their tag would carry the new score's instruments)."
-    },
-    {
-      "id": "PQ-4",
-      "kind": "decision (the plan's open question Q13, lap 3 of the spec)",
-      "severity": "P3",
-      "section": "Questions the spec left to the plan — Q13; Task 11 (the picker's catch)",
-      "title": "A picked file's E105 is announced by the toast only; a dropped file's also by the player",
-      "scenario": "A screen-reader user opens a file with the Open button, and it fails with E105. The toast is read aloud (Sonner's toaster is a polite live region). Had they dropped the same file, the player's own announcement would also say \"riff.gp could not be opened. Error E105.\"",
-      "whats_wrong": "OpenFileControl receives only onNotation, so it cannot write the player's announcement; E101 and E102 behave the same way today.",
-      "options": [
-        {
-          "label": "1 — Keep the toast only for the picker (recommended)",
-          "pros": "Consistent with E101/E102; no duplicate speech",
-          "cons": "The two open paths announce differently"
-        },
-        {
-          "label": "2 — Pass an announce callback to OpenFileControl",
-          "pros": "Both paths say the same thing in the same place",
-          "cons": "A new prop, and the toast plus the announcement may read the same sentence twice"
-        }
-      ],
-      "recommendation": "1 — the toast is already spoken; flip to 2 if a screen-reader test shows the toast is missed."
-    },
-    {
-      "id": "PF-6",
-      "kind": "proposed fix",
-      "severity": "P2",
-      "severity_meaning": "a real gap an implementer will hit",
-      "confidence": 75,
-      "confidence_meaning": "one reviewer; verify-B confirmed the order of the steps",
-      "reviewers": ["design-lens"],
-      "section": "Task 7 Step 8 (the error pages in a real browser), items 3 and 4",
-      "title": "Task 7's \"undo it the same way\" wipes the new home-page copy",
-      "scenario": "You follow Task 7 Step 8. Item 3 adds a throw to web/app/page.tsx and says \"Undo it the same way\" — item 2's `git checkout --`. That also wipes Step 6's uncommitted new copy. Step 9 then commits a landing screenshot showing copy the page no longer has, and the pixel job fails.",
-      "before_after": [
-        {
-          "where": "Task 7 Step 8",
-          "before": "3. Add the same line as the first line of `Home()` in `web/app/page.tsx`, open `/`, and screenshot\n   `web/app/error.tsx` the same way. Undo it the same way.\n4. Add the same line as the first line of `RootLayout()` in `web/app/layout.tsx`, open `/`, and\n   screenshot `global-error.tsx` the same way. Undo it the same way.",
-          "after": "3. Add the same line as the first line of `Home()` in `web/app/page.tsx`, open `/`, and screenshot\n   `web/app/error.tsx` the same way. Undo it by deleting the line you added — not with\n   `git checkout`, because `web/app/page.tsx` also holds Step 6's uncommitted copy.\n4. Add the same line as the first line of `RootLayout()` in `web/app/layout.tsx`, open `/`, and\n   screenshot `global-error.tsx` the same way. Undo it: `git checkout -- web/app/layout.tsx`."
-        },
-        {
-          "where": "Task 7 Step 8, Expected",
-          "before": "Expected: … `git status` is clean of all three temporary lines.",
-          "after": "Expected: … `git status` is clean of all three temporary lines, and `git diff web/app/page.tsx` shows only Step 6's copy change."
-        }
-      ],
-      "proposed_fix": "As shown: item 3 deletes the line by hand; item 4 gets its own explicit undo (verify-B's correction, since its \"the same way\" would now point at item 3).",
-      "why_it_works": "Only the throw is removed, so Step 6's copy survives into Step 9's commit beside the screenshot that shows it.",
-      "drop_consequence": "Drop it: an implementer following the step literally loses the copy and commits a screenshot that no longer matches the page.",
-      "options": [
-        {
-          "label": "Apply (recommended)",
-          "what": "The two wording changes and the Expected line."
-        },
-        {
-          "label": "Skip — decide later",
-          "what": "Leave it open."
-        },
-        {
-          "label": "Drop",
-          "what": "Leave the step as it is."
-        }
-      ],
-      "recommendation": "Apply — a wording fix with one right answer, raised at anchor 75 by one reviewer, so it waits for approval rather than being applied silently.",
-      "raw_reviewer_findings": [
-        {
-          "title": "Step 8's 'undo the same way' discards the home-page copy",
-          "severity": "P2",
-          "section": "Task 7 - The three error pages, and the copy (Step 8, look at the three error pages, item 3)",
-          "why_it_matters": "Following Step 8 literally loses the new home-page copy. By then `web/app/page.tsx` holds Step 6's uncommitted tagline and privacy paragraph, and 'Undo it the same way' for item 3 means `git checkout -- web/app/page.tsx`, which restores the file to HEAD and discards both. Step 9 then commits the regenerated `landing-chromium-linux.png` (showing the new copy) beside a page that no longer has it, so the `web` visual-regression job fails at the landing shot, and Step 8's 'git status is clean' check cannot reveal it. Items 1 and 4 touch files nothing earlier edited, so only item 3 needs a different undo.",
-          "finding_type": "error",
-          "autofix_class": "gated_auto",
-          "suggested_fix": "In Task 7 Step 8, change item 3's closing sentence 'Undo it the same way.' to 'Undo it by deleting the line you added; do not use `git checkout` here, because `web/app/page.tsx` also holds Step 6's uncommitted copy.' and add to the Expected paragraph that `git diff web/app/page.tsx` shows only Step 6's copy change.",
-          "confidence": 75,
-          "evidence": [
-            "`web/app/error.tsx` the same way. Undo it the same way.",
-            "2. Undo it: `git checkout -- web/app/play/PlayerShell.tsx`.",
-            "In `web/app/page.tsx`, the tagline's second sentence changes, and a new paragraph follows the Play"
-          ]
-        }
-      ]
-    }
-  ],
+  "undecided_findings": [],
   "fyi_observations": [
     {
       "id": "PO-1",
@@ -346,7 +242,8 @@
     "step7_heads_up": "A P1 was applied this lap (PF-1, by the review itself), and the exit signal was not clean, so the rule as written re-laps: lap 2 of the plan review, as a new review half. Put the choice to the owner with the evidence: every applied fix was reproduced and confirmed by running code; the open items are a build guard, wording, and four product questions."
   },
   "notes": [
-    "The plan-time spike's raw evidence (runtime.json, envelopes.json, vitest-resolve.json and the build logs) lives in the session scratchpad, not in the repository; the plan's \"What was verified\" table carries its results."
+    "The plan-time spike's raw evidence (runtime.json, envelopes.json, vitest-resolve.json and the build logs) lives in the session scratchpad, not in the repository; the plan's \"What was verified\" table carries its results.",
+    "Triage round 3 (2026-10-09): the owner said improvements that only remove ambiguity may be auto-resolved: applied and reported, not put to a picker. This carries into the next lap's triage."
   ],
   "resume": {
     "triage_half": "NEXT: lap 1 TRIAGE half — run spec-triage-loop:doc-review-loop on the plan (artifact_path_from_root, prefixed with your repo root). The entry rule starts at step 4: PF-7, PF-8, PQ-1–PQ-4, PF-6, PO-1 and PO-2 are undecided.",
@@ -564,6 +461,121 @@
       "decided_on": "2026-10-09",
       "triage_round": 2,
       "decision_note": "Applied. report.ts gains roundedSize (an integer loop, no floating point; 0 stays 0) used for contexts.file.bytes. Tests: report.test.ts 31->32 plus a new rounding case (0,1,5,32,48_213 -> 0,1,8,32,65_536); Task 10's e2e case 2 29->32; Task 11's OpenFileControl E105 case 5->8 (its E102 case stays 1). Choice 3, the Questions table, Task 5's Interfaces and Task 17 Step 7 updated; changelog line added. Over-the-limit keeps its own code (E101), checked in docs/reference/error-codes.md."
+    },
+    {
+      "id": "PQ-3",
+      "kind": "decision (the plan's open question Q12, lap 3 of the spec)",
+      "severity": "P3",
+      "section": "Questions the spec left to the plan — Q12; Task 11 (the E105 toast)",
+      "title": "An E105 after the new score is on screen says it \"could not be opened\"",
+      "scenario": "A visitor opens riff.gp. It parses, appears on screen and plays — then a bug of ours in the few lines after the swap (the success toast, the announcement, the focus) throws. The toast says \"riff.gp could not be opened. Something went wrong on our side…\" while the score is right there, playable.",
+      "whats_wrong": "The read flag tells the visitor's file from our bug, but not before the swap from after it; one E105 message covers both.",
+      "options": [
+        {
+          "label": "1 — Keep one message (recommended)",
+          "pros": "No new code path; after the swap only a toast, an announcement and a focus call can throw, so it is very unlikely",
+          "cons": "In that rare case the toast is wrong about the score on screen"
+        },
+        {
+          "label": "2 — A second message after the swap",
+          "pros": "Accurate: \"riff.gp opened, but something went wrong on our side. If the player misbehaves, reload the page. (Error E105)\"",
+          "cons": "A swap flag threaded from runRequestNotation to both open paths, a second toast id, and tests for both"
+        }
+      ],
+      "recommendation": "1 for now; flip to 2 if Sentry ever shows E105s from after the swap (their tag would carry the new score's instruments).",
+      "decision": "Option 2 — a second message after the swap (the owner's choice over the recommended option 1)",
+      "decided_on": "2026-10-09",
+      "triage_round": 3,
+      "decision_note": "Applied in Task 11, more simply than the option's estimate: one try/catch around the steps after setNotation in runRequestNotation (toast.success, setAnnouncement, dismissErrors, focus), which both open paths call, so no swap flag and no prop change are needed. The catch reports E105 with the file facts, dismisses notation-load and raises 'X opened, but something went wrong on our side. If the player misbehaves, reload the page. (Error E105)' under the existing E105 id for that file; no announcement (the toast is a polite live region). Two new PlayerShell.test.tsx cases (picked and dropped) make toast.success throw. Prettier-stable; NOT run during triage: the cases need Tasks 5, 10 and 11 applied first, so the plan review's next lap or the implementation runs them first. Questions table and changelog updated."
+    },
+    {
+      "id": "PQ-4",
+      "kind": "decision (the plan's open question Q13, lap 3 of the spec)",
+      "severity": "P3",
+      "section": "Questions the spec left to the plan — Q13; Task 11 (the picker's catch)",
+      "title": "A picked file's E105 is announced by the toast only; a dropped file's also by the player",
+      "scenario": "A screen-reader user opens a file with the Open button, and it fails with E105. The toast is read aloud (Sonner's toaster is a polite live region). Had they dropped the same file, the player's own announcement would also say \"riff.gp could not be opened. Error E105.\"",
+      "whats_wrong": "OpenFileControl receives only onNotation, so it cannot write the player's announcement; E101 and E102 behave the same way today.",
+      "options": [
+        {
+          "label": "1 — Keep the toast only for the picker (recommended)",
+          "pros": "Consistent with E101/E102; no duplicate speech",
+          "cons": "The two open paths announce differently"
+        },
+        {
+          "label": "2 — Pass an announce callback to OpenFileControl",
+          "pros": "Both paths say the same thing in the same place",
+          "cons": "A new prop, and the toast plus the announcement may read the same sentence twice"
+        }
+      ],
+      "recommendation": "1 — the toast is already spoken; flip to 2 if a screen-reader test shows the toast is missed.",
+      "decision": "Option 1 — keep the toast only for the picker",
+      "decided_on": "2026-10-09",
+      "triage_round": 3,
+      "decision_note": "Kept as written. Task 11 Step 3's note and the Questions table record the decision; a changelog line says it was kept."
+    },
+    {
+      "id": "PF-6",
+      "kind": "proposed fix",
+      "severity": "P2",
+      "severity_meaning": "a real gap an implementer will hit",
+      "confidence": 75,
+      "confidence_meaning": "one reviewer; verify-B confirmed the order of the steps",
+      "reviewers": ["design-lens"],
+      "section": "Task 7 Step 8 (the error pages in a real browser), items 3 and 4",
+      "title": "Task 7's \"undo it the same way\" wipes the new home-page copy",
+      "scenario": "You follow Task 7 Step 8. Item 3 adds a throw to web/app/page.tsx and says \"Undo it the same way\" — item 2's `git checkout --`. That also wipes Step 6's uncommitted new copy. Step 9 then commits a landing screenshot showing copy the page no longer has, and the pixel job fails.",
+      "before_after": [
+        {
+          "where": "Task 7 Step 8",
+          "before": "3. Add the same line as the first line of `Home()` in `web/app/page.tsx`, open `/`, and screenshot\n   `web/app/error.tsx` the same way. Undo it the same way.\n4. Add the same line as the first line of `RootLayout()` in `web/app/layout.tsx`, open `/`, and\n   screenshot `global-error.tsx` the same way. Undo it the same way.",
+          "after": "3. Add the same line as the first line of `Home()` in `web/app/page.tsx`, open `/`, and screenshot\n   `web/app/error.tsx` the same way. Undo it by deleting the line you added — not with\n   `git checkout`, because `web/app/page.tsx` also holds Step 6's uncommitted copy.\n4. Add the same line as the first line of `RootLayout()` in `web/app/layout.tsx`, open `/`, and\n   screenshot `global-error.tsx` the same way. Undo it: `git checkout -- web/app/layout.tsx`."
+        },
+        {
+          "where": "Task 7 Step 8, Expected",
+          "before": "Expected: … `git status` is clean of all three temporary lines.",
+          "after": "Expected: … `git status` is clean of all three temporary lines, and `git diff web/app/page.tsx` shows only Step 6's copy change."
+        }
+      ],
+      "proposed_fix": "As shown: item 3 deletes the line by hand; item 4 gets its own explicit undo (verify-B's correction, since its \"the same way\" would now point at item 3).",
+      "why_it_works": "Only the throw is removed, so Step 6's copy survives into Step 9's commit beside the screenshot that shows it.",
+      "drop_consequence": "Drop it: an implementer following the step literally loses the copy and commits a screenshot that no longer matches the page.",
+      "options": [
+        {
+          "label": "Apply (recommended)",
+          "what": "The two wording changes and the Expected line."
+        },
+        {
+          "label": "Skip — decide later",
+          "what": "Leave it open."
+        },
+        {
+          "label": "Drop",
+          "what": "Leave the step as it is."
+        }
+      ],
+      "recommendation": "Apply — a wording fix with one right answer, raised at anchor 75 by one reviewer, so it waits for approval rather than being applied silently.",
+      "raw_reviewer_findings": [
+        {
+          "title": "Step 8's 'undo the same way' discards the home-page copy",
+          "severity": "P2",
+          "section": "Task 7 - The three error pages, and the copy (Step 8, look at the three error pages, item 3)",
+          "why_it_matters": "Following Step 8 literally loses the new home-page copy. By then `web/app/page.tsx` holds Step 6's uncommitted tagline and privacy paragraph, and 'Undo it the same way' for item 3 means `git checkout -- web/app/page.tsx`, which restores the file to HEAD and discards both. Step 9 then commits the regenerated `landing-chromium-linux.png` (showing the new copy) beside a page that no longer has it, so the `web` visual-regression job fails at the landing shot, and Step 8's 'git status is clean' check cannot reveal it. Items 1 and 4 touch files nothing earlier edited, so only item 3 needs a different undo.",
+          "finding_type": "error",
+          "autofix_class": "gated_auto",
+          "suggested_fix": "In Task 7 Step 8, change item 3's closing sentence 'Undo it the same way.' to 'Undo it by deleting the line you added; do not use `git checkout` here, because `web/app/page.tsx` also holds Step 6's uncommitted copy.' and add to the Expected paragraph that `git diff web/app/page.tsx` shows only Step 6's copy change.",
+          "confidence": 75,
+          "evidence": [
+            "`web/app/error.tsx` the same way. Undo it the same way.",
+            "2. Undo it: `git checkout -- web/app/play/PlayerShell.tsx`.",
+            "In `web/app/page.tsx`, the tagline's second sentence changes, and a new paragraph follows the Play"
+          ]
+        }
+      ],
+      "decision": "Apply",
+      "decided_on": "2026-10-09",
+      "triage_round": 3,
+      "decision_note": "Applied as proposed (with verify-B's correction): Task 7 Step 8 item 3 deletes the line by hand, item 4 names git checkout -- web/app/layout.tsx, and Expected checks git diff web/app/page.tsx. Re-checked during triage: Task 7 changes page.tsx in Step 6 and commits it in Step 9, and never changes layout.tsx or PlayerShell.tsx."
     }
   ]
 }

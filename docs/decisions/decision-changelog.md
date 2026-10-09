@@ -187,6 +187,14 @@ loop come next.
 - **The file size is rounded up to the next power of two.** The spec sent the exact byte count, and
   with the type an exact size could single out a widely shared tab file. A 48,213-byte file is now
   sent as 65,536; 0 stays 0, and a file over the limit already has its own code, E101.
+- **An E105 after the swap says the file opened.** A bug of ours in the steps after the new score
+  is on screen (the "loaded" toast, the announcement, moving focus) no longer says the file "could
+  not be opened": a catch around those steps reports E105 and says `riff.gp opened, but something
+went wrong on our side. If the player misbehaves, reload the page. (Error E105)`. leocaseiro's
+  choice over keeping one message, which the review had recommended as the cheaper path (lap 3's
+  Q12).
+- **Kept: a picked file's E105 is announced by its toast alone,** as E101 and E102 are. The toast is
+  a polite live region, so the sentence is heard once (lap 3's Q13).
 
 **Registry:** L11-sentry points at the spec; L11-srcmap reworded (D4); L11-envsecret ⛔ superseded
 and F7-sentry rewritten, because the source-map upload runs inside Vercel's build rather than a
