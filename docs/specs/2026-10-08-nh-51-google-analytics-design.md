@@ -175,8 +175,11 @@ Details ▾
   [Google's page for sites that use its services](https://policies.google.com/technologies/partner-sites),
   and "Privacy notice" links to `/privacy`. Both open in a new tab, so an open score is not lost,
   and say so to screen readers.
-- **Screen readers:** the card is a labelled region ("Privacy choice"), announced politely when it
-  appears.
+- **Screen readers:** the card is a labelled region ("Privacy choice") with no `aria-live` of its
+  own: it arrives with its text, and a live region that arrives with its text is generally not
+  announced. `PrivacyChoices` renders an empty polite live region in the HTML the server sends and
+  keeps it for the life of the page, the way `PlayerShell.tsx` keeps its `announcement` paragraph;
+  when the card appears, the region receives the question.
 - **Themes:** colours from the design tokens only, so the card follows dark mode on the day `web/`
   can show it (NH-302); no new colour.
 
@@ -409,7 +412,8 @@ An agent may not create accounts.
 - `track()`: nothing before the start; `['event', name, fields]` after it.
 - Types: `// @ts-expect-error` on a free-text field, checked by `typecheck`.
 - `PrivacyChoices`: each button saves its answer; Details opens and closes; the card is hidden
-  outside Europe, once answered, and when neither key is set.
+  outside Europe, once answered, and when neither key is set; the live region is in the page before
+  the card appears, and receives the question when it does.
 
 **End to end (Playwright).** The lane's one build carries the fake Google Analytics ID and every
 project runs as Sydney, so every page in every case starts Google Analytics. The config makes
