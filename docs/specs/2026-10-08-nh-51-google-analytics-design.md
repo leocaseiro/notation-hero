@@ -496,8 +496,11 @@ hands Google, in `window.dataLayer`; what Google's script sends is checked by ha
   in Google Analytics.
 - **Accounts:** a Google Analytics user ID only with consent, never an email. Out of scope.
 - **NH-349's link** reuses `PrivacyChoices` and `saveChoice()`. Changing to "No" must stop Google
-  Analytics (a consent update to denied, and no more events) and close Sentry for the rest of the
-  visit.
+  Analytics for the rest of the visit. A consent update to denied is not enough: the loaded tag
+  still sends a cookieless `user_engagement` hit when the page is left (spike, 2026-10-08). So the
+  link also sets `window['ga-disable-<ID>'] = true` and sends no more events. Google documents that
+  switch as set before any `gtag()` call, so NH-349's test must prove no hit follows a "No". The
+  link must also close Sentry for the rest of the visit.
 
 ## Known limits
 
