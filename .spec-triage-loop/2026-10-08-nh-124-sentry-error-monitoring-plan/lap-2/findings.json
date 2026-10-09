@@ -14,7 +14,7 @@
     "focus_scope": "The owner's choice at lap 1's step 7 (2026-10-09): the reviewers read only what lap 1 changed — git diff fc745806..88e209ad -- the plan (959 lines: the review's five fixes in 47827227 and the triage's nine decisions in 82d11a95, df7e287b, a33cc454, a3ad4ace) — and the plan around each hunk for context only. A passage lap 1 did not edit was in scope only when an edit made it stale.",
     "review_skill": "compound-engineering:ce-doc-review 3.30.4",
     "review_mode": "mode:headless (the deprecated alias of mode:non-interactive)",
-    "state_store": "The plan's YAML frontmatter: lap: 1, last_applied: P1 when this review ran. The triage half bumps lap to 2 at step 6.",
+    "state_store": "The plan's YAML frontmatter: lap: 1, last_applied: P1 when this review ran; the triage half wrote lap: 2, last_applied: P3 (2026-10-10).",
     "document_type": "plan",
     "review_baseline_commit": "88e209ad",
     "id_note": "Lap 2 numbers its items on from lap 1's, so no id repeats across the plan review: lap 1 used PF-1–PF-8, PQ-1–PQ-4, PO-1, PO-2 and R-1. PF-n are findings, PO-n observations, PQ-n questions, R-n residual concerns.",
@@ -30,7 +30,7 @@
       "50": "a suspicion or advisory worth checking, not a finding to act on as it stands"
     },
     "triage_cap": "12 findings or 5 picker rounds, whichever first; a finding that needs two rounds counts twice",
-    "triaged": false,
+    "triaged": true,
     "permalink_note": "The plan as reviewed (88e209ad) plus the five wording fixes this review applied (this sha, 8109b9fb). This findings file is committed on top of it; the plan is identical at both.",
     "line_numbers_note": "Line numbers below refer to the plan at 8109b9fb. Every item also names its task and step, which do not move.",
     "reviewers_dispatched": {
@@ -73,9 +73,10 @@
     ],
     "finding_count_for_triage": 1,
     "triage_progress": {
-      "undecided": ["PF-14"],
-      "decided": []
-    }
+      "undecided": [],
+      "decided": ["PF-14"]
+    },
+    "triaged_on": "2026-10-10"
   },
   "already_applied": [
     {
@@ -199,7 +200,79 @@
       "revert": "git revert 8109b9fb, or restore the before comment."
     }
   ],
-  "undecided_findings": [
+  "undecided_findings": [],
+  "fyi_observations": [
+    {
+      "id": "PO-3",
+      "severity": "P3",
+      "confidence": 50,
+      "confidence_meaning": "an advisory: the mechanism was run, but nothing is wrong with what the tests prove",
+      "reviewers": ["spike verifier", "findings verifier"],
+      "section": "Tasks 11, 12 and 13 — the PlayerShell tests' waits",
+      "title": "Fourteen waits allow 5 seconds, the same as Vitest's test timeout",
+      "scenario": "When you run a Task 12 or Task 13 test before its change, a wait that never succeeds prints 'Test timed out in 5000ms' rather than its own failed check.",
+      "observation": "14 `waitFor(…, { timeout: 5000 })` in Tasks 11–13 (lap 1 added 2) equal Vitest's default testTimeout, so the test's own timeout fires first. PF-11 now says so for Task 11. Task 13 Step 3's run-to-fail step will likely print timeouts too (reasoned from a probe, not run); its Expected text still names the right cause. Lowering every wait to 4000 ms would make each failure print its own check, at a small risk on a slow runner (the slowest passing case takes about 2.1 s here).",
+      "recommendation": "No change. Report it in one line; offer the 4000 ms change only if the owner asks.",
+      "decision_needed": false
+    },
+    {
+      "id": "PO-4",
+      "severity": "P3",
+      "confidence": 50,
+      "confidence_meaning": "an advisory about existing code, outside this lap's scope",
+      "reviewers": ["findings verifier"],
+      "section": "Task 11 Step 6 — the comment block above openInFlight in web/app/play/PlayerShell.tsx",
+      "title": "The comment's '113-line body' is already stale",
+      "scenario": "Reading PlayerShell.tsx, you trust the comment's '113-line body' — but runRequestNotation's body is 124 lines today, and Task 11's try/catch lengthens it.",
+      "observation": "A number in existing code, wrong before this feature. The block is the one Task 11 Step 6 already edits, so the implementer can drop the number then.",
+      "recommendation": "No change to the plan. Report it in one line.",
+      "decision_needed": false
+    }
+  ],
+  "rejected_findings": [],
+  "residual_concerns": [],
+  "deferred_questions": [],
+  "dedup_notes": [
+    "No two findings shared a fix; nothing merged.",
+    "The spike verifier's three points became PF-11 (the expected-failure text), PF-12 and PF-13; the rest of its timeout point became PO-3.",
+    "The findings verifier's side note on the stale '113-line body' comment became PO-4.",
+    "PF-14 is security-lens's finding, raised at confidence 50, then spiked: confirmed, and widened by the '[SENSITIVE]' placeholder and the pulled DSN."
+  ],
+  "cross_fix_conflicts": [],
+  "carry_forward_constraints": [
+    "Settled, not re-asked: the spec's ten decisions (S1, S2, S2b, S3, S4, D1–D5), every outcome in the NH-124 changelog entry (spec laps 1–3 and 'Changed by the plan review, lap 1'), and every decision in lap 1's findings.json — PQ-3's option 2 included, leocaseiro's pick over the recommendation.",
+    "Ambiguity-only fixes: apply them and report them; no picker (leocaseiro, 2026-10-09).",
+    "An approved item that changes a settled detail (PF-14 would refine Choice 12) is recorded in the NH-124 entry of docs/decisions/decision-changelog.md, under a new 'Changed by the plan review, lap 2' list.",
+    "The red pr-checklist / CI Green on the draft is expected — never enable Auto-fix.",
+    "Write the PR body BEFORE every push (a body edit cancels a running CI).",
+    "Apply as you go: one commit per picker round, each revertable.",
+    "Dependabot alert #93 is separate work; NH-349, NH-278 and NH-350 are out of scope.",
+    "The cross-model pass stays skipped: no consent to send the plan to an outside AI provider.",
+    "Never ask for, read, print or test SENTRY_AUTH_TOKEN; the owner does spec section 5 by hand.",
+    "Public repo: no personal data and no machine paths in committed files.",
+    "Prettier formats this plan's code blocks: give JSX as whole files, and diff the code blocks after prettier --write (only table realignment should change)."
+  ],
+  "triage_plan": {
+    "report_first": "PF-9 to PF-13, applied by the review in 8109b9fb: one short list, each revertable. Then PO-3 and PO-4, one line each, no decision.",
+    "rounds": [
+      "Round 1 — PF-14 (the upload gate and web/.env files): one card with 1️⃣ pin + warn (Recommended), 2️⃣ warn only, 3️⃣ leave it, and Skip — decide later; then [Q-add]."
+    ],
+    "cap_note": "1 decision in 1 round: well under the 12-finding / 5-round cap.",
+    "finally": "Write the plan's frontmatter (lap: 2, last_applied: P3 — everything applied this lap is P3), mark this file triaged, add PF-14 to the NH-124 changelog entry under 'Changed by the plan review, lap 2' if it is applied, commit, PR body, push — then step 7.",
+    "step7_heads_up": "Lap 2 found and applied nothing above P3. The exit signal is not clean only because of PF-14, a P3 proposed fix. Step 7a comes first: lap 1 left 0 unresolved P0/P1 and lap 2 has 0, so 'this lap did not reduce the count of unresolved P0/P1' fires, and the rule halts and hands the choice to the owner. Recommend stopping the plan review and moving NH-124 to CODE (Jira transition 61): both laps' changes were verified by running code and nothing above P3 remains. Flip to a lap 3 only if the owner wants PF-14's edit re-read by reviewers."
+  },
+  "notes": [
+    "Lap 2 is focused (the owner's choice at lap 1's step 7): only lap 1's changes, and the passages they made stale.",
+    "The spike verifier's logs and applied diff stay in the session scratchpad, not the repository; verify-tests.json carries their results.",
+    "A probe by the findings verifier added one entry to the checkout's git-ignored Vitest cache and an empty temp folder; both were reverted, and git status stayed clean.",
+    "Triage (2026-10-10): PF-9 to PF-13 were reported as applied and kept; PO-3 and PO-4 were reported as FYI, with no change; the owner added nothing on the [Q-add] card."
+  ],
+  "resume": {
+    "status": "Lap 2 triaged on 2026-10-10. Next: step 7. Neither lap left an unresolved P0 or P1 (0 -> 0), so the no-progress bound fires and the choice goes to the owner.",
+    "plan_path_from_root": ".claude/worktrees/nh-320-vr-spec-lap-4-92e22a/docs/plans/2026-10-08-nh-124-sentry-error-monitoring-plan.md",
+    "artifact_path_from_root": ".claude/worktrees/nh-320-vr-spec-lap-4-92e22a/.spec-triage-loop/2026-10-08-nh-124-sentry-error-monitoring-plan/lap-2/findings.json"
+  },
+  "decided_findings": [
     {
       "id": "PF-14",
       "kind": "proposed_fix",
@@ -375,78 +448,11 @@
           "so a `SENTRY_AUTH_TOKEN` in your own shell — Sentry's command-line tools read that name — never makes a local build upload.",
           "`VERCEL_ENV` needs Vercel's system environment variables exposed to the build"
         ]
-      }
+      },
+      "decision": "Apply — option 1️⃣ Pin + warn (the recommendation)",
+      "decided_on": "2026-10-10",
+      "triage_round": 1,
+      "decision_note": "Applied. Task 2 Step 5's build script runs `VERCEL_ENV=$VERCEL_ENV next build`, with a sentence under the snippet; Task 1 Step 4's comment, Choice 12 and Task 16's README note say why, and the README warns against pulling Production variables into web/. Every edit is the option's before_after, verbatim; Prettier left the plan unchanged. A line was added to the NH-124 changelog entry under 'Changed by the plan review, lap 2'. Applied in the same commit as this triage record."
     }
-  ],
-  "fyi_observations": [
-    {
-      "id": "PO-3",
-      "severity": "P3",
-      "confidence": 50,
-      "confidence_meaning": "an advisory: the mechanism was run, but nothing is wrong with what the tests prove",
-      "reviewers": ["spike verifier", "findings verifier"],
-      "section": "Tasks 11, 12 and 13 — the PlayerShell tests' waits",
-      "title": "Fourteen waits allow 5 seconds, the same as Vitest's test timeout",
-      "scenario": "When you run a Task 12 or Task 13 test before its change, a wait that never succeeds prints 'Test timed out in 5000ms' rather than its own failed check.",
-      "observation": "14 `waitFor(…, { timeout: 5000 })` in Tasks 11–13 (lap 1 added 2) equal Vitest's default testTimeout, so the test's own timeout fires first. PF-11 now says so for Task 11. Task 13 Step 3's run-to-fail step will likely print timeouts too (reasoned from a probe, not run); its Expected text still names the right cause. Lowering every wait to 4000 ms would make each failure print its own check, at a small risk on a slow runner (the slowest passing case takes about 2.1 s here).",
-      "recommendation": "No change. Report it in one line; offer the 4000 ms change only if the owner asks.",
-      "decision_needed": false
-    },
-    {
-      "id": "PO-4",
-      "severity": "P3",
-      "confidence": 50,
-      "confidence_meaning": "an advisory about existing code, outside this lap's scope",
-      "reviewers": ["findings verifier"],
-      "section": "Task 11 Step 6 — the comment block above openInFlight in web/app/play/PlayerShell.tsx",
-      "title": "The comment's '113-line body' is already stale",
-      "scenario": "Reading PlayerShell.tsx, you trust the comment's '113-line body' — but runRequestNotation's body is 124 lines today, and Task 11's try/catch lengthens it.",
-      "observation": "A number in existing code, wrong before this feature. The block is the one Task 11 Step 6 already edits, so the implementer can drop the number then.",
-      "recommendation": "No change to the plan. Report it in one line.",
-      "decision_needed": false
-    }
-  ],
-  "rejected_findings": [],
-  "residual_concerns": [],
-  "deferred_questions": [],
-  "dedup_notes": [
-    "No two findings shared a fix; nothing merged.",
-    "The spike verifier's three points became PF-11 (the expected-failure text), PF-12 and PF-13; the rest of its timeout point became PO-3.",
-    "The findings verifier's side note on the stale '113-line body' comment became PO-4.",
-    "PF-14 is security-lens's finding, raised at confidence 50, then spiked: confirmed, and widened by the '[SENSITIVE]' placeholder and the pulled DSN."
-  ],
-  "cross_fix_conflicts": [],
-  "carry_forward_constraints": [
-    "Settled, not re-asked: the spec's ten decisions (S1, S2, S2b, S3, S4, D1–D5), every outcome in the NH-124 changelog entry (spec laps 1–3 and 'Changed by the plan review, lap 1'), and every decision in lap 1's findings.json — PQ-3's option 2 included, leocaseiro's pick over the recommendation.",
-    "Ambiguity-only fixes: apply them and report them; no picker (leocaseiro, 2026-10-09).",
-    "An approved item that changes a settled detail (PF-14 would refine Choice 12) is recorded in the NH-124 entry of docs/decisions/decision-changelog.md, under a new 'Changed by the plan review, lap 2' list.",
-    "The red pr-checklist / CI Green on the draft is expected — never enable Auto-fix.",
-    "Write the PR body BEFORE every push (a body edit cancels a running CI).",
-    "Apply as you go: one commit per picker round, each revertable.",
-    "Dependabot alert #93 is separate work; NH-349, NH-278 and NH-350 are out of scope.",
-    "The cross-model pass stays skipped: no consent to send the plan to an outside AI provider.",
-    "Never ask for, read, print or test SENTRY_AUTH_TOKEN; the owner does spec section 5 by hand.",
-    "Public repo: no personal data and no machine paths in committed files.",
-    "Prettier formats this plan's code blocks: give JSX as whole files, and diff the code blocks after prettier --write (only table realignment should change)."
-  ],
-  "triage_plan": {
-    "report_first": "PF-9 to PF-13, applied by the review in 8109b9fb: one short list, each revertable. Then PO-3 and PO-4, one line each, no decision.",
-    "rounds": [
-      "Round 1 — PF-14 (the upload gate and web/.env files): one card with 1️⃣ pin + warn (Recommended), 2️⃣ warn only, 3️⃣ leave it, and Skip — decide later; then [Q-add]."
-    ],
-    "cap_note": "1 decision in 1 round: well under the 12-finding / 5-round cap.",
-    "finally": "Write the plan's frontmatter (lap: 2, last_applied: P3 — everything applied this lap is P3), mark this file triaged, add PF-14 to the NH-124 changelog entry under 'Changed by the plan review, lap 2' if it is applied, commit, PR body, push — then step 7.",
-    "step7_heads_up": "Lap 2 found and applied nothing above P3. The exit signal is not clean only because of PF-14, a P3 proposed fix. Step 7a comes first: lap 1 left 0 unresolved P0/P1 and lap 2 has 0, so 'this lap did not reduce the count of unresolved P0/P1' fires, and the rule halts and hands the choice to the owner. Recommend stopping the plan review and moving NH-124 to CODE (Jira transition 61): both laps' changes were verified by running code and nothing above P3 remains. Flip to a lap 3 only if the owner wants PF-14's edit re-read by reviewers."
-  },
-  "notes": [
-    "Lap 2 is focused (the owner's choice at lap 1's step 7): only lap 1's changes, and the passages they made stale.",
-    "The spike verifier's logs and applied diff stay in the session scratchpad, not the repository; verify-tests.json carries their results.",
-    "A probe by the findings verifier added one entry to the checkout's git-ignored Vitest cache and an empty temp folder; both were reverted, and git status stayed clean."
-  ],
-  "resume": {
-    "triage_half": "NEXT: lap 2 TRIAGE half — run spec-triage-loop:doc-review-loop on the plan (artifact_path_from_root, prefixed with your repo root). The entry rule starts at step 4: PF-14 is undecided; PO-3 and PO-4 are FYI.",
-    "plan_permalink": "https://github.com/leocaseiro/notation-hero/blob/8109b9fb7830311bf155e6b84f40534321cfb696/docs/plans/2026-10-08-nh-124-sentry-error-monitoring-plan.md",
-    "plan_path_from_root": ".claude/worktrees/nh-320-vr-spec-lap-4-92e22a/docs/plans/2026-10-08-nh-124-sentry-error-monitoring-plan.md",
-    "artifact_path_from_root": ".claude/worktrees/nh-320-vr-spec-lap-4-92e22a/.spec-triage-loop/2026-10-08-nh-124-sentry-error-monitoring-plan/lap-2/findings.json"
-  }
+  ]
 }

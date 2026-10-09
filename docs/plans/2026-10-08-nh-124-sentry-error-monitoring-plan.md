@@ -1,6 +1,6 @@
 ---
-lap: 1
-last_applied: P1
+lap: 2
+last_applied: P3
 ---
 
 # Sentry error monitoring for `web/` — implementation plan (NH-124)
@@ -316,7 +316,9 @@ review can overturn any of them.
     variable: a token in a shell is still worth catching in a browser file. `VERCEL_ENV` needs
     Vercel's system environment variables exposed to the build; the wordmark's version already
     relies on them, and on 2026-10-09 the production bundle carried a `v0.` version, which only a
-    `production` build prints. Approved in the plan review, lap 1.
+    `production` build prints. The build script hands `next build` the shell's own `VERCEL_ENV`,
+    because `next build` loads `web/.env*` files first and would take a `VERCEL_ENV` from one of
+    them. Approved in the plan review, lap 1; the pin in lap 2.
 
 ## Commit order
 
@@ -468,7 +470,9 @@ const nextConfig: NextConfig = {
 // tools read a variable of the same name from a developer's shell, and a local build must never
 // upload with it. VERCEL_ENV needs Vercel's system environment variables on, which the version
 // in the wordmark (scripts/app-version.mjs) already relies on. Previews, CI and local builds
-// upload nothing — and, with the hook off, print nothing about it either.
+// upload nothing — and, with the hook off, print nothing about it either. The build script hands
+// `next build` the shell's own VERCEL_ENV, so a VERCEL_ENV line in a web/.env file cannot open
+// this gate.
 const uploadToken =
   process.env.VERCEL_ENV === 'production' ? process.env.SENTRY_AUTH_TOKEN : undefined;
 
@@ -731,8 +735,12 @@ Expected: PASS — 8 tests.
 In `web/package.json`, the `build` script becomes:
 
 ```json
-"build": "node scripts/vendor-alphatab.mjs && NEXT_PUBLIC_APP_VERSION=$(node scripts/app-version.mjs) next build && node scripts/assert-design-system-css.mjs && node scripts/assert-no-auth-token.mjs",
+"build": "node scripts/vendor-alphatab.mjs && NEXT_PUBLIC_APP_VERSION=$(node scripts/app-version.mjs) VERCEL_ENV=$VERCEL_ENV next build && node scripts/assert-design-system-css.mjs && node scripts/assert-no-auth-token.mjs",
 ```
+
+`VERCEL_ENV=$VERCEL_ENV` hands `next build` the shell's own value, empty when there is none:
+`next build` loads `web/.env*` files before `next.config.ts` and fills only the variables that are
+missing, so a `VERCEL_ENV` line in one of those files cannot open the upload gate (Choice 12).
 
 Run: `pnpm --filter @notation-hero/web run build`
 Expected: PASS, with nothing printed by the new step (no token, nothing to check).
@@ -4873,7 +4881,10 @@ Sentry is down, or the token was revoked or has expired — when the token is se
 browser downloads (`scripts/assert-no-auth-token.mjs`). Redeploy once Sentry answers; replace the
 token in Vercel if it was revoked. Only a production build reads the token (`VERCEL_ENV` is
 `production`), so a `SENTRY_AUTH_TOKEN` in your own shell — Sentry's command-line tools read that
-name — never makes a local build upload. The one-time setup is section 5 of
+name — never makes a local build upload: the build script hands `next build` your shell's
+`VERCEL_ENV`, so a `web/.env` file cannot make it `production`. Do not pull Production variables
+into `web/` (`vercel env pull --environment=production`): they include the production DSN, so
+`pnpm dev` would report into the production project. The one-time setup is section 5 of
 [the spec](../docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md).
 ```
 

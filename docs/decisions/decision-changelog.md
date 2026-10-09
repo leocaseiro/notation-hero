@@ -204,6 +204,17 @@ went wrong on our side. If the player misbehaves, reload the page. (Error E105)`
 lap 1 applied a P1 fix. The reviewers read only what lap 1 changed, and a verifier runs Task 11's
 new tests, the one change the triage could not run.
 
+**Changed by the plan review, lap 2** — approved by leocaseiro in the triage, 2026-10-10:
+
+- **A `web/.env` file cannot open the upload gate.** `next build` loads `web/.env*` files before it
+  reads `next.config.ts` and fills in each variable the shell lacks, so a `VERCEL_ENV="production"`
+  line opened the gate on a local build (tested with a real `next build`). A production
+  `vercel env pull` writes that line, according to the Vercel CLI's source code. The build script
+  now hands `next build` the shell's own value, `VERCEL_ENV=$VERCEL_ENV next build`, which a `.env`
+  file never replaces, even when it is empty; on Vercel the real value passes through. The README
+  also warns against pulling Production variables into `web/`: they include the production DSN, so
+  `pnpm dev` would report into the production project.
+
 **Registry:** L11-sentry points at the spec; L11-srcmap reworded (D4); L11-envsecret ⛔ superseded
 and F7-sentry rewritten, because the source-map upload runs inside Vercel's build rather than a
 GitHub Actions job.
