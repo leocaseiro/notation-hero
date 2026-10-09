@@ -59,7 +59,7 @@
       "verify-B.json",
       "raw/<reviewer>.json (the six reviewers' JSON)"
     ],
-    "triaged": false,
+    "triaged": true,
     "triage_cap": "12 findings or 5 picker rounds, whichever first; a finding that needs two rounds counts twice",
     "severity_scale": {
       "P0": "immediate critical harm",
@@ -68,8 +68,28 @@
       "P3": "worth fixing — small, cheap"
     },
     "triage_progress": {
-      "undecided": ["PO-1", "PO-2"],
-      "decided": ["PF-7", "PF-8", "PQ-1", "PQ-2", "PQ-3", "PQ-4", "PF-6"]
+      "undecided": [],
+      "decided": ["PF-7", "PF-8", "PQ-1", "PQ-2", "PQ-3", "PQ-4", "PF-6", "PO-1", "PO-2"]
+    },
+    "triaged_on": "2026-10-09",
+    "triage_summary": {
+      "rounds": 4,
+      "decided": 9,
+      "applied": [
+        "PF-7",
+        "PF-8",
+        "PQ-1 (option 1)",
+        "PQ-2 (option 1)",
+        "PQ-3 (option 2, the owner over the recommendation)",
+        "PF-6",
+        "PO-1",
+        "PO-2"
+      ],
+      "kept_as_written": ["PQ-4 (option 1)"],
+      "dropped": [],
+      "left_open": [],
+      "state_written": "plan frontmatter lap: 1, last_applied: P1 (PF-1, applied by the review)",
+      "memory": "notation_hero_jsonc_fence_prettier.md extended with the JSX lesson (approved on its own card); the owner asked why it lives outside the repo, answered at step 7"
     }
   },
   "already_applied": [
@@ -133,68 +153,7 @@
   ],
   "ambiguity_fixes": [],
   "undecided_findings": [],
-  "fyi_observations": [
-    {
-      "id": "PO-1",
-      "severity": "P3",
-      "confidence": 50,
-      "reviewer": "security-lens",
-      "section": "Task 6 (the integrations case); Task 17 Step 7",
-      "title": "Nothing pins the \"anonymous\" promise: IP inference stays untested",
-      "scenario": "A later 11.x changes what `userInfo: false` covers, and Sentry starts inferring visitors' IP addresses. Every test still passes, and the home page still says \"anonymously\".",
-      "suggestion": "Two assertions in the existing integrations case — sdk.settings.infer_ip is \"never\" (the 11.1.0 spike recorded exactly that) and no envelope contains \"ip_address\" — plus a Task 17 Step 7 bullet: the event's User section shows no IP address. RecordedEvent.sdk gains settings?: { readonly infer_ip?: string }.",
-      "recommended": "approve",
-      "drop_consequence": "Leave it: the browser half of \"anonymous\" rests on an SDK default nothing checks.",
-      "raw_reviewer_findings": [
-        {
-          "title": "Nothing pins the anonymous promise: IP inference stays untested",
-          "severity": "P3",
-          "section": "Task 6 — Start Sentry in the browser, and the envelope recorder (the integrations case); Task 17 — Before code review, Step 7",
-          "why_it_matters": "Task 1 lets pnpm install a newer 11.x. If that version changed what `userInfo: false` covers, Sentry could start inferring visitors' IP addresses and every case would still pass: the only SDK check reads `sdk.integrations`, and `dataCollection` keys left unset default to permissive. The server half, 'Prevent Storing of IP Addresses', is only asked about in Task 17 Step 1, and Step 7's first-deploy checks never look for an IP. So the home page's 'anonymously' rests on two settings nothing verifies. I relied on the 11.1.0 event the plan-time spike recorded: it carries `sdk.settings.infer_ip: 'never'` and no `user`. Two assertions in the existing integrations case would pin the browser half, the same way Review Focus 5 pins renamed integrations, and one Step 7 line would check the server half.",
-          "finding_type": "omission",
-          "autofix_class": "gated_auto",
-          "suggested_fix": "In Task 6's integrations case, add `expect(sentinel.sdk?.settings?.infer_ip).toBe('never');` and `expect(sentry.raw().join('\\n')).not.toContain('ip_address');`, and give `RecordedEvent.sdk` a `settings?: { readonly infer_ip?: string }` field. Add a Task 17 Step 7 bullet: 'The event's User section shows no IP address.'",
-          "confidence": 50,
-          "evidence": [
-            "expect([...(sentinel.sdk?.integrations ?? [])].toSorted()).toEqual(EXPECTED_INTEGRATIONS);",
-            "readonly sdk?: { readonly integrations?: readonly string[] };",
-            "Every key is optional and an unset key falls back to a permissive default (`true`).",
-            "An E103 warning appears in Sentry, with `file_type` and the size and without the name; its alert email arrives.",
-            "This site counts visits and crashes anonymously"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "PO-2",
-      "severity": "P3",
-      "confidence": 50,
-      "reviewer": "security-lens",
-      "section": "Task 15 Step 5 (the web/AGENTS.md bullet)",
-      "title": "The agents' rule omits that kept messages can quote a file's contents",
-      "scenario": "A future agent adds the cached-score load that E104 is reserved for. The lint rule makes its catch call reportError, which keeps the message — and the parse message can quote text from inside the visitor's file.",
-      "suggestion": "One sentence in the bullet: reportError keeps the message for every code except E101–E103, and the names filter removes names, not contents; a catch around code that reads or parses the visitor's file needs a fixed sentence — add its code to FIXED_MESSAGES in web/lib/monitoring/report.ts (and a row in the sentence test).",
-      "recommended": "approve",
-      "drop_consequence": "Leave it: the next file-reading catch could send file text, and no lint rule can see that.",
-      "raw_reviewer_findings": [
-        {
-          "title": "Catch rule for agents omits the file-content constraint",
-          "severity": "P3",
-          "section": "Task 15 — The lint rule that keeps every catch reporting, Step 5 (the web/AGENTS.md bullet)",
-          "why_it_matters": "The lint rule makes every future catch call reportError. reportError keeps the error's own message for every code except E101–E103, and the names filter removes remembered names, not a file's contents. The next likely new catch is the cached-score load that E104 is already reserved for (docs/reference/error-codes.md). An agent following the bullet as written would send AlphaTab's parse message, which spec 2.3 says can quote text from inside the file. One sentence in the bullet carries a rule that no lint selector can check.",
-          "finding_type": "omission",
-          "autofix_class": "gated_auto",
-          "suggested_fix": "Add this to the web/AGENTS.md bullet in Task 15 Step 5: 'reportError keeps the error's message for every code except E101–E103, and the names filter removes names, not a file's contents. A catch around code that reads or parses the visitor's file, such as the cached-score path E104 is reserved for, needs a fixed sentence: add its code to FIXED_MESSAGES in web/lib/monitoring/report.ts.'",
-          "confidence": 50,
-          "evidence": [
-            "**Every `catch` reports.** Each `catch` clause and `.catch()` callback in `web/` calls `reportError` or `noteError` from `web/lib/monitoring/report.ts` inside the catch itself",
-            "// E101–E103 send one of these in place of the exception's own message, which can quote text from inside the file.",
-            "The names filter: a file name, a score's title or credits, or a track name quoted in an error's message becomes `[file]`."
-          ]
-        }
-      ]
-    }
-  ],
+  "fyi_observations": [],
   "rejected_findings": [],
   "residual_concerns": [
     {
@@ -243,7 +202,8 @@
   },
   "notes": [
     "The plan-time spike's raw evidence (runtime.json, envelopes.json, vitest-resolve.json and the build logs) lives in the session scratchpad, not in the repository; the plan's \"What was verified\" table carries its results.",
-    "Triage round 3 (2026-10-09): the owner said improvements that only remove ambiguity may be auto-resolved: applied and reported, not put to a picker. This carries into the next lap's triage."
+    "Triage round 3 (2026-10-09): the owner said improvements that only remove ambiguity may be auto-resolved: applied and reported, not put to a picker. This carries into the next lap's triage.",
+    "Triage round 4 (2026-10-09): the owner approved the memory update and asked why the memory must live outside the repository; the answer and the offer to add the lesson to the repository go with step 7."
   ],
   "resume": {
     "triage_half": "NEXT: lap 1 TRIAGE half — run spec-triage-loop:doc-review-loop on the plan (artifact_path_from_root, prefixed with your repo root). The entry rule starts at step 4: PF-7, PF-8, PQ-1–PQ-4, PF-6, PO-1 and PO-2 are undecided.",
@@ -576,6 +536,74 @@
       "decided_on": "2026-10-09",
       "triage_round": 3,
       "decision_note": "Applied as proposed (with verify-B's correction): Task 7 Step 8 item 3 deletes the line by hand, item 4 names git checkout -- web/app/layout.tsx, and Expected checks git diff web/app/page.tsx. Re-checked during triage: Task 7 changes page.tsx in Step 6 and commits it in Step 9, and never changes layout.tsx or PlayerShell.tsx."
+    },
+    {
+      "id": "PO-1",
+      "severity": "P3",
+      "confidence": 50,
+      "reviewer": "security-lens",
+      "section": "Task 6 (the integrations case); Task 17 Step 7",
+      "title": "Nothing pins the \"anonymous\" promise: IP inference stays untested",
+      "scenario": "A later 11.x changes what `userInfo: false` covers, and Sentry starts inferring visitors' IP addresses. Every test still passes, and the home page still says \"anonymously\".",
+      "suggestion": "Two assertions in the existing integrations case — sdk.settings.infer_ip is \"never\" (the 11.1.0 spike recorded exactly that) and no envelope contains \"ip_address\" — plus a Task 17 Step 7 bullet: the event's User section shows no IP address. RecordedEvent.sdk gains settings?: { readonly infer_ip?: string }.",
+      "recommended": "approve",
+      "drop_consequence": "Leave it: the browser half of \"anonymous\" rests on an SDK default nothing checks.",
+      "raw_reviewer_findings": [
+        {
+          "title": "Nothing pins the anonymous promise: IP inference stays untested",
+          "severity": "P3",
+          "section": "Task 6 — Start Sentry in the browser, and the envelope recorder (the integrations case); Task 17 — Before code review, Step 7",
+          "why_it_matters": "Task 1 lets pnpm install a newer 11.x. If that version changed what `userInfo: false` covers, Sentry could start inferring visitors' IP addresses and every case would still pass: the only SDK check reads `sdk.integrations`, and `dataCollection` keys left unset default to permissive. The server half, 'Prevent Storing of IP Addresses', is only asked about in Task 17 Step 1, and Step 7's first-deploy checks never look for an IP. So the home page's 'anonymously' rests on two settings nothing verifies. I relied on the 11.1.0 event the plan-time spike recorded: it carries `sdk.settings.infer_ip: 'never'` and no `user`. Two assertions in the existing integrations case would pin the browser half, the same way Review Focus 5 pins renamed integrations, and one Step 7 line would check the server half.",
+          "finding_type": "omission",
+          "autofix_class": "gated_auto",
+          "suggested_fix": "In Task 6's integrations case, add `expect(sentinel.sdk?.settings?.infer_ip).toBe('never');` and `expect(sentry.raw().join('\\n')).not.toContain('ip_address');`, and give `RecordedEvent.sdk` a `settings?: { readonly infer_ip?: string }` field. Add a Task 17 Step 7 bullet: 'The event's User section shows no IP address.'",
+          "confidence": 50,
+          "evidence": [
+            "expect([...(sentinel.sdk?.integrations ?? [])].toSorted()).toEqual(EXPECTED_INTEGRATIONS);",
+            "readonly sdk?: { readonly integrations?: readonly string[] };",
+            "Every key is optional and an unset key falls back to a permissive default (`true`).",
+            "An E103 warning appears in Sentry, with `file_type` and the size and without the name; its alert email arrives.",
+            "This site counts visits and crashes anonymously"
+          ]
+        }
+      ],
+      "decision": "Approve",
+      "decided_on": "2026-10-09",
+      "triage_round": 4,
+      "decision_note": "Applied, after a spike the owner asked for. Spike (2026-10-09, Chromium, @sentry/browser 11.1.0 bundled from the @sentry/nextjs 11.1.0 install, every envelope recorded): with the plan's dataCollection (userInfo: false) infer_ip is 'never' and no envelope carries ip_address; with the userInfo line deleted (Sentry 11's default) or userInfo: true, infer_ip is 'auto' and the session envelope carries ip_address '{{auto}}'. So the default collects visitor IPs, userInfo: false is the only guard, and both assertions discriminate. Task 6's integrations case gains the two assertions with that reason; RecordedEvent.sdk gains settings.infer_ip; Review Focus 5 and Task 17 Step 7 gain a line."
+    },
+    {
+      "id": "PO-2",
+      "severity": "P3",
+      "confidence": 50,
+      "reviewer": "security-lens",
+      "section": "Task 15 Step 5 (the web/AGENTS.md bullet)",
+      "title": "The agents' rule omits that kept messages can quote a file's contents",
+      "scenario": "A future agent adds the cached-score load that E104 is reserved for. The lint rule makes its catch call reportError, which keeps the message — and the parse message can quote text from inside the visitor's file.",
+      "suggestion": "One sentence in the bullet: reportError keeps the message for every code except E101–E103, and the names filter removes names, not contents; a catch around code that reads or parses the visitor's file needs a fixed sentence — add its code to FIXED_MESSAGES in web/lib/monitoring/report.ts (and a row in the sentence test).",
+      "recommended": "approve",
+      "drop_consequence": "Leave it: the next file-reading catch could send file text, and no lint rule can see that.",
+      "raw_reviewer_findings": [
+        {
+          "title": "Catch rule for agents omits the file-content constraint",
+          "severity": "P3",
+          "section": "Task 15 — The lint rule that keeps every catch reporting, Step 5 (the web/AGENTS.md bullet)",
+          "why_it_matters": "The lint rule makes every future catch call reportError. reportError keeps the error's own message for every code except E101–E103, and the names filter removes remembered names, not a file's contents. The next likely new catch is the cached-score load that E104 is already reserved for (docs/reference/error-codes.md). An agent following the bullet as written would send AlphaTab's parse message, which spec 2.3 says can quote text from inside the file. One sentence in the bullet carries a rule that no lint selector can check.",
+          "finding_type": "omission",
+          "autofix_class": "gated_auto",
+          "suggested_fix": "Add this to the web/AGENTS.md bullet in Task 15 Step 5: 'reportError keeps the error's message for every code except E101–E103, and the names filter removes names, not a file's contents. A catch around code that reads or parses the visitor's file, such as the cached-score path E104 is reserved for, needs a fixed sentence: add its code to FIXED_MESSAGES in web/lib/monitoring/report.ts.'",
+          "confidence": 50,
+          "evidence": [
+            "**Every `catch` reports.** Each `catch` clause and `.catch()` callback in `web/` calls `reportError` or `noteError` from `web/lib/monitoring/report.ts` inside the catch itself",
+            "// E101–E103 send one of these in place of the exception's own message, which can quote text from inside the file.",
+            "The names filter: a file name, a score's title or credits, or a track name quoted in an error's message becomes `[file]`."
+          ]
+        }
+      ],
+      "decision": "Approve",
+      "decided_on": "2026-10-09",
+      "triage_round": 4,
+      "decision_note": "Applied: Task 15 Step 5's web/AGENTS.md bullet gains the sentence that reportError keeps the message for every code except E101-E103, the names filter removes names not contents, and a catch around code that reads or parses the visitor's file needs a FIXED_MESSAGES entry plus the fixed-sentence test. Guidance text; nothing to run."
     }
   ]
 }

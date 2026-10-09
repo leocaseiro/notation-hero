@@ -1,3 +1,8 @@
+---
+lap: 1
+last_applied: P1
+---
+
 # Sentry error monitoring for `web/` — implementation plan (NH-124)
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development
@@ -91,7 +96,10 @@ the task that pins it with a test.
 5. **A later 11.x renames an integration the filter removes.** The filter matches four names as
    strings, so a renamed `Console` or `Breadcrumbs` would come back silently: console lines can
    quote a broken alphaTex line, and click labels hold track names. A test must fail instead. Pinned
-   in Task 6 (an end-to-end check of the SDK's own integration list).
+   in Task 6 (an end-to-end check of the SDK's own integration list). The same case pins the IP:
+   Sentry 11's default infers each visitor's address, and only `userInfo: false` stops it, so
+   `infer_ip` must stay `never` and no envelope may carry `ip_address` (spiked in the plan review:
+   without that line, both change).
 
 ## Before you start
 
@@ -1895,7 +1903,10 @@ export interface RecordedEvent {
     readonly message?: string;
     readonly data?: Readonly<Record<string, unknown>>;
   }[];
-  readonly sdk?: { readonly integrations?: readonly string[] };
+  readonly sdk?: {
+    readonly integrations?: readonly string[];
+    readonly settings?: { readonly infer_ip?: string };
+  };
 }
 
 export interface SentryRecorder {
@@ -2009,6 +2020,10 @@ test('the SDK runs with exactly the integrations the spec chose', async ({ page 
   expect([...(sentinel.sdk?.integrations ?? [])].toSorted((a, b) => a.localeCompare(b))).toEqual(
     EXPECTED_INTEGRATIONS,
   );
+  // "Anonymously" rests on `userInfo: false` alone. Sentry 11's default infers each visitor's IP:
+  // without that line, `infer_ip` reads `auto` and the session ping carries ip_address "{{auto}}".
+  expect(sentinel.sdk?.settings?.infer_ip).toBe('never');
+  expect(sentry.raw().join('\n')).not.toContain('ip_address');
 });
 
 // Case 6. NH-338's throw breaks nothing a person can see; sent as it is, it would use the monthly
@@ -4804,6 +4819,10 @@ In `web/AGENTS.md`, under "This package", add after the first bullet:
   `// eslint-disable-next-line no-restricted-syntax -- <reason>` on the line above the `catch`.
   Storage the browser refuses is the visitor's, not a bug:
   `if (isStorageRefusal(error)) noteError(error, '…'); else reportError(error);`, written in place.
+  `reportError` keeps the error's message for every code except E101–E103, and the names filter
+  removes names, not a file's contents. A catch around code that reads or parses the visitor's
+  file, such as the cached-score path E104 is reserved for, needs a fixed sentence: add its code to
+  `FIXED_MESSAGES` in `web/lib/monitoring/report.ts`, and to the fixed-sentence test beside it.
 ```
 
 - [ ] **Step 6: Lint the shell script, the docs, and commit**
@@ -5005,6 +5024,8 @@ domain step 3 lists and open a file that is not a score.
 
 - An E103 warning appears in Sentry, with `file_type` and the size rounded up to a power of two,
   and without the name; its alert email arrives.
+- The event's User section shows no IP address: "Prevent Storing of IP Addresses" and
+  `userInfo: false` both hold.
 - Its stack shows our own `PlayerShell.tsx` frame, readable, with the code around it — the source
   maps reached the **EU** region with the token and the `org` slug alone. AlphaTab's frames above
   it stay minified (a known limit).
