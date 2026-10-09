@@ -205,12 +205,9 @@ export function startAnalytics(): void {
     ad_personalization: 'denied',
     analytics_storage: 'granted',
   });
+  gtag('set', { allow_google_signals: false, allow_ad_personalization_signals: false });
   gtag('js', new Date());
-  gtag('config', id, {
-    allow_google_signals: false,
-    allow_ad_personalization_signals: false,
-    release: APP_VERSION,
-  });
+  gtag('config', id, { release: APP_VERSION });
   afterLoad(() => addScript(`https://www.googletagmanager.com/gtag/js?id=${id}`));
 }
 ```
