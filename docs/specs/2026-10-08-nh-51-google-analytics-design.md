@@ -217,8 +217,10 @@ export function startAnalytics(): void {
   personalisation).
 - **Google's script loads after the page's `load` event**, so it never competes with the first
   paint, the player or AlphaTab's downloads.
-- **`track(name, fields)`** sends `gtag('event', name, fields)` once started, and nothing before —
-  no console warning, unlike `sendGAEvent`.
+- **`track(name, fields)`** calls `gtag('event', name, …)` once started, and nothing before — no
+  console warning, unlike `sendGAEvent`. It sends only the fields its event declares, copied by name
+  from a key list beside `AnalyticsEvents` that `typecheck` checks against it. An object built
+  elsewhere with an extra key, such as a track name, therefore sends nothing more.
 - **Page views** come from Google's enhanced measurement: one on load, and one on each client-side
   page change ("page changes based on browser history events"). Not yet seen working: the spike's
   made-up ID could not show it (section 8, step 6). If it is missing, the fallback turns that
@@ -411,7 +413,8 @@ An agent may not create accounts.
   `Australia/Sydney`: a saved `none` in Sydney allows nothing.
 - `startAnalytics()`: nothing without an ID or without permission; the queue's order; one script
   only, added after `load`; a second call does nothing.
-- `track()`: nothing before the start; `['event', name, fields]` after it.
+- `track()`: nothing before the start; `['event', name, fields]` after it, without any key the event
+  does not declare.
 - Types: `// @ts-expect-error` on a free-text field, checked by `typecheck`.
 - `PrivacyChoices`: each button saves its answer; Details opens and closes; the card is hidden
   outside Europe, once answered, and when neither key is set; the live region is in the page before
