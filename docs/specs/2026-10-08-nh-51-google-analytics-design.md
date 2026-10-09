@@ -171,7 +171,8 @@ Details ▾
   and say so to screen readers.
 - **Screen readers:** the card is a labelled region ("Privacy choice"), announced politely when it
   appears.
-- **Themes:** light and dark from the design tokens; no new colour.
+- **Themes:** colours from the design tokens only, so the card follows dark mode on the day `web/`
+  can show it (NH-302); no new colour.
 
 The words were approved on 2026-10-08 after two rounds. Tool names in the first layer were rejected
 ("Musicians have no idea what Sentry means"), and leocaseiro wrote the three button labels. The one
@@ -441,7 +442,9 @@ hands Google, in `window.dataLayer`; what Google's script sends is checked by ha
 - CI containers run in UTC, which `asksFirst()` treats as Europe. Without
   `timezoneId: 'Australia/Sydney'` in the config, the popup would appear in all ten existing shots.
 - New shots, in `Europe/Berlin`: `/` and `/play` with the popup, and `/play` at phone width.
-- An axe scan with the popup open, in both themes.
+- An axe scan with the popup open, in light only, like every other axe case in the lane: `web/`
+  cannot show dark mode until NH-302 (see "Light only" in
+  `docs/specs/2026-09-21-web-visual-regression-gate.md`).
 - An axe scan of `/privacy`.
 
 ## 10. Documents that change
