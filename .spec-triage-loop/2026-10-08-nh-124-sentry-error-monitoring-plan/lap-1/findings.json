@@ -605,5 +605,19 @@
       "triage_round": 4,
       "decision_note": "Applied: Task 15 Step 5's web/AGENTS.md bullet gains the sentence that reportError keeps the message for every code except E101-E103, the names filter removes names not contents, and a catch around code that reads or parses the visitor's file needs a FIXED_MESSAGES entry plus the fixed-sentence test. Guidance text; nothing to run."
     }
+  ],
+  "step7": {
+    "decided_on": "2026-10-09",
+    "rule": "Re-lap: lap 1 applied a P1 (PF-1, by the review itself) and the exit signal was not clean. Bound not reached (lap 1 of 5); lap 1 has no previous set, so the no-progress check does not apply.",
+    "owner_decision": "A focused lap 2 (option 1 of 3; the others were a full lap 2 and stopping for CODE).",
+    "lap2_scope": "The reviewers read only what lap 1 changed: git diff fc745806..HEAD -- docs/plans/2026-10-08-nh-124-sentry-error-monitoring-plan.md (the review fixes in 47827227 and the triage commits 82d11a95, df7e287b, a33cc454, a3ad4ace), reading surrounding text only for context. Team: the always-on coherence and feasibility reviewers, plus security-lens (the token gate, the slug check, the IP test, the web/AGENTS.md rule) and design-lens (the new E105 toast). One verifier applies Tasks 5, 10 and 11 from the plan in a throwaway worktree (pnpm install and pnpm add with --ignore-scripts, @sentry/nextjs 11.1.0) and runs report.test.ts, OpenFileControl.test.tsx and PlayerShell.test.tsx: PQ-3's two new cases were not run in lap 1.",
+    "carry_forward_undecided": []
+  },
+  "also_decided": [
+    {
+      "id": "MEM-1",
+      "what": "The Prettier code-fence lesson (PF-5) went into the agent memory notation_hero_jsonc_fence_prettier.md (round 4), and then, at the owner's request, into AGENTS.md's Linting & formatting paragraph in this PR.",
+      "decided_on": "2026-10-09"
+    }
   ]
 }

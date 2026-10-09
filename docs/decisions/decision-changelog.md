@@ -195,6 +195,14 @@ went wrong on our side. If the player misbehaves, reload the page. (Error E105)`
   Q12).
 - **Kept: a picked file's E105 is announced by its toast alone,** as E101 and E102 are. The toast is
   a polite live region, so the sentence is heard once (lap 3's Q13).
+- **`AGENTS.md` says that Prettier formats the code fences inside Markdown.** This lap's review found
+  a JSX snippet in the plan that Prettier had turned into statements, which would have put a stray
+  `;` on the home page. The note was a machine-local agent memory until leocaseiro asked for it in
+  the repository, where every agent session reads it.
+
+**The plan review runs a focused lap 2** (leocaseiro, 2026-10-09): the loop's rule re-laps because
+lap 1 applied a P1 fix. The reviewers read only what lap 1 changed, and a verifier runs Task 11's
+new tests, the one change the triage could not run.
 
 **Registry:** L11-sentry points at the spec; L11-srcmap reworded (D4); L11-envsecret ⛔ superseded
 and F7-sentry rewritten, because the source-map upload runs inside Vercel's build rather than a
