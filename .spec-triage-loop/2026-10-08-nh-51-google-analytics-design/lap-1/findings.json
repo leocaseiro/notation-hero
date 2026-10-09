@@ -49,7 +49,7 @@
       "dropped_anchor_0_25": 0,
       "silent_engine_edits": 0
     },
-    "finding_count_undecided": 2,
+    "finding_count_undecided": 0,
     "finding_count_note": "13 findings to triage + 2 ambiguity fixes + 5 FYI observations + R1 + Q1 = 22 items. The triage cap (12 findings or 5 picker rounds per invocation) means two triage invocations.",
     "exit_signal_raw": "NOT CLEAN — the headless envelope carries an Entailed corrections block (7 items), Proposed fixes (4) and Decisions (4), and ends with the documented `Review complete` line. See engine-envelope.txt.",
     "silent_autofixes_by_engine": "none — this invocation was report-only (the loop's REVIEW-MODE), so the engine applied nothing. F-14, the only one-answer fix at anchor 100, is carried as an ambiguity fix for the triage half. The spec is byte-identical to f9c1fdf6.",
@@ -63,229 +63,26 @@
       "verify-C.json",
       "raw/<reviewer>.json (7)"
     ],
-    "triaged": false,
+    "triaged": true,
     "triage_cap": "12 findings or 5 picker rounds per triage invocation, whichever comes first (shared review-loop rule). A finding that needs two rounds counts twice.",
     "severity_scale": {
       "P1": "should fix before planning — something would ship broken, or a promise in the spec would be false",
       "P2": "should fix — a real gap an implementer will hit",
       "P3": "worth fixing — small and cheap"
     },
-    "triage_progress": "IN PROGRESS (2026-10-10, invocation 2): round 1 of this invocation put F-12, F-13 and FYI-2 on a card; leocaseiro answered 'You can auto resolve any clear fix', so those three and the clear fixes FYI-1, FYI-3, FYI-5 and R1 were applied without a card. Open: FYI-4 (a scope choice: drop two Sentry filters) and Q1 (a design choice: where the popup sits in the Tab order), asked in round 2. Rendering rule changed the same day (triage skill §9): prose Before/After is rendered as blockquotes, never fenced; only code uses a diff fence.",
-    "finding_count_decided": 20
+    "triage_progress": "DONE (2026-10-10): every item decided. Invocation 1 (2026-10-09) decided 13 items in 5 rounds and paused at the cap; invocation 2 (2026-10-10) decided the last 9 in 2 rounds — F-12, F-13 and FYI-2 on a card that leocaseiro answered 'You can auto resolve any clear fix'; FYI-1, FYI-3, FYI-5 and R1 auto-resolved as clear fixes; FYI-4 and Q1 (option 1) on their own cards. Highest severity applied this lap: P2. The spec's frontmatter now records lap: 1 and last_applied: P2.",
+    "finding_count_decided": 22,
+    "triaged_on": "2026-10-10",
+    "last_applied": "P2",
+    "state_store_written": "The spec's frontmatter now holds lap: 1 and last_applied: P2 (review-loop step 6).",
+    "lap_decision": "Step 7: the bound does not fire (lap 1 of 5; lap 1 never trips the no-progress check). No P0 or P1 was applied, but EXIT-SIGNAL was NOT CLEAN, so the loop re-laps: lap 2 is a fresh review half on the updated spec, as a new invocation after /compact. Nothing is carried forward: every lap-1 item is decided."
   },
   "already_applied": [],
   "ambiguity_fixes": [],
   "undecided_findings": [],
-  "fyi_observations": [
-    {
-      "id": "FYI-4",
-      "title": "The two Sentry filters for Google traffic remove only noise",
-      "area": "FYI",
-      "severity": "P3",
-      "severity_as_filed": "P3",
-      "severity_plain": "worth fixing — small and cheap",
-      "severity_note": "Scope only; either choice is safe.",
-      "confidence": 50,
-      "confidence_plain": "verified, but below the bar for action — an observation",
-      "route": "fyi",
-      "finding_type": "error",
-      "reviewers": ["scope-guardian"],
-      "recommended_action": "FYI",
-      "verdict": "CONFIRMED",
-      "correction": "",
-      "section": "## 6. Changes to Sentry's design",
-      "section_lines": "289-307",
-      "section_exists": true,
-      "quotes_verbatim": true,
-      "quotes": [
-        {
-          "quote": "Sentry's scrub already cuts their `?`, so this removes noise, not",
-          "verbatim": true,
-          "line": 300,
-          "note": ""
-        },
-        {
-          "quote": "Errors thrown inside Google's script are not ours:",
-          "verbatim": true,
-          "line": 302,
-          "note": ""
-        }
-      ],
-      "scenario": "Google's script throws an error on a visitor's phone in Sydney. With the spec as written, Sentry ignores it and you never hear of it. Without the two filters, you get one email from Sentry about an error inside Google's code, and that visit counts as a broken one in the health number. Error reports also show a few lines about Google's network calls, with their addresses already cut short.",
-      "whats_wrong": "Section 6 adds two Google-specific filters to Sentry's settings, which are not merged yet: one drops Google's network calls from the error trail, the other ignores errors thrown inside Google's script. By the spec's own words the first removes only noise. Each is a small change to make later, if the noise ever appears, while adding them now widens this ticket's edits to NH-124's settings and adds a list of Google addresses to keep up to date.",
-      "before": [
-        {
-          "lines": "298-302",
-          "text": "- **Google's requests leave Sentry's breadcrumb trail.** `beforeBreadcrumb` drops fetch and xhr\n  breadcrumbs to `google-analytics.com`, `analytics.google.com`, `googletagmanager.com` and\n  `www.google.com/ccm`. Sentry's scrub already cuts their `?`, so this removes noise, not\n  identifiers.\n- **Errors thrown inside Google's script are not ours:** `denyUrls: [/googletagmanager\\.com/]`."
-        },
-        {
-          "lines": "31-32",
-          "text": "(absent — a new last Non-goals item goes after line 31)"
-        }
-      ],
-      "after": [
-        {
-          "replaces_lines": "298-302",
-          "text": "(removed)"
-        },
-        {
-          "replaces_lines": "insert after 31",
-          "text": "- **No Google filters in Sentry yet.** Sentry keeps Google's fetch and xhr breadcrumbs and any error\n  thrown inside Google's script. A `beforeBreadcrumb` host drop or a `denyUrls` entry is added only\n  if either appears as noise in Sentry."
-        }
-      ],
-      "proposed_fix": "Remove the two bullets from section 6 and add one Non-goals item: Sentry keeps Google's fetch and xhr breadcrumbs and any error thrown inside Google's script, and a filter is added only if either appears as noise in Sentry.",
-      "why_it_works": "It keeps this ticket's changes to NH-124's Sentry setup to what the privacy choice needs, and removes a list of Google addresses nobody has to maintain yet. It costs little that anyone would see: the breadcrumbs are already cut at ?, and an error inside Google's script is rare, mostly filtered already, and would arrive as one email.",
-      "plain_terms": {
-        "breadcrumb": "a short note about an earlier event (a click, a network call) that travels inside the next error report",
-        "beforeBreadcrumb": "Sentry's hook that can drop a breadcrumb before it is kept",
-        "denyUrls": "a Sentry setting that ignores errors whose code comes from the listed addresses",
-        "NH-124": "the Sentry error-monitoring ticket; its spec is on PR #191, not merged yet",
-        "health number": "Sentry Release Health's share of visits that ended without an unhandled error, the interim health number in the Sentry spec",
-        "S4": "decision S4 in the Sentry spec: Release Health on, as the interim health number",
-        "'Script error.'": "what a browser reports instead of the real error when a script from another site fails"
-      },
-      "central_claim_check": "The two bullets exist (lines 298-302), and the first one calls itself noise removal. The Sentry spec (PR #191) confirms that its scrub already cuts fetch and xhr breadcrumb addresses at the first ? or # (its line 387 and lines 423-425). The same spec's setup creates one issue alert that emails leocaseiro for each new kind of error (its lines 564-569), and its interim health number is the share of visits that ended without an unhandled error (its lines 24-27). So an error from gtag.js that reached Sentry would open an issue, send one email and lower that number. Two details narrow the second bullet further. (1) gtag.js comes from another site. If the loader adds it without a crossorigin attribute, as Google's usual snippet does, the browser reports the script's own errors only as 'Script error.', and Sentry's default filter already drops that message (Sentry's eventFilters source, https://github.com/getsentry/sentry-javascript/blob/develop/packages/core/src/integrations/eventFilters.ts). denyUrls then matters only for an error with a real stack whose newest frame is in gtag.js, for example one thrown while our own code calls into it (reasoned, untested). (2) Whether gtag.js sends its hits with fetch or xhr, which Sentry records as breadcrumbs, or with navigator.sendBeacon, which it does not record, was not checked (untested); if it is sendBeacon, the first bullet has almost nothing to drop.",
-      "contradicts": "none — checked section 6's other bullets, section 4 'Addresses' (Sentry cuts addresses at ? on purpose), the Non-goals, section 10 and 'Known limits'. Nothing else in the spec refers to the Google host list or to denyUrls.",
-      "spike": {
-        "ran": false,
-        "why": "Needs Sentry 11 and Google's real script running together; neither is installed on this branch, because the Sentry code is not merged. The After text was applied to a scratch copy of the spec together with Group C's other Afters; the repo's own Prettier (print width 100), markdownlint-cli2 and cspell all pass on it.",
-        "mark": "(untested)"
-      },
-      "cross_fix": [
-        "F-3 (Group A) also touches Sentry's setup (when its DSN goes live), but it edits section 8 and 'Known limits', not lines 298-302; no overlap."
-      ],
-      "synthesis_note": "Anchor 50.",
-      "verified_by": "verify-C.json",
-      "raw_constituents": [
-        {
-          "raw_id": "scope-guardian#4",
-          "reviewer": "scope-guardian",
-          "title": "Two Sentry filters for Google traffic remove only noise",
-          "severity": "P3",
-          "confidence": 50,
-          "autofix_class": "gated_auto",
-          "why_it_matters": "The PR would add two Sentry-side Google filters whose stated purpose is cosmetic: a beforeBreadcrumb drop of Google's fetch and xhr breadcrumbs ('removes noise, not identifiers') and a denyUrls entry for errors thrown inside Google's script. Neither follows from an existing contract or guards against harm that would go unseen: an error from gtag.js opens a new issue and sends the alert email that NH-124's setup (the Sentry spec) defines, though the visit also counts against its interim health number, and breadcrumb clutter shows in the first report that carries it. Each is a one-line addition at that point, while shipping both now widens this PR's edits to NH-124's unmerged SDK settings and adds a Google host list to keep in step.",
-          "suggested_fix": "Remove both bullets from section 6 and add one item under Non-goals: 'Sentry keeps Google's fetch and xhr breadcrumbs and any error thrown inside gtag.js; a beforeBreadcrumb host drop or a denyUrls entry is added only if either shows up as noise in Sentry.'",
-          "evidence": [
-            "Sentry's scrub already cuts their `?`, so this removes noise, not",
-            "Errors thrown inside Google's script are not ours:"
-          ]
-        }
-      ],
-      "triage_decision": null,
-      "applied_in_commit": null
-    }
-  ],
+  "fyi_observations": [],
   "residual_concerns": [],
-  "deferred_questions": [
-    {
-      "id": "Q1",
-      "source": "design-lens",
-      "text": "Where does `<PrivacyChoices />` sit in the DOM and the tab order? Section 1 says only that `layout.tsx` renders it. Rendered first, a keyboard user meets the question at once but passes four extra Tab stops (three answers and Details) on every page until answering; rendered last, as the Toaster is, it comes after a dozen or more page controls (the a11y lane's floor for `/play` is 12), which is why `Sonner.tsx` gave the Toaster an Alt+T hotkey. The plan must pick one and add an e2e assertion for the choice.",
-      "verdict": "CONFIRMED",
-      "correction": "",
-      "scenario": "You use only a keyboard and open the player in Berlin. The privacy question waits at the bottom of the screen. Does your first press of Tab land on its first answer? Or do you press Tab about a dozen times, through the header, the speed control, Settings, Open file and the play controls, before you reach it?",
-      "whats_wrong": "Section 1 says only that layout.tsx renders the card, not where in the page. That place decides the Tab order. First in the page: keyboard users reach it at once, but pass four extra stops on every page until they answer. Last, as the Toaster is: they pass a dozen or more controls first, which is the reason Sonner.tsx gave the Toaster an Alt+T hotkey. The plan has to pick one and test it.",
-      "central_claim_check": "web/app/layout.tsx:15-27 renders the page and then the Toaster inside <body>. client/src/components/ui/Sonner/Sonner.tsx:198-201 says the Toaster mounts last in the root layout, so plain Tab reaches a close button only after every page control, which is why it keeps the Alt+T hotkey. web/e2e/a11y.e2e.ts:270 sets the floor for /play at 12 controls; that counts controls with a hit area, close to, but not exactly, the number of Tab stops. Section 3 gives the card three answer buttons and Details: four Tab stops, five with Details open (its link). web/ has no skip link. The GOV.UK Design System places its cookie banner right after the opening body tag, before the skip link (https://design-system.service.gov.uk/components/cookie-banner/); its banner sits in the page flow at the top, not floating, so it guides the order only. Related, not part of the question (estimated, untested): the card is fixed at the bottom, and on a phone its stacked buttons make it roughly 300 px tall, so on / it may cover part of the Play link or the home note on a short screen; section 9's No overlap case measures only ▶ and the transport row on /play.",
-      "spike": {
-        "ran": false,
-        "why": "A real Tab count needs the built card. The facts come from reading layout.tsx, Sonner.tsx and the accessibility test. Each option's After was applied to its own scratch copy of the spec; the repo's Prettier, markdownlint-cli2 and cspell pass on both.",
-        "mark": "(untested)"
-      },
-      "before": [
-        {
-          "lines": "90",
-          "text": "- `web/app/layout.tsx`: renders `<PrivacyChoices />`."
-        },
-        {
-          "lines": "155-156",
-          "text": "(absent — section 3 says nothing about Tab order)"
-        },
-        {
-          "lines": "391-392",
-          "text": "(absent — section 9 has no keyboard case)"
-        }
-      ],
-      "after": [],
-      "options": [
-        {
-          "label": "First in the page (Recommended)",
-          "what": "layout.tsx renders <PrivacyChoices /> first inside <body>, before the page. It still floats at the bottom of the screen.",
-          "pros": [
-            "One Tab press reaches the question, and screen-reader users also meet it first when they read the page",
-            "The order the GOV.UK cookie banner uses",
-            "The extra stops last only until the visitor answers, and only visitors in Europe ever see them"
-          ],
-          "cons": [
-            "Four extra Tab stops (five with Details open) before the page's own controls, on every page load until the visitor answers",
-            "The Tab order (first) differs from where the card sits on screen (the bottom)"
-          ],
-          "cost": "One line in layout.tsx, one bullet in section 3, one end-to-end assertion",
-          "after": [
-            {
-              "replaces_lines": "90",
-              "text": "- `web/app/layout.tsx`: renders `<PrivacyChoices />` first inside `<body>`, before the page\n  (section 3)."
-            },
-            {
-              "replaces_lines": "insert after 155 (after F-10's bullet, if F-10 is applied)",
-              "text": "- **Keyboard:** the card is the first thing in the page's order, so the first Tab press reaches\n  its first answer. Until the visitor answers, it adds four Tab stops in front of the page's own\n  controls."
-            },
-            {
-              "replaces_lines": "insert after 391 (after F-10's bullet, if F-10 is applied)",
-              "text": "- **Keyboard:** in Berlin, on `/` and on `/play`, the first Tab press focuses \"Yes, count visits and\n  report errors\"."
-            }
-          ]
-        },
-        {
-          "label": "Last in the page, as the Toaster",
-          "what": "layout.tsx renders <PrivacyChoices /> after the page, before the Toaster.",
-          "pros": [
-            "Keyboard users reach the page's own controls first; nothing changes for them on /play",
-            "The Tab order matches the screen: the card is at the bottom"
-          ],
-          "cons": [
-            "About a dozen Tab presses (the accessibility test's floor for /play is 12 controls) before the question",
-            "Screen-reader users depend on the announcement (F-11) to learn that it is there",
-            "To make it quick to reach, it would need its own shortcut, like the Toaster's Alt+T: one more key nobody knows about"
-          ],
-          "cost": "One line in layout.tsx, one bullet in section 3, one end-to-end assertion; a shortcut would add a key binding, a way to tell people about it, and a test",
-          "after": [
-            {
-              "replaces_lines": "90",
-              "text": "- `web/app/layout.tsx`: renders `<PrivacyChoices />` after the page, before the Toaster\n  (section 3)."
-            },
-            {
-              "replaces_lines": "insert after 155 (after F-10's bullet, if F-10 is applied)",
-              "text": "- **Keyboard:** the card comes after the page in Tab order, as the Toaster does, so on `/play` a\n  keyboard user passes about a dozen controls first; a screen reader announces it when it appears."
-            },
-            {
-              "replaces_lines": "insert after 391 (after F-10's bullet, if F-10 is applied)",
-              "text": "- **Keyboard:** in Berlin, on `/play`, \"Yes, count visits and report errors\" comes right after the\n  last transport control in Tab order."
-            }
-          ]
-        }
-      ],
-      "recommendation": "Option 1, first in the page. The question decides what the site may send, so it should be the first thing a keyboard or screen-reader user meets, as on GOV.UK. The four extra stops end with the answer and touch only visitors in Europe.",
-      "flip_condition": "Choose option 2 if the demo or a user test is run by keyboard from Europe and the four extra stops get in the way, or if an accessibility review asks for the Tab order to follow the screen order.",
-      "proposed_fix": "Pick one place in the page, write it into section 1's layout.tsx line and a Keyboard bullet in section 3, and add one keyboard case to section 9 that proves it.",
-      "why_it_works": "The plan then has one answer and one test, so the place cannot drift during building, and the cost to keyboard users is stated where a reader looks for it.",
-      "plain_terms": {
-        "Tab stop": "a control that the Tab key moves to",
-        "Toaster": "the area that shows the app's short pop-up messages (toasts)",
-        "skip link": "a hidden link at the top of a page that lets keyboard users jump to the main content",
-        "floor for /play": "the smallest number of controls the accessibility test expects to find on /play (12)",
-        "G7": "decision G7: the popup is built in this ticket, as a floating card above the player's controls"
-      },
-      "severity": "P3",
-      "cross_fix": [
-        "F-11: compatible with both options; the announcement is needed either way, and more so with option 2.",
-        "F-10: both options keep the card outside the drop zone, so F-10's fix is needed either way. The Keyboard bullets go right after F-10's bullets in sections 3 and 9."
-      ],
-      "verified_by": "verify-C.json",
-      "triage_decision": null,
-      "anchor_note": "Section 9's e2e list now ends with F-4's '**Privacy notice:**' bullet, after '**No overlap:**' (commit abc6e760). Re-anchor any 'after 391' insertion by text."
-    }
-  ],
+  "deferred_questions": [],
   "rejected_findings": [],
   "restated_suppressed": [
     {
@@ -369,7 +166,7 @@
     "Answers to two 'To verify at plan time' items, from verify-B's spike: `release` set in config reached every event as `ep.release`, and `on: true` arrived as the text `ep.on=true`.",
     "Sentry's SDK source names the session integration `BrowserSession`; it is on by default and is removed by name, so a wrong name fails silently (verify-B; the SDK itself was not run).",
     "R1's spike: after a consent update to denied, the loaded tag still sent `user_engagement` (gcs=G100) on leaving the page; setting window['ga-disable-<ID>'] = true after load stopped every hit. Google documents that switch as 'set before any gtag() call', so NH-349 needs a test that proves it. The `_ga` cookies stay (verify-A).",
-    "Out of scope here, for PR #191 (NH-124): the Sentry spec's Non-goals (lines 39-41) still name NH-349 as the popup — stale since G7 moved the popup into this ticket (verify-A)."
+    "Out of scope here, for PR #191 (NH-124): the Sentry spec's Non-goals (lines 39-41) still name NH-349 as the popup — stale since G7 moved the popup into this ticket (verify-A). DONE 2026-10-10, at leocaseiro's request: a comment on PR #191 (https://github.com/leocaseiro/notation-hero/pull/191#issuecomment-6089097166), a comment on Jira NH-124 (comment 10354), and a message to the 'Sentry setup' Claude session. #191's files were not touched."
   ],
   "triage_plan": {
     "shape": "Batched by area, areas in severity order (all actionable findings are P2 except F-9 and the two ambiguity fixes, P3). Chunks first — each opens with the scenario and shows its Before -> After — then one picker in the same turn.",
@@ -394,6 +191,10 @@
       "Round 3: F-4 option 1 (abc6e760), F-5 'No Google script in tests' (09d09284), F-6 matching variant (f587f2e2).",
       "Round 4: F-7 (15c8acb2), F-8 (8898a74d), F-9 (1a3cdb0f), on one multi-select card.",
       "Round 5: F-10 (5c09ba95), F-11 (6c54f2c9), on one multi-select card. Cap reached: 5 rounds, 12 finding-counts."
+    ],
+    "invocation_2_as_run": [
+      "Round 6 (2026-10-10): F-12, F-13 and FYI-2 on one multi-select card. leocaseiro ticked nothing and wrote 'You can auto resolve any clear fix', and in [Q-add] that some diffs were unreadable (the triage skill's rendering rule changed the same day: prose Before/After is rendered as blockquotes, never fenced). Applied: F-12 8d7cab26, F-13 9f455125, FYI-2 70b4a9e0; auto-resolved as clear fixes without a card: FYI-1 46b9b3b5, FYI-5 734f00e5, FYI-3 44e6920b, R1 ed330aa0. The push then failed lint-spell (fbclid, gclid, msclkid, cookieless): words added in 1592cc9a.",
+      "Round 7 (2026-10-10): FYI-4 (Apply, 073f2301), Q1 (option 1, 630afd20), and the NH-124 note: leocaseiro asked for it on PR #191, on Jira NH-124 and to the Sentry session; all three sent. [Q-add]: nothing else, plus the instruction never to use an id (Jira key or pull-request number) without its summary."
     ]
   },
   "notes": [
@@ -403,10 +204,10 @@
     "verify-A noticed that the gtag.js copy saved on 2026-10-05, served offline, asked for a second script (`&cx=c`) and then sent nothing; the live script worked. It is a second reason, beyond Google's terms, against a committed copy."
   ],
   "resume": {
-    "next_step": "review-loop step 4 again — the same lap, continuing: 9 open items (F-12, F-13, FYI-1–FYI-5, R1, Q1). This artifact is not triaged.",
+    "next_step": "Lap 2: a fresh REVIEW half (review-loop step 2) on the updated spec, in a new invocation after /compact. This lap-1 artifact is triaged, so the entry rule starts the next invocation at step 1/2, not step 4.",
     "command": "Run the spec-triage-loop doc-review loop on .claude/worktrees/pr-162-code-review-5c2901/docs/specs/2026-10-08-nh-51-google-analytics-design.md (NH-51, draft PR #193)",
-    "entry_rule": "findings.json exists here with triaged: false, so the next invocation starts at STEP 4 on the undecided items. Read this file only; never re-open the spec to compose a chunk — each item carries its scenario, verbatim Before and verified After.",
-    "paused_at": "2026-10-09, after round 5 of invocation 1 (the cap)"
+    "entry_rule": "lap-1/findings.json has triaged: true and the spec's frontmatter says lap: 1, so the next invocation runs the review half of lap 2 and writes .spec-triage-loop/2026-10-08-nh-51-google-analytics-design/lap-2/findings.json.",
+    "finished_at": "2026-10-10, invocation 2, after round 7"
   },
   "decided_findings": [
     {
@@ -3286,6 +3087,248 @@
         }
       ],
       "applied_in_commit": "ed330aa0"
+    },
+    {
+      "id": "FYI-4",
+      "title": "The two Sentry filters for Google traffic remove only noise",
+      "area": "FYI",
+      "severity": "P3",
+      "severity_as_filed": "P3",
+      "severity_plain": "worth fixing — small and cheap",
+      "severity_note": "Scope only; either choice is safe.",
+      "confidence": 50,
+      "confidence_plain": "verified, but below the bar for action — an observation",
+      "route": "fyi",
+      "finding_type": "error",
+      "reviewers": ["scope-guardian"],
+      "recommended_action": "FYI",
+      "verdict": "CONFIRMED",
+      "correction": "",
+      "section": "## 6. Changes to Sentry's design",
+      "section_lines": "289-307",
+      "section_exists": true,
+      "quotes_verbatim": true,
+      "quotes": [
+        {
+          "quote": "Sentry's scrub already cuts their `?`, so this removes noise, not",
+          "verbatim": true,
+          "line": 300,
+          "note": ""
+        },
+        {
+          "quote": "Errors thrown inside Google's script are not ours:",
+          "verbatim": true,
+          "line": 302,
+          "note": ""
+        }
+      ],
+      "scenario": "Google's script throws an error on a visitor's phone in Sydney. With the spec as written, Sentry ignores it and you never hear of it. Without the two filters, you get one email from Sentry about an error inside Google's code, and that visit counts as a broken one in the health number. Error reports also show a few lines about Google's network calls, with their addresses already cut short.",
+      "whats_wrong": "Section 6 adds two Google-specific filters to Sentry's settings, which are not merged yet: one drops Google's network calls from the error trail, the other ignores errors thrown inside Google's script. By the spec's own words the first removes only noise. Each is a small change to make later, if the noise ever appears, while adding them now widens this ticket's edits to NH-124's settings and adds a list of Google addresses to keep up to date.",
+      "before": [
+        {
+          "lines": "298-302",
+          "text": "- **Google's requests leave Sentry's breadcrumb trail.** `beforeBreadcrumb` drops fetch and xhr\n  breadcrumbs to `google-analytics.com`, `analytics.google.com`, `googletagmanager.com` and\n  `www.google.com/ccm`. Sentry's scrub already cuts their `?`, so this removes noise, not\n  identifiers.\n- **Errors thrown inside Google's script are not ours:** `denyUrls: [/googletagmanager\\.com/]`."
+        },
+        {
+          "lines": "31-32",
+          "text": "(absent — a new last Non-goals item goes after line 31)"
+        }
+      ],
+      "after": [
+        {
+          "replaces_lines": "298-302",
+          "text": "(removed)"
+        },
+        {
+          "replaces_lines": "insert after 31",
+          "text": "- **No Google filters in Sentry yet.** Sentry keeps Google's fetch and xhr breadcrumbs and any error\n  thrown inside Google's script. A `beforeBreadcrumb` host drop or a `denyUrls` entry is added only\n  if either appears as noise in Sentry."
+        }
+      ],
+      "proposed_fix": "Remove the two bullets from section 6 and add one Non-goals item: Sentry keeps Google's fetch and xhr breadcrumbs and any error thrown inside Google's script, and a filter is added only if either appears as noise in Sentry.",
+      "why_it_works": "It keeps this ticket's changes to NH-124's Sentry setup to what the privacy choice needs, and removes a list of Google addresses nobody has to maintain yet. It costs little that anyone would see: the breadcrumbs are already cut at ?, and an error inside Google's script is rare, mostly filtered already, and would arrive as one email.",
+      "plain_terms": {
+        "breadcrumb": "a short note about an earlier event (a click, a network call) that travels inside the next error report",
+        "beforeBreadcrumb": "Sentry's hook that can drop a breadcrumb before it is kept",
+        "denyUrls": "a Sentry setting that ignores errors whose code comes from the listed addresses",
+        "NH-124": "the Sentry error-monitoring ticket; its spec is on PR #191, not merged yet",
+        "health number": "Sentry Release Health's share of visits that ended without an unhandled error, the interim health number in the Sentry spec",
+        "S4": "decision S4 in the Sentry spec: Release Health on, as the interim health number",
+        "'Script error.'": "what a browser reports instead of the real error when a script from another site fails"
+      },
+      "central_claim_check": "The two bullets exist (lines 298-302), and the first one calls itself noise removal. The Sentry spec (PR #191) confirms that its scrub already cuts fetch and xhr breadcrumb addresses at the first ? or # (its line 387 and lines 423-425). The same spec's setup creates one issue alert that emails leocaseiro for each new kind of error (its lines 564-569), and its interim health number is the share of visits that ended without an unhandled error (its lines 24-27). So an error from gtag.js that reached Sentry would open an issue, send one email and lower that number. Two details narrow the second bullet further. (1) gtag.js comes from another site. If the loader adds it without a crossorigin attribute, as Google's usual snippet does, the browser reports the script's own errors only as 'Script error.', and Sentry's default filter already drops that message (Sentry's eventFilters source, https://github.com/getsentry/sentry-javascript/blob/develop/packages/core/src/integrations/eventFilters.ts). denyUrls then matters only for an error with a real stack whose newest frame is in gtag.js, for example one thrown while our own code calls into it (reasoned, untested). (2) Whether gtag.js sends its hits with fetch or xhr, which Sentry records as breadcrumbs, or with navigator.sendBeacon, which it does not record, was not checked (untested); if it is sendBeacon, the first bullet has almost nothing to drop.",
+      "contradicts": "none — checked section 6's other bullets, section 4 'Addresses' (Sentry cuts addresses at ? on purpose), the Non-goals, section 10 and 'Known limits'. Nothing else in the spec refers to the Google host list or to denyUrls.",
+      "spike": {
+        "ran": false,
+        "why": "Needs Sentry 11 and Google's real script running together; neither is installed on this branch, because the Sentry code is not merged. The After text was applied to a scratch copy of the spec together with Group C's other Afters; the repo's own Prettier (print width 100), markdownlint-cli2 and cspell all pass on it.",
+        "mark": "(untested)"
+      },
+      "cross_fix": [
+        "F-3 (Group A) also touches Sentry's setup (when its DSN goes live), but it edits section 8 and 'Known limits', not lines 298-302; no overlap."
+      ],
+      "synthesis_note": "Anchor 50.",
+      "verified_by": "verify-C.json",
+      "raw_constituents": [
+        {
+          "raw_id": "scope-guardian#4",
+          "reviewer": "scope-guardian",
+          "title": "Two Sentry filters for Google traffic remove only noise",
+          "severity": "P3",
+          "confidence": 50,
+          "autofix_class": "gated_auto",
+          "why_it_matters": "The PR would add two Sentry-side Google filters whose stated purpose is cosmetic: a beforeBreadcrumb drop of Google's fetch and xhr breadcrumbs ('removes noise, not identifiers') and a denyUrls entry for errors thrown inside Google's script. Neither follows from an existing contract or guards against harm that would go unseen: an error from gtag.js opens a new issue and sends the alert email that NH-124's setup (the Sentry spec) defines, though the visit also counts against its interim health number, and breadcrumb clutter shows in the first report that carries it. Each is a one-line addition at that point, while shipping both now widens this PR's edits to NH-124's unmerged SDK settings and adds a Google host list to keep in step.",
+          "suggested_fix": "Remove both bullets from section 6 and add one item under Non-goals: 'Sentry keeps Google's fetch and xhr breadcrumbs and any error thrown inside gtag.js; a beforeBreadcrumb host drop or a denyUrls entry is added only if either shows up as noise in Sentry.'",
+          "evidence": [
+            "Sentry's scrub already cuts their `?`, so this removes noise, not",
+            "Errors thrown inside Google's script are not ours:"
+          ]
+        }
+      ],
+      "triage_decision": {
+        "round": 7,
+        "invocation": 2,
+        "decision": "Apply",
+        "applied_in_commit": "073f2301",
+        "date": "2026-10-10",
+        "note": "Chosen on its own card: remove both Google-only Sentry filters from section 6; a Non-goals line says one is added only if Google noise shows in Sentry."
+      },
+      "applied_in_commit": "073f2301",
+      "triage_rounds": [
+        {
+          "round": 7,
+          "invocation": 2,
+          "decision": "Apply",
+          "applied_in_commit": "073f2301",
+          "date": "2026-10-10",
+          "note": "Chosen on its own card: remove both Google-only Sentry filters from section 6; a Non-goals line says one is added only if Google noise shows in Sentry."
+        }
+      ]
+    },
+    {
+      "id": "Q1",
+      "source": "design-lens",
+      "text": "Where does `<PrivacyChoices />` sit in the DOM and the tab order? Section 1 says only that `layout.tsx` renders it. Rendered first, a keyboard user meets the question at once but passes four extra Tab stops (three answers and Details) on every page until answering; rendered last, as the Toaster is, it comes after a dozen or more page controls (the a11y lane's floor for `/play` is 12), which is why `Sonner.tsx` gave the Toaster an Alt+T hotkey. The plan must pick one and add an e2e assertion for the choice.",
+      "verdict": "CONFIRMED",
+      "correction": "",
+      "scenario": "You use only a keyboard and open the player in Berlin. The privacy question waits at the bottom of the screen. Does your first press of Tab land on its first answer? Or do you press Tab about a dozen times, through the header, the speed control, Settings, Open file and the play controls, before you reach it?",
+      "whats_wrong": "Section 1 says only that layout.tsx renders the card, not where in the page. That place decides the Tab order. First in the page: keyboard users reach it at once, but pass four extra stops on every page until they answer. Last, as the Toaster is: they pass a dozen or more controls first, which is the reason Sonner.tsx gave the Toaster an Alt+T hotkey. The plan has to pick one and test it.",
+      "central_claim_check": "web/app/layout.tsx:15-27 renders the page and then the Toaster inside <body>. client/src/components/ui/Sonner/Sonner.tsx:198-201 says the Toaster mounts last in the root layout, so plain Tab reaches a close button only after every page control, which is why it keeps the Alt+T hotkey. web/e2e/a11y.e2e.ts:270 sets the floor for /play at 12 controls; that counts controls with a hit area, close to, but not exactly, the number of Tab stops. Section 3 gives the card three answer buttons and Details: four Tab stops, five with Details open (its link). web/ has no skip link. The GOV.UK Design System places its cookie banner right after the opening body tag, before the skip link (https://design-system.service.gov.uk/components/cookie-banner/); its banner sits in the page flow at the top, not floating, so it guides the order only. Related, not part of the question (estimated, untested): the card is fixed at the bottom, and on a phone its stacked buttons make it roughly 300 px tall, so on / it may cover part of the Play link or the home note on a short screen; section 9's No overlap case measures only ▶ and the transport row on /play.",
+      "spike": {
+        "ran": false,
+        "why": "A real Tab count needs the built card. The facts come from reading layout.tsx, Sonner.tsx and the accessibility test. Each option's After was applied to its own scratch copy of the spec; the repo's Prettier, markdownlint-cli2 and cspell pass on both.",
+        "mark": "(untested)"
+      },
+      "before": [
+        {
+          "lines": "90",
+          "text": "- `web/app/layout.tsx`: renders `<PrivacyChoices />`."
+        },
+        {
+          "lines": "155-156",
+          "text": "(absent — section 3 says nothing about Tab order)"
+        },
+        {
+          "lines": "391-392",
+          "text": "(absent — section 9 has no keyboard case)"
+        }
+      ],
+      "after": [],
+      "options": [
+        {
+          "label": "First in the page (Recommended)",
+          "what": "layout.tsx renders <PrivacyChoices /> first inside <body>, before the page. It still floats at the bottom of the screen.",
+          "pros": [
+            "One Tab press reaches the question, and screen-reader users also meet it first when they read the page",
+            "The order the GOV.UK cookie banner uses",
+            "The extra stops last only until the visitor answers, and only visitors in Europe ever see them"
+          ],
+          "cons": [
+            "Four extra Tab stops (five with Details open) before the page's own controls, on every page load until the visitor answers",
+            "The Tab order (first) differs from where the card sits on screen (the bottom)"
+          ],
+          "cost": "One line in layout.tsx, one bullet in section 3, one end-to-end assertion",
+          "after": [
+            {
+              "replaces_lines": "90",
+              "text": "- `web/app/layout.tsx`: renders `<PrivacyChoices />` first inside `<body>`, before the page\n  (section 3)."
+            },
+            {
+              "replaces_lines": "insert after 155 (after F-10's bullet, if F-10 is applied)",
+              "text": "- **Keyboard:** the card is the first thing in the page's order, so the first Tab press reaches\n  its first answer. Until the visitor answers, it adds four Tab stops in front of the page's own\n  controls."
+            },
+            {
+              "replaces_lines": "insert after 391 (after F-10's bullet, if F-10 is applied)",
+              "text": "- **Keyboard:** in Berlin, on `/` and on `/play`, the first Tab press focuses \"Yes, count visits and\n  report errors\"."
+            }
+          ]
+        },
+        {
+          "label": "Last in the page, as the Toaster",
+          "what": "layout.tsx renders <PrivacyChoices /> after the page, before the Toaster.",
+          "pros": [
+            "Keyboard users reach the page's own controls first; nothing changes for them on /play",
+            "The Tab order matches the screen: the card is at the bottom"
+          ],
+          "cons": [
+            "About a dozen Tab presses (the accessibility test's floor for /play is 12 controls) before the question",
+            "Screen-reader users depend on the announcement (F-11) to learn that it is there",
+            "To make it quick to reach, it would need its own shortcut, like the Toaster's Alt+T: one more key nobody knows about"
+          ],
+          "cost": "One line in layout.tsx, one bullet in section 3, one end-to-end assertion; a shortcut would add a key binding, a way to tell people about it, and a test",
+          "after": [
+            {
+              "replaces_lines": "90",
+              "text": "- `web/app/layout.tsx`: renders `<PrivacyChoices />` after the page, before the Toaster\n  (section 3)."
+            },
+            {
+              "replaces_lines": "insert after 155 (after F-10's bullet, if F-10 is applied)",
+              "text": "- **Keyboard:** the card comes after the page in Tab order, as the Toaster does, so on `/play` a\n  keyboard user passes about a dozen controls first; a screen reader announces it when it appears."
+            },
+            {
+              "replaces_lines": "insert after 391 (after F-10's bullet, if F-10 is applied)",
+              "text": "- **Keyboard:** in Berlin, on `/play`, \"Yes, count visits and report errors\" comes right after the\n  last transport control in Tab order."
+            }
+          ]
+        }
+      ],
+      "recommendation": "Option 1, first in the page. The question decides what the site may send, so it should be the first thing a keyboard or screen-reader user meets, as on GOV.UK. The four extra stops end with the answer and touch only visitors in Europe.",
+      "flip_condition": "Choose option 2 if the demo or a user test is run by keyboard from Europe and the four extra stops get in the way, or if an accessibility review asks for the Tab order to follow the screen order.",
+      "proposed_fix": "Pick one place in the page, write it into section 1's layout.tsx line and a Keyboard bullet in section 3, and add one keyboard case to section 9 that proves it.",
+      "why_it_works": "The plan then has one answer and one test, so the place cannot drift during building, and the cost to keyboard users is stated where a reader looks for it.",
+      "plain_terms": {
+        "Tab stop": "a control that the Tab key moves to",
+        "Toaster": "the area that shows the app's short pop-up messages (toasts)",
+        "skip link": "a hidden link at the top of a page that lets keyboard users jump to the main content",
+        "floor for /play": "the smallest number of controls the accessibility test expects to find on /play (12)",
+        "G7": "decision G7: the popup is built in this ticket, as a floating card above the player's controls"
+      },
+      "severity": "P3",
+      "cross_fix": [
+        "F-11: compatible with both options; the announcement is needed either way, and more so with option 2.",
+        "F-10: both options keep the card outside the drop zone, so F-10's fix is needed either way. The Keyboard bullets go right after F-10's bullets in sections 3 and 9."
+      ],
+      "verified_by": "verify-C.json",
+      "triage_decision": {
+        "round": 7,
+        "invocation": 2,
+        "decision": "Apply",
+        "option": "1 — first in the page",
+        "applied_in_commit": "630afd20",
+        "date": "2026-10-10",
+        "note": "Chosen on its own card (option 1, recommended). layout.tsx renders the card first inside <body>; section 3 gains a Keyboard bullet after F-10's; section 9 gains a Keyboard case after 'Drop through the card'; section 1's privacy-choice.e2e.ts row names the keyboard case (a stale-text fix that follows from the choice)."
+      },
+      "anchor_note": "Section 9's e2e list now ends with F-4's '**Privacy notice:**' bullet, after '**No overlap:**' (commit abc6e760). Re-anchor any 'after 391' insertion by text.",
+      "triage_rounds": [
+        {
+          "round": 7,
+          "invocation": 2,
+          "decision": "Apply",
+          "option": "1 — first in the page",
+          "applied_in_commit": "630afd20",
+          "date": "2026-10-10",
+          "note": "Chosen on its own card (option 1, recommended). layout.tsx renders the card first inside <body>; section 3 gains a Keyboard bullet after F-10's; section 9 gains a Keyboard case after 'Drop through the card'; section 1's privacy-choice.e2e.ts row names the keyboard case (a stale-text fix that follows from the choice)."
+        }
+      ],
+      "applied_in_commit": "630afd20"
     }
   ]
 }
