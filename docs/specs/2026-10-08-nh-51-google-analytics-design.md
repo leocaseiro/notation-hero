@@ -97,7 +97,7 @@ Each `lib` file and the popup has its unit test beside it.
 - `web/playwright.e2e.config.ts`: `timezoneId: 'Australia/Sydney'` for every project, a fake Google
   Analytics ID, and Chromium's `--host-resolver-rules` launch argument, which makes Google's hosts
   unresolvable in the test browser.
-- Screenshot baselines: `/` (the new note) and three new shots with the popup (section 9).
+- Screenshot baselines: `/` (the new note) and one new shot with the popup (section 9).
 - `web/README.md` (the variable), `cspell.json`, and the decision registry and changelog.
 
 ## 2. The privacy choice
@@ -441,7 +441,11 @@ hands Google, in `window.dataLayer`; what Google's script sends is checked by ha
 
 - CI containers run in UTC, which `asksFirst()` treats as Europe. Without
   `timezoneId: 'Australia/Sydney'` in the config, the popup would appear in all ten existing shots.
-- New shots, in `Europe/Berlin`: `/` and `/play` with the popup, and `/play` at phone width.
+- One new shot, in `Europe/Berlin`: `/play` with the popup, at the lane's 1280 × 900. It is the
+  only check that sees the card itself: its colours and its three buttons over the transport row,
+  as `web/`'s own CSS build draws them. The no-overlap case measures the card's box but cannot see
+  it. No `/` shot (there the card sits over empty page) and no phone-width shot (the lane covers
+  no width under 900 px, by design; the no-overlap case measures the phone placement).
 - An axe scan with the popup open, in light only, like every other axe case in the lane: `web/`
   cannot show dark mode until NH-302 (see "Light only" in
   `docs/specs/2026-09-21-web-visual-regression-gate.md`).
