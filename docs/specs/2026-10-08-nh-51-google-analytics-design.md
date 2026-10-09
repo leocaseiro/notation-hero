@@ -31,6 +31,9 @@ in Europe are asked first, and one answer governs both Google Analytics and Sent
 - **No automatic click tracking.** Google's "enhanced measurement" keeps page views only; scrolls,
   outbound clicks, site search, video, file downloads and form interactions stay off.
 - **Not `client/`.**
+- **No Google filters in Sentry yet.** Sentry keeps Google's fetch and xhr breadcrumbs and any error
+  thrown inside Google's script. A `beforeBreadcrumb` host drop or a `denyUrls` entry is added only
+  if either appears as noise in Sentry.
 
 ## Why this exists
 
@@ -323,11 +326,6 @@ Made in this ticket's pull request, after NH-124 merges:
   visitor allows error reports. A second call does nothing.
 - **The visit count follows its own purpose.** With "Report errors only", Sentry starts without its
   Release Health session integration, so no visit ping is sent.
-- **Google's requests leave Sentry's breadcrumb trail.** `beforeBreadcrumb` drops fetch and xhr
-  breadcrumbs to `google-analytics.com`, `analytics.google.com`, `googletagmanager.com` and
-  `www.google.com/ccm`. Sentry's scrub already cuts their `?`, so this removes noise, not
-  identifiers.
-- **Errors thrown inside Google's script are not ours:** `denyUrls: [/googletagmanager\.com/]`.
 - **`instrumentsValue()` moves to `web/lib/score-facts.ts`**, so analytics uses it without importing
   Sentry's module. `report.ts` imports it from there; nothing else changes.
 - **What this changes in NH-124's decisions.** S1 ("report every error") now holds outside Europe;
