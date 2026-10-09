@@ -404,6 +404,12 @@ An agent may not create accounts.
    and opening `/?utm_source=probe&fbclid=probe123` sends one that keeps `utm_source` and has no
    `probe123`. The tests answer Google's script with an empty one, so this is the only check of
    what it sends.
+7. **Then exclude your own visits.** In the web data stream: Configure tag settings → Show more →
+   Define internal traffic, with your own IP addresses (`traffic_type` `internal`). Then set the
+   "Internal Traffic" data filter to **Testing** for a few days, then **Active**. Only after step 6:
+   an active filter drops matching visits for good, and would hide step 6's own check. On a phone,
+   whose IP address changes, choose "Report errors only" through NH-349's "Privacy choices" link
+   instead.
 
 ## 9. Testing
 
