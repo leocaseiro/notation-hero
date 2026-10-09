@@ -85,7 +85,7 @@ No new dependency: the loader is our own (G2).
 | `web/app/PrivacyChoices.tsx`    | the popup (section 3)                                                                                   |
 | `web/app/privacy/page.tsx`      | the privacy notice (section 7)                                                                          |
 | `web/e2e/google-analytics.ts`   | the shared fixture: answers Google's hosts locally (an empty `gtag.js`) and records every request       |
-| `web/e2e/privacy-choice.e2e.ts` | the consent, privacy, no-overlap and drop-through cases (section 9)                                     |
+| `web/e2e/privacy-choice.e2e.ts` | the consent, privacy, no-overlap, drop-through and keyboard cases (section 9)                           |
 
 Each `lib` file and the popup has its unit test beside it.
 
@@ -93,7 +93,8 @@ Each `lib` file and the popup has its unit test beside it.
 
 - `web/instrumentation-client.ts` (Sentry's): starts each tool only when `allowed()`.
 - `web/lib/monitoring/` (Sentry's): section 6.
-- `web/app/layout.tsx`: renders `<PrivacyChoices />`.
+- `web/app/layout.tsx`: renders `<PrivacyChoices />` first inside `<body>`, before the page
+  (section 3).
 - `web/app/page.tsx`, both `error.tsx` files and `web/app/global-error.tsx` (Sentry's): the copy
   (section 7).
 - The call sites in section 5, under `web/app/play/`: one `track()` each.
@@ -171,6 +172,9 @@ Details ▾
   that carries files starts this; the drop, `dragend` or the next `pointermove` ends it, the signals
   `PlayerShell.tsx` already uses to tell that a drag has ended. Clicks and the keyboard are
   unaffected.
+- **Keyboard:** the card is the first thing in the page's order, so the first Tab press reaches
+  its first answer. Until the visitor answers, it adds four Tab stops in front of the page's own
+  controls.
 - **Equal buttons:** the design system's `Button`, one variant for all three, each at least 44 px
   tall. Refusing is as easy as allowing.
 - **Answering** saves the choice, hides the card and starts what it allows at once — no reload.
@@ -460,6 +464,8 @@ hands Google, in `window.dataLayer`; what Google's script sends is checked by ha
 - **Drop through the card:** in Berlin, with the card showing, drop `Punk.gp` on the card's centre
   through Chrome's own drag pipeline, as `web/e2e/player.e2e.ts` does. The file opens, and no new
   tab opens.
+- **Keyboard:** in Berlin, on `/` and on `/play`, the first Tab press focuses "Yes, count visits and
+  report errors".
 - **Privacy notice:** the popup's Details and the home note both link to `/privacy`, which names who
   runs the site and how to change an answer.
 
