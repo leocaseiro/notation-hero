@@ -542,6 +542,10 @@
     "CNIL",
     "EDPB",
     "OAIC",
-    "googletagmanager"
+    "googletagmanager",
+    "fbclid",
+    "gclid",
+    "msclkid",
+    "cookieless"
   ]
 }
