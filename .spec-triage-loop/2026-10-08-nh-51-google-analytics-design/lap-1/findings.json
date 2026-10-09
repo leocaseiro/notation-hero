@@ -49,7 +49,7 @@
       "dropped_anchor_0_25": 0,
       "silent_engine_edits": 0
     },
-    "finding_count_undecided": 14,
+    "finding_count_undecided": 11,
     "finding_count_note": "13 findings to triage + 2 ambiguity fixes + 5 FYI observations + R1 + Q1 = 22 items. The triage cap (12 findings or 5 picker rounds per invocation) means two triage invocations.",
     "exit_signal_raw": "NOT CLEAN — the headless envelope carries an Entailed corrections block (7 items), Proposed fixes (4) and Decisions (4), and ends with the documented `Review complete` line. See engine-envelope.txt.",
     "silent_autofixes_by_engine": "none — this invocation was report-only (the loop's REVIEW-MODE), so the engine applied nothing. F-14, the only one-answer fix at anchor 100, is carried as an ambiguity fix for the triage half. The spec is byte-identical to f9c1fdf6.",
@@ -70,320 +70,12 @@
       "P2": "should fix — a real gap an implementer will hit",
       "P3": "worth fixing — small and cheap"
     },
-    "triage_progress": "invocation 1: step 0 (F-15, F-14); round 1 (F-2 option 1, F-1; F-3 clarified); round 2 (F-3 option B; memory rule saved); round 3 (F-4 option 1, F-5 'No Google script', F-6). Picker rounds used: 3 of 5; finding cap used: 7 of 12 (F-3 counts twice). Next: round 4 = F-7, F-8, F-9; round 5 = F-10, F-11; F-12 then waits for invocation 2.",
-    "finding_count_decided": 8
+    "triage_progress": "invocation 1: step 0 (F-15, F-14); round 1 (F-2 option 1, F-1; F-3 clarified); round 2 (F-3 option B; memory rule saved); round 3 (F-4 option 1, F-5 'No Google script', F-6); round 4 (F-7, F-8, F-9). Picker rounds used: 4 of 5; finding cap used: 10 of 12 (F-3 counts twice). Next: round 5 = F-10, F-11; then the cap: F-12, F-13, FYI-1–5, R1 and Q1 wait for invocation 2.",
+    "finding_count_decided": 11
   },
   "already_applied": [],
   "ambiguity_fixes": [],
   "undecided_findings": [
-    {
-      "id": "F-7",
-      "title": "'Report errors only' is never checked for the absence of Sentry's visit ping",
-      "area": "Area 2 - the end-to-end tests",
-      "severity": "P2",
-      "severity_as_filed": "P2",
-      "severity_plain": "should fix — a real gap an implementer will hit",
-      "severity_note": "A promise in section 6 has no test, and the one setting it depends on is still unverified; the fix is one assertion in a case the spec already plans.",
-      "confidence": 75,
-      "confidence_plain": "double-checked by reading the spec, the repo and the sources; will be hit in practice (not all of it run)",
-      "route": "proposed_fix",
-      "finding_type": "omission",
-      "reviewers": ["security-lens"],
-      "recommended_action": "Apply",
-      "verdict": "CONFIRMED",
-      "correction": "",
-      "section": "## 9. Testing",
-      "section_lines": "364-398 (the Berlin bullet is 385-387; the promise is in ## 6. Changes to Sentry's design, lines 296-297)",
-      "section_exists": true,
-      "quotes_verbatim": true,
-      "quotes": [
-        {
-          "quote": "\"Report errors only\": a forced error reaches Sentry, and nothing reaches Google.",
-          "verbatim": true,
-          "line": 386,
-          "note": "lines 386-387"
-        },
-        {
-          "quote": "With \"Report errors only\", Sentry starts without its Release Health session integration, so no visit ping is sent.",
-          "verbatim": true,
-          "line": 296,
-          "note": "lines 296-297"
-        },
-        {
-          "quote": "Sentry 11 can start after the page has loaded, and the name of its Release Health integration.",
-          "verbatim": true,
-          "line": 441,
-          "note": ""
-        }
-      ],
-      "scenario": "You open Notation Hero in Berlin and press 'Report errors only'. You expect Sentry to hear from you only when something breaks. Months later, a Sentry upgrade renames the part that counts visits, the filter no longer removes it, and every page you open sends a visit ping. No test notices: the Berlin test checks only that an error arrives.",
-      "whats_wrong": "Section 6 promises that 'Report errors only' starts Sentry without its visit-counting part, so no visit ping is sent. The Berlin test for that answer checks only that a forced error reaches Sentry and that nothing reaches Google. The part's name is still unverified (the spec's own 'To verify at plan time' list), and Sentry removes parts by name, so a wrong or renamed name keeps the ping on without any error.",
-      "before": [
-        {
-          "lines": "385-387",
-          "text": "- **Berlin:** the popup shows, and **no** request reaches Google or Sentry before an answer. \"No,\n  send nothing\": still none, also after a reload. \"Report errors only\": a forced error reaches\n  Sentry, and nothing reaches Google. \"Yes, …\": both. The answer survives a reload."
-        }
-      ],
-      "after": [
-        {
-          "replaces_lines": "385-387",
-          "text": "- **Berlin:** the popup shows, and **no** request reaches Google or Sentry before an answer. \"No,\n  send nothing\": still none, also after a reload. \"Report errors only\": a forced error reaches\n  Sentry; when it arrives, Sentry's fixture has recorded no `session` envelope (the visit ping), and\n  nothing reaches Google. \"Yes, …\": both, and a `session` envelope arrives. The answer survives a\n  reload. Unlike NH-124's cases, these read session envelopes on purpose: the visit ping is the one\n  thing \"Report errors only\" withholds from Sentry."
-        }
-      ],
-      "proposed_fix": "In the Berlin 'Report errors only' case, also read Sentry's session envelopes: when the forced error arrives, none has been recorded. In the 'Yes' case, a session envelope arrives.",
-      "why_it_works": "The visit ping is the only thing 'Report errors only' withholds from Sentry, so its absence is the one check that proves the answer works. NH-124's fixture already records every envelope, session ones included; the case only stops ignoring them. The forced error is a fair moment to check: if the visit-counting part were still running, Sentry would send a session update before the error itself. The 'Yes' check proves the recorder can see session envelopes at all, so an empty result means something.",
-      "plain_terms": {
-        "Release Health": "Sentry's count of visits, sent as a small 'session' message on every page load",
-        "session envelope": "that visit message, as Sentry's test fixture records it",
-        "envelope": "one message from Sentry's browser code to Sentry",
-        "G6": "decision G6: three answers, one purpose behind each button",
-        "S4": "NH-124's decision to enable Release Health as the interim health number",
-        "NH-124": "the Sentry error-monitoring ticket (PR #191)",
-        "BrowserSession": "the name of the Sentry part that sends the visit ping (browserSessionIntegration), which the filter must match"
-      },
-      "central_claim_check": "Confirmed. The Sentry spec (PR #191), section 6: its fixture 'routes every request to that host, answers it, and records the envelope', and its cases 'read event envelopes only, never the session envelope that Release Health (S4) sends on every visit'. So the fixture can see session envelopes; NH-124's cases ignore them on purpose, and no case checks that one is absent. Sentry's docs list browserSessionIntegration as enabled by default for Next.js, and a default integration is removed by its name (https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/integrations/). The SDK source names it 'BrowserSession' (https://github.com/getsentry/sentry-javascript/blob/develop/packages/browser/src/integrations/browsersession.ts). The Sentry spec's own filter removes default integrations by name (its section 3.3), so a wrong or renamed name leaves the visit ping on with no error. In the SDK core, an error captured during an active session sends a session update before the error itself (packages/core/src/client.ts, _updateSessionFromEvent and _processEvent), and the item type is 'session' (packages/core/src/envelope.ts). Sentry SDK major version 11 exists (the BrowserSession docs page notes a default that changed in version 11). The spec's 'To verify at plan time' still lists the integration's name (line 441).",
-      "contradicts": "none — checked section 2's table (lines 101-107: 'Report errors only' sends error reports and no visit count), section 6 (lines 296-297), 'To verify at plan time' (line 441), and the Sentry spec's section 6 (its own cases ignore session envelopes; these cases would read them, which its fixture allows).",
-      "spike": {
-        "ran": true,
-        "what": "From a local page, two POSTs to https://sentry.invalid/api/1/envelope/ (the shape Sentry's fake DSN produces), one carrying an item of type event and one of type session, through a Playwright 1.61.1 route that records each body; then the same POST with the route removed.",
-        "result": "Both were routed before any address lookup and recorded, and the item type was readable from the body; with no route, the POST was rejected ('Failed to fetch'). Sentry itself was not run (untested): @sentry/nextjs is not installed on this branch and installs are not allowed here, so its session behaviour comes from the SDK source.",
-        "fix_holds": true
-      },
-      "cross_fix": [
-        "none with other findings. Its line range (385-387) does not overlap F-6's (388-389)."
-      ],
-      "synthesis_note": "Unique. Depends on NH-124's fixture being able to see session envelopes; verify against the Sentry spec.",
-      "verified_by": "verify-B.json",
-      "raw_constituents": [
-        {
-          "raw_id": "security-lens#2",
-          "reviewer": "security-lens",
-          "title": "Errors-only answer never checked for an absent visit ping",
-          "severity": "P2",
-          "confidence": 75,
-          "autofix_class": "gated_auto",
-          "why_it_matters": "Suppose 'Report errors only' still starts Sentry's Release Health, the per-visit ping. Every European who turned down visit counting would then send a visit ping on every page load, and no test would fail. The risk is real: the integration's name is still unverified (it is on the spec's 'To verify at plan time' list), and a future Sentry major version can change it. The Berlin case checks only that an error reaches Sentry and nothing reaches Google, and NH-124's end-to-end cases read event envelopes only, never the session envelope. One assertion in that case would guard G6 (one purpose per button) on Sentry's side, where the visit count is the only difference between 'errors only' and 'everything'.",
-          "suggested_fix": "In section 9's Berlin cases, also read Sentry's session envelopes. After 'Report errors only', the forced error arrives and no session envelope is sent. After 'Yes, …', a session envelope is sent.",
-          "evidence": [
-            "\"Report errors only\": a forced error reaches Sentry, and nothing reaches Google.",
-            "With \"Report errors only\", Sentry starts without its Release Health session integration, so no visit ping is sent.",
-            "Sentry 11 can start after the page has loaded, and the name of its Release Health integration."
-          ]
-        }
-      ],
-      "triage_decision": null,
-      "applied_in_commit": null
-    },
-    {
-      "id": "F-8",
-      "title": "The accessibility scan asks for a dark theme web/ cannot show",
-      "area": "Area 2 - the end-to-end tests",
-      "severity": "P2",
-      "severity_as_filed": "P2",
-      "severity_plain": "should fix — a real gap an implementer will hit",
-      "severity_note": "An implementer cannot do what the line asks without breaking a project rule; the fix is two short lines.",
-      "confidence": 100,
-      "confidence_plain": "certain — the spec states it outright, or a spike confirmed it, or independent reviewers agree on airtight text",
-      "route": "proposed_fix",
-      "finding_type": "error",
-      "reviewers": ["design-lens", "scope-guardian"],
-      "recommended_action": "Apply",
-      "verdict": "CONFIRMED",
-      "correction": "",
-      "section": "## 9. Testing (Screenshots and accessibility) and ## 3. The popup",
-      "section_lines": "393-398 and 141-168 (the axe bullet is line 398; the Themes bullet is line 164)",
-      "section_exists": true,
-      "quotes_verbatim": true,
-      "quotes": [
-        {
-          "quote": "An axe scan with the popup open, in both themes.",
-          "verbatim": true,
-          "line": 398,
-          "note": ""
-        },
-        {
-          "quote": "light and dark from the design tokens; no new colour.",
-          "verbatim": true,
-          "line": 164,
-          "note": ""
-        },
-        {
-          "quote": "**Themes:** light and dark from the design tokens; no new colour.",
-          "verbatim": true,
-          "line": 164,
-          "note": ""
-        }
-      ],
-      "scenario": "You build the popup and write its accessibility test as the spec says: 'in both themes'. But no visitor can ever see Notation Hero in dark mode — nothing enables it. To scan the dark theme, your test must force it, which this project forbids, and the scan then reports problems in a dark page no visitor will ever see.",
-      "whats_wrong": "Section 9 asks for an axe scan of the popup 'in both themes', and section 3 says 'light and dark'. web/ can only show light: dark mode needs a `.dark` class that nothing sets, and the visual-regression spec's 'Light only' section rules out adding it from a test. Every other axe case in the lane runs in light.",
-      "before": [
-        {
-          "lines": "398",
-          "text": "- An axe scan with the popup open, in both themes."
-        },
-        {
-          "lines": "164",
-          "text": "- **Themes:** light and dark from the design tokens; no new colour."
-        }
-      ],
-      "after": [
-        {
-          "replaces_lines": "398",
-          "text": "- An axe scan with the popup open, in light only, like every other axe case in the lane: `web/`\n  cannot show dark mode until NH-302 (see \"Light only\" in\n  `docs/specs/2026-09-21-web-visual-regression-gate.md`)."
-        },
-        {
-          "replaces_lines": "164",
-          "text": "- **Themes:** colours from the design tokens only, so the card follows dark mode on the day `web/`\n  can show it (NH-302); no new colour."
-        }
-      ],
-      "proposed_fix": "Scan in light only, like the rest of the lane, and say why. Describe the card's colours as design tokens only, so dark mode follows when web/ gets it.",
-      "why_it_works": "It matches what a visitor can see today and the lane's existing rule. The card still uses only tokens, so the day NH-302 enables dark mode the card is ready, and a dark scan can then be added against real dark mode.",
-      "plain_terms": {
-        "axe": "the automatic accessibility checker the lane runs",
-        "NH-302": "the ticket that dark mode in web/ waits for (the notation's colours in dark)",
-        "design tokens": "the shared colour names of the design system, which change with the theme",
-        "'Light only'": "a section of docs/specs/2026-09-21-web-visual-regression-gate.md"
-      },
-      "central_claim_check": "Confirmed. docs/specs/2026-09-21-web-visual-regression-gate.md:174-181 ('### Light only'): dark mode cannot be reached in web/; the variant is class-based (`@custom-variant dark (&:is(.dark *))`, client/src/styles.css:27); web/app/layout.tsx renders a bare `<html lang=\"en\">` (line 14) with no theme control; injecting `.dark` from a test is 'a state no visitor can reach, and test-only instrumentation of exactly the kind this project bans'. The same spec's Non-goals (line 38): 'No dark-mode baselines.' docs/decisions/decision-changelog.md:676-679: 'Dark mode stays unreachable for now. Nothing sets `.dark`', deferred behind NH-302. A search of web/app, web/lib and web/e2e finds no code that sets `.dark`, emulates a colour scheme or imports next-themes; all nine axe cases in web/e2e/a11y.e2e.ts run in light.",
-      "contradicts": "none — checked section 3 (Equal buttons use the design system's Button; tokens only), section 9's screenshot bullets (lines 395-397) and Non-goals ('Not client/').",
-      "spike": {
-        "ran": false,
-        "why": "Nothing to run: the claim is a fact about the repository (no theme control), confirmed by reading and searching.",
-        "mark": "(untested)"
-      },
-      "cross_fix": ["F-9 — edits the line just above (397); no overlap."],
-      "synthesis_note": "Two separately dispatched reviewers; the repo's web visual-regression spec decides 'Light only' and web/app/layout.tsx has no theme control, so the anchor rises one step (75 -> 100). Entailed by that repo decision.",
-      "verified_by": "verify-B.json",
-      "raw_constituents": [
-        {
-          "raw_id": "scope-guardian#2",
-          "reviewer": "scope-guardian",
-          "title": "Dark-theme axe scan targets a state web/ cannot reach",
-          "severity": "P2",
-          "confidence": 75,
-          "autofix_class": "gated_auto",
-          "why_it_matters": "An implementer following section 9 has to inject a .dark class from the test to scan a theme no visitor can reach: web/app/layout.tsx renders a bare html element with no theme control, and every existing web axe case is light-only. The repo's web visual-regression spec (docs/specs/2026-09-21-web-visual-regression-gate.md, 'Light only') rules this out, calling dark mode unreachable in web/ and a test-injected .dark 'test-only instrumentation of exactly the kind this project bans'. The dark scan would also audit the rest of /play in a theme nobody has audited, so unrelated findings could land on this ticket. Scanning in light only matches the other axe cases and removes the problem.",
-          "suggested_fix": "In section 9, change the accessibility bullet to: 'An axe scan with the popup open, in the light theme like the rest of the web lane.' In section 3, change the Themes bullet to: 'Themes: colours come from the design tokens; no new colour.'",
-          "evidence": [
-            "An axe scan with the popup open, in both themes.",
-            "light and dark from the design tokens; no new colour."
-          ]
-        },
-        {
-          "raw_id": "design-lens#2",
-          "reviewer": "design-lens",
-          "title": "'Both themes' axe scan is unreachable in light-only web/",
-          "severity": "P2",
-          "confidence": 75,
-          "autofix_class": "gated_auto",
-          "why_it_matters": "The test plan asks for a step the `web` lane cannot perform: `web/` can never show dark mode, because the variant is the class `.dark` (`client/src/styles.css:27`), nothing sets it, and `web/app/layout.tsx` renders a bare `<html lang=\"en\">`. A scan \"in both themes\" therefore means injecting the class from the test, which the visual-regression gate's 'Light only' section (`docs/specs/2026-09-21-web-visual-regression-gate.md`) rejects as \"a state no visitor can reach\"; the implementer either breaks that reasoning or silently drops half the clause. The changelog entry of 2026-09-21 defers dark mode behind NH-302 (the dark-mode work for the notation colours), so recording light-only now matches the repo's decision and still lets the card's token-only styling carry dark later.",
-          "suggested_fix": "In section 9, change the last bullet to: 'An axe scan with the popup open, in light only: dark mode cannot be turned on in `web/` yet (deferred behind NH-302; see \"Light only\" in `docs/specs/2026-09-21-web-visual-regression-gate.md`).' In section 3, reword the Themes bullet to: 'Styled from design tokens only, so dark follows the day `web/` can show it; no new colour.'",
-          "evidence": [
-            "An axe scan with the popup open, in both themes.",
-            "**Themes:** light and dark from the design tokens; no new colour."
-          ]
-        }
-      ],
-      "triage_decision": null,
-      "applied_in_commit": null
-    },
-    {
-      "id": "F-9",
-      "title": "Three new screenshot baselines without saying what only each one covers",
-      "area": "Area 2 - the end-to-end tests",
-      "severity": "P3",
-      "severity_as_filed": "P2",
-      "severity_plain": "worth fixing — small and cheap",
-      "severity_note": "Nothing would ship broken and no promise would be false; the cost is two extra pictures that move with every client/ change or AlphaTab upgrade. A cheap two-line cut.",
-      "confidence": 75,
-      "confidence_plain": "double-checked by reading the spec, the repo and the sources; will be hit in practice (not all of it run)",
-      "route": "proposed_fix",
-      "finding_type": "error",
-      "reviewers": ["scope-guardian"],
-      "recommended_action": "Apply",
-      "verdict": "CONFIRMED",
-      "correction": "",
-      "section": "## 9. Testing (Screenshots and accessibility) and ## 1. Packages and files",
-      "section_lines": "393-398 and 86-97 (the shots are line 397; the changed-files line is 96)",
-      "section_exists": true,
-      "quotes_verbatim": true,
-      "quotes": [
-        {
-          "quote": "New shots, in `Europe/Berlin`: `/` and `/play` with the popup, and `/play` at phone width.",
-          "verbatim": true,
-          "line": 397,
-          "note": ""
-        },
-        {
-          "quote": "Screenshot baselines: `/` (the new note) and three new shots with the popup (section 9).",
-          "verbatim": true,
-          "line": 96,
-          "note": ""
-        }
-      ],
-      "scenario": "You change the colour of the design system's buttons. Three new popup pictures in the test lane now fail and must be redrawn and committed, on top of the ten the lane already keeps. Two of them show nothing that the third picture and the overlap test do not already check: one shows the card over an empty home page, the other a phone width the lane omits on purpose.",
-      "whats_wrong": "Section 9 adds three screenshots with the popup, but the lane's own header says its count of ten is deliberate and 'An eleventh should have to justify itself', and none of the three says what only it covers. The phone-width shot would be the lane's first picture below 900 px, a width it leaves uncovered by design; the `/` shot shows the card over empty page. The no-overlap case already measures the card's position at desktop and phone width.",
-      "before": [
-        {
-          "lines": "397",
-          "text": "- New shots, in `Europe/Berlin`: `/` and `/play` with the popup, and `/play` at phone width."
-        },
-        {
-          "lines": "96",
-          "text": "- Screenshot baselines: `/` (the new note) and three new shots with the popup (section 9)."
-        }
-      ],
-      "after": [
-        {
-          "replaces_lines": "397",
-          "text": "- One new shot, in `Europe/Berlin`: `/play` with the popup, at the lane's 1280 × 900. It is the\n  only check that sees the card itself: its colours and its three buttons over the transport row,\n  as `web/`'s own CSS build draws them. The no-overlap case measures the card's box but cannot see\n  it. No `/` shot (there the card sits over empty page) and no phone-width shot (the lane covers\n  no width under 900 px, by design; the no-overlap case measures the phone placement)."
-        },
-        {
-          "replaces_lines": "96",
-          "text": "- Screenshot baselines: `/` (the new note) and one new shot with the popup (section 9)."
-        }
-      ],
-      "proposed_fix": "Keep one shot: /play with the popup at the lane's 1280 × 900, and say what only it covers. Change section 1's 'three new shots' to 'one new shot'.",
-      "why_it_works": "One shot is the only check that sees the card as web/'s own CSS build draws it — the kind of fault this lane exists for (the seek rail that shipped 0 px wide). The no-overlap case covers the position at both widths. The cost: the card's stacked phone layout gets no picture; it shares the lane's existing phone-width gap (NH-321).",
-      "plain_terms": {
-        "shot / baseline": "a saved picture of a page that the lane compares each run against",
-        "the lane": "the merge-blocking browser tests for web/",
-        "no-overlap case": "the planned test that measures that the card never covers ▶ or the transport row",
-        "NH-321": "the ticket for phone-portrait widths, a known gap in the lane",
-        "v0": "the first release: a drum player for desktop web"
-      },
-      "central_claim_check": "Confirmed. web/e2e/pages.vr.ts:23-24: 'Ten shots, and the count is deliberate: every shot is a file that moves whenever client/ changes or AlphaTab is upgraded. An eleventh should have to justify itself.' pages.vr.ts:348-360: one narrow shot at 900 px; 'Two breakpoints are deliberately NOT covered, both below these two widths … Desktop web is the v0 target and ten shots is settled.' web/e2e/a11y.e2e.ts:338: 'narrower phone-portrait widths are a known gap tracked in NH-321'. The `chromium` project is 1280 × 900 (web/playwright.e2e.config.ts:51). The spec's no-overlap case (lines 390-391) already measures the card's box against ▶ and the transport row at desktop and phone width. On `/`, the content is centred in a full-height column (web/app/page.tsx:6), so at 1280 × 900 a card 24 px from the bottom sits below it, over empty page — from reading the layout, not from a rendered page.",
-      "contradicts": "none — checked section 3 'Where' (lines 151-153: the phone layout stays specified; only its picture is dropped), section 9 'No overlap' (lines 390-391: still measures desktop and phone width) and section 1 line 96 (changed in the same fix).",
-      "spike": {
-        "ran": false,
-        "why": "A question of test scope; nothing to run.",
-        "mark": "(untested)"
-      },
-      "cross_fix": [
-        "F-8 — edits the line just below (398); no overlap.",
-        "F-10 (group C) — adds a Berlin drop case to privacy-choice.e2e.ts with no screenshot; no conflict."
-      ],
-      "synthesis_note": "Unique. A scope cut to the test plan, not a user decision from the brainstorm (section 9 was written into the spec, not approved section by section).",
-      "verified_by": "verify-B.json",
-      "raw_constituents": [
-        {
-          "raw_id": "scope-guardian#3",
-          "reviewer": "scope-guardian",
-          "title": "Three new popup baselines against the lane's shot-count rule",
-          "severity": "P2",
-          "confidence": 75,
-          "autofix_class": "gated_auto",
-          "why_it_matters": "Implementers will add three baselines to a lane whose own header says the shot count is deliberate ('An eleventh should have to justify itself', web/e2e/pages.vr.ts) and which leaves everything narrower than its 900 px shot uncovered on purpose, because desktop web is the v0 target. The spec gives no 'what only this shot covers' for any of them: its no-overlap case already measures the /play placement at desktop and phone width, and on / the card sits over empty page. Every added shot moves whenever client/ changes or AlphaTab is upgraded, so the phone-width and / shots add churn without coverage. One /play shot at desktop width, the placement with the 12 px-over-80 px stacking, is what the lane's rule would accept.",
-          "suggested_fix": "Cut section 9's new shots to one, /play with the popup at desktop width, and add a sentence saying what only that shot covers (the card's look over the transport row, which the no-overlap case measures but cannot show). Change the 'three new shots' wording in section 1 to match.",
-          "evidence": [
-            "New shots, in `Europe/Berlin`: `/` and `/play` with the popup, and `/play` at phone width.",
-            "Screenshot baselines: `/` (the new note) and three new shots with the popup (section 9)."
-          ]
-        }
-      ],
-      "triage_decision": null,
-      "applied_in_commit": null
-    },
     {
       "id": "F-10",
       "title": "A file dropped onto the popup card is opened by the browser, not by the player",
@@ -3081,6 +2773,359 @@
           "option": "variant for 'No Google script in tests'",
           "applied_in_commit": "f587f2e2",
           "date": "2026-10-09"
+        }
+      ]
+    },
+    {
+      "id": "F-7",
+      "title": "'Report errors only' is never checked for the absence of Sentry's visit ping",
+      "area": "Area 2 - the end-to-end tests",
+      "severity": "P2",
+      "severity_as_filed": "P2",
+      "severity_plain": "should fix — a real gap an implementer will hit",
+      "severity_note": "A promise in section 6 has no test, and the one setting it depends on is still unverified; the fix is one assertion in a case the spec already plans.",
+      "confidence": 75,
+      "confidence_plain": "double-checked by reading the spec, the repo and the sources; will be hit in practice (not all of it run)",
+      "route": "proposed_fix",
+      "finding_type": "omission",
+      "reviewers": ["security-lens"],
+      "recommended_action": "Apply",
+      "verdict": "CONFIRMED",
+      "correction": "",
+      "section": "## 9. Testing",
+      "section_lines": "364-398 (the Berlin bullet is 385-387; the promise is in ## 6. Changes to Sentry's design, lines 296-297)",
+      "section_exists": true,
+      "quotes_verbatim": true,
+      "quotes": [
+        {
+          "quote": "\"Report errors only\": a forced error reaches Sentry, and nothing reaches Google.",
+          "verbatim": true,
+          "line": 386,
+          "note": "lines 386-387"
+        },
+        {
+          "quote": "With \"Report errors only\", Sentry starts without its Release Health session integration, so no visit ping is sent.",
+          "verbatim": true,
+          "line": 296,
+          "note": "lines 296-297"
+        },
+        {
+          "quote": "Sentry 11 can start after the page has loaded, and the name of its Release Health integration.",
+          "verbatim": true,
+          "line": 441,
+          "note": ""
+        }
+      ],
+      "scenario": "You open Notation Hero in Berlin and press 'Report errors only'. You expect Sentry to hear from you only when something breaks. Months later, a Sentry upgrade renames the part that counts visits, the filter no longer removes it, and every page you open sends a visit ping. No test notices: the Berlin test checks only that an error arrives.",
+      "whats_wrong": "Section 6 promises that 'Report errors only' starts Sentry without its visit-counting part, so no visit ping is sent. The Berlin test for that answer checks only that a forced error reaches Sentry and that nothing reaches Google. The part's name is still unverified (the spec's own 'To verify at plan time' list), and Sentry removes parts by name, so a wrong or renamed name keeps the ping on without any error.",
+      "before": [
+        {
+          "lines": "385-387",
+          "text": "- **Berlin:** the popup shows, and **no** request reaches Google or Sentry before an answer. \"No,\n  send nothing\": still none, also after a reload. \"Report errors only\": a forced error reaches\n  Sentry, and nothing reaches Google. \"Yes, …\": both. The answer survives a reload."
+        }
+      ],
+      "after": [
+        {
+          "replaces_lines": "385-387",
+          "text": "- **Berlin:** the popup shows, and **no** request reaches Google or Sentry before an answer. \"No,\n  send nothing\": still none, also after a reload. \"Report errors only\": a forced error reaches\n  Sentry; when it arrives, Sentry's fixture has recorded no `session` envelope (the visit ping), and\n  nothing reaches Google. \"Yes, …\": both, and a `session` envelope arrives. The answer survives a\n  reload. Unlike NH-124's cases, these read session envelopes on purpose: the visit ping is the one\n  thing \"Report errors only\" withholds from Sentry."
+        }
+      ],
+      "proposed_fix": "In the Berlin 'Report errors only' case, also read Sentry's session envelopes: when the forced error arrives, none has been recorded. In the 'Yes' case, a session envelope arrives.",
+      "why_it_works": "The visit ping is the only thing 'Report errors only' withholds from Sentry, so its absence is the one check that proves the answer works. NH-124's fixture already records every envelope, session ones included; the case only stops ignoring them. The forced error is a fair moment to check: if the visit-counting part were still running, Sentry would send a session update before the error itself. The 'Yes' check proves the recorder can see session envelopes at all, so an empty result means something.",
+      "plain_terms": {
+        "Release Health": "Sentry's count of visits, sent as a small 'session' message on every page load",
+        "session envelope": "that visit message, as Sentry's test fixture records it",
+        "envelope": "one message from Sentry's browser code to Sentry",
+        "G6": "decision G6: three answers, one purpose behind each button",
+        "S4": "NH-124's decision to enable Release Health as the interim health number",
+        "NH-124": "the Sentry error-monitoring ticket (PR #191)",
+        "BrowserSession": "the name of the Sentry part that sends the visit ping (browserSessionIntegration), which the filter must match"
+      },
+      "central_claim_check": "Confirmed. The Sentry spec (PR #191), section 6: its fixture 'routes every request to that host, answers it, and records the envelope', and its cases 'read event envelopes only, never the session envelope that Release Health (S4) sends on every visit'. So the fixture can see session envelopes; NH-124's cases ignore them on purpose, and no case checks that one is absent. Sentry's docs list browserSessionIntegration as enabled by default for Next.js, and a default integration is removed by its name (https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/integrations/). The SDK source names it 'BrowserSession' (https://github.com/getsentry/sentry-javascript/blob/develop/packages/browser/src/integrations/browsersession.ts). The Sentry spec's own filter removes default integrations by name (its section 3.3), so a wrong or renamed name leaves the visit ping on with no error. In the SDK core, an error captured during an active session sends a session update before the error itself (packages/core/src/client.ts, _updateSessionFromEvent and _processEvent), and the item type is 'session' (packages/core/src/envelope.ts). Sentry SDK major version 11 exists (the BrowserSession docs page notes a default that changed in version 11). The spec's 'To verify at plan time' still lists the integration's name (line 441).",
+      "contradicts": "none — checked section 2's table (lines 101-107: 'Report errors only' sends error reports and no visit count), section 6 (lines 296-297), 'To verify at plan time' (line 441), and the Sentry spec's section 6 (its own cases ignore session envelopes; these cases would read them, which its fixture allows).",
+      "spike": {
+        "ran": true,
+        "what": "From a local page, two POSTs to https://sentry.invalid/api/1/envelope/ (the shape Sentry's fake DSN produces), one carrying an item of type event and one of type session, through a Playwright 1.61.1 route that records each body; then the same POST with the route removed.",
+        "result": "Both were routed before any address lookup and recorded, and the item type was readable from the body; with no route, the POST was rejected ('Failed to fetch'). Sentry itself was not run (untested): @sentry/nextjs is not installed on this branch and installs are not allowed here, so its session behaviour comes from the SDK source.",
+        "fix_holds": true
+      },
+      "cross_fix": [
+        "none with other findings. Its line range (385-387) does not overlap F-6's (388-389)."
+      ],
+      "synthesis_note": "Unique. Depends on NH-124's fixture being able to see session envelopes; verify against the Sentry spec.",
+      "verified_by": "verify-B.json",
+      "raw_constituents": [
+        {
+          "raw_id": "security-lens#2",
+          "reviewer": "security-lens",
+          "title": "Errors-only answer never checked for an absent visit ping",
+          "severity": "P2",
+          "confidence": 75,
+          "autofix_class": "gated_auto",
+          "why_it_matters": "Suppose 'Report errors only' still starts Sentry's Release Health, the per-visit ping. Every European who turned down visit counting would then send a visit ping on every page load, and no test would fail. The risk is real: the integration's name is still unverified (it is on the spec's 'To verify at plan time' list), and a future Sentry major version can change it. The Berlin case checks only that an error reaches Sentry and nothing reaches Google, and NH-124's end-to-end cases read event envelopes only, never the session envelope. One assertion in that case would guard G6 (one purpose per button) on Sentry's side, where the visit count is the only difference between 'errors only' and 'everything'.",
+          "suggested_fix": "In section 9's Berlin cases, also read Sentry's session envelopes. After 'Report errors only', the forced error arrives and no session envelope is sent. After 'Yes, …', a session envelope is sent.",
+          "evidence": [
+            "\"Report errors only\": a forced error reaches Sentry, and nothing reaches Google.",
+            "With \"Report errors only\", Sentry starts without its Release Health session integration, so no visit ping is sent.",
+            "Sentry 11 can start after the page has loaded, and the name of its Release Health integration."
+          ]
+        }
+      ],
+      "triage_decision": {
+        "round": 4,
+        "decision": "Apply",
+        "applied_in_commit": "15c8acb2",
+        "date": "2026-10-09",
+        "note": "Approved on a multi-select card (P2/P3 run)."
+      },
+      "applied_in_commit": "15c8acb2",
+      "triage_rounds": [
+        {
+          "round": 4,
+          "decision": "Apply",
+          "applied_in_commit": "15c8acb2",
+          "date": "2026-10-09",
+          "note": "Approved on a multi-select card (P2/P3 run)."
+        }
+      ]
+    },
+    {
+      "id": "F-8",
+      "title": "The accessibility scan asks for a dark theme web/ cannot show",
+      "area": "Area 2 - the end-to-end tests",
+      "severity": "P2",
+      "severity_as_filed": "P2",
+      "severity_plain": "should fix — a real gap an implementer will hit",
+      "severity_note": "An implementer cannot do what the line asks without breaking a project rule; the fix is two short lines.",
+      "confidence": 100,
+      "confidence_plain": "certain — the spec states it outright, or a spike confirmed it, or independent reviewers agree on airtight text",
+      "route": "proposed_fix",
+      "finding_type": "error",
+      "reviewers": ["design-lens", "scope-guardian"],
+      "recommended_action": "Apply",
+      "verdict": "CONFIRMED",
+      "correction": "",
+      "section": "## 9. Testing (Screenshots and accessibility) and ## 3. The popup",
+      "section_lines": "393-398 and 141-168 (the axe bullet is line 398; the Themes bullet is line 164)",
+      "section_exists": true,
+      "quotes_verbatim": true,
+      "quotes": [
+        {
+          "quote": "An axe scan with the popup open, in both themes.",
+          "verbatim": true,
+          "line": 398,
+          "note": ""
+        },
+        {
+          "quote": "light and dark from the design tokens; no new colour.",
+          "verbatim": true,
+          "line": 164,
+          "note": ""
+        },
+        {
+          "quote": "**Themes:** light and dark from the design tokens; no new colour.",
+          "verbatim": true,
+          "line": 164,
+          "note": ""
+        }
+      ],
+      "scenario": "You build the popup and write its accessibility test as the spec says: 'in both themes'. But no visitor can ever see Notation Hero in dark mode — nothing enables it. To scan the dark theme, your test must force it, which this project forbids, and the scan then reports problems in a dark page no visitor will ever see.",
+      "whats_wrong": "Section 9 asks for an axe scan of the popup 'in both themes', and section 3 says 'light and dark'. web/ can only show light: dark mode needs a `.dark` class that nothing sets, and the visual-regression spec's 'Light only' section rules out adding it from a test. Every other axe case in the lane runs in light.",
+      "before": [
+        {
+          "lines": "398",
+          "text": "- An axe scan with the popup open, in both themes."
+        },
+        {
+          "lines": "164",
+          "text": "- **Themes:** light and dark from the design tokens; no new colour."
+        }
+      ],
+      "after": [
+        {
+          "replaces_lines": "398",
+          "text": "- An axe scan with the popup open, in light only, like every other axe case in the lane: `web/`\n  cannot show dark mode until NH-302 (see \"Light only\" in\n  `docs/specs/2026-09-21-web-visual-regression-gate.md`)."
+        },
+        {
+          "replaces_lines": "164",
+          "text": "- **Themes:** colours from the design tokens only, so the card follows dark mode on the day `web/`\n  can show it (NH-302); no new colour."
+        }
+      ],
+      "proposed_fix": "Scan in light only, like the rest of the lane, and say why. Describe the card's colours as design tokens only, so dark mode follows when web/ gets it.",
+      "why_it_works": "It matches what a visitor can see today and the lane's existing rule. The card still uses only tokens, so the day NH-302 enables dark mode the card is ready, and a dark scan can then be added against real dark mode.",
+      "plain_terms": {
+        "axe": "the automatic accessibility checker the lane runs",
+        "NH-302": "the ticket that dark mode in web/ waits for (the notation's colours in dark)",
+        "design tokens": "the shared colour names of the design system, which change with the theme",
+        "'Light only'": "a section of docs/specs/2026-09-21-web-visual-regression-gate.md"
+      },
+      "central_claim_check": "Confirmed. docs/specs/2026-09-21-web-visual-regression-gate.md:174-181 ('### Light only'): dark mode cannot be reached in web/; the variant is class-based (`@custom-variant dark (&:is(.dark *))`, client/src/styles.css:27); web/app/layout.tsx renders a bare `<html lang=\"en\">` (line 14) with no theme control; injecting `.dark` from a test is 'a state no visitor can reach, and test-only instrumentation of exactly the kind this project bans'. The same spec's Non-goals (line 38): 'No dark-mode baselines.' docs/decisions/decision-changelog.md:676-679: 'Dark mode stays unreachable for now. Nothing sets `.dark`', deferred behind NH-302. A search of web/app, web/lib and web/e2e finds no code that sets `.dark`, emulates a colour scheme or imports next-themes; all nine axe cases in web/e2e/a11y.e2e.ts run in light.",
+      "contradicts": "none — checked section 3 (Equal buttons use the design system's Button; tokens only), section 9's screenshot bullets (lines 395-397) and Non-goals ('Not client/').",
+      "spike": {
+        "ran": false,
+        "why": "Nothing to run: the claim is a fact about the repository (no theme control), confirmed by reading and searching.",
+        "mark": "(untested)"
+      },
+      "cross_fix": ["F-9 — edits the line just above (397); no overlap."],
+      "synthesis_note": "Two separately dispatched reviewers; the repo's web visual-regression spec decides 'Light only' and web/app/layout.tsx has no theme control, so the anchor rises one step (75 -> 100). Entailed by that repo decision.",
+      "verified_by": "verify-B.json",
+      "raw_constituents": [
+        {
+          "raw_id": "scope-guardian#2",
+          "reviewer": "scope-guardian",
+          "title": "Dark-theme axe scan targets a state web/ cannot reach",
+          "severity": "P2",
+          "confidence": 75,
+          "autofix_class": "gated_auto",
+          "why_it_matters": "An implementer following section 9 has to inject a .dark class from the test to scan a theme no visitor can reach: web/app/layout.tsx renders a bare html element with no theme control, and every existing web axe case is light-only. The repo's web visual-regression spec (docs/specs/2026-09-21-web-visual-regression-gate.md, 'Light only') rules this out, calling dark mode unreachable in web/ and a test-injected .dark 'test-only instrumentation of exactly the kind this project bans'. The dark scan would also audit the rest of /play in a theme nobody has audited, so unrelated findings could land on this ticket. Scanning in light only matches the other axe cases and removes the problem.",
+          "suggested_fix": "In section 9, change the accessibility bullet to: 'An axe scan with the popup open, in the light theme like the rest of the web lane.' In section 3, change the Themes bullet to: 'Themes: colours come from the design tokens; no new colour.'",
+          "evidence": [
+            "An axe scan with the popup open, in both themes.",
+            "light and dark from the design tokens; no new colour."
+          ]
+        },
+        {
+          "raw_id": "design-lens#2",
+          "reviewer": "design-lens",
+          "title": "'Both themes' axe scan is unreachable in light-only web/",
+          "severity": "P2",
+          "confidence": 75,
+          "autofix_class": "gated_auto",
+          "why_it_matters": "The test plan asks for a step the `web` lane cannot perform: `web/` can never show dark mode, because the variant is the class `.dark` (`client/src/styles.css:27`), nothing sets it, and `web/app/layout.tsx` renders a bare `<html lang=\"en\">`. A scan \"in both themes\" therefore means injecting the class from the test, which the visual-regression gate's 'Light only' section (`docs/specs/2026-09-21-web-visual-regression-gate.md`) rejects as \"a state no visitor can reach\"; the implementer either breaks that reasoning or silently drops half the clause. The changelog entry of 2026-09-21 defers dark mode behind NH-302 (the dark-mode work for the notation colours), so recording light-only now matches the repo's decision and still lets the card's token-only styling carry dark later.",
+          "suggested_fix": "In section 9, change the last bullet to: 'An axe scan with the popup open, in light only: dark mode cannot be turned on in `web/` yet (deferred behind NH-302; see \"Light only\" in `docs/specs/2026-09-21-web-visual-regression-gate.md`).' In section 3, reword the Themes bullet to: 'Styled from design tokens only, so dark follows the day `web/` can show it; no new colour.'",
+          "evidence": [
+            "An axe scan with the popup open, in both themes.",
+            "**Themes:** light and dark from the design tokens; no new colour."
+          ]
+        }
+      ],
+      "triage_decision": {
+        "round": 4,
+        "decision": "Apply",
+        "applied_in_commit": "8898a74d",
+        "date": "2026-10-09",
+        "note": "Approved on a multi-select card (P2/P3 run)."
+      },
+      "applied_in_commit": "8898a74d",
+      "triage_rounds": [
+        {
+          "round": 4,
+          "decision": "Apply",
+          "applied_in_commit": "8898a74d",
+          "date": "2026-10-09",
+          "note": "Approved on a multi-select card (P2/P3 run)."
+        }
+      ]
+    },
+    {
+      "id": "F-9",
+      "title": "Three new screenshot baselines without saying what only each one covers",
+      "area": "Area 2 - the end-to-end tests",
+      "severity": "P3",
+      "severity_as_filed": "P2",
+      "severity_plain": "worth fixing — small and cheap",
+      "severity_note": "Nothing would ship broken and no promise would be false; the cost is two extra pictures that move with every client/ change or AlphaTab upgrade. A cheap two-line cut.",
+      "confidence": 75,
+      "confidence_plain": "double-checked by reading the spec, the repo and the sources; will be hit in practice (not all of it run)",
+      "route": "proposed_fix",
+      "finding_type": "error",
+      "reviewers": ["scope-guardian"],
+      "recommended_action": "Apply",
+      "verdict": "CONFIRMED",
+      "correction": "",
+      "section": "## 9. Testing (Screenshots and accessibility) and ## 1. Packages and files",
+      "section_lines": "393-398 and 86-97 (the shots are line 397; the changed-files line is 96)",
+      "section_exists": true,
+      "quotes_verbatim": true,
+      "quotes": [
+        {
+          "quote": "New shots, in `Europe/Berlin`: `/` and `/play` with the popup, and `/play` at phone width.",
+          "verbatim": true,
+          "line": 397,
+          "note": ""
+        },
+        {
+          "quote": "Screenshot baselines: `/` (the new note) and three new shots with the popup (section 9).",
+          "verbatim": true,
+          "line": 96,
+          "note": ""
+        }
+      ],
+      "scenario": "You change the colour of the design system's buttons. Three new popup pictures in the test lane now fail and must be redrawn and committed, on top of the ten the lane already keeps. Two of them show nothing that the third picture and the overlap test do not already check: one shows the card over an empty home page, the other a phone width the lane omits on purpose.",
+      "whats_wrong": "Section 9 adds three screenshots with the popup, but the lane's own header says its count of ten is deliberate and 'An eleventh should have to justify itself', and none of the three says what only it covers. The phone-width shot would be the lane's first picture below 900 px, a width it leaves uncovered by design; the `/` shot shows the card over empty page. The no-overlap case already measures the card's position at desktop and phone width.",
+      "before": [
+        {
+          "lines": "397",
+          "text": "- New shots, in `Europe/Berlin`: `/` and `/play` with the popup, and `/play` at phone width."
+        },
+        {
+          "lines": "96",
+          "text": "- Screenshot baselines: `/` (the new note) and three new shots with the popup (section 9)."
+        }
+      ],
+      "after": [
+        {
+          "replaces_lines": "397",
+          "text": "- One new shot, in `Europe/Berlin`: `/play` with the popup, at the lane's 1280 × 900. It is the\n  only check that sees the card itself: its colours and its three buttons over the transport row,\n  as `web/`'s own CSS build draws them. The no-overlap case measures the card's box but cannot see\n  it. No `/` shot (there the card sits over empty page) and no phone-width shot (the lane covers\n  no width under 900 px, by design; the no-overlap case measures the phone placement)."
+        },
+        {
+          "replaces_lines": "96",
+          "text": "- Screenshot baselines: `/` (the new note) and one new shot with the popup (section 9)."
+        }
+      ],
+      "proposed_fix": "Keep one shot: /play with the popup at the lane's 1280 × 900, and say what only it covers. Change section 1's 'three new shots' to 'one new shot'.",
+      "why_it_works": "One shot is the only check that sees the card as web/'s own CSS build draws it — the kind of fault this lane exists for (the seek rail that shipped 0 px wide). The no-overlap case covers the position at both widths. The cost: the card's stacked phone layout gets no picture; it shares the lane's existing phone-width gap (NH-321).",
+      "plain_terms": {
+        "shot / baseline": "a saved picture of a page that the lane compares each run against",
+        "the lane": "the merge-blocking browser tests for web/",
+        "no-overlap case": "the planned test that measures that the card never covers ▶ or the transport row",
+        "NH-321": "the ticket for phone-portrait widths, a known gap in the lane",
+        "v0": "the first release: a drum player for desktop web"
+      },
+      "central_claim_check": "Confirmed. web/e2e/pages.vr.ts:23-24: 'Ten shots, and the count is deliberate: every shot is a file that moves whenever client/ changes or AlphaTab is upgraded. An eleventh should have to justify itself.' pages.vr.ts:348-360: one narrow shot at 900 px; 'Two breakpoints are deliberately NOT covered, both below these two widths … Desktop web is the v0 target and ten shots is settled.' web/e2e/a11y.e2e.ts:338: 'narrower phone-portrait widths are a known gap tracked in NH-321'. The `chromium` project is 1280 × 900 (web/playwright.e2e.config.ts:51). The spec's no-overlap case (lines 390-391) already measures the card's box against ▶ and the transport row at desktop and phone width. On `/`, the content is centred in a full-height column (web/app/page.tsx:6), so at 1280 × 900 a card 24 px from the bottom sits below it, over empty page — from reading the layout, not from a rendered page.",
+      "contradicts": "none — checked section 3 'Where' (lines 151-153: the phone layout stays specified; only its picture is dropped), section 9 'No overlap' (lines 390-391: still measures desktop and phone width) and section 1 line 96 (changed in the same fix).",
+      "spike": {
+        "ran": false,
+        "why": "A question of test scope; nothing to run.",
+        "mark": "(untested)"
+      },
+      "cross_fix": [
+        "F-8 — edits the line just below (398); no overlap.",
+        "F-10 (group C) — adds a Berlin drop case to privacy-choice.e2e.ts with no screenshot; no conflict."
+      ],
+      "synthesis_note": "Unique. A scope cut to the test plan, not a user decision from the brainstorm (section 9 was written into the spec, not approved section by section).",
+      "verified_by": "verify-B.json",
+      "raw_constituents": [
+        {
+          "raw_id": "scope-guardian#3",
+          "reviewer": "scope-guardian",
+          "title": "Three new popup baselines against the lane's shot-count rule",
+          "severity": "P2",
+          "confidence": 75,
+          "autofix_class": "gated_auto",
+          "why_it_matters": "Implementers will add three baselines to a lane whose own header says the shot count is deliberate ('An eleventh should have to justify itself', web/e2e/pages.vr.ts) and which leaves everything narrower than its 900 px shot uncovered on purpose, because desktop web is the v0 target. The spec gives no 'what only this shot covers' for any of them: its no-overlap case already measures the /play placement at desktop and phone width, and on / the card sits over empty page. Every added shot moves whenever client/ changes or AlphaTab is upgraded, so the phone-width and / shots add churn without coverage. One /play shot at desktop width, the placement with the 12 px-over-80 px stacking, is what the lane's rule would accept.",
+          "suggested_fix": "Cut section 9's new shots to one, /play with the popup at desktop width, and add a sentence saying what only that shot covers (the card's look over the transport row, which the no-overlap case measures but cannot show). Change the 'three new shots' wording in section 1 to match.",
+          "evidence": [
+            "New shots, in `Europe/Berlin`: `/` and `/play` with the popup, and `/play` at phone width.",
+            "Screenshot baselines: `/` (the new note) and three new shots with the popup (section 9)."
+          ]
+        }
+      ],
+      "triage_decision": {
+        "round": 4,
+        "decision": "Apply",
+        "applied_in_commit": "1a3cdb0f",
+        "date": "2026-10-09",
+        "note": "Approved on a multi-select card (P2/P3 run)."
+      },
+      "applied_in_commit": "1a3cdb0f",
+      "triage_rounds": [
+        {
+          "round": 4,
+          "decision": "Apply",
+          "applied_in_commit": "1a3cdb0f",
+          "date": "2026-10-09",
+          "note": "Approved on a multi-select card (P2/P3 run)."
         }
       ]
     }
