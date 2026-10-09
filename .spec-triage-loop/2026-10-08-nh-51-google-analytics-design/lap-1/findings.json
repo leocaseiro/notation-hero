@@ -49,7 +49,7 @@
       "dropped_anchor_0_25": 0,
       "silent_engine_edits": 0
     },
-    "finding_count_undecided": 9,
+    "finding_count_undecided": 2,
     "finding_count_note": "13 findings to triage + 2 ambiguity fixes + 5 FYI observations + R1 + Q1 = 22 items. The triage cap (12 findings or 5 picker rounds per invocation) means two triage invocations.",
     "exit_signal_raw": "NOT CLEAN — the headless envelope carries an Entailed corrections block (7 items), Proposed fixes (4) and Decisions (4), and ends with the documented `Review complete` line. See engine-envelope.txt.",
     "silent_autofixes_by_engine": "none — this invocation was report-only (the loop's REVIEW-MODE), so the engine applied nothing. F-14, the only one-answer fix at anchor 100, is carried as an ambiguity fix for the triage half. The spec is byte-identical to f9c1fdf6.",
@@ -70,528 +70,13 @@
       "P2": "should fix — a real gap an implementer will hit",
       "P3": "worth fixing — small and cheap"
     },
-    "triage_progress": "PAUSED AT THE CAP (2026-10-09): 5 picker rounds used and 12 finding-counts (F-3 counted twice). Decided this lap: F-15, F-14, F-2, F-1, F-3, F-4, F-5, F-6, F-7, F-8, F-9, F-10, F-11 (highest severity applied: P2). Open: F-12, F-13, FYI-1–FYI-5, R1, Q1. The next invocation resumes at step 4 on those — the same lap continuing, not a new one.",
-    "finding_count_decided": 13
+    "triage_progress": "IN PROGRESS (2026-10-10, invocation 2): round 1 of this invocation put F-12, F-13 and FYI-2 on a card; leocaseiro answered 'You can auto resolve any clear fix', so those three and the clear fixes FYI-1, FYI-3, FYI-5 and R1 were applied without a card. Open: FYI-4 (a scope choice: drop two Sentry filters) and Q1 (a design choice: where the popup sits in the Tab order), asked in round 2. Rendering rule changed the same day (triage skill §9): prose Before/After is rendered as blockquotes, never fenced; only code uses a diff fence.",
+    "finding_count_decided": 20
   },
   "already_applied": [],
   "ambiguity_fixes": [],
-  "undecided_findings": [
-    {
-      "id": "F-12",
-      "title": "The loader sketch drops the separate settings step the spike verified",
-      "area": "Area 4 - the code sketches",
-      "severity": "P2",
-      "severity_as_filed": "P2",
-      "severity_plain": "should fix — a real gap an implementer will hit",
-      "severity_note": "The spec calls 'verified' a shape that was never run, and the plan's unit test on the queue's order would be written from it. The runtime risk is low, because Google documents both forms.",
-      "confidence": 75,
-      "confidence_plain": "double-checked by reading the spec, the repo and the sources; will be hit in practice (not all of it run)",
-      "route": "proposed_fix",
-      "finding_type": "error",
-      "reviewers": ["coherence"],
-      "recommended_action": "Apply",
-      "verdict": "CONFIRMED",
-      "correction": "",
-      "section": "## 4. Google Analytics in code",
-      "section_lines": "170-215",
-      "section_exists": true,
-      "quotes_verbatim": true,
-      "quotes": [
-        {
-          "quote": "**The order is verified** by the 2026-10-05 spike: consent, settings, then `js` and `config`.",
-          "verbatim": true,
-          "line": 198,
-          "note": ""
-        },
-        {
-          "quote": "gtag('js', new Date());\n  gtag('config', id, {\n    allow_google_signals: false,\n    allow_ad_personalization_signals: false,\n    release: APP_VERSION,\n  });",
-          "verbatim": true,
-          "line": 188,
-          "note": "lines 188-193"
-        },
-        {
-          "quote": "Our settings ran first | consent → settings → `js` → `config`",
-          "verbatim": true,
-          "line": 457,
-          "note": "the spike table in 'The spike (2026-10-05, throwaway)'; matches after collapsing the table's padding"
-        }
-      ],
-      "scenario": "You open Notation Hero in Sydney and press play. Google Analytics counts your visit. The spec promises that Google is told 'no ad personalisation' and 'no Google signals' for you, and that the order of these instructions was tested. It was tested, but with those two settings sent as their own step. The code drawn in the spec sends them another way, which nobody has run.",
-      "whats_wrong": "Section 4 says the order 'consent, settings, then js and config' was verified by the spike, and the spike table repeats it. The sketch right above has no settings step: it puts the two settings inside the config call. The spike's own file sent them with a separate gtag('set', …) call, and its config call carried no settings at all. An implementer copies the sketch, so the unit test on 'the queue's order' and the Sydney check would rest on a shape nobody ran.",
-      "before": [
-        {
-          "lines": "182-193",
-          "text": "  gtag('consent', 'default', {\n    ad_storage: 'denied',\n    ad_user_data: 'denied',\n    ad_personalization: 'denied',\n    analytics_storage: 'granted',\n  });\n  gtag('js', new Date());\n  gtag('config', id, {\n    allow_google_signals: false,\n    allow_ad_personalization_signals: false,\n    release: APP_VERSION,\n  });"
-        }
-      ],
-      "after": [
-        {
-          "replaces_lines": "182-193",
-          "text": "  gtag('consent', 'default', {\n    ad_storage: 'denied',\n    ad_user_data: 'denied',\n    ad_personalization: 'denied',\n    analytics_storage: 'granted',\n  });\n  gtag('set', { allow_google_signals: false, allow_ad_personalization_signals: false });\n  gtag('js', new Date());\n  gtag('config', id, { release: APP_VERSION });"
-        }
-      ],
-      "proposed_fix": "In the section 4 sketch, add the spike's own line gtag('set', { allow_google_signals: false, allow_ad_personalization_signals: false }) between the consent call and gtag('js', new Date()), and leave only release: APP_VERSION in the config call.",
-      "why_it_works": "The sketch then matches, call for call, the queue the spike ran and saw produce gcs=G101 and npa=1, so the word 'verified' becomes true. The one piece nobody has run, release inside config, is already on the 'To verify at plan time' list, so nothing unverified is hidden.",
-      "plain_terms": {
-        "gtag": "Google's small command function; each call waits in a queue until Google's script loads",
-        "gcs=G101": "the code in Google's request for 'ad storage denied, analytics allowed'",
-        "npa=1": "the flag in Google's request for 'no ad personalisation'",
-        "Google signals": "Google's cross-device advertising data, turned off in this design",
-        "the 2026-10-05 spike": "a throwaway trial build run on 2026-10-05, not kept in the repo"
-      },
-      "central_claim_check": "Read the 2026-10-05 spike (throwaway, not in the repo). Its instrumentation-client.ts queued gtag('consent', 'default', {…}) and then gtag('set', { allow_google_signals: false, allow_ad_personalization_signals: false }): a separate settings step. Its js and config calls came from @next/third-parties 16.3.6's GoogleAnalytics component, whose inline script calls gtag('js', new Date()) and then gtag('config', <ID>) with no settings object (checked in the published package, https://unpkg.com/@next/third-parties@16.3.6/dist/google/ga.js). So the queue the spike ran was consent, set, js, then config with only the ID. The spec's sketch (lines 182-193) has no set step and puts the two settings inside config, a shape the spike never ran. Google's privacy-controls guide (https://developers.google.com/tag-platform/security/guides/privacy) documents both places for these two settings (set for every tag on the page, config for one property), so the sketch is not wrong, only unverified while the spec calls it verified.",
-      "contradicts": "none — checked section 4's 'order is verified' bullet (198-200), section 9's startAnalytics() unit test ('the queue's order') and the Sydney case (gcs=G101 and npa=1), 'To verify at plan time' (release in config stays listed there, line 439), the spike table (line 457) and the Non-goals ('Google signals off').",
-      "spike": {
-        "ran": false,
-        "why": "Read, not run: the After copies the spike's own set line exactly, so it is the verified shape. The other form (settings inside config) was not run against Google's real script here (untested); Group B's end-to-end spike loads the real gtag.js. The After text was applied to a scratch copy of the spec together with Group C's other Afters; the repo's own Prettier (print width 100), markdownlint-cli2 and cspell all pass on it.",
-        "mark": "(untested)"
-      },
-      "cross_fix": [
-        "F-5 (Group B, how the tests get Google's script): if the tests never load the real gtag.js (its option 3), the only check of npa=1 on the wire is the hand check at launch (section 8, step 6), so the sketch should be exactly the verified shape, which this fix gives."
-      ],
-      "synthesis_note": "Unique. Verify against the 2026-10-05 spike's own instrumentation-client.ts (kept outside the repo).",
-      "verified_by": "verify-C.json",
-      "raw_constituents": [
-        {
-          "raw_id": "coherence#2",
-          "reviewer": "coherence",
-          "title": "Sketch drops the settings step the spike verified",
-          "severity": "P2",
-          "confidence": 75,
-          "autofix_class": "gated_auto",
-          "why_it_matters": "The spec says the queue the spike verified is consent, a separate settings step, then js and config, but the sketch an implementer will copy queues consent, js, then config with the privacy settings folded into it. The unit test on \"the queue's order\" and the Sydney check for gcs=G101 and npa=1 therefore rest on an order nobody ran: the spike queued the settings with their own gtag('set', ...) call, which the sketch lacks. Restoring that call, and leaving only release in config, makes the \"verified\" label true and keeps the one unrun piece where \"To verify at plan time\" already tracks it.",
-          "suggested_fix": "In the section 4 sketch, add `gtag('set', { allow_google_signals: false, allow_ad_personalization_signals: false });` between the consent call and `gtag('js', new Date());`, and remove those two keys from the `gtag('config', id, {...})` call so that only `release: APP_VERSION` remains there.",
-          "evidence": [
-            "**The order is verified** by the 2026-10-05 spike: consent, settings, then `js` and `config`.",
-            "gtag('js', new Date());\n  gtag('config', id, {\n    allow_google_signals: false,\n    allow_ad_personalization_signals: false,\n    release: APP_VERSION,\n  });",
-            "Our settings ran first | consent → settings → `js` → `config`"
-          ]
-        }
-      ],
-      "triage_decision": null,
-      "applied_in_commit": null
-    },
-    {
-      "id": "F-13",
-      "title": "The mixer_change type contradicts its own field table and the branded-string rule",
-      "area": "Area 4 - the code sketches",
-      "severity": "P2",
-      "severity_as_filed": "P2",
-      "severity_plain": "should fix — a real gap an implementer will hit",
-      "severity_note": "The first type test written from the sketch fails, and an implementer must redesign the type before any whole-mixer event can be sent.",
-      "confidence": 75,
-      "confidence_plain": "double-checked by reading the spec, the repo and the sources; will be hit in practice (not all of it run)",
-      "route": "proposed_fix",
-      "finding_type": "error",
-      "reviewers": ["coherence"],
-      "recommended_action": "Apply",
-      "verdict": "CONFIRMED",
-      "correction": "",
-      "section": "## 5. Events",
-      "section_lines": "217-287",
-      "section_exists": true,
-      "quotes_verbatim": true,
-      "quotes": [
-        {
-          "quote": "mixer_change: { control: MixerControl; on: boolean; instrument: Instrument };",
-          "verbatim": true,
-          "line": 266,
-          "note": ""
-        },
-        {
-          "quote": "`instrument` | `drums` or a three-digit program, for the one track a change applies to; absent for solo all, mute all and the layout switch",
-          "verbatim": true,
-          "line": 251,
-          "note": "matches after collapsing the table's padding"
-        },
-        {
-          "quote": "track('mixer_change', { control: 'solo', on: true, instrument: '025' }); // ✅",
-          "verbatim": true,
-          "line": 271,
-          "note": ""
-        },
-        {
-          "quote": "`Instruments` and `Instrument` are branded strings that only `instrumentsValue()` and its one-track twin can make, so a free string never type-checks.",
-          "verbatim": true,
-          "line": 275,
-          "note": "lines 275-276; matches after joining the line break"
-        }
-      ],
-      "scenario": "You open a song in Sydney, open the Tracks panel and press 'Solo all'. Google Analytics should count one 'Solo all'. A developer who copies the spec's event list cannot send it: the list demands an instrument for every mixer change, and 'Solo all' has none. The spec's own example of a correct call does not compile either.",
-      "whats_wrong": "The sketch gives every mixer_change a required instrument, but the field table says solo all, mute all and the layout switch have none. The ✅ example passes the plain text '025', which the paragraph below says can never type-check, because Instrument is a branded string. And the one function allowed to make an Instrument is mentioned ('its one-track twin') but never named or placed in a file.",
-      "before": [
-        {
-          "lines": "266",
-          "text": "  mixer_change: { control: MixerControl; on: boolean; instrument: Instrument };"
-        },
-        {
-          "lines": "271",
-          "text": "track('mixer_change', { control: 'solo', on: true, instrument: '025' }); // ✅"
-        },
-        {
-          "lines": "275-276",
-          "text": "`Instruments` and `Instrument` are branded strings that only `instrumentsValue()` and its one-track\ntwin can make, so a free string never type-checks."
-        },
-        {
-          "lines": "79",
-          "text": "| `web/lib/score-facts.ts`        | `instrumentsValue()`, moved out of Sentry's `report.ts` (section 6)                                     |"
-        }
-      ],
-      "after": [
-        {
-          "replaces_lines": "266",
-          "text": "  mixer_change:\n    | { control: OneTrackControl; on: boolean; instrument: Instrument } // one track\n    | { control: 'solo_all' | 'mute_all' | 'layout'; on: boolean }; // the whole mixer"
-        },
-        {
-          "replaces_lines": "271 (inside F-15's After, where it sits under the call-site comment)",
-          "text": "track('mixer_change', { control: 'solo', on: true, instrument: trackInstrument(leadGuitar) }); // ✅\ntrack('mixer_change', { control: 'solo_all', on: true }); // ✅"
-        },
-        {
-          "replaces_lines": "275-276",
-          "text": "`Instruments` and `Instrument` are branded strings that only `instrumentsValue()` and its one-track\ntwin `trackInstrument()` can make, so a free string never type-checks. A `mixer_change` for one\ntrack (render, solo, mute, either transpose, staff) names that track's instrument; solo all, mute\nall and the layout switch act on the whole mixer and carry none."
-        },
-        {
-          "replaces_lines": "79",
-          "text": "| `web/lib/score-facts.ts`        | `instrumentsValue()`, moved out of Sentry's `report.ts` (section 6), and `trackInstrument()`            |"
-        }
-      ],
-      "proposed_fix": "Make mixer_change a union on control: the six one-track controls (render, solo, mute, transpose_audio, transpose_full, staff) carry instrument; solo_all, mute_all and layout carry only on. Name the one-track twin trackInstrument(), make the ✅ example call it, add a ✅ example for Solo all, say in the paragraph which controls carry no instrument, and add trackInstrument() to section 1's score-facts.ts row. In the example the track is called leadGuitar, not track: at a real call site, a variable named track would hide the track() function.",
-      "why_it_works": "The type then says exactly what the field table says, so every control can be sent and none can carry the wrong fields: tsc proved each good call compiles and each bad call fails. Naming trackInstrument() gives the brand its one legal maker, so 'a free string never type-checks' holds and the ✅ example is a real call.",
-      "plain_terms": {
-        "branded string": "a text type that only one function may create, so ordinary text cannot be passed where it is expected",
-        "union on control": "the event has two allowed shapes, and the value of control decides which one applies",
-        "tsc": "the TypeScript compiler, run here only to check types",
-        "instrumentsValue()": "the function from the Sentry spec (PR #191) that turns a score's tracks into a value such as drums,025,033",
-        "trackInstrument()": "the proposed one-track version: drums, or one track's General MIDI program in three digits, such as 025",
-        "@ts-expect-error": "a comment that tells TypeScript the next line must fail to compile; if it compiles, the check fails"
-      },
-      "central_claim_check": "Spiked with TypeScript 5.9.3 from web/node_modules (tsc --noEmit --strict). With Instrument as a branded string, the spec's ✅ example fails (a plain string is not an Instrument), and solo_all or layout without instrument fail (the key is required). The field table (line 251) says instrument is absent for solo all, mute all and the layout switch, so the type and the table disagree. The function that would make an Instrument ('its one-track twin', lines 275-276) has no name, and section 1 lists no such function. In the Sentry spec (PR #191), instrumentsValue() takes a list of tracks shaped { program: number; isPercussion: boolean } and returns a plain string, so the twin naturally takes one such track. web/app/play/TracksPopover.tsx confirms the controls: per-row render, solo, mute, the two transposes and the staff options, plus Solo all, Mute all and the layout switch in the footer.",
-      "contradicts": "none — checked section 5 (the control and instrument rows, the branded-string paragraph), section 1 (the score-facts.ts row), section 6 ('report.ts imports it from there; nothing else changes' stays true: a branded string is still a string to report.ts), section 8 step 4 (instrument is already a custom dimension) and section 9 (the Types test).",
-      "spike": {
-        "ran": true,
-        "what": "Type-checked scratch files with TypeScript 5.9.3 from web/node_modules (tsc --noEmit --strict). (a) The spec's sketch as written, with Instrument and Instruments as branded strings. (b) The proposed union on control, with trackInstrument() as the only maker of an Instrument: 5 calls that must compile and 8 that must fail, each failing one marked with @ts-expect-error so tsc itself reports any bad call that compiles. (c) The exact After block, taken from a scratch copy of the spec with all of Group C's Afters applied. The After text was applied to a scratch copy of the spec together with Group C's other Afters; the repo's own Prettier (print width 100), markdownlint-cli2 and cspell all pass on it.",
-        "result": "(a) The ✅ example fails: a plain string is not an Instrument. The ❌ example fails as intended (track is not a known key). Solo all and the layout switch without instrument fail: instrument is required. (b) tsc exits 0: the 5 good calls compile (solo and transpose_full with trackInstrument(), solo_all and layout without it, score_loaded with instrumentsValue()), and all 8 bad calls are errors: a plain string as the instrument; a one-track control without one; solo_all with one; the extra track key; the track's name as the instrument; an Instruments value as an Instrument; an unknown control; a plain string as instruments. (c) In the After block both ✅ lines compile, and only the ❌ line fails.",
-        "fix_holds": true
-      },
-      "cross_fix": [
-        "F-15 rewrites the same code block. This item's Afters are written on top of F-15's (the track() signature and the calls under their own comments); apply F-15 first.",
-        "F-6 (Group B) adds Solo and Mute clicks to the privacy test; with this fix those events carry instrument (drums for the fixture's drum tracks), which is what the test should expect.",
-        "FYI-2: if taken, its key list for mixer_change must cover both shapes of the union (control, on, instrument); the spike did that.",
-        "Plan note, from web/app/play/TracksPopover.tsx: Solo all and Mute all call the per-row applySolo and applyMute for every track (:422-429), and the playerReady handler calls them again after every reload (:271-279). The track() call must sit in the row's onSoloChange and onMuteChange and in the Solo all and Mute all handlers, not inside applySolo or applyMute; otherwise one Solo all press sends one 'solo' event per track, and a reload sends events nobody clicked."
-      ],
-      "synthesis_note": "Unique. Cheap to spike with tsc.",
-      "verified_by": "verify-C.json",
-      "raw_constituents": [
-        {
-          "raw_id": "coherence#3",
-          "reviewer": "coherence",
-          "title": "mixer_change type contradicts its field table and brand rule",
-          "severity": "P2",
-          "confidence": 75,
-          "autofix_class": "gated_auto",
-          "why_it_matters": "Copying the sketch gives a mixer_change type that cannot express solo all, mute all or the layout switch, because instrument is required while the field table says it is absent for those three. The checked example also passes the literal '025', which the paragraph below says can never type-check because Instrument is a branded string, and the function that mints an Instrument (\"its one-track twin\") is never named, so the example has nothing legitimate to call. A type test written from this sketch would start with a positive case that fails to compile.",
-          "suggested_fix": "Rewrite the mixer_change entry as a union on control: render, solo, mute, transpose_audio, transpose_full and staff carry `instrument: Instrument`; solo_all, mute_all and layout carry only `on`. Change the ✅ line so `instrument` comes from the one-track function, name that function `trackInstrument(track)`, and add it to the `web/lib/score-facts.ts` row of section 1 (Packages and files).",
-          "evidence": [
-            "mixer_change: { control: MixerControl; on: boolean; instrument: Instrument };",
-            "`instrument` | `drums` or a three-digit program, for the one track a change applies to; absent for solo all, mute all and the layout switch",
-            "track('mixer_change', { control: 'solo', on: true, instrument: '025' }); // ✅",
-            "`Instruments` and `Instrument` are branded strings that only `instrumentsValue()` and its one-track twin can make, so a free string never type-checks."
-          ]
-        }
-      ],
-      "triage_decision": null,
-      "applied_in_commit": null
-    }
-  ],
+  "undecided_findings": [],
   "fyi_observations": [
-    {
-      "id": "FYI-1",
-      "title": "Safari and iPhone keep Google Analytics' cookie 7 days, so returning visitors are undercounted",
-      "area": "FYI",
-      "severity": "P3",
-      "severity_as_filed": "P3",
-      "severity_plain": "worth fixing — small and cheap",
-      "severity_note": "Small and cheap: one line that prevents a wrong reading of the numbers.",
-      "confidence": 50,
-      "confidence_plain": "verified, but below the bar for action — an observation",
-      "route": "fyi",
-      "finding_type": "omission",
-      "reviewers": ["adversarial"],
-      "recommended_action": "FYI",
-      "verdict": "CONFIRMED_WITH_CORRECTION",
-      "correction": "The effect holds; the reason given is out of date. WebKit's 2019 rule capped cookies written by a script at a 7-day expiry (Intelligent Tracking Prevention, ITP 2.1). A 2022 WebKit release removed that cap and now deletes cookies written by a script, together with all other storage a script can write (localStorage too), when the site gets no click, tap or key press during 7 days of browser use. So a visitor who returns after a week without using the site still counts as new, and the same rule also deletes the saved privacy answer, so a visitor in Europe is asked again.",
-      "section": "## Why this exists",
-      "section_lines": "33-47",
-      "section_exists": true,
-      "quotes_verbatim": false,
-      "quotes": [
-        {
-          "quote": "Who comes — visits, new and returning, country, device, and where they came from.",
-          "verbatim": false,
-          "line": 38,
-          "note": "Fails the strict test only because the spec bolds the lead: '1. **Who comes** — visits, …'. The words are exact."
-        },
-        {
-          "quote": "\"Anonymously\" goes: Google Analytics' cookie is a lasting ID.",
-          "verbatim": true,
-          "line": 330,
-          "note": "section 7"
-        }
-      ],
-      "scenario": "You open Notation Hero on your iPhone every second Sunday to practise a drum part. Each time, Google Analytics counts you as a new visitor, because Safari deleted its cookie during the week you did not use the site. The 'returning visitors' number stays near zero, and it looks as if nobody comes back. If you are in Europe, the question also appears again each time.",
-      "whats_wrong": "Goal 1 counts new and returning visitors, and section 7 calls the cookie 'a lasting ID'. On Safari, and on iPhones and iPads, it is not: WebKit deletes cookies written by a script, such as `_ga`, and the site's localStorage after 7 days of browser use without the visitor using the site. Returning visitors are undercounted, the saved answer disappears, and the spec says neither.",
-      "before": [
-        {
-          "lines": "after 427",
-          "text": "(absent — Known limits has no line on Safari; the new bullet goes after 'Ad blockers', line 427)"
-        }
-      ],
-      "after": [
-        {
-          "replaces_lines": "new bullet after 427",
-          "text": "- **Safari forgets after a week.** Safari, and other browsers on an iPhone or iPad, delete cookies\n  written by a script, such as Google Analytics' `_ga`, and the site's `localStorage` after seven\n  days of browser use without a click, tap or key press on the site. A visitor who returns later\n  counts as new, so returning visitors are undercounted, and a visitor in Europe is asked again."
-        }
-      ],
-      "proposed_fix": "Add one Known-limits bullet naming the WebKit rule and its two effects: returning visitors undercounted, and the saved answer deleted.",
-      "why_it_works": "A low returning share on Safari and iPhones is then read as a browser limit, not as 'nobody comes back', and a question that reappears for a visitor in Europe is expected, not a bug.",
-      "plain_terms": {
-        "WebKit": "the browser engine inside Safari and, since iOS 14, inside every browser on an iPhone or iPad",
-        "ITP": "Intelligent Tracking Prevention, WebKit's limits on trackers",
-        "_ga": "Google Analytics' visitor cookie; a new `_ga` means a new visitor",
-        "localStorage": "the browser storage where section 2 keeps the visitor's answer"
-      },
-      "central_claim_check": "WebKit's tracking-prevention page today, section '7-Day Cap on All Script-Writeable Storage': 'ITP deletes all cookies created in JavaScript and all other script-writeable storage after 7 days of no user interaction with the website' (https://webkit.org/tracking-prevention/). The 2019 expiry cap: 'all persistent client-side cookies, i.e. persistent cookies created through document.cookie, are capped to a seven day expiry' (https://webkit.org/blog/8613/intelligent-tracking-prevention-2-1/). The 2020 rule for other storage, LocalStorage included: deleted 'after seven days of Safari use without user interaction on the site' (https://webkit.org/blog/10218/full-third-party-cookie-blocking-and-more/). The 2022 change from the cap to deletion: https://www.simoahava.com/privacy/first-party-cookies-webkit-revisited/ (14 November 2022; a secondary source quoting WebKit's documentation). Other iPhone and iPad browsers: since iOS 14 they get the same rules through WebKit's WKWebView (https://www.simoahava.com/privacy/intelligent-tracking-prevention-ios-14-ipados-14-safari-14/, secondary). `_ga` is written by script: in the R1 spike it appeared although every collect request was answered locally with no Set-Cookie header. Safari's deletion itself is (untested) here.",
-      "contradicts": "none — checked goal 1 (38), section 2's 'Kept in this browser' (130-132), section 7's 'a lasting ID' (330; still true outside WebKit browsers) and Known limits (420-431).",
-      "spike": {
-        "ran": true,
-        "what": "The R1 spike (Chromium, Google's real gtag.js, a made-up ID, every collect request answered locally) recorded the cookies after the first page view.",
-        "result": "`_ga` and `_ga_<ID>` were set although no response carried a Set-Cookie header, so gtag.js writes them by script — the kind WebKit deletes. Safari's 7-day deletion itself was not run: Playwright's WebKit build is not Safari, so it is (untested) and rests on WebKit's documentation.",
-        "fix_holds": true
-      },
-      "cross_fix": [
-        "F-1 — with F-1's fix, a refusal saved by a visitor outside Europe (through NH-349's link) is deleted by the same rule, after which that visitor gets 'everything by default' again. NH-349 should repeat this line."
-      ],
-      "synthesis_note": "Anchor 50.",
-      "verified_by": "verify-A.json",
-      "raw_constituents": [
-        {
-          "raw_id": "adversarial#6",
-          "reviewer": "adversarial",
-          "title": "Safari keeps the _ga cookie 7 days; returning undercounts",
-          "severity": "P3",
-          "confidence": 50,
-          "autofix_class": "gated_auto",
-          "why_it_matters": "Goal 1's new-versus-returning split will count too few returning visitors on Safari and on iPhones. Apple's WebKit limits cookies written by scripts, such as Google Analytics' _ga, to 7 days after the last visit, so anyone who comes back after a week is counted as new. Section 7's premise that the cookie is 'a lasting ID' holds only for other browsers. One known-limit line stops a low returning share from being read as 'nobody comes back'.",
-          "suggested_fix": "Add to Known limits: 'Safari and iPhone browsers keep Google Analytics' cookie for 7 days after the last visit, so a visitor who returns later counts as new.'",
-          "evidence": [
-            "Who comes — visits, new and returning, country, device, and where they came from.",
-            "\"Anonymously\" goes: Google Analytics' cookie is a lasting ID."
-          ]
-        }
-      ],
-      "triage_decision": null,
-      "applied_in_commit": null,
-      "quotes_note": "Every quote that fails strict matching fails only because the spec puts its opening words in bold; the words themselves match."
-    },
-    {
-      "id": "FYI-2",
-      "title": "Typed fields stop object literals only; track() forwards whatever object it is given",
-      "area": "FYI",
-      "severity": "P3",
-      "severity_as_filed": "P3",
-      "severity_plain": "worth fixing — small and cheap",
-      "severity_note": "Today's call sites will likely pass objects written inside the call, so nothing leaks at launch; the risk is a later change. Cheap to close.",
-      "confidence": 50,
-      "confidence_plain": "verified, but below the bar for action — an observation",
-      "route": "fyi",
-      "finding_type": "error",
-      "reviewers": ["feasibility"],
-      "recommended_action": "FYI",
-      "verdict": "CONFIRMED",
-      "correction": "",
-      "section": "## 5. Events (with ## 4. Google Analytics in code, where track() is described)",
-      "section_lines": "217-287 and 203-204",
-      "section_exists": true,
-      "quotes_verbatim": true,
-      "quotes": [
-        {
-          "quote": "Every field comes from a fixed list or is a number, so text from the file cannot reach Google.",
-          "verbatim": true,
-          "line": 220,
-          "note": "lines 220-221; matches after joining the line break"
-        },
-        {
-          "quote": "**`track(name, fields)`** sends `gtag('event', name, fields)` once started, and nothing before",
-          "verbatim": true,
-          "line": 203,
-          "note": "section 4"
-        },
-        {
-          "quote": "track('mixer_change', { control: 'solo', on: true, track: 'Lead Guitar' });",
-          "verbatim": true,
-          "line": 272,
-          "note": ""
-        }
-      ],
-      "scenario": "You open your own song file in Sydney and solo the track called 'Lead Guitar'. Months later, a change builds that event's fields in a small helper that also keeps the track's name for another use. It still compiles, and 'Lead Guitar' goes to Google with your click: exactly what the site promises never to send.",
-      "whats_wrong": "Section 5 promises that text from the file cannot reach Google, because every field is typed. TypeScript checks extra keys only on an object written inside the call. An object built first, spread in or returned by a helper can carry an extra key, such as a track name, and track() as specified forwards the whole object to Google. The privacy end-to-end case opens a file but presses no mixer control, so it would not catch this.",
-      "before": [
-        {
-          "lines": "203-204",
-          "text": "- **`track(name, fields)`** sends `gtag('event', name, fields)` once started, and nothing before —\n  no console warning, unlike `sendGAEvent`."
-        },
-        {
-          "lines": "375",
-          "text": "- `track()`: nothing before the start; `['event', name, fields]` after it."
-        }
-      ],
-      "after": [
-        {
-          "replaces_lines": "203-204",
-          "text": "- **`track(name, fields)`** calls `gtag('event', name, …)` once started, and nothing before — no\n  console warning, unlike `sendGAEvent`. It sends only the fields its event declares, copied by name\n  from a key list beside `AnalyticsEvents` that `typecheck` checks against it. An object built\n  elsewhere with an extra key, such as a track name, therefore sends nothing more."
-        },
-        {
-          "replaces_lines": "375",
-          "text": "- `track()`: nothing before the start; `['event', name, fields]` after it, without any key the event\n  does not declare."
-        }
-      ],
-      "proposed_fix": "track() copies only the keys its event declares, from a per-event key list kept beside AnalyticsEvents. tsc checks each list against the interface both ways (no declared field missing, no unknown key). The track() unit test checks that an extra key is not sent.",
-      "why_it_works": "The promise no longer depends on how each call site writes its object: whatever object arrives, only declared, typed fields leave. The cost is one short key list for each of the eleven events our code sends and about ten lines in track.ts, and the type check stops the lists drifting away from the interface.",
-      "plain_terms": {
-        "excess-property check": "TypeScript's error for a key the type does not declare; it runs only on an object written directly inside the call",
-        "spread": "copying all keys of one object into another, written ...object",
-        "key list": "a fixed list of the field names one event may send"
-      },
-      "central_claim_check": "Spiked with TypeScript 5.9.3 (tsc --strict). TypeScript checks for extra keys only on an object written directly inside the call. A fields object built first, merged in with a spread, or returned by a helper, each also carrying a track name, compiled with no error. Section 4 (line 203) says track() sends gtag('event', name, fields), and section 9 (line 375) tests for ['event', name, fields], so the object goes to Google as given. The privacy end-to-end case (lines 388-389) opens a file and checks Google's requests, but presses no mixer control, so it cannot see a name sent by a control.",
-      "contradicts": "none — checked section 4 (the track() bullet), section 5 (the promise on lines 220-221), section 9 (the track() unit test, the Types test, the Privacy case) and 'Extending later' (a second sender inside track(): the copy happens before any sender, so a second sender gets the same clean fields).",
-      "spike": {
-        "ran": true,
-        "what": "(c) A scratch .ts file type-checked with tsc --strict: the same track() signature, and mixer_change calls whose fields carry a track name in five ways. Then the proposed fix in a second file: a per-event key list that tsc checks against AnalyticsEvents in both directions, and a track() that copies only the listed keys. It was type-checked, run with Node 24, and type-checked again with two broken key lists. The After text was applied to a scratch copy of the spec together with Group C's other Afters; the repo's own Prettier (print width 100), markdownlint-cli2 and cspell all pass on it.",
-        "result": "Only the object written inside the call is rejected. Built first, spread in, returned by a helper, and the whole-mixer shape built first with an extra key: all four compile. With the fix, the built-first object still compiles, but what reaches the queue is control, on and instrument only; the track name is gone. tsc rejects a key list that misses a declared field, and one that names a key the event does not declare.",
-        "fix_holds": true
-      },
-      "cross_fix": [
-        "F-6 (Group B) adds Solo and Mute clicks to the privacy test. That catches a name sent by those two controls today, but not by a later change elsewhere; this fix closes it inside track() itself.",
-        "F-13: the key list for mixer_change must cover both shapes of the union (control, on, instrument); the spike did that.",
-        "F-14 edits the paragraph on lines 219-221; this item's After leaves that paragraph alone, so the two do not overlap.",
-        "F-15 moves track() under its own track.ts header; no conflict."
-      ],
-      "synthesis_note": "Anchor 50. Cheap to spike with tsc.",
-      "verified_by": "verify-C.json",
-      "raw_constituents": [
-        {
-          "raw_id": "feasibility#6",
-          "reviewer": "feasibility",
-          "title": "Typed fields catch literals only; track() forwards everything",
-          "severity": "P3",
-          "confidence": 50,
-          "autofix_class": "gated_auto",
-          "why_it_matters": "The promise that 'text from the file cannot reach Google' only holds where a call passes an object literal. TypeScript skips its excess-property check for an object that is built first, or merged in with a spread. So a fields object that also carries a track name still type-checks, and `track()` forwards the whole object to `gtag('event', …)`. If `track()` copies only the keys declared for that event, the promise holds for every call shape, for the cost of one key list per event. The privacy e2e case cannot catch this, because it covers opening a file, not every control.",
-          "suggested_fix": "In section 5, track() sends only the fields declared for that event. They are read from a per-event key list kept beside AnalyticsEvents, with the types derived from it; the fields object is never forwarded as given.",
-          "evidence": [
-            "Every field comes from a fixed list or is a number, so text from the file cannot reach Google.",
-            "**`track(name, fields)`** sends `gtag('event', name, fields)` once started, and nothing before",
-            "track('mixer_change', { control: 'solo', on: true, track: 'Lead Guitar' });"
-          ]
-        }
-      ],
-      "triage_decision": null,
-      "applied_in_commit": null
-    },
-    {
-      "id": "FYI-3",
-      "title": "leocaseiro's own production visits will be counted as visitors",
-      "area": "FYI",
-      "severity": "P3",
-      "severity_as_filed": "P3",
-      "severity_plain": "worth fixing — small and cheap",
-      "severity_note": "Small and cheap; it keeps the owner out of a small sample.",
-      "confidence": 50,
-      "confidence_plain": "verified, but below the bar for action — an observation",
-      "route": "fyi",
-      "finding_type": "omission",
-      "reviewers": ["product-lens"],
-      "recommended_action": "FYI",
-      "verdict": "CONFIRMED",
-      "correction": "",
-      "section": "## 8. Setup — done by leocaseiro, by hand",
-      "section_lines": "336-362",
-      "section_exists": true,
-      "quotes_verbatim": true,
-      "quotes": [
-        {
-          "quote": "**After the first production deploy, in the Realtime report:** a page view on `/`",
-          "verbatim": true,
-          "line": 359,
-          "note": "step 6"
-        },
-        {
-          "quote": "Visitors in Europe are asked first; everyone else gets everything by default, with no popup",
-          "verbatim": true,
-          "line": 58,
-          "note": "decision G3"
-        },
-        {
-          "quote": "**Reporting identity: device-based**, so thresholds do not hide small numbers.",
-          "verbatim": true,
-          "line": 348,
-          "note": "step 2"
-        }
-      ],
-      "scenario": "You run Notation Hero from Sydney. You open it after each deploy to check it, and you show it to people from your own laptop and phone. Google Analytics counts each of those visits like a stranger's, and on a small site your own visits become a large part of 'who comes', 'what they use' and the funnel.",
-      "whats_wrong": "Section 8 tunes the property for small numbers but never excludes the owner's own visits. Everyone outside Europe is counted by default (G3), so every check and every demo from the owner's devices lands in the reports.",
-      "before": [
-        {
-          "lines": "after 362",
-          "text": "(absent — section 8 ends at step 6)"
-        }
-      ],
-      "after": [
-        {
-          "replaces_lines": "new step 7 after 362",
-          "text": "7. **Then exclude your own visits.** In the web data stream: Configure tag settings → Show more →\n   Define internal traffic, with your own IP addresses (`traffic_type` `internal`). Then set the\n   \"Internal Traffic\" data filter to **Testing** for a few days, then **Active**. Only after step 6:\n   an active filter drops matching visits for good, and would hide step 6's own check."
-        }
-      ],
-      "proposed_fix": "Add a step 7 to section 8: after step 6, define internal traffic by the owner's IP addresses and move the 'Internal Traffic' data filter from Testing to Active.",
-      "why_it_works": "Google Analytics then drops the owner's visits before they reach any report, with no code, and the Testing state shows first that the rule matches only those visits.",
-      "plain_terms": {
-        "G3": "decision G3: visitors in Europe are asked first; everyone else gets everything by default, with no popup",
-        "Realtime report": "Google Analytics' live view of the last minutes, used in step 6",
-        "data filter": "a Google Analytics property setting that drops matching visits; in Testing it only labels them",
-        "traffic_type": "the label Google Analytics gives a visit that matches the internal-traffic rule"
-      },
-      "central_claim_check": "True. Google's help page 'Filter out internal traffic' (https://support.google.com/analytics/answer/10104470): the rule is made under the web data stream → Configure tag settings → Show more → Define internal traffic, with traffic_type 'internal' and IP matches (equals, begins with, range, regular expression…); the data filter has three states — Testing ('identifies matching data with the \"Test data filter name\" dimension'), Active ('makes permanent changes'), Inactive — and 'Once you apply a data filter, the effect on the data is permanent … the excluded data is never processed and will never be available in Analytics or BigQuery.' Google's 'Data filters' page (https://support.google.com/analytics/answer/10108813): 'Analytics evaluates data filters from the point of creation forward.' Section 8 has no such step, step 6 asks for production visits, G3 counts every visitor outside Europe by default, and the property's time zone is Australia/Sydney (340).",
-      "contradicts": "none — checked section 8, steps 1-6 (340-362), G3 (58) and Known limits; the new step comes after step 6, so step 6's Realtime check still sees the owner's visits.",
-      "spike": {
-        "ran": false,
-        "why": "It needs the real property and the owner's own IP addresses.",
-        "mark": "(untested)"
-      },
-      "cross_fix": [
-        "F-1 + NH-349 — once NH-349's link exists and F-1's fix holds, the owner can also choose 'Report errors only' in each of their own browsers; that covers a phone whose IP address changes, which an IP rule misses."
-      ],
-      "synthesis_note": "Anchor 50.",
-      "verified_by": "verify-A.json",
-      "raw_constituents": [
-        {
-          "raw_id": "product-lens#2",
-          "reviewer": "product-lens",
-          "title": "Owner's own production visits will be counted as visitors",
-          "severity": "P3",
-          "confidence": 50,
-          "autofix_class": "gated_auto",
-          "why_it_matters": "On a small personal demo, leocaseiro's own production visits can be a large share of what Google Analytics records: step 6's Realtime check, checks after later deploys, and demos from leocaseiro's own machine. Then 'who comes', 'what they use' and the funnel would partly describe the owner, not visitors. leocaseiro is in Sydney, which G3 (everyone outside Europe counted by default) always counts. Section 8 tunes the property for small numbers but excludes no internal traffic. Google Analytics' internal-traffic rule and data filter remove these visits with no code. The filter goes on after step 6, because an active filter discards matching data for good and would hide step 6's own check.",
-          "suggested_fix": "Add a step 7 to section 8: after step 6's checks, define internal traffic for leocaseiro's own IP addresses (the web data stream → Configure tag settings → Define internal traffic) and set the 'Internal Traffic' data filter to Active.",
-          "evidence": [
-            "**After the first production deploy, in the Realtime report:** a page view on `/`",
-            "Visitors in Europe are asked first; everyone else gets everything by default, with no popup",
-            "**Reporting identity: device-based**, so thresholds do not hide small numbers."
-          ]
-        }
-      ],
-      "triage_decision": null,
-      "applied_in_commit": null
-    },
     {
       "id": "FYI-4",
       "title": "The two Sentry filters for Google traffic remove only noise",
@@ -689,165 +174,9 @@
       ],
       "triage_decision": null,
       "applied_in_commit": null
-    },
-    {
-      "id": "FYI-5",
-      "title": "Click IDs such as fbclid in the page address reach Google",
-      "area": "FYI",
-      "severity": "P3",
-      "severity_as_filed": "P3",
-      "severity_plain": "worth fixing — small and cheap",
-      "severity_note": "Small and cheap: one setting and one check; it keeps a third-party identifier out of Google Analytics.",
-      "confidence": 50,
-      "confidence_plain": "verified, but below the bar for action — an observation",
-      "route": "fyi",
-      "finding_type": "omission",
-      "reviewers": ["security-lens"],
-      "recommended_action": "FYI",
-      "verdict": "CONFIRMED",
-      "correction": "",
-      "section": "## 4. Google Analytics in code",
-      "section_lines": "170-215",
-      "section_exists": true,
-      "quotes_verbatim": true,
-      "quotes": [
-        {
-          "quote": "Google Analytics receives the page address with its `?` part — the campaign tags on a link you share",
-          "verbatim": true,
-          "line": 209,
-          "note": "spans lines 209-210"
-        },
-        {
-          "quote": "No address in `web/` carries anything of the visitor's.",
-          "verbatim": true,
-          "line": 211,
-          "note": "spans lines 211-212"
-        }
-      ],
-      "scenario": "You tap a link to Notation Hero that a friend shared on Facebook. Facebook adds its own click code to the address, such as '?fbclid=IwAR…'. Google Analytics receives the full address with that code, and the next page's 'came from' address carries it again, although the site only wants to know that you came from Facebook.",
-      "whats_wrong": "Section 4 keeps the address's '?' part for campaign tags and says no address in web/ carries anything of the visitor's. But links from Facebook, Google Ads and Microsoft Ads carry click IDs (fbclid, gclid, msclkid) in that same part, and Google Analytics 4 sends them unless they are listed for redaction. The Sentry spec already treats fbclid as data to keep out.",
-      "before": [
-        {
-          "lines": "209-212",
-          "text": "- **Addresses:** Google Analytics receives the page address with its `?` part — the campaign tags\n  on a link you share, which is how it reports where a visitor came from — and never the `#` part.\n  Sentry cuts addresses at `?` on purpose; only Google Analytics needs to know the source. No\n  address in `web/` carries anything of the visitor's."
-        },
-        {
-          "lines": "350-352",
-          "text": "3. **Enhanced measurement:** keep page views, including \"page changes based on browser history\n   events\". Turn off scrolls, outbound clicks, site search, video, file downloads (their link text\n   can carry a title) and form interactions."
-        },
-        {
-          "lines": "359-362",
-          "text": "6. **After the first production deploy, in the Realtime report:** a page view on `/`; **a page view\n   after clicking Play** — the one thing the spike could not show (if it is missing, the fallback in\n   section 4); an `open_file` and a `score_loaded` with their fields; and, with the browser's time\n   zone set to Berlin, the popup, with nothing reaching Google until \"Yes\"."
-        }
-      ],
-      "after": [
-        {
-          "replaces_lines": "209-212",
-          "text": "- **Addresses:** Google Analytics receives the page address with its `?` part — the campaign tags\n  on a link you share, which is how it reports where a visitor came from — and never the `#` part.\n  Click IDs that other sites add (`fbclid`, `gclid`, `msclkid`) are redacted in the browser before\n  sending (section 8, step 3). Sentry cuts addresses at `?` on purpose; only Google Analytics needs\n  to know the source. No address in `web/` carries anything of the visitor's."
-        },
-        {
-          "replaces_lines": "350-352",
-          "text": "3. **Enhanced measurement:** keep page views, including \"page changes based on browser history\n   events\". Turn off scrolls, outbound clicks, site search, video, file downloads (their link text\n   can carry a title) and form interactions. In the same Events section, **Redact data**: email on,\n   and the query parameters `fbclid`, `gclid` and `msclkid`."
-        },
-        {
-          "replaces_lines": "359-362",
-          "text": "6. **After the first production deploy, in the Realtime report:** a page view on `/`; **a page view\n   after clicking Play** — the one thing the spike could not show (if it is missing, the fallback in\n   section 4); an `open_file` and a `score_loaded` with their fields; and, with the browser's time\n   zone set to Berlin, the popup, with nothing reaching Google until \"Yes\". In the browser's network\n   panel, `/?utm_source=probe&fbclid=probe123` sends a collect request that keeps `utm_source` and\n   has no `probe123`."
-        }
-      ],
-      "proposed_fix": "Turn on Google Analytics' 'Redact data' for fbclid, gclid and msclkid in section 8, step 3; say so in section 4's Addresses; check it at step 6.",
-      "why_it_works": "Redaction runs in the visitor's browser before anything is sent, so the click IDs never reach Google, while the campaign tags that show where visitors came from still arrive.",
-      "plain_terms": {
-        "fbclid, gclid, msclkid": "click codes that Facebook, Google Ads and Microsoft Ads add to a link, to recognise the click",
-        "Redact data": "a Google Analytics web-stream setting that replaces chosen address parts in the browser before sending",
-        "dl, dr": "the page address and the \"came from\" address in each Google Analytics request",
-        "campaign tags": "the utm_… parts of a shared link that name its source"
-      },
-      "central_claim_check": "True. Google's '[GA4] Data redaction' (https://support.google.com/analytics/answer/13544947): 'client-side text redaction of email addresses and user-defined URL Query Parameters', which 'occurs client side … and before data is sent to Analytics', over page_location, page_referrer, page_path, link_url, video_url and form_destination; set under the web data stream's Events section → 'Redact data'; email redaction is on by default for new properties; web data streams only. Query parameters are redacted only when listed, so by default Google Analytics sends them. The spike (see below) showed it on the wire. The Sentry spec treats fbclid as data to keep out: its end-to-end case 7 opens /?fbclid=probe123#frag (PR #191, line 697), and its unit test scrubs /play?fbclid=abc#x (line 609). (untested): the referrer on a client-side navigation, which is how Next.js moves from / to /play — the made-up ID cannot show those page views.",
-      "contradicts": "none — checked section 4's Addresses (209-212: Sentry still cuts at '?'), section 8, steps 3 and 6 (350-352, 359-362), and section 9's Privacy case (388-389). The end-to-end lane uses a fake ID, so redaction, which comes from the real property's settings, can be checked only at step 6.",
-      "spike": {
-        "ran": true,
-        "what": "In the R1 spike (Chromium, Google's real gtag.js for a made-up ID with no redaction set, every collect request answered locally), the page was opened as /?utm_source=probe&fbclid=probe123&gclid=probe456&msclkid=probe789, then a full-page navigation went to /play.",
-        "result": "The first page_view's `dl` (page address) held all four parameters. After the navigation, the next page_view's `dr` (referrer) held the full first address again, click IDs included. The fix itself (redaction) needs the real property, so it is (untested).",
-        "fix_holds": null
-      },
-      "cross_fix": [
-        "Seen in passing, for FYI-4 and F-5 (other groups): every hit in the spike was a fetch POST to www.google-analytics.com/g/collect, and the user_engagement hit sent when a page is left also went to www.google.com/g/collect. Section 6's breadcrumb list names www.google.com/ccm only (line 300), and the end-to-end fixture must answer www.google.com/g/collect too."
-      ],
-      "synthesis_note": "Anchor 50.",
-      "verified_by": "verify-A.json",
-      "raw_constituents": [
-        {
-          "raw_id": "security-lens#3",
-          "reviewer": "security-lens",
-          "title": "Page address sends third-party click IDs to Google",
-          "severity": "P3",
-          "confidence": 50,
-          "autofix_class": "gated_auto",
-          "why_it_matters": "A visitor who arrives from a Facebook link brings an `fbclid` (Meta's identifier for that click) in the `?` part. Google Analytics stores it in the page address and in the next page view's referrer, and Google Analytics 4 does not remove it by default. The spec does not need it: it keeps the `?` part only for campaign tags. The project already treats this value as visitor data, since NH-124's end-to-end case 7 opens `/?fbclid=probe123` to prove Sentry never sends it. Google Analytics' own 'Redact data' setting replaces named query parameters in the browser before anything is sent, so campaign tags keep working and no code changes.",
-          "suggested_fix": "In section 8 step 3, add 'Redact data: email on, and the query parameters fbclid, gclid and msclkid'. In step 6, open `/?utm_source=probe&fbclid=probe123` and confirm that the collect request keeps `utm_source` and does not contain `probe123`. Change the Addresses sentence in section 4 to say the `?` part reaches Google with those identifiers redacted.",
-          "evidence": [
-            "Google Analytics receives the page address with its `?` part — the campaign tags on a link you share",
-            "No address in `web/` carries anything of the visitor's."
-          ]
-        }
-      ],
-      "triage_decision": null,
-      "applied_in_commit": null,
-      "anchor_note": "ANCHOR CHANGED (2026-10-09, F-5 commit 09d09284): section 8 step 6 now ends with F-5's Network-panel check ('**In the browser's Network panel:** the first `collect` request carries `gcs=G101`, `npa=1` and `dt=Notation Hero`. The tests answer Google's script with an empty one, so this is the only check of what it sends.'). This item's step-6 Before no longer matches: merge its fbclid probe sentence into that new step 6 (the cross-fix rule). Its Addresses (209-212) and step 3 (350-352) Befores are unchanged."
     }
   ],
-  "residual_concerns": [
-    {
-      "id": "R1",
-      "source": "adversarial",
-      "text": "'Extending later' tells NH-349 that 'a consent update to denied' stops Google Analytics. Google's consent-mode help page says a loaded tag with analytics_storage denied keeps sending cookieless pings, which are the pings G3 rejected as needing consent. NH-349 (out of scope here) will therefore need to stop the tag, not only update consent.",
-      "verdict": "CONFIRMED",
-      "correction": "",
-      "scenario": "Later, a 'Privacy choices' link (NH-349) lets you change 'Yes' to 'No' while the player is open. This spec tells that ticket to send Google a 'consent: denied' update and stop sending events. You press 'No' and keep practising. When you close the tab, Google Analytics still sends one more report about your visit, only without its cookie — the kind of report this spec's G3 decided also needs consent.",
-      "whats_wrong": "'Extending later' tells NH-349 that changing to 'No' stops Google Analytics with 'a consent update to denied, and no more events'. A Google tag that is already loaded keeps sending cookieless pings after that update: in the spike, a user_engagement hit each time the page is left, with no call from our code. G3 rejected those pings because EU guidance says they need consent too.",
-      "central_claim_check": "True. Google's 'Consent mode on websites and mobile apps' (https://support.google.com/analytics/answer/9976101): with analytics_storage denied the tag 'Will not read or write first-party analytics cookies' and 'cookieless pings will be sent to Google Analytics'. Google's consent-mode concepts page (https://developers.google.com/tag-platform/security/concepts/consent-mode): 'While consent is denied, the Google tags send measurements without cookies.' Neither page describes an update from granted to denied after the tag has loaded; the spike did, and the tag kept sending. Google's switch to stop the tag (https://developers.google.com/tag-platform/security/guides/privacy, updated 2026-07-30): window['ga-disable-MEASUREMENT_ID'] = true 'turns off the Google tag from sending data', and it 'must be set before any calls to gtag() are made'.",
-      "spike": {
-        "ran": true,
-        "what": "A scratch Node script drove Playwright 1.61.1's Chromium from web/node_modules. It loaded Google's real gtag.js for a made-up ID, fetched through Playwright's route.fetch() (the only network traffic: GET requests for the script), with the spec's consent default and settings. Every collect request was answered locally (204) and recorded; Chromium's resolver mapped every other host to NOTFOUND, and no other request was seen. Runs: (A) consent update to denied, then one gtag('event'); (B) consent update to denied, no more calls from our code, then the page is left; (C) consent update to denied plus window['ga-disable-G-…'] = true, set after the tag had loaded, then one gtag('event') and the page is left.",
-        "result": "(A) Before the update: page_view and an event, gcs=G101, the cookie's client ID. After it: the event was still sent, gcs=G100, with a new temporary client ID; leaving the page sent user_engagement (gcs=G100) to www.google-analytics.com/g/collect and www.google.com/g/collect. (B) With no call from our code, leaving the page still sent user_engagement (gcs=G100) to both hosts. (C) After ga-disable: no request at all — neither the event nor the hit on leaving. In every run the `_ga` and `_ga_<ID>` cookies stayed.",
-        "fix_holds": true
-      },
-      "before": [
-        {
-          "lines": "416-418",
-          "text": "- **NH-349's link** reuses `PrivacyChoices` and `saveChoice()`. Changing to \"No\" must stop Google\n  Analytics (a consent update to denied, and no more events) and close Sentry for the rest of the\n  visit."
-        }
-      ],
-      "after": [
-        {
-          "replaces_lines": "416-418",
-          "text": "- **NH-349's link** reuses `PrivacyChoices` and `saveChoice()`. Changing to \"No\" must stop Google\n  Analytics for the rest of the visit. A consent update to denied is not enough: the loaded tag\n  still sends a cookieless `user_engagement` hit when the page is left (spike, 2026-10-08). So the\n  link also sets `window['ga-disable-<ID>'] = true` and sends no more events. Google documents that\n  switch as set before any `gtag()` call, so NH-349's test must prove no hit follows a \"No\". The\n  link must also close Sentry for the rest of the visit."
-        }
-      ],
-      "options": [],
-      "recommendation": "",
-      "flip_condition": "",
-      "proposed_fix": "Tell NH-349 to stop the tag, not only update consent: send the update, set window['ga-disable-<ID>'] = true, send no more events, and prove in a test that no hit follows a 'No'.",
-      "why_it_works": "In the spike, setting the switch after the tag had loaded stopped every later hit, including the automatic one sent when the page is left. A test is still needed, because Google documents the switch as set before any gtag() call. On later page loads, allowed() keeps Google Analytics from starting at all.",
-      "plain_terms": {
-        "cookieless ping": "a Google Analytics request sent without its cookie, with a temporary visitor ID; the spike saw it as gcs=G100",
-        "gcs": "the consent code in each Google Analytics request: G101 = ad storage denied, analytics granted; G100 = both denied",
-        "user_engagement": "an event the Google tag sends by itself when a page is left, with the time spent on it",
-        "ga-disable-<ID>": "Google's documented switch, window['ga-disable-<measurement ID>'] = true, that stops the tag sending data",
-        "G3": "decision G3: Europe is asked first; it rejected Google's 'advanced' consent mode because its cookieless pings need consent too",
-        "NH-349": "the Jira ticket for a \"Privacy choices\" link that lets any visitor, in or outside Europe, change their answer later; status To Do (Jira, read 2026-10-08)"
-      },
-      "severity": "P3",
-      "cross_fix": [
-        "F-1 — F-1 makes a 'No' hold on the next page loads; this fix stops the tag on the page where the answer changes. NH-349 needs both.",
-        "The `_ga` cookies stay after a 'No' (spike). They are not read again once Google Analytics no longer starts; deleting them is a choice for NH-349's plan, not part of this fix.",
-        "Seen in passing (FYI-4, F-5): the hit sent when a page is left also goes to www.google.com/g/collect, a host section 6's breadcrumb list (line 300, 'www.google.com/ccm') does not cover.",
-        "Seen in passing (F-5, a committed copy of gtag.js): the copy saved on 2026-10-05, served offline for every script request, asked for a second script (/gtag/js?id=…&cx=c&gtm=…) and then sent no hit and set no cookie; Google's live script, fetched through route.fetch(), worked at once. A committed copy would need that second script too, and a 3-day-old copy already behaved differently."
-      ],
-      "verified_by": "verify-A.json",
-      "triage_decision": null
-    }
-  ],
+  "residual_concerns": [],
   "deferred_questions": [
     {
       "id": "Q1",
@@ -3168,6 +2497,795 @@
           "note": "Approved on a multi-select card (P2 run). Still untested with a real screen reader."
         }
       ]
+    },
+    {
+      "id": "F-12",
+      "title": "The loader sketch drops the separate settings step the spike verified",
+      "area": "Area 4 - the code sketches",
+      "severity": "P2",
+      "severity_as_filed": "P2",
+      "severity_plain": "should fix — a real gap an implementer will hit",
+      "severity_note": "The spec calls 'verified' a shape that was never run, and the plan's unit test on the queue's order would be written from it. The runtime risk is low, because Google documents both forms.",
+      "confidence": 75,
+      "confidence_plain": "double-checked by reading the spec, the repo and the sources; will be hit in practice (not all of it run)",
+      "route": "proposed_fix",
+      "finding_type": "error",
+      "reviewers": ["coherence"],
+      "recommended_action": "Apply",
+      "verdict": "CONFIRMED",
+      "correction": "",
+      "section": "## 4. Google Analytics in code",
+      "section_lines": "170-215",
+      "section_exists": true,
+      "quotes_verbatim": true,
+      "quotes": [
+        {
+          "quote": "**The order is verified** by the 2026-10-05 spike: consent, settings, then `js` and `config`.",
+          "verbatim": true,
+          "line": 198,
+          "note": ""
+        },
+        {
+          "quote": "gtag('js', new Date());\n  gtag('config', id, {\n    allow_google_signals: false,\n    allow_ad_personalization_signals: false,\n    release: APP_VERSION,\n  });",
+          "verbatim": true,
+          "line": 188,
+          "note": "lines 188-193"
+        },
+        {
+          "quote": "Our settings ran first | consent → settings → `js` → `config`",
+          "verbatim": true,
+          "line": 457,
+          "note": "the spike table in 'The spike (2026-10-05, throwaway)'; matches after collapsing the table's padding"
+        }
+      ],
+      "scenario": "You open Notation Hero in Sydney and press play. Google Analytics counts your visit. The spec promises that Google is told 'no ad personalisation' and 'no Google signals' for you, and that the order of these instructions was tested. It was tested, but with those two settings sent as their own step. The code drawn in the spec sends them another way, which nobody has run.",
+      "whats_wrong": "Section 4 says the order 'consent, settings, then js and config' was verified by the spike, and the spike table repeats it. The sketch right above has no settings step: it puts the two settings inside the config call. The spike's own file sent them with a separate gtag('set', …) call, and its config call carried no settings at all. An implementer copies the sketch, so the unit test on 'the queue's order' and the Sydney check would rest on a shape nobody ran.",
+      "before": [
+        {
+          "lines": "182-193",
+          "text": "  gtag('consent', 'default', {\n    ad_storage: 'denied',\n    ad_user_data: 'denied',\n    ad_personalization: 'denied',\n    analytics_storage: 'granted',\n  });\n  gtag('js', new Date());\n  gtag('config', id, {\n    allow_google_signals: false,\n    allow_ad_personalization_signals: false,\n    release: APP_VERSION,\n  });"
+        }
+      ],
+      "after": [
+        {
+          "replaces_lines": "182-193",
+          "text": "  gtag('consent', 'default', {\n    ad_storage: 'denied',\n    ad_user_data: 'denied',\n    ad_personalization: 'denied',\n    analytics_storage: 'granted',\n  });\n  gtag('set', { allow_google_signals: false, allow_ad_personalization_signals: false });\n  gtag('js', new Date());\n  gtag('config', id, { release: APP_VERSION });"
+        }
+      ],
+      "proposed_fix": "In the section 4 sketch, add the spike's own line gtag('set', { allow_google_signals: false, allow_ad_personalization_signals: false }) between the consent call and gtag('js', new Date()), and leave only release: APP_VERSION in the config call.",
+      "why_it_works": "The sketch then matches, call for call, the queue the spike ran and saw produce gcs=G101 and npa=1, so the word 'verified' becomes true. The one piece nobody has run, release inside config, is already on the 'To verify at plan time' list, so nothing unverified is hidden.",
+      "plain_terms": {
+        "gtag": "Google's small command function; each call waits in a queue until Google's script loads",
+        "gcs=G101": "the code in Google's request for 'ad storage denied, analytics allowed'",
+        "npa=1": "the flag in Google's request for 'no ad personalisation'",
+        "Google signals": "Google's cross-device advertising data, turned off in this design",
+        "the 2026-10-05 spike": "a throwaway trial build run on 2026-10-05, not kept in the repo"
+      },
+      "central_claim_check": "Read the 2026-10-05 spike (throwaway, not in the repo). Its instrumentation-client.ts queued gtag('consent', 'default', {…}) and then gtag('set', { allow_google_signals: false, allow_ad_personalization_signals: false }): a separate settings step. Its js and config calls came from @next/third-parties 16.3.6's GoogleAnalytics component, whose inline script calls gtag('js', new Date()) and then gtag('config', <ID>) with no settings object (checked in the published package, https://unpkg.com/@next/third-parties@16.3.6/dist/google/ga.js). So the queue the spike ran was consent, set, js, then config with only the ID. The spec's sketch (lines 182-193) has no set step and puts the two settings inside config, a shape the spike never ran. Google's privacy-controls guide (https://developers.google.com/tag-platform/security/guides/privacy) documents both places for these two settings (set for every tag on the page, config for one property), so the sketch is not wrong, only unverified while the spec calls it verified.",
+      "contradicts": "none — checked section 4's 'order is verified' bullet (198-200), section 9's startAnalytics() unit test ('the queue's order') and the Sydney case (gcs=G101 and npa=1), 'To verify at plan time' (release in config stays listed there, line 439), the spike table (line 457) and the Non-goals ('Google signals off').",
+      "spike": {
+        "ran": false,
+        "why": "Read, not run: the After copies the spike's own set line exactly, so it is the verified shape. The other form (settings inside config) was not run against Google's real script here (untested); Group B's end-to-end spike loads the real gtag.js. The After text was applied to a scratch copy of the spec together with Group C's other Afters; the repo's own Prettier (print width 100), markdownlint-cli2 and cspell all pass on it.",
+        "mark": "(untested)"
+      },
+      "cross_fix": [
+        "F-5 (Group B, how the tests get Google's script): if the tests never load the real gtag.js (its option 3), the only check of npa=1 on the wire is the hand check at launch (section 8, step 6), so the sketch should be exactly the verified shape, which this fix gives."
+      ],
+      "synthesis_note": "Unique. Verify against the 2026-10-05 spike's own instrumentation-client.ts (kept outside the repo).",
+      "verified_by": "verify-C.json",
+      "raw_constituents": [
+        {
+          "raw_id": "coherence#2",
+          "reviewer": "coherence",
+          "title": "Sketch drops the settings step the spike verified",
+          "severity": "P2",
+          "confidence": 75,
+          "autofix_class": "gated_auto",
+          "why_it_matters": "The spec says the queue the spike verified is consent, a separate settings step, then js and config, but the sketch an implementer will copy queues consent, js, then config with the privacy settings folded into it. The unit test on \"the queue's order\" and the Sydney check for gcs=G101 and npa=1 therefore rest on an order nobody ran: the spike queued the settings with their own gtag('set', ...) call, which the sketch lacks. Restoring that call, and leaving only release in config, makes the \"verified\" label true and keeps the one unrun piece where \"To verify at plan time\" already tracks it.",
+          "suggested_fix": "In the section 4 sketch, add `gtag('set', { allow_google_signals: false, allow_ad_personalization_signals: false });` between the consent call and `gtag('js', new Date());`, and remove those two keys from the `gtag('config', id, {...})` call so that only `release: APP_VERSION` remains there.",
+          "evidence": [
+            "**The order is verified** by the 2026-10-05 spike: consent, settings, then `js` and `config`.",
+            "gtag('js', new Date());\n  gtag('config', id, {\n    allow_google_signals: false,\n    allow_ad_personalization_signals: false,\n    release: APP_VERSION,\n  });",
+            "Our settings ran first | consent → settings → `js` → `config`"
+          ]
+        }
+      ],
+      "triage_decision": {
+        "round": 6,
+        "invocation": 2,
+        "decision": "Apply",
+        "applied_in_commit": "8d7cab26",
+        "date": "2026-10-10",
+        "note": "Auto-resolved. On the round-1 multi-select card (F-12, F-13, FYI-2) leocaseiro ticked nothing and typed 'You can auto resolve any clear fix' in Other. Recommended, and the After copies the spike's own set line, so applied as a clear fix."
+      },
+      "applied_in_commit": "8d7cab26",
+      "triage_rounds": [
+        {
+          "round": 6,
+          "invocation": 2,
+          "decision": "Apply",
+          "applied_in_commit": "8d7cab26",
+          "date": "2026-10-10",
+          "note": "Auto-resolved. On the round-1 multi-select card (F-12, F-13, FYI-2) leocaseiro ticked nothing and typed 'You can auto resolve any clear fix' in Other. Recommended, and the After copies the spike's own set line, so applied as a clear fix."
+        }
+      ]
+    },
+    {
+      "id": "F-13",
+      "title": "The mixer_change type contradicts its own field table and the branded-string rule",
+      "area": "Area 4 - the code sketches",
+      "severity": "P2",
+      "severity_as_filed": "P2",
+      "severity_plain": "should fix — a real gap an implementer will hit",
+      "severity_note": "The first type test written from the sketch fails, and an implementer must redesign the type before any whole-mixer event can be sent.",
+      "confidence": 75,
+      "confidence_plain": "double-checked by reading the spec, the repo and the sources; will be hit in practice (not all of it run)",
+      "route": "proposed_fix",
+      "finding_type": "error",
+      "reviewers": ["coherence"],
+      "recommended_action": "Apply",
+      "verdict": "CONFIRMED",
+      "correction": "",
+      "section": "## 5. Events",
+      "section_lines": "217-287",
+      "section_exists": true,
+      "quotes_verbatim": true,
+      "quotes": [
+        {
+          "quote": "mixer_change: { control: MixerControl; on: boolean; instrument: Instrument };",
+          "verbatim": true,
+          "line": 266,
+          "note": ""
+        },
+        {
+          "quote": "`instrument` | `drums` or a three-digit program, for the one track a change applies to; absent for solo all, mute all and the layout switch",
+          "verbatim": true,
+          "line": 251,
+          "note": "matches after collapsing the table's padding"
+        },
+        {
+          "quote": "track('mixer_change', { control: 'solo', on: true, instrument: '025' }); // ✅",
+          "verbatim": true,
+          "line": 271,
+          "note": ""
+        },
+        {
+          "quote": "`Instruments` and `Instrument` are branded strings that only `instrumentsValue()` and its one-track twin can make, so a free string never type-checks.",
+          "verbatim": true,
+          "line": 275,
+          "note": "lines 275-276; matches after joining the line break"
+        }
+      ],
+      "scenario": "You open a song in Sydney, open the Tracks panel and press 'Solo all'. Google Analytics should count one 'Solo all'. A developer who copies the spec's event list cannot send it: the list demands an instrument for every mixer change, and 'Solo all' has none. The spec's own example of a correct call does not compile either.",
+      "whats_wrong": "The sketch gives every mixer_change a required instrument, but the field table says solo all, mute all and the layout switch have none. The ✅ example passes the plain text '025', which the paragraph below says can never type-check, because Instrument is a branded string. And the one function allowed to make an Instrument is mentioned ('its one-track twin') but never named or placed in a file.",
+      "before": [
+        {
+          "lines": "266",
+          "text": "  mixer_change: { control: MixerControl; on: boolean; instrument: Instrument };"
+        },
+        {
+          "lines": "271",
+          "text": "track('mixer_change', { control: 'solo', on: true, instrument: '025' }); // ✅"
+        },
+        {
+          "lines": "275-276",
+          "text": "`Instruments` and `Instrument` are branded strings that only `instrumentsValue()` and its one-track\ntwin can make, so a free string never type-checks."
+        },
+        {
+          "lines": "79",
+          "text": "| `web/lib/score-facts.ts`        | `instrumentsValue()`, moved out of Sentry's `report.ts` (section 6)                                     |"
+        }
+      ],
+      "after": [
+        {
+          "replaces_lines": "266",
+          "text": "  mixer_change:\n    | { control: OneTrackControl; on: boolean; instrument: Instrument } // one track\n    | { control: 'solo_all' | 'mute_all' | 'layout'; on: boolean }; // the whole mixer"
+        },
+        {
+          "replaces_lines": "271 (inside F-15's After, where it sits under the call-site comment)",
+          "text": "track('mixer_change', { control: 'solo', on: true, instrument: trackInstrument(leadGuitar) }); // ✅\ntrack('mixer_change', { control: 'solo_all', on: true }); // ✅"
+        },
+        {
+          "replaces_lines": "275-276",
+          "text": "`Instruments` and `Instrument` are branded strings that only `instrumentsValue()` and its one-track\ntwin `trackInstrument()` can make, so a free string never type-checks. A `mixer_change` for one\ntrack (render, solo, mute, either transpose, staff) names that track's instrument; solo all, mute\nall and the layout switch act on the whole mixer and carry none."
+        },
+        {
+          "replaces_lines": "79",
+          "text": "| `web/lib/score-facts.ts`        | `instrumentsValue()`, moved out of Sentry's `report.ts` (section 6), and `trackInstrument()`            |"
+        }
+      ],
+      "proposed_fix": "Make mixer_change a union on control: the six one-track controls (render, solo, mute, transpose_audio, transpose_full, staff) carry instrument; solo_all, mute_all and layout carry only on. Name the one-track twin trackInstrument(), make the ✅ example call it, add a ✅ example for Solo all, say in the paragraph which controls carry no instrument, and add trackInstrument() to section 1's score-facts.ts row. In the example the track is called leadGuitar, not track: at a real call site, a variable named track would hide the track() function.",
+      "why_it_works": "The type then says exactly what the field table says, so every control can be sent and none can carry the wrong fields: tsc proved each good call compiles and each bad call fails. Naming trackInstrument() gives the brand its one legal maker, so 'a free string never type-checks' holds and the ✅ example is a real call.",
+      "plain_terms": {
+        "branded string": "a text type that only one function may create, so ordinary text cannot be passed where it is expected",
+        "union on control": "the event has two allowed shapes, and the value of control decides which one applies",
+        "tsc": "the TypeScript compiler, run here only to check types",
+        "instrumentsValue()": "the function from the Sentry spec (PR #191) that turns a score's tracks into a value such as drums,025,033",
+        "trackInstrument()": "the proposed one-track version: drums, or one track's General MIDI program in three digits, such as 025",
+        "@ts-expect-error": "a comment that tells TypeScript the next line must fail to compile; if it compiles, the check fails"
+      },
+      "central_claim_check": "Spiked with TypeScript 5.9.3 from web/node_modules (tsc --noEmit --strict). With Instrument as a branded string, the spec's ✅ example fails (a plain string is not an Instrument), and solo_all or layout without instrument fail (the key is required). The field table (line 251) says instrument is absent for solo all, mute all and the layout switch, so the type and the table disagree. The function that would make an Instrument ('its one-track twin', lines 275-276) has no name, and section 1 lists no such function. In the Sentry spec (PR #191), instrumentsValue() takes a list of tracks shaped { program: number; isPercussion: boolean } and returns a plain string, so the twin naturally takes one such track. web/app/play/TracksPopover.tsx confirms the controls: per-row render, solo, mute, the two transposes and the staff options, plus Solo all, Mute all and the layout switch in the footer.",
+      "contradicts": "none — checked section 5 (the control and instrument rows, the branded-string paragraph), section 1 (the score-facts.ts row), section 6 ('report.ts imports it from there; nothing else changes' stays true: a branded string is still a string to report.ts), section 8 step 4 (instrument is already a custom dimension) and section 9 (the Types test).",
+      "spike": {
+        "ran": true,
+        "what": "Type-checked scratch files with TypeScript 5.9.3 from web/node_modules (tsc --noEmit --strict). (a) The spec's sketch as written, with Instrument and Instruments as branded strings. (b) The proposed union on control, with trackInstrument() as the only maker of an Instrument: 5 calls that must compile and 8 that must fail, each failing one marked with @ts-expect-error so tsc itself reports any bad call that compiles. (c) The exact After block, taken from a scratch copy of the spec with all of Group C's Afters applied. The After text was applied to a scratch copy of the spec together with Group C's other Afters; the repo's own Prettier (print width 100), markdownlint-cli2 and cspell all pass on it.",
+        "result": "(a) The ✅ example fails: a plain string is not an Instrument. The ❌ example fails as intended (track is not a known key). Solo all and the layout switch without instrument fail: instrument is required. (b) tsc exits 0: the 5 good calls compile (solo and transpose_full with trackInstrument(), solo_all and layout without it, score_loaded with instrumentsValue()), and all 8 bad calls are errors: a plain string as the instrument; a one-track control without one; solo_all with one; the extra track key; the track's name as the instrument; an Instruments value as an Instrument; an unknown control; a plain string as instruments. (c) In the After block both ✅ lines compile, and only the ❌ line fails.",
+        "fix_holds": true
+      },
+      "cross_fix": [
+        "F-15 rewrites the same code block. This item's Afters are written on top of F-15's (the track() signature and the calls under their own comments); apply F-15 first.",
+        "F-6 (Group B) adds Solo and Mute clicks to the privacy test; with this fix those events carry instrument (drums for the fixture's drum tracks), which is what the test should expect.",
+        "FYI-2: if taken, its key list for mixer_change must cover both shapes of the union (control, on, instrument); the spike did that.",
+        "Plan note, from web/app/play/TracksPopover.tsx: Solo all and Mute all call the per-row applySolo and applyMute for every track (:422-429), and the playerReady handler calls them again after every reload (:271-279). The track() call must sit in the row's onSoloChange and onMuteChange and in the Solo all and Mute all handlers, not inside applySolo or applyMute; otherwise one Solo all press sends one 'solo' event per track, and a reload sends events nobody clicked."
+      ],
+      "synthesis_note": "Unique. Cheap to spike with tsc.",
+      "verified_by": "verify-C.json",
+      "raw_constituents": [
+        {
+          "raw_id": "coherence#3",
+          "reviewer": "coherence",
+          "title": "mixer_change type contradicts its field table and brand rule",
+          "severity": "P2",
+          "confidence": 75,
+          "autofix_class": "gated_auto",
+          "why_it_matters": "Copying the sketch gives a mixer_change type that cannot express solo all, mute all or the layout switch, because instrument is required while the field table says it is absent for those three. The checked example also passes the literal '025', which the paragraph below says can never type-check because Instrument is a branded string, and the function that mints an Instrument (\"its one-track twin\") is never named, so the example has nothing legitimate to call. A type test written from this sketch would start with a positive case that fails to compile.",
+          "suggested_fix": "Rewrite the mixer_change entry as a union on control: render, solo, mute, transpose_audio, transpose_full and staff carry `instrument: Instrument`; solo_all, mute_all and layout carry only `on`. Change the ✅ line so `instrument` comes from the one-track function, name that function `trackInstrument(track)`, and add it to the `web/lib/score-facts.ts` row of section 1 (Packages and files).",
+          "evidence": [
+            "mixer_change: { control: MixerControl; on: boolean; instrument: Instrument };",
+            "`instrument` | `drums` or a three-digit program, for the one track a change applies to; absent for solo all, mute all and the layout switch",
+            "track('mixer_change', { control: 'solo', on: true, instrument: '025' }); // ✅",
+            "`Instruments` and `Instrument` are branded strings that only `instrumentsValue()` and its one-track twin can make, so a free string never type-checks."
+          ]
+        }
+      ],
+      "triage_decision": {
+        "round": 6,
+        "invocation": 2,
+        "decision": "Apply",
+        "applied_in_commit": "9f455125",
+        "date": "2026-10-10",
+        "note": "Auto-resolved under the same permission. tsc-checked fix (5 good calls compile, 8 bad ones fail)."
+      },
+      "applied_in_commit": "9f455125",
+      "triage_rounds": [
+        {
+          "round": 6,
+          "invocation": 2,
+          "decision": "Apply",
+          "applied_in_commit": "9f455125",
+          "date": "2026-10-10",
+          "note": "Auto-resolved under the same permission. tsc-checked fix (5 good calls compile, 8 bad ones fail)."
+        }
+      ]
+    },
+    {
+      "id": "FYI-2",
+      "title": "Typed fields stop object literals only; track() forwards whatever object it is given",
+      "area": "FYI",
+      "severity": "P3",
+      "severity_as_filed": "P3",
+      "severity_plain": "worth fixing — small and cheap",
+      "severity_note": "Today's call sites will likely pass objects written inside the call, so nothing leaks at launch; the risk is a later change. Cheap to close.",
+      "confidence": 50,
+      "confidence_plain": "verified, but below the bar for action — an observation",
+      "route": "fyi",
+      "finding_type": "error",
+      "reviewers": ["feasibility"],
+      "recommended_action": "FYI",
+      "verdict": "CONFIRMED",
+      "correction": "",
+      "section": "## 5. Events (with ## 4. Google Analytics in code, where track() is described)",
+      "section_lines": "217-287 and 203-204",
+      "section_exists": true,
+      "quotes_verbatim": true,
+      "quotes": [
+        {
+          "quote": "Every field comes from a fixed list or is a number, so text from the file cannot reach Google.",
+          "verbatim": true,
+          "line": 220,
+          "note": "lines 220-221; matches after joining the line break"
+        },
+        {
+          "quote": "**`track(name, fields)`** sends `gtag('event', name, fields)` once started, and nothing before",
+          "verbatim": true,
+          "line": 203,
+          "note": "section 4"
+        },
+        {
+          "quote": "track('mixer_change', { control: 'solo', on: true, track: 'Lead Guitar' });",
+          "verbatim": true,
+          "line": 272,
+          "note": ""
+        }
+      ],
+      "scenario": "You open your own song file in Sydney and solo the track called 'Lead Guitar'. Months later, a change builds that event's fields in a small helper that also keeps the track's name for another use. It still compiles, and 'Lead Guitar' goes to Google with your click: exactly what the site promises never to send.",
+      "whats_wrong": "Section 5 promises that text from the file cannot reach Google, because every field is typed. TypeScript checks extra keys only on an object written inside the call. An object built first, spread in or returned by a helper can carry an extra key, such as a track name, and track() as specified forwards the whole object to Google. The privacy end-to-end case opens a file but presses no mixer control, so it would not catch this.",
+      "before": [
+        {
+          "lines": "203-204",
+          "text": "- **`track(name, fields)`** sends `gtag('event', name, fields)` once started, and nothing before —\n  no console warning, unlike `sendGAEvent`."
+        },
+        {
+          "lines": "375",
+          "text": "- `track()`: nothing before the start; `['event', name, fields]` after it."
+        }
+      ],
+      "after": [
+        {
+          "replaces_lines": "203-204",
+          "text": "- **`track(name, fields)`** calls `gtag('event', name, …)` once started, and nothing before — no\n  console warning, unlike `sendGAEvent`. It sends only the fields its event declares, copied by name\n  from a key list beside `AnalyticsEvents` that `typecheck` checks against it. An object built\n  elsewhere with an extra key, such as a track name, therefore sends nothing more."
+        },
+        {
+          "replaces_lines": "375",
+          "text": "- `track()`: nothing before the start; `['event', name, fields]` after it, without any key the event\n  does not declare."
+        }
+      ],
+      "proposed_fix": "track() copies only the keys its event declares, from a per-event key list kept beside AnalyticsEvents. tsc checks each list against the interface both ways (no declared field missing, no unknown key). The track() unit test checks that an extra key is not sent.",
+      "why_it_works": "The promise no longer depends on how each call site writes its object: whatever object arrives, only declared, typed fields leave. The cost is one short key list for each of the eleven events our code sends and about ten lines in track.ts, and the type check stops the lists drifting away from the interface.",
+      "plain_terms": {
+        "excess-property check": "TypeScript's error for a key the type does not declare; it runs only on an object written directly inside the call",
+        "spread": "copying all keys of one object into another, written ...object",
+        "key list": "a fixed list of the field names one event may send"
+      },
+      "central_claim_check": "Spiked with TypeScript 5.9.3 (tsc --strict). TypeScript checks for extra keys only on an object written directly inside the call. A fields object built first, merged in with a spread, or returned by a helper, each also carrying a track name, compiled with no error. Section 4 (line 203) says track() sends gtag('event', name, fields), and section 9 (line 375) tests for ['event', name, fields], so the object goes to Google as given. The privacy end-to-end case (lines 388-389) opens a file and checks Google's requests, but presses no mixer control, so it cannot see a name sent by a control.",
+      "contradicts": "none — checked section 4 (the track() bullet), section 5 (the promise on lines 220-221), section 9 (the track() unit test, the Types test, the Privacy case) and 'Extending later' (a second sender inside track(): the copy happens before any sender, so a second sender gets the same clean fields).",
+      "spike": {
+        "ran": true,
+        "what": "(c) A scratch .ts file type-checked with tsc --strict: the same track() signature, and mixer_change calls whose fields carry a track name in five ways. Then the proposed fix in a second file: a per-event key list that tsc checks against AnalyticsEvents in both directions, and a track() that copies only the listed keys. It was type-checked, run with Node 24, and type-checked again with two broken key lists. The After text was applied to a scratch copy of the spec together with Group C's other Afters; the repo's own Prettier (print width 100), markdownlint-cli2 and cspell all pass on it.",
+        "result": "Only the object written inside the call is rejected. Built first, spread in, returned by a helper, and the whole-mixer shape built first with an extra key: all four compile. With the fix, the built-first object still compiles, but what reaches the queue is control, on and instrument only; the track name is gone. tsc rejects a key list that misses a declared field, and one that names a key the event does not declare.",
+        "fix_holds": true
+      },
+      "cross_fix": [
+        "F-6 (Group B) adds Solo and Mute clicks to the privacy test. That catches a name sent by those two controls today, but not by a later change elsewhere; this fix closes it inside track() itself.",
+        "F-13: the key list for mixer_change must cover both shapes of the union (control, on, instrument); the spike did that.",
+        "F-14 edits the paragraph on lines 219-221; this item's After leaves that paragraph alone, so the two do not overlap.",
+        "F-15 moves track() under its own track.ts header; no conflict."
+      ],
+      "synthesis_note": "Anchor 50. Cheap to spike with tsc.",
+      "verified_by": "verify-C.json",
+      "raw_constituents": [
+        {
+          "raw_id": "feasibility#6",
+          "reviewer": "feasibility",
+          "title": "Typed fields catch literals only; track() forwards everything",
+          "severity": "P3",
+          "confidence": 50,
+          "autofix_class": "gated_auto",
+          "why_it_matters": "The promise that 'text from the file cannot reach Google' only holds where a call passes an object literal. TypeScript skips its excess-property check for an object that is built first, or merged in with a spread. So a fields object that also carries a track name still type-checks, and `track()` forwards the whole object to `gtag('event', …)`. If `track()` copies only the keys declared for that event, the promise holds for every call shape, for the cost of one key list per event. The privacy e2e case cannot catch this, because it covers opening a file, not every control.",
+          "suggested_fix": "In section 5, track() sends only the fields declared for that event. They are read from a per-event key list kept beside AnalyticsEvents, with the types derived from it; the fields object is never forwarded as given.",
+          "evidence": [
+            "Every field comes from a fixed list or is a number, so text from the file cannot reach Google.",
+            "**`track(name, fields)`** sends `gtag('event', name, fields)` once started, and nothing before",
+            "track('mixer_change', { control: 'solo', on: true, track: 'Lead Guitar' });"
+          ]
+        }
+      ],
+      "triage_decision": {
+        "round": 6,
+        "invocation": 2,
+        "decision": "Apply",
+        "applied_in_commit": "70b4a9e0",
+        "date": "2026-10-10",
+        "note": "Auto-resolved under the same permission. Spike: four leaking forms compiled before; with the key list, the track name never reached the queue."
+      },
+      "applied_in_commit": "70b4a9e0",
+      "triage_rounds": [
+        {
+          "round": 6,
+          "invocation": 2,
+          "decision": "Apply",
+          "applied_in_commit": "70b4a9e0",
+          "date": "2026-10-10",
+          "note": "Auto-resolved under the same permission. Spike: four leaking forms compiled before; with the key list, the track name never reached the queue."
+        }
+      ]
+    },
+    {
+      "id": "FYI-1",
+      "title": "Safari and iPhone keep Google Analytics' cookie 7 days, so returning visitors are undercounted",
+      "area": "FYI",
+      "severity": "P3",
+      "severity_as_filed": "P3",
+      "severity_plain": "worth fixing — small and cheap",
+      "severity_note": "Small and cheap: one line that prevents a wrong reading of the numbers.",
+      "confidence": 50,
+      "confidence_plain": "verified, but below the bar for action — an observation",
+      "route": "fyi",
+      "finding_type": "omission",
+      "reviewers": ["adversarial"],
+      "recommended_action": "FYI",
+      "verdict": "CONFIRMED_WITH_CORRECTION",
+      "correction": "The effect holds; the reason given is out of date. WebKit's 2019 rule capped cookies written by a script at a 7-day expiry (Intelligent Tracking Prevention, ITP 2.1). A 2022 WebKit release removed that cap and now deletes cookies written by a script, together with all other storage a script can write (localStorage too), when the site gets no click, tap or key press during 7 days of browser use. So a visitor who returns after a week without using the site still counts as new, and the same rule also deletes the saved privacy answer, so a visitor in Europe is asked again.",
+      "section": "## Why this exists",
+      "section_lines": "33-47",
+      "section_exists": true,
+      "quotes_verbatim": false,
+      "quotes": [
+        {
+          "quote": "Who comes — visits, new and returning, country, device, and where they came from.",
+          "verbatim": false,
+          "line": 38,
+          "note": "Fails the strict test only because the spec bolds the lead: '1. **Who comes** — visits, …'. The words are exact."
+        },
+        {
+          "quote": "\"Anonymously\" goes: Google Analytics' cookie is a lasting ID.",
+          "verbatim": true,
+          "line": 330,
+          "note": "section 7"
+        }
+      ],
+      "scenario": "You open Notation Hero on your iPhone every second Sunday to practise a drum part. Each time, Google Analytics counts you as a new visitor, because Safari deleted its cookie during the week you did not use the site. The 'returning visitors' number stays near zero, and it looks as if nobody comes back. If you are in Europe, the question also appears again each time.",
+      "whats_wrong": "Goal 1 counts new and returning visitors, and section 7 calls the cookie 'a lasting ID'. On Safari, and on iPhones and iPads, it is not: WebKit deletes cookies written by a script, such as `_ga`, and the site's localStorage after 7 days of browser use without the visitor using the site. Returning visitors are undercounted, the saved answer disappears, and the spec says neither.",
+      "before": [
+        {
+          "lines": "after 427",
+          "text": "(absent — Known limits has no line on Safari; the new bullet goes after 'Ad blockers', line 427)"
+        }
+      ],
+      "after": [
+        {
+          "replaces_lines": "new bullet after 427",
+          "text": "- **Safari forgets after a week.** Safari, and other browsers on an iPhone or iPad, delete cookies\n  written by a script, such as Google Analytics' `_ga`, and the site's `localStorage` after seven\n  days of browser use without a click, tap or key press on the site. A visitor who returns later\n  counts as new, so returning visitors are undercounted, and a visitor in Europe is asked again."
+        }
+      ],
+      "proposed_fix": "Add one Known-limits bullet naming the WebKit rule and its two effects: returning visitors undercounted, and the saved answer deleted.",
+      "why_it_works": "A low returning share on Safari and iPhones is then read as a browser limit, not as 'nobody comes back', and a question that reappears for a visitor in Europe is expected, not a bug.",
+      "plain_terms": {
+        "WebKit": "the browser engine inside Safari and, since iOS 14, inside every browser on an iPhone or iPad",
+        "ITP": "Intelligent Tracking Prevention, WebKit's limits on trackers",
+        "_ga": "Google Analytics' visitor cookie; a new `_ga` means a new visitor",
+        "localStorage": "the browser storage where section 2 keeps the visitor's answer"
+      },
+      "central_claim_check": "WebKit's tracking-prevention page today, section '7-Day Cap on All Script-Writeable Storage': 'ITP deletes all cookies created in JavaScript and all other script-writeable storage after 7 days of no user interaction with the website' (https://webkit.org/tracking-prevention/). The 2019 expiry cap: 'all persistent client-side cookies, i.e. persistent cookies created through document.cookie, are capped to a seven day expiry' (https://webkit.org/blog/8613/intelligent-tracking-prevention-2-1/). The 2020 rule for other storage, LocalStorage included: deleted 'after seven days of Safari use without user interaction on the site' (https://webkit.org/blog/10218/full-third-party-cookie-blocking-and-more/). The 2022 change from the cap to deletion: https://www.simoahava.com/privacy/first-party-cookies-webkit-revisited/ (14 November 2022; a secondary source quoting WebKit's documentation). Other iPhone and iPad browsers: since iOS 14 they get the same rules through WebKit's WKWebView (https://www.simoahava.com/privacy/intelligent-tracking-prevention-ios-14-ipados-14-safari-14/, secondary). `_ga` is written by script: in the R1 spike it appeared although every collect request was answered locally with no Set-Cookie header. Safari's deletion itself is (untested) here.",
+      "contradicts": "none — checked goal 1 (38), section 2's 'Kept in this browser' (130-132), section 7's 'a lasting ID' (330; still true outside WebKit browsers) and Known limits (420-431).",
+      "spike": {
+        "ran": true,
+        "what": "The R1 spike (Chromium, Google's real gtag.js, a made-up ID, every collect request answered locally) recorded the cookies after the first page view.",
+        "result": "`_ga` and `_ga_<ID>` were set although no response carried a Set-Cookie header, so gtag.js writes them by script — the kind WebKit deletes. Safari's 7-day deletion itself was not run: Playwright's WebKit build is not Safari, so it is (untested) and rests on WebKit's documentation.",
+        "fix_holds": true
+      },
+      "cross_fix": [
+        "F-1 — with F-1's fix, a refusal saved by a visitor outside Europe (through NH-349's link) is deleted by the same rule, after which that visitor gets 'everything by default' again. NH-349 should repeat this line."
+      ],
+      "synthesis_note": "Anchor 50.",
+      "verified_by": "verify-A.json",
+      "raw_constituents": [
+        {
+          "raw_id": "adversarial#6",
+          "reviewer": "adversarial",
+          "title": "Safari keeps the _ga cookie 7 days; returning undercounts",
+          "severity": "P3",
+          "confidence": 50,
+          "autofix_class": "gated_auto",
+          "why_it_matters": "Goal 1's new-versus-returning split will count too few returning visitors on Safari and on iPhones. Apple's WebKit limits cookies written by scripts, such as Google Analytics' _ga, to 7 days after the last visit, so anyone who comes back after a week is counted as new. Section 7's premise that the cookie is 'a lasting ID' holds only for other browsers. One known-limit line stops a low returning share from being read as 'nobody comes back'.",
+          "suggested_fix": "Add to Known limits: 'Safari and iPhone browsers keep Google Analytics' cookie for 7 days after the last visit, so a visitor who returns later counts as new.'",
+          "evidence": [
+            "Who comes — visits, new and returning, country, device, and where they came from.",
+            "\"Anonymously\" goes: Google Analytics' cookie is a lasting ID."
+          ]
+        }
+      ],
+      "triage_decision": {
+        "round": 6,
+        "invocation": 2,
+        "decision": "Apply",
+        "applied_in_commit": "46b9b3b5",
+        "date": "2026-10-10",
+        "note": "Auto-resolved under 'auto resolve any clear fix'; not put on a card. Uses the verified After plus, from the verify's cross-fix note and F-1 (applied), that a 'No' saved outside Europe through NH-349's link is deleted by the same rule, so that visitor is counted again."
+      },
+      "applied_in_commit": "46b9b3b5",
+      "quotes_note": "Every quote that fails strict matching fails only because the spec puts its opening words in bold; the words themselves match.",
+      "triage_rounds": [
+        {
+          "round": 6,
+          "invocation": 2,
+          "decision": "Apply",
+          "applied_in_commit": "46b9b3b5",
+          "date": "2026-10-10",
+          "note": "Auto-resolved under 'auto resolve any clear fix'; not put on a card. Uses the verified After plus, from the verify's cross-fix note and F-1 (applied), that a 'No' saved outside Europe through NH-349's link is deleted by the same rule, so that visitor is counted again."
+        }
+      ]
+    },
+    {
+      "id": "FYI-5",
+      "title": "Click IDs such as fbclid in the page address reach Google",
+      "area": "FYI",
+      "severity": "P3",
+      "severity_as_filed": "P3",
+      "severity_plain": "worth fixing — small and cheap",
+      "severity_note": "Small and cheap: one setting and one check; it keeps a third-party identifier out of Google Analytics.",
+      "confidence": 50,
+      "confidence_plain": "verified, but below the bar for action — an observation",
+      "route": "fyi",
+      "finding_type": "omission",
+      "reviewers": ["security-lens"],
+      "recommended_action": "FYI",
+      "verdict": "CONFIRMED",
+      "correction": "",
+      "section": "## 4. Google Analytics in code",
+      "section_lines": "170-215",
+      "section_exists": true,
+      "quotes_verbatim": true,
+      "quotes": [
+        {
+          "quote": "Google Analytics receives the page address with its `?` part — the campaign tags on a link you share",
+          "verbatim": true,
+          "line": 209,
+          "note": "spans lines 209-210"
+        },
+        {
+          "quote": "No address in `web/` carries anything of the visitor's.",
+          "verbatim": true,
+          "line": 211,
+          "note": "spans lines 211-212"
+        }
+      ],
+      "scenario": "You tap a link to Notation Hero that a friend shared on Facebook. Facebook adds its own click code to the address, such as '?fbclid=IwAR…'. Google Analytics receives the full address with that code, and the next page's 'came from' address carries it again, although the site only wants to know that you came from Facebook.",
+      "whats_wrong": "Section 4 keeps the address's '?' part for campaign tags and says no address in web/ carries anything of the visitor's. But links from Facebook, Google Ads and Microsoft Ads carry click IDs (fbclid, gclid, msclkid) in that same part, and Google Analytics 4 sends them unless they are listed for redaction. The Sentry spec already treats fbclid as data to keep out.",
+      "before": [
+        {
+          "lines": "209-212",
+          "text": "- **Addresses:** Google Analytics receives the page address with its `?` part — the campaign tags\n  on a link you share, which is how it reports where a visitor came from — and never the `#` part.\n  Sentry cuts addresses at `?` on purpose; only Google Analytics needs to know the source. No\n  address in `web/` carries anything of the visitor's."
+        },
+        {
+          "lines": "350-352",
+          "text": "3. **Enhanced measurement:** keep page views, including \"page changes based on browser history\n   events\". Turn off scrolls, outbound clicks, site search, video, file downloads (their link text\n   can carry a title) and form interactions."
+        },
+        {
+          "lines": "359-362",
+          "text": "6. **After the first production deploy, in the Realtime report:** a page view on `/`; **a page view\n   after clicking Play** — the one thing the spike could not show (if it is missing, the fallback in\n   section 4); an `open_file` and a `score_loaded` with their fields; and, with the browser's time\n   zone set to Berlin, the popup, with nothing reaching Google until \"Yes\"."
+        }
+      ],
+      "after": [
+        {
+          "replaces_lines": "209-212",
+          "text": "- **Addresses:** Google Analytics receives the page address with its `?` part — the campaign tags\n  on a link you share, which is how it reports where a visitor came from — and never the `#` part.\n  Click IDs that other sites add (`fbclid`, `gclid`, `msclkid`) are redacted in the browser before\n  sending (section 8, step 3). Sentry cuts addresses at `?` on purpose; only Google Analytics needs\n  to know the source. No address in `web/` carries anything of the visitor's."
+        },
+        {
+          "replaces_lines": "350-352",
+          "text": "3. **Enhanced measurement:** keep page views, including \"page changes based on browser history\n   events\". Turn off scrolls, outbound clicks, site search, video, file downloads (their link text\n   can carry a title) and form interactions. In the same Events section, **Redact data**: email on,\n   and the query parameters `fbclid`, `gclid` and `msclkid`."
+        },
+        {
+          "replaces_lines": "359-362",
+          "text": "6. **After the first production deploy, in the Realtime report:** a page view on `/`; **a page view\n   after clicking Play** — the one thing the spike could not show (if it is missing, the fallback in\n   section 4); an `open_file` and a `score_loaded` with their fields; and, with the browser's time\n   zone set to Berlin, the popup, with nothing reaching Google until \"Yes\". In the browser's network\n   panel, `/?utm_source=probe&fbclid=probe123` sends a collect request that keeps `utm_source` and\n   has no `probe123`."
+        }
+      ],
+      "proposed_fix": "Turn on Google Analytics' 'Redact data' for fbclid, gclid and msclkid in section 8, step 3; say so in section 4's Addresses; check it at step 6.",
+      "why_it_works": "Redaction runs in the visitor's browser before anything is sent, so the click IDs never reach Google, while the campaign tags that show where visitors came from still arrive.",
+      "plain_terms": {
+        "fbclid, gclid, msclkid": "click codes that Facebook, Google Ads and Microsoft Ads add to a link, to recognise the click",
+        "Redact data": "a Google Analytics web-stream setting that replaces chosen address parts in the browser before sending",
+        "dl, dr": "the page address and the \"came from\" address in each Google Analytics request",
+        "campaign tags": "the utm_… parts of a shared link that name its source"
+      },
+      "central_claim_check": "True. Google's '[GA4] Data redaction' (https://support.google.com/analytics/answer/13544947): 'client-side text redaction of email addresses and user-defined URL Query Parameters', which 'occurs client side … and before data is sent to Analytics', over page_location, page_referrer, page_path, link_url, video_url and form_destination; set under the web data stream's Events section → 'Redact data'; email redaction is on by default for new properties; web data streams only. Query parameters are redacted only when listed, so by default Google Analytics sends them. The spike (see below) showed it on the wire. The Sentry spec treats fbclid as data to keep out: its end-to-end case 7 opens /?fbclid=probe123#frag (PR #191, line 697), and its unit test scrubs /play?fbclid=abc#x (line 609). (untested): the referrer on a client-side navigation, which is how Next.js moves from / to /play — the made-up ID cannot show those page views.",
+      "contradicts": "none — checked section 4's Addresses (209-212: Sentry still cuts at '?'), section 8, steps 3 and 6 (350-352, 359-362), and section 9's Privacy case (388-389). The end-to-end lane uses a fake ID, so redaction, which comes from the real property's settings, can be checked only at step 6.",
+      "spike": {
+        "ran": true,
+        "what": "In the R1 spike (Chromium, Google's real gtag.js for a made-up ID with no redaction set, every collect request answered locally), the page was opened as /?utm_source=probe&fbclid=probe123&gclid=probe456&msclkid=probe789, then a full-page navigation went to /play.",
+        "result": "The first page_view's `dl` (page address) held all four parameters. After the navigation, the next page_view's `dr` (referrer) held the full first address again, click IDs included. The fix itself (redaction) needs the real property, so it is (untested).",
+        "fix_holds": null
+      },
+      "cross_fix": [
+        "Seen in passing, for FYI-4 and F-5 (other groups): every hit in the spike was a fetch POST to www.google-analytics.com/g/collect, and the user_engagement hit sent when a page is left also went to www.google.com/g/collect. Section 6's breadcrumb list names www.google.com/ccm only (line 300), and the end-to-end fixture must answer www.google.com/g/collect too."
+      ],
+      "synthesis_note": "Anchor 50.",
+      "verified_by": "verify-A.json",
+      "raw_constituents": [
+        {
+          "raw_id": "security-lens#3",
+          "reviewer": "security-lens",
+          "title": "Page address sends third-party click IDs to Google",
+          "severity": "P3",
+          "confidence": 50,
+          "autofix_class": "gated_auto",
+          "why_it_matters": "A visitor who arrives from a Facebook link brings an `fbclid` (Meta's identifier for that click) in the `?` part. Google Analytics stores it in the page address and in the next page view's referrer, and Google Analytics 4 does not remove it by default. The spec does not need it: it keeps the `?` part only for campaign tags. The project already treats this value as visitor data, since NH-124's end-to-end case 7 opens `/?fbclid=probe123` to prove Sentry never sends it. Google Analytics' own 'Redact data' setting replaces named query parameters in the browser before anything is sent, so campaign tags keep working and no code changes.",
+          "suggested_fix": "In section 8 step 3, add 'Redact data: email on, and the query parameters fbclid, gclid and msclkid'. In step 6, open `/?utm_source=probe&fbclid=probe123` and confirm that the collect request keeps `utm_source` and does not contain `probe123`. Change the Addresses sentence in section 4 to say the `?` part reaches Google with those identifiers redacted.",
+          "evidence": [
+            "Google Analytics receives the page address with its `?` part — the campaign tags on a link you share",
+            "No address in `web/` carries anything of the visitor's."
+          ]
+        }
+      ],
+      "triage_decision": {
+        "round": 6,
+        "invocation": 2,
+        "decision": "Apply",
+        "applied_in_commit": "734f00e5",
+        "date": "2026-10-10",
+        "note": "Auto-resolved under the same permission; not put on a card. Addresses and step 3 use the verified Afters; the step-6 probe sentence is merged into F-5's Network-panel check, as the anchor_note asked."
+      },
+      "applied_in_commit": "734f00e5",
+      "anchor_note": "ANCHOR CHANGED (2026-10-09, F-5 commit 09d09284): section 8 step 6 now ends with F-5's Network-panel check ('**In the browser's Network panel:** the first `collect` request carries `gcs=G101`, `npa=1` and `dt=Notation Hero`. The tests answer Google's script with an empty one, so this is the only check of what it sends.'). This item's step-6 Before no longer matches: merge its fbclid probe sentence into that new step 6 (the cross-fix rule). Its Addresses (209-212) and step 3 (350-352) Befores are unchanged.",
+      "triage_rounds": [
+        {
+          "round": 6,
+          "invocation": 2,
+          "decision": "Apply",
+          "applied_in_commit": "734f00e5",
+          "date": "2026-10-10",
+          "note": "Auto-resolved under the same permission; not put on a card. Addresses and step 3 use the verified Afters; the step-6 probe sentence is merged into F-5's Network-panel check, as the anchor_note asked."
+        }
+      ]
+    },
+    {
+      "id": "FYI-3",
+      "title": "leocaseiro's own production visits will be counted as visitors",
+      "area": "FYI",
+      "severity": "P3",
+      "severity_as_filed": "P3",
+      "severity_plain": "worth fixing — small and cheap",
+      "severity_note": "Small and cheap; it keeps the owner out of a small sample.",
+      "confidence": 50,
+      "confidence_plain": "verified, but below the bar for action — an observation",
+      "route": "fyi",
+      "finding_type": "omission",
+      "reviewers": ["product-lens"],
+      "recommended_action": "FYI",
+      "verdict": "CONFIRMED",
+      "correction": "",
+      "section": "## 8. Setup — done by leocaseiro, by hand",
+      "section_lines": "336-362",
+      "section_exists": true,
+      "quotes_verbatim": true,
+      "quotes": [
+        {
+          "quote": "**After the first production deploy, in the Realtime report:** a page view on `/`",
+          "verbatim": true,
+          "line": 359,
+          "note": "step 6"
+        },
+        {
+          "quote": "Visitors in Europe are asked first; everyone else gets everything by default, with no popup",
+          "verbatim": true,
+          "line": 58,
+          "note": "decision G3"
+        },
+        {
+          "quote": "**Reporting identity: device-based**, so thresholds do not hide small numbers.",
+          "verbatim": true,
+          "line": 348,
+          "note": "step 2"
+        }
+      ],
+      "scenario": "You run Notation Hero from Sydney. You open it after each deploy to check it, and you show it to people from your own laptop and phone. Google Analytics counts each of those visits like a stranger's, and on a small site your own visits become a large part of 'who comes', 'what they use' and the funnel.",
+      "whats_wrong": "Section 8 tunes the property for small numbers but never excludes the owner's own visits. Everyone outside Europe is counted by default (G3), so every check and every demo from the owner's devices lands in the reports.",
+      "before": [
+        {
+          "lines": "after 362",
+          "text": "(absent — section 8 ends at step 6)"
+        }
+      ],
+      "after": [
+        {
+          "replaces_lines": "new step 7 after 362",
+          "text": "7. **Then exclude your own visits.** In the web data stream: Configure tag settings → Show more →\n   Define internal traffic, with your own IP addresses (`traffic_type` `internal`). Then set the\n   \"Internal Traffic\" data filter to **Testing** for a few days, then **Active**. Only after step 6:\n   an active filter drops matching visits for good, and would hide step 6's own check."
+        }
+      ],
+      "proposed_fix": "Add a step 7 to section 8: after step 6, define internal traffic by the owner's IP addresses and move the 'Internal Traffic' data filter from Testing to Active.",
+      "why_it_works": "Google Analytics then drops the owner's visits before they reach any report, with no code, and the Testing state shows first that the rule matches only those visits.",
+      "plain_terms": {
+        "G3": "decision G3: visitors in Europe are asked first; everyone else gets everything by default, with no popup",
+        "Realtime report": "Google Analytics' live view of the last minutes, used in step 6",
+        "data filter": "a Google Analytics property setting that drops matching visits; in Testing it only labels them",
+        "traffic_type": "the label Google Analytics gives a visit that matches the internal-traffic rule"
+      },
+      "central_claim_check": "True. Google's help page 'Filter out internal traffic' (https://support.google.com/analytics/answer/10104470): the rule is made under the web data stream → Configure tag settings → Show more → Define internal traffic, with traffic_type 'internal' and IP matches (equals, begins with, range, regular expression…); the data filter has three states — Testing ('identifies matching data with the \"Test data filter name\" dimension'), Active ('makes permanent changes'), Inactive — and 'Once you apply a data filter, the effect on the data is permanent … the excluded data is never processed and will never be available in Analytics or BigQuery.' Google's 'Data filters' page (https://support.google.com/analytics/answer/10108813): 'Analytics evaluates data filters from the point of creation forward.' Section 8 has no such step, step 6 asks for production visits, G3 counts every visitor outside Europe by default, and the property's time zone is Australia/Sydney (340).",
+      "contradicts": "none — checked section 8, steps 1-6 (340-362), G3 (58) and Known limits; the new step comes after step 6, so step 6's Realtime check still sees the owner's visits.",
+      "spike": {
+        "ran": false,
+        "why": "It needs the real property and the owner's own IP addresses.",
+        "mark": "(untested)"
+      },
+      "cross_fix": [
+        "F-1 + NH-349 — once NH-349's link exists and F-1's fix holds, the owner can also choose 'Report errors only' in each of their own browsers; that covers a phone whose IP address changes, which an IP rule misses."
+      ],
+      "synthesis_note": "Anchor 50.",
+      "verified_by": "verify-A.json",
+      "raw_constituents": [
+        {
+          "raw_id": "product-lens#2",
+          "reviewer": "product-lens",
+          "title": "Owner's own production visits will be counted as visitors",
+          "severity": "P3",
+          "confidence": 50,
+          "autofix_class": "gated_auto",
+          "why_it_matters": "On a small personal demo, leocaseiro's own production visits can be a large share of what Google Analytics records: step 6's Realtime check, checks after later deploys, and demos from leocaseiro's own machine. Then 'who comes', 'what they use' and the funnel would partly describe the owner, not visitors. leocaseiro is in Sydney, which G3 (everyone outside Europe counted by default) always counts. Section 8 tunes the property for small numbers but excludes no internal traffic. Google Analytics' internal-traffic rule and data filter remove these visits with no code. The filter goes on after step 6, because an active filter discards matching data for good and would hide step 6's own check.",
+          "suggested_fix": "Add a step 7 to section 8: after step 6's checks, define internal traffic for leocaseiro's own IP addresses (the web data stream → Configure tag settings → Define internal traffic) and set the 'Internal Traffic' data filter to Active.",
+          "evidence": [
+            "**After the first production deploy, in the Realtime report:** a page view on `/`",
+            "Visitors in Europe are asked first; everyone else gets everything by default, with no popup",
+            "**Reporting identity: device-based**, so thresholds do not hide small numbers."
+          ]
+        }
+      ],
+      "triage_decision": {
+        "round": 6,
+        "invocation": 2,
+        "decision": "Apply",
+        "applied_in_commit": "44e6920b",
+        "date": "2026-10-10",
+        "note": "Auto-resolved under the same permission; not put on a card. The verified step 7 plus one sentence from its cross-fix note: on a phone, whose IP address changes, choose 'Report errors only' through NH-349's link."
+      },
+      "applied_in_commit": "44e6920b",
+      "triage_rounds": [
+        {
+          "round": 6,
+          "invocation": 2,
+          "decision": "Apply",
+          "applied_in_commit": "44e6920b",
+          "date": "2026-10-10",
+          "note": "Auto-resolved under the same permission; not put on a card. The verified step 7 plus one sentence from its cross-fix note: on a phone, whose IP address changes, choose 'Report errors only' through NH-349's link."
+        }
+      ]
+    },
+    {
+      "id": "R1",
+      "source": "adversarial",
+      "text": "'Extending later' tells NH-349 that 'a consent update to denied' stops Google Analytics. Google's consent-mode help page says a loaded tag with analytics_storage denied keeps sending cookieless pings, which are the pings G3 rejected as needing consent. NH-349 (out of scope here) will therefore need to stop the tag, not only update consent.",
+      "verdict": "CONFIRMED",
+      "correction": "",
+      "scenario": "Later, a 'Privacy choices' link (NH-349) lets you change 'Yes' to 'No' while the player is open. This spec tells that ticket to send Google a 'consent: denied' update and stop sending events. You press 'No' and keep practising. When you close the tab, Google Analytics still sends one more report about your visit, only without its cookie — the kind of report this spec's G3 decided also needs consent.",
+      "whats_wrong": "'Extending later' tells NH-349 that changing to 'No' stops Google Analytics with 'a consent update to denied, and no more events'. A Google tag that is already loaded keeps sending cookieless pings after that update: in the spike, a user_engagement hit each time the page is left, with no call from our code. G3 rejected those pings because EU guidance says they need consent too.",
+      "central_claim_check": "True. Google's 'Consent mode on websites and mobile apps' (https://support.google.com/analytics/answer/9976101): with analytics_storage denied the tag 'Will not read or write first-party analytics cookies' and 'cookieless pings will be sent to Google Analytics'. Google's consent-mode concepts page (https://developers.google.com/tag-platform/security/concepts/consent-mode): 'While consent is denied, the Google tags send measurements without cookies.' Neither page describes an update from granted to denied after the tag has loaded; the spike did, and the tag kept sending. Google's switch to stop the tag (https://developers.google.com/tag-platform/security/guides/privacy, updated 2026-07-30): window['ga-disable-MEASUREMENT_ID'] = true 'turns off the Google tag from sending data', and it 'must be set before any calls to gtag() are made'.",
+      "spike": {
+        "ran": true,
+        "what": "A scratch Node script drove Playwright 1.61.1's Chromium from web/node_modules. It loaded Google's real gtag.js for a made-up ID, fetched through Playwright's route.fetch() (the only network traffic: GET requests for the script), with the spec's consent default and settings. Every collect request was answered locally (204) and recorded; Chromium's resolver mapped every other host to NOTFOUND, and no other request was seen. Runs: (A) consent update to denied, then one gtag('event'); (B) consent update to denied, no more calls from our code, then the page is left; (C) consent update to denied plus window['ga-disable-G-…'] = true, set after the tag had loaded, then one gtag('event') and the page is left.",
+        "result": "(A) Before the update: page_view and an event, gcs=G101, the cookie's client ID. After it: the event was still sent, gcs=G100, with a new temporary client ID; leaving the page sent user_engagement (gcs=G100) to www.google-analytics.com/g/collect and www.google.com/g/collect. (B) With no call from our code, leaving the page still sent user_engagement (gcs=G100) to both hosts. (C) After ga-disable: no request at all — neither the event nor the hit on leaving. In every run the `_ga` and `_ga_<ID>` cookies stayed.",
+        "fix_holds": true
+      },
+      "before": [
+        {
+          "lines": "416-418",
+          "text": "- **NH-349's link** reuses `PrivacyChoices` and `saveChoice()`. Changing to \"No\" must stop Google\n  Analytics (a consent update to denied, and no more events) and close Sentry for the rest of the\n  visit."
+        }
+      ],
+      "after": [
+        {
+          "replaces_lines": "416-418",
+          "text": "- **NH-349's link** reuses `PrivacyChoices` and `saveChoice()`. Changing to \"No\" must stop Google\n  Analytics for the rest of the visit. A consent update to denied is not enough: the loaded tag\n  still sends a cookieless `user_engagement` hit when the page is left (spike, 2026-10-08). So the\n  link also sets `window['ga-disable-<ID>'] = true` and sends no more events. Google documents that\n  switch as set before any `gtag()` call, so NH-349's test must prove no hit follows a \"No\". The\n  link must also close Sentry for the rest of the visit."
+        }
+      ],
+      "options": [],
+      "recommendation": "",
+      "flip_condition": "",
+      "proposed_fix": "Tell NH-349 to stop the tag, not only update consent: send the update, set window['ga-disable-<ID>'] = true, send no more events, and prove in a test that no hit follows a 'No'.",
+      "why_it_works": "In the spike, setting the switch after the tag had loaded stopped every later hit, including the automatic one sent when the page is left. A test is still needed, because Google documents the switch as set before any gtag() call. On later page loads, allowed() keeps Google Analytics from starting at all.",
+      "plain_terms": {
+        "cookieless ping": "a Google Analytics request sent without its cookie, with a temporary visitor ID; the spike saw it as gcs=G100",
+        "gcs": "the consent code in each Google Analytics request: G101 = ad storage denied, analytics granted; G100 = both denied",
+        "user_engagement": "an event the Google tag sends by itself when a page is left, with the time spent on it",
+        "ga-disable-<ID>": "Google's documented switch, window['ga-disable-<measurement ID>'] = true, that stops the tag sending data",
+        "G3": "decision G3: Europe is asked first; it rejected Google's 'advanced' consent mode because its cookieless pings need consent too",
+        "NH-349": "the Jira ticket for a \"Privacy choices\" link that lets any visitor, in or outside Europe, change their answer later; status To Do (Jira, read 2026-10-08)"
+      },
+      "severity": "P3",
+      "cross_fix": [
+        "F-1 — F-1 makes a 'No' hold on the next page loads; this fix stops the tag on the page where the answer changes. NH-349 needs both.",
+        "The `_ga` cookies stay after a 'No' (spike). They are not read again once Google Analytics no longer starts; deleting them is a choice for NH-349's plan, not part of this fix.",
+        "Seen in passing (FYI-4, F-5): the hit sent when a page is left also goes to www.google.com/g/collect, a host section 6's breadcrumb list (line 300, 'www.google.com/ccm') does not cover.",
+        "Seen in passing (F-5, a committed copy of gtag.js): the copy saved on 2026-10-05, served offline for every script request, asked for a second script (/gtag/js?id=…&cx=c&gtm=…) and then sent no hit and set no cookie; Google's live script, fetched through route.fetch(), worked at once. A committed copy would need that second script too, and a 3-day-old copy already behaved differently."
+      ],
+      "verified_by": "verify-A.json",
+      "triage_decision": {
+        "round": 6,
+        "invocation": 2,
+        "decision": "Apply",
+        "applied_in_commit": "ed330aa0",
+        "date": "2026-10-10",
+        "note": "Auto-resolved under the same permission; not put on a card. Spiked: ga-disable set after the tag had loaded stopped every later hit."
+      },
+      "triage_rounds": [
+        {
+          "round": 6,
+          "invocation": 2,
+          "decision": "Apply",
+          "applied_in_commit": "ed330aa0",
+          "date": "2026-10-10",
+          "note": "Auto-resolved under the same permission; not put on a card. Spiked: ga-disable set after the tag had loaded stopped every later hit."
+        }
+      ],
+      "applied_in_commit": "ed330aa0"
     }
   ]
 }
