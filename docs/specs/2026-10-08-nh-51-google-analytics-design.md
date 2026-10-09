@@ -501,6 +501,11 @@ hands Google, in `window.dataLayer`; what Google's script sends is checked by ha
   leocaseiro accepted this on 2026-10-09: the app has no visitors yet, and it is published only
   after this ticket is live.
 - **Ad blockers** stop Google Analytics, as they stop Sentry; those visitors are not counted.
+- **Safari forgets after a week.** Safari, and other browsers on an iPhone or iPad, delete cookies
+  written by a script, such as Google Analytics' `_ga`, and the site's `localStorage` after seven
+  days of browser use without a click, tap or key press on the site. A visitor who returns later
+  counts as new, so returning visitors are undercounted. The saved answer goes too: a visitor in
+  Europe is asked again, and one elsewhere who said "No" through NH-349's link is counted again.
 - **The home note is on `/` only.** A visitor who opens `/play` directly does not see it; in Europe,
   the popup still asks.
 - **Nothing from before an answer** is reported in Europe: an error in the first seconds is lost.
