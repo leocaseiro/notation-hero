@@ -78,7 +78,7 @@ No new dependency: the loader is our own (G2).
 | `web/lib/analytics/events.ts`   | the typed event list (section 5)                                                                        |
 | `web/lib/analytics/start.ts`    | `startAnalytics()` (section 4)                                                                          |
 | `web/lib/analytics/track.ts`    | `track()`: sends one event, or nothing until Google Analytics has started                               |
-| `web/lib/score-facts.ts`        | `instrumentsValue()`, moved out of Sentry's `report.ts` (section 6)                                     |
+| `web/lib/score-facts.ts`        | `instrumentsValue()`, moved out of Sentry's `report.ts` (section 6), and `trackInstrument()`            |
 | `web/app/PrivacyChoices.tsx`    | the popup (section 3)                                                                                   |
 | `web/app/privacy/page.tsx`      | the privacy notice (section 7)                                                                          |
 | `web/e2e/google-analytics.ts`   | the shared fixture: answers Google's hosts locally (an empty `gtag.js`) and records every request       |
@@ -280,7 +280,9 @@ export interface AnalyticsEvents {
     track_count: number;
     instruments: Instruments;
   };
-  mixer_change: { control: MixerControl; on: boolean; instrument: Instrument };
+  mixer_change:
+    | { control: OneTrackControl; on: boolean; instrument: Instrument } // one track
+    | { control: 'solo_all' | 'mute_all' | 'layout'; on: boolean }; // the whole mixer
   // …the rest of the table
 }
 
@@ -288,12 +290,15 @@ export interface AnalyticsEvents {
 export function track<E extends keyof AnalyticsEvents>(event: E, fields: AnalyticsEvents[E]): void;
 
 // a call site, such as TracksPopover.tsx
-track('mixer_change', { control: 'solo', on: true, instrument: '025' }); // ✅
+track('mixer_change', { control: 'solo', on: true, instrument: trackInstrument(leadGuitar) }); // ✅
+track('mixer_change', { control: 'solo_all', on: true }); // ✅
 track('mixer_change', { control: 'solo', on: true, track: 'Lead Guitar' }); // ❌ a type error
 ```
 
 `Instruments` and `Instrument` are branded strings that only `instrumentsValue()` and its one-track
-twin can make, so a free string never type-checks.
+twin `trackInstrument()` can make, so a free string never type-checks. A `mixer_change` for one
+track (render, solo, mute, either transpose, staff) names that track's instrument; solo all, mute
+all and the layout switch act on the whole mixer and carry none.
 
 `score_loaded` fires once for each score that reaches the screen: the bundled beat once per player
 mount, and never again after a visitor's file replaces it. AlphaTab's own score-loaded event also
