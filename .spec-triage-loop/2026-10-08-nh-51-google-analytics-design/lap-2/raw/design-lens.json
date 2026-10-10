@@ -1,0 +1,68 @@
+{
+  "reviewer": "design-lens",
+  "findings": [
+    {
+      "title": "Text links and Details button fail the 44 px gate",
+      "severity": "P2",
+      "section": "7. The copy — home-note links (line 355) and privacy-notice links (line 357); 3. The popup — Details (line 186); 9. Testing — accessibility scans (lines 486–489)",
+      "why_it_matters": "The existing landing accessibility case (`expectHitAreas` in `web/e2e/a11y.e2e.ts`) fails any `button` or `a[href]` under 44 × 44 px, and the home note gains two plain text links that render about 18 px tall (158 × 18 and 88 × 18 in a mock of the page), so that case goes red on the first CI run. The popup's Details button and the links inside it face the same gate in the new scans, which follow \"every other axe case in the lane\", yet the spec fixes 44 px only for the three answers. Settling it here keeps the approved words and builds the links the way Play on the same page is already built (a link `Button` with `min-h-11`), instead of leaving the implementer to redraw them at the last step or loosen a gate whose owner enforces it on purpose.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "In sections 3 and 7, make \"Details\", \"How Google uses data ↗\" and \"Privacy notice\" (home note, popup Details and /privacy) design-system `Button`s in the link variant, each with `min-h-11`, set in a row below the sentence they belong to; in section 9, say that the open-popup scan expands Details first (as the Settings case opens every group) and that the hit-area gate runs on `/`, on the open popup and on `/privacy`.",
+      "confidence": 100,
+      "evidence": [
+        "How Google uses data ↗ · Privacy notice",
+        "An axe scan with the popup open, in light only, like every other axe case in the lane",
+        "the design system's `Button`, one variant for all three, each at least 44 px tall"
+      ]
+    },
+    {
+      "title": "No height limit lets the card push answers off-screen",
+      "severity": "P2",
+      "section": "3. The popup — Where (lines 169–171); 9. Testing — No overlap (line 467)",
+      "why_it_matters": "At 320 × 256 px (a 1280 × 1024 window at 400% zoom, the width WCAG's reflow rule 1.4.10 tests) the stacked card measures about 286 px in a mock built from the design system's own CSS, so most of its question sits above the window; with Details open (about 446 px) no answer is fully on screen either. A fixed card cannot be scrolled, so a low-vision visitor in Europe loses the question, then the answers, and the page behind the card is covered as well. The spec bounds the card's width (\"At most 560 px wide\") but never its height; capping it and letting the card scroll inside itself keeps every answer reachable at any window size.",
+      "finding_type": "omission",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "In \"Where\", cap the card's height at the window's height less its bottom offset and a 16 px margin, and let it scroll inside itself beyond that (`max-height` with `overflow-y: auto`); add a 320 × 256 case on `/` in Berlin to section 9 that opens Details, scrolls inside the card and presses each answer.",
+      "confidence": 75,
+      "evidence": [
+        "At most 560 px wide; on a phone, the full width less the 16 px gutters, with the buttons stacked.",
+        "no backdrop and no focus trap"
+      ]
+    },
+    {
+      "title": "An answer hides the card with no confirmation",
+      "severity": "P3",
+      "section": "3. The popup — Answering (line 185) and Screen readers (line 190)",
+      "why_it_matters": "A screen-reader user who presses an answer is on a button that disappears with the card, and nothing says the choice was saved. The spec makes the card's arrival audible through a live region that exists first, but gives the card's departure no counterpart, and section 9 tests none. The same polite region can carry a one-line confirmation without a new component; the wording is new copy, so it is leocaseiro's to approve.",
+      "finding_type": "omission",
+      "autofix_class": "manual",
+      "suggested_fix": "In \"Answering\", add that the live region then receives a short confirmation that names the saved answer by its button label (for example \"Saved: Report errors only\"), and add that line to the `PrivacyChoices` unit test.",
+      "confidence": 50,
+      "evidence": [
+        "saves the choice, hides the card and starts what it allows at once — no reload",
+        "when the card appears, the region receives the question"
+      ]
+    },
+    {
+      "title": "The card can cover the privacy notice it links to",
+      "severity": "P3",
+      "section": "7. The copy — Privacy notice page (line 357); 3. The popup — Where (line 169); 9. Testing — No overlap (line 467)",
+      "why_it_matters": "Visitors in Europe are sent to `/privacy` to read before they answer, yet the spec gives that page no layout and no rule for the card on it, and the card shows on every page. Built on the other pages' centred skeleton (`min-h-dvh`, one screen tall), the page loses its last 4 of 10 lines behind the card at 375 × 667 and 6 of 11 at 360 × 640 in a mock, including the \"change your answer\" sentence and the Google link, and it cannot scroll them clear. A top-aligned page with room at the bottom for the card shifts nothing when the card appears, because nothing on it is centred.",
+      "finding_type": "omission",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "In section 7, specify `/privacy` as a top-aligned page that scrolls, not the centred layout of the other pages, with bottom padding that lets its last line scroll above the card; in section 9, run the no-overlap case on `/privacy` at 375 × 667 and check that the last line can be scrolled clear of the card.",
+      "confidence": 75,
+      "evidence": [
+        "Privacy notice (new page, /privacy, linked from the home note and the popup's Details):",
+        "renders `<PrivacyChoices />` first inside `<body>`, before the page",
+        "It returns on every page load until answered."
+      ]
+    }
+  ],
+  "residual_risks": [
+    "The card's stacking order against the popovers is unset, and the two meet on common windows: the Tracks popover (32 rem wide, opens upward from the transport row's right end, `z-50`) and the 560 px centred card both sit just above the row and overlap on any window narrower than about 1,650 px (at 1280 px: card 360–920, popover 736–1248). A card given a z-index above 50 would cover part of the mixer's footer (Master volume and the layout switch) until the visitor answers, and the no-overlap case, which checks only ▶ and the row, would not see it.",
+    "On `/` nothing tests the card against the page's own content. In a mock with NH-124's (the Sentry ticket's) note and the new links, the stacked phone card (about 266–286 px) hides the whole note at 375 × 667, covers 20 px of Play at 360 × 640 and 27–35 px of it on a phone held sideways. A visitor in Europe on a small phone must answer before reading the Google disclosure or pressing Play, which cuts against the \"Non-blocking\" promise behind G7 (the decision to use a floating card rather than a centred dialog that \"blocks the demo\")."
+  ],
+  "deferred_questions": []
+}

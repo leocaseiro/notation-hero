@@ -1,0 +1,38 @@
+{
+  "reviewer": "feasibility",
+  "findings": [
+    {
+      "title": "Tempo and number-field edits send an event per tick",
+      "severity": "P2",
+      "section": "## 5. Events — the event table (`tempo_change`, `setting_change`) and its 'Sliders send their final value only' rule",
+      "why_it_matters": "Holding the header's tempo + button from 100 to 140 BPM records about forty `tempo_change` events, one per intermediate `speed_percent`, and typing a value into a Settings number field records one `setting_change` per keystroke, so both events count keystrokes instead of edits and skew the 'what they use' numbers the Goal asks for. The cause is in the controls: client/'s TempoControl (a Base UI NumberField) calls `onSpeedChange` on every auto-repeat tick (about every 60 ms), every wheel notch and every typed digit. SettingRow calls `onChange` on every keystroke in its 36 `number` rows and on every picker movement in its 6 `color` rows. Section 1 puts one `track()` at each of those call sites. The spec's only guard, 'Sliders send their final value only', covers sliders, which client/'s useSliderDraft already commits once per gesture. TempoControl's own edit-end signal (a 1-second settle) is internal and not exposed, and client/ is a non-goal, so the settling has to happen in web/lib/analytics/.",
+      "finding_type": "omission",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "In section 5, extend the final-value rule to these two events. `tempo_change` and `setting_change` are sent through a settle helper in `web/lib/analytics/`. The helper keeps the latest fields for each control (the event name plus its `setting` key) and sends them once: 1 second after the last change, which is TempoControl's own edit-settle time, or immediately on `pagehide`. A held stepper, a wheel scrub, typed digits and a colour-picker drag then each send one event carrying the final value, and `client/` stays untouched. Add a section 9 unit case: a burst of changes to one control sends one event with the last value.",
+      "confidence": 75,
+      "evidence": [
+        "Sliders send their final value only; seeking and volume are not tracked.",
+        "The call sites in section 5, under `web/app/play/`: one `track()` each.",
+        "the speed is set",
+        "a row in the Settings popover changes",
+        "**Not `client/`.**"
+      ]
+    },
+    {
+      "title": "The popup shot trips the pinned ten-shot guard",
+      "severity": "P3",
+      "section": "## 9. Testing — Screenshots and accessibility (the one new popup shot), with ## 1. Packages and files — Changed files",
+      "why_it_matters": "The required `quality` job fails as soon as the popup shot lands. `tooling/workflow-guards.test.mjs` pins `EXPECTED_SHOTS = 10` and asserts that `web/e2e` declares exactly that many `toHaveScreenshot` names. When it fails, it says 'bump this and the prose together', meaning the 'ten' that AGENTS.md, `web/README.md`, `client/README.md` and `docs/runbooks/vr-a11y-testing.md` state. Section 1's changed files and section 10's documents list neither the guard nor those files. A plan built from those lists will therefore leave a failing required check, and five stale shot counts, to be discovered at push time.",
+      "finding_type": "omission",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "Add to section 1's changed files: `tooling/workflow-guards.test.mjs` (`EXPECTED_SHOTS` 10 → 11), plus the shot count ('ten' → 'eleven') in `AGENTS.md`, `web/README.md`, `client/README.md`, `docs/runbooks/vr-a11y-testing.md` and the L13 row of `docs/decisions/decision-registry.md`.",
+      "confidence": 100,
+      "evidence": [
+        "One new shot, in `Europe/Berlin`: `/play` with the popup, at the lane's 1280 × 900.",
+        "Screenshot baselines: `/` (the new note) and one new shot with the popup (section 9)."
+      ]
+    }
+  ],
+  "residual_risks": [],
+  "deferred_questions": []
+}

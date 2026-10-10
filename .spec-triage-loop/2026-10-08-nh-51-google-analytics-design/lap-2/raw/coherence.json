@@ -1,0 +1,85 @@
+{
+  "reviewer": "coherence",
+  "findings": [
+    {
+      "title": "setting_change overlaps tempo, loop and volume rules",
+      "severity": "P2",
+      "section": "5. Events - event table rows setting_change, tempo_change and loop_toggle (lines 262, 265, 267) and the intro sentence on sliders and volume (line 253)",
+      "why_it_matters": "A literal build sends different events for the same action depending on which control the visitor used: a speed or Loop change in the Settings popover would be a `setting_change`, while the same change from the header tempo control or the transport row is a `tempo_change` or `loop_toggle`. The popover's three volume rows would also send `setting_change`, although the section says volume is not tracked. The popover's Player group holds Playback speed, Master volume, Metronome volume, Count-in volume and Loop rows (`web/lib/alphatab/settings-schema.ts`), and `PlayerShell.tsx` routes each to a single writer that a second control also uses, so tempo and loop counts would split across two events. Saying which event those five rows send removes both the overlap and the contradiction.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "In the event table, narrow the `setting_change` trigger to Settings popover rows that no other event covers and that are not volume rows (the intro's 'volume is not tracked' then excludes Master, Metronome and Count-in volume), and add the popover's Playback speed row to the `tempo_change` trigger and its Loop row to the `loop_toggle` trigger.",
+      "confidence": 75,
+      "evidence": [
+        "Sliders send their final value only; seeking and volume are not tracked.",
+        "a row in the Settings popover changes",
+        "the speed is set",
+        "the row's fixed key in `settings-schema.ts`, such as `player.enableCursor`"
+      ]
+    },
+    {
+      "title": "Notice says one cookie; the spike saw two",
+      "severity": "P2",
+      "section": "7. The copy - privacy notice text (line 360), with the popup's first line in 3. The popup (line 161), the home note (line 352) and the spike table (line 562)",
+      "why_it_matters": "The public privacy notice would tell visitors that Google Analytics 'sets a cookie (_ga)', yet this spec's own spike recorded two cookies, `_ga` and `_ga_<ID>`, so the one page meant to carry 'the cookie' for an informed 'Yes' under-states what is stored. The popup's '(with a cookie)' and the home note's '(it uses a cookie)' repeat the singular. Naming both cookies in the notice and using the plural in the two short lines makes the copy match evidence the spec already holds.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "In the privacy notice, replace 'sets a cookie (_ga)' with 'sets two cookies (_ga and _ga_ followed by the measurement ID)'; in the popup's first line and in the home note, change 'a cookie' to 'cookies'.",
+      "confidence": 75,
+      "evidence": [
+        "sets a cookie (_ga)",
+        "`_ga`, `_ga_<ID>`",
+        "(with a cookie)",
+        "(it uses a cookie)"
+      ]
+    },
+    {
+      "title": "NH-349 stop rule omits 'Report errors only'",
+      "severity": "P3",
+      "section": "Extending later - the NH-349 link bullet (lines 507-512), against the answers table in 2. The privacy choice (line 118)",
+      "why_it_matters": "NH-349 (the ticket for the 'Privacy choices' link) is told only that changing to 'No' must stop Google Analytics for the rest of the visit, and its test must prove no hit follows a 'No'. Switching from 'Yes' to 'Report errors only' through the same link withdraws the same Google Analytics consent, since section 2's table gives both answers no Google Analytics, and setup step 7 sends the owner to exactly that answer on a phone. As written, that switch could leave the loaded tag sending cookieless pings, the kind decision G3 (ask Europe first, reject Google's advanced consent mode) ruled out, and no test would catch it.",
+      "finding_type": "omission",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "In 'Extending later', say that changing to 'Report errors only' or 'No' must stop Google Analytics for the rest of the visit, require NH-349's test to prove that no hit follows either answer, and keep 'close Sentry for the rest of the visit' for 'No' alone.",
+      "confidence": 75,
+      "evidence": [
+        "Changing to \"No\" must stop Google",
+        "NH-349's test must prove no hit follows a \"No\"",
+        "choose \"Report errors only\" through NH-349's \"Privacy choices\" link",
+        "Answered \"Report errors only\""
+      ]
+    },
+    {
+      "title": "The `sample` instruments value has no allowed maker",
+      "severity": "P3",
+      "section": "5. Events - Fields table row `instruments` (line 277) and the branded-string paragraph under the events.ts sketch (lines 313-316)",
+      "why_it_matters": "The `score_loaded` call for the bundled beat has to carry `instruments` = `sample`, but the paragraph under the sketch says only `instrumentsValue()` and its one-track twin `trackInstrument()` can make an `Instruments` value, and neither can: `instrumentsValue()` takes a list of tracks, and the Sentry plan on PR #191 sets `sample` as a separate literal when the player mounts. An implementer will either cast the string, which defeats the 'a free string never type-checks' guarantee on the field that keeps text out of Google, or invent a third maker the spec never mentions.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "In section 5's branded-string paragraph and in the `score-facts.ts` row of section 1, name a third maker: `score-facts.ts` also exports the bundled beat's `sample` value, typed as `Instruments`, and `score_loaded` for the beat uses it.",
+      "confidence": 75,
+      "evidence": [
+        "branded strings that only `instrumentsValue()` and its one-track twin `trackInstrument()` can make, so a free string never type-checks",
+        "`drums` first, then each General MIDI program in three digits, such as `drums,025,033`; or `sample`."
+      ]
+    },
+    {
+      "title": "File size is sent finer to Google than to Sentry",
+      "severity": "P3",
+      "section": "5. Events - Fields table row `file_size_kb` (line 274), with `error_code` (line 278)",
+      "why_it_matters": "The Sentry implementation plan on PR #191, written after this spec and approved by the owner in its plan review, rounds the file size it sends up to the next power of two because an exact size plus the file type 'could single out a widely shared file'. This spec sends `file_size_kb`, rounded only to whole KB, to Google Analytics together with `file_type`, `track_count` and `instruments` on every open, tied to a cookie ID and kept 14 months, so the same risk is larger there. The two channels now disagree on how exact a file's size may be and the spec does not say why Google Analytics may be finer; the owner needs to pick one rule, either rounding `file_size_kb` the same way or recording why not.",
+      "finding_type": "omission",
+      "autofix_class": "manual",
+      "suggested_fix": null,
+      "confidence": 50,
+      "evidence": [
+        "the size, rounded to whole KB",
+        "the open failures Sentry also sends the file's type and size with"
+      ]
+    }
+  ],
+  "residual_risks": [
+    "The landing case of `web/e2e/a11y.e2e.ts` runs a hit-area scan over every `a[href]` on `/` and fails any under 44 px (only toast close buttons and mixer buttons are exempt). The two inline links the new home note adds ('How Google uses data' and 'Privacy notice') would fail it unless they are sized as 44 px targets or the gate changes; section 3 states the 44 px rule for the popup's buttons only."
+  ],
+  "deferred_questions": []
+}
