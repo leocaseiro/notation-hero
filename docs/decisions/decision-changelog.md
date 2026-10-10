@@ -215,6 +215,11 @@ new tests, the one change the triage could not run.
   also warns against pulling Production variables into `web/`: they include the production DSN, so
   `pnpm dev` would report into the production project.
 
+**The plan review ends after lap 2** (leocaseiro, 2026-10-10). Neither lap left a P0 or P1 open,
+so the loop's no-progress rule stopped it and asked; lap 2's review was not clean only because of
+the pin above, which was run both ways before it landed. Every change in both laps was checked by
+running code. NH-124 moves to implementation.
+
 **Registry:** L11-sentry points at the spec; L11-srcmap reworded (D4); L11-envsecret ⛔ superseded
 and F7-sentry rewritten, because the source-map upload runs inside Vercel's build rather than a
 GitHub Actions job.

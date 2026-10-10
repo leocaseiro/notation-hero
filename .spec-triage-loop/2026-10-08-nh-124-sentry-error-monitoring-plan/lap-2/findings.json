@@ -268,7 +268,7 @@
     "Triage (2026-10-10): PF-9 to PF-13 were reported as applied and kept; PO-3 and PO-4 were reported as FYI, with no change; the owner added nothing on the [Q-add] card."
   ],
   "resume": {
-    "status": "Lap 2 triaged on 2026-10-10. Next: step 7. Neither lap left an unresolved P0 or P1 (0 -> 0), so the no-progress bound fires and the choice goes to the owner.",
+    "status": "The plan review ended after lap 2 (2026-10-10), and NH-124 is in CODE. Next: implement Tasks 1-17 of the plan.",
     "plan_path_from_root": ".claude/worktrees/nh-320-vr-spec-lap-4-92e22a/docs/plans/2026-10-08-nh-124-sentry-error-monitoring-plan.md",
     "artifact_path_from_root": ".claude/worktrees/nh-320-vr-spec-lap-4-92e22a/.spec-triage-loop/2026-10-08-nh-124-sentry-error-monitoring-plan/lap-2/findings.json"
   },
@@ -454,5 +454,12 @@
       "triage_round": 1,
       "decision_note": "Applied. Task 2 Step 5's build script runs `VERCEL_ENV=$VERCEL_ENV next build`, with a sentence under the snippet; Task 1 Step 4's comment, Choice 12 and Task 16's README note say why, and the README warns against pulling Production variables into web/. Every edit is the option's before_after, verbatim; Prettier left the plan unchanged. A line was added to the NH-124 changelog entry under 'Changed by the plan review, lap 2'. Applied in the same commit as this triage record."
     }
-  ]
+  ],
+  "step7": {
+    "decided_on": "2026-10-10",
+    "rule": "Bound first: lap 1 left no unresolved P0 or P1 after its triage, and lap 2 left none (0 -> 0), so this lap did not reduce the count; the no-progress bound fired and the loop halted to ask the owner. Lap 2 of 5, so the lap cap was not reached. Without the bound the rule would have re-lapped: the exit signal was not clean (PF-14, a P3, since applied).",
+    "owner_decision": "Move to CODE (option 1 of 3, the recommendation; the others were a lap 3 focused on lap 2's changes and a full lap 3). The plan review ends after lap 2.",
+    "jira": "NH-124 moved from PLAN REVIEW to CODE (transition 61) on 2026-10-10.",
+    "carry_forward_undecided": []
+  }
 }
