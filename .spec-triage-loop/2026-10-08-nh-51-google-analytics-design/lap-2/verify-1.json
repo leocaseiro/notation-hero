@@ -1,0 +1,782 @@
+{
+  "group": 1,
+  "items": [
+    {
+      "id": "F-16",
+      "verdict": "CONFIRMED_WITH_CORRECTION",
+      "correction": "The facts hold; two parts needed correcting. (1) Severity: P1, as the adversarial reviewer filed it, is too high. No promise the spec states becomes false. The Goal (lines 20-21) promises 'without sending the score, its file name, its track names or the music', and section 5 (lines 252-253) promises that every field is a fixed value or a number; a size in whole KB breaks neither. P2 fits (see the severity note). (2) The adversarial fix, 'bytes rounded up to a power of two, in KB', gives fractions of a KB for files under 1 KB (32 bytes would be 0.03125 KB). Rounding the size in whole KB up to a power of two with the same function, roundedSize(Math.ceil(bytes / 1024)), gives exactly Sentry's rounded bytes divided by 1024 for every file over 1 KB (checked by a scratch script), keeps whole numbers, and still tells an empty file (0) from a tiny one (1). Also, roundedSize() is private inside report.ts in the Sentry plan (PR #191, the Sentry pull request), so the move must export it.",
+      "section_heading": "## 5. Events",
+      "section_lines": "249-328",
+      "quotes": [
+        {
+          "quote": "the size, rounded to whole KB",
+          "verbatim": true,
+          "line": 274,
+          "note": "Quoted by both reviewers."
+        },
+        {
+          "quote": "Every field comes from a fixed list or is a number, so text from the file cannot reach Google.",
+          "verbatim": true,
+          "line": 252,
+          "note": "Spans lines 252-253."
+        },
+        {
+          "quote": "without sending the score, its file name, its track names or the music — the promise Sentry keeps",
+          "verbatim": true,
+          "line": 20,
+          "note": "Spans lines 20-21."
+        },
+        {
+          "quote": "the open failures Sentry also sends the file's type and size with",
+          "verbatim": true,
+          "line": 278,
+          "note": ""
+        }
+      ],
+      "central_claim_check": "Checked four things. (1) The Sentry plan (PR #191, the Sentry pull request), 'Choices this plan makes', Choice 3 (how the file's type and size travel): bytes is 'rounded up to the next power of two (0 stays 0), where the spec sent the exact count: an exact size and the type together could single out a widely shared file, and nothing needs the exact number. Approved in the plan review, lap 1.' Its table of questions repeats the decision, and its report.ts sketch (its Task 5, the reporting functions) holds the function, roundedSize(), private, with the comment 'so the type and an exact size cannot single out one widely shared file'. The plan commit that added it, df7e287b ('sizes round up', 2026-10-09), is later than this spec's round 1 (first commits 2026-10-08), as the adversarial reviewer says. (2) This spec sends file_size_kb 'rounded to whole KB' (line 274) on open_file, each time a visitor opens their own file (line 258), and on score_failed (line 260); it is typed at line 291 and registered as a metric in setup step 4 (line 403). The same visit sends file_type, track_count and instruments (line 259) under Google's visitor-ID cookie _ga (line 360), kept 14 months (setup step 2, line 391). (3) No goal needs the exact size. 'Why this exists' (lines 48-51) asks who comes, what they use and where they stop; the bonus for NH-52 (the service-level-objective ticket that wants a failure rate), at lines 326-327, needs only counts of open_file and score_failed. (4) Reasoned, not tested: whether anyone could in practice match a size to a known shared file. The numbers: today's rule can send 25,601 different sizes up to the 25 MB open limit (web/app/play/OpenFileControl.tsx:26); the rounded rule can send 17.",
+      "contradicts": "none for any option. Checked section 1's score-facts.ts row (line 89) and section 6's move of instrumentsValue() (lines 338-339), which option 1 extends in the same way; section 5's file_type row (line 273), which already uses 'the same function Sentry's file facts use'; section 7's home note, 'only facts like its type and size' (lines 353-354), true under all three options; setup step 4's metric list (line 403); and G8 (a typed list of twelve events; every field a fixed value or a number): a rounded size is still a number. Round 1 made no decision about file size (none of its 22 entries touches it).",
+      "spike": {
+        "ran": true,
+        "what": "A scratch Node script copies roundedSize() from the Sentry plan (PR #191, the Sentry pull request). For every 97th byte count from 1 KB to 64 MB, and for every power of two plus and minus one, it compares roundedSize(Math.ceil(bytes / 1024)) with roundedSize(bytes) / 1024. Then it prints today's rule and the rounded rule for the Sentry plan's own test sizes, and counts the different values each rule can send up to the 25 MB limit.",
+        "result": "Equal for every size above 1 KB, with no mismatch. 0 bytes gives 0 KB; 1, 5 and 32 bytes give 1 KB (today's whole-KB rule sends 0 for them, the same as for an empty file); 48,213 bytes gives 64 KB (today 47); 25 MB gives 32,768 KB (today 25,600). Up to the limit: 25,601 possible values today, 17 when rounded.",
+        "fix_holds": true
+      },
+      "scenario": "You download a popular drum tab — the same file thousands of drummers share — and open it in Notation Hero. Google Analytics receives its type, its size to the kilobyte (47 KB), its five tracks and its instruments, filed under the visitor ID it keeps in a cookie. Anyone who can read the reports, and who has the same file, can tell that this visitor plays that song. When a file fails to open, Sentry receives only '64 KB or less' — the rounding approved for Sentry for exactly this reason.",
+      "whats_wrong": "Section 5 sends Google the file size rounded to whole KB (line 274), on every open of a visitor's own file and on every failed open. The Sentry plan (PR #191, the Sentry pull request), approved after this spec was written, rounds the same fact up to a power of two, because an exact size and the type 'could single out a widely shared file'. So Google, which keeps a visitor ID, gets the finer number, beside the track count and the instruments, while Sentry, which keeps none, gets the coarser one. The spec gives no reason for the difference, and no goal needs the exact size.",
+      "before": [
+        {
+          "lines": "274",
+          "text": "Fields table, row `file_size_kb`, Values cell: the size, rounded to whole KB"
+        },
+        {
+          "lines": "89",
+          "text": "New files table, row `web/lib/score-facts.ts`, Job cell: `instrumentsValue()`, moved out of Sentry's `report.ts` (section 6), and `trackInstrument()`"
+        },
+        {
+          "lines": "338-339",
+          "text": "- **`instrumentsValue()` moves to `web/lib/score-facts.ts`**, so analytics uses it without importing\n  Sentry's module. `report.ts` imports it from there; nothing else changes."
+        },
+        {
+          "lines": "258",
+          "text": "| `open_file` | the visitor picks or drops their own file | `method`, `file_type`, `file_size_kb` | `OpenFileControl.tsx`; the drop in `PlayerShell.tsx` |  (table padding collapsed)"
+        },
+        {
+          "lines": "260",
+          "text": "| `score_failed` | an open fails | `error_code`, `file_type`, `file_size_kb` | the E101–E103 and E105 paths |  (table padding collapsed)"
+        },
+        {
+          "lines": "291",
+          "text": "  open_file: { method: 'picker' | 'drop'; file_type: FileType; file_size_kb: number };"
+        },
+        {
+          "lines": "403",
+          "text": "   - metrics: `file_size_kb`, `track_count`, `speed_percent`."
+        }
+      ],
+      "options": [
+        {
+          "label": "1. Share Sentry's rounding (recommended)",
+          "what": "file_size_kb becomes the size in KB, rounded up to a power of two by the same function Sentry uses, roundedSize(), moved with instrumentsValue() into web/lib/score-facts.ts and exported. Sentry's report.ts — a file PR #191 (the Sentry pull request) creates, which this branch rebases onto — imports it from there. Analytics calls roundedSize(Math.ceil(bytes / 1024)).",
+          "pros": [
+            "One rule for one fact in both tools: the rule leocaseiro already approved for Sentry.",
+            "The reports still show a size spread (1 KB, 64 KB, ... 32 MB): 17 possible values up to the 25 MB limit instead of 25,601.",
+            "For any file over 1 KB, both tools report the same size.",
+            "Fixes a small flaw in today's rule: whole-KB rounding sends 0 for a 300-byte file, the same as for an empty one; the rounded rule sends 1 and 0.",
+            "The field keeps its name, so setup step 4's metric and the section 9 checks do not change."
+          ],
+          "cons": [
+            "A size is a range, not a measure: a 65 KB file reads 128 KB.",
+            "One more function moves out of a file the Sentry pull request creates."
+          ],
+          "cost": "Three small text edits (the field row, section 1's score-facts.ts row, section 6's move bullet). In code: export roundedSize() from score-facts.ts and call it once.",
+          "after": [
+            {
+              "replaces_lines": "274",
+              "text": "Fields table, row `file_size_kb`, Values cell: the size in KB, rounded up to a power of two by Sentry's `roundedSize()` (section 6): 0 for an empty file, 1 for one up to 1 KB"
+            },
+            {
+              "replaces_lines": "89",
+              "text": "New files table, row `web/lib/score-facts.ts`, Job cell: `instrumentsValue()` and `roundedSize()`, moved out of Sentry's `report.ts` (section 6), and `trackInstrument()`"
+            },
+            {
+              "replaces_lines": "338-339",
+              "text": "- **`instrumentsValue()` and `roundedSize()` move to `web/lib/score-facts.ts`**, so analytics uses\n  them without importing Sentry's module. `report.ts` imports them from there; nothing else changes."
+            }
+          ]
+        },
+        {
+          "label": "2. Drop the size from Google",
+          "what": "open_file and score_failed stop carrying file_size_kb. Only Sentry receives a size, rounded, and only for failed opens.",
+          "pros": [
+            "The most private choice: Google receives one fact fewer about every opened file.",
+            "Less to build and register: one field and one metric fewer."
+          ],
+          "cons": [
+            "Google Analytics can no longer show how big opened files are, or whether failed opens are the big ones; Sentry shows sizes for failures only.",
+            "Removes one field from the list approved under G8 (a typed list of twelve events; every field a fixed value or a number)."
+          ],
+          "cost": "Five line edits: two event rows, the field row (removed), the events.ts sketch line, and setup step 4's metric list.",
+          "after": [
+            {
+              "replaces_lines": "258",
+              "text": "| `open_file` | the visitor picks or drops their own file | `method`, `file_type` | `OpenFileControl.tsx`; the drop in `PlayerShell.tsx` |"
+            },
+            {
+              "replaces_lines": "260",
+              "text": "| `score_failed` | an open fails | `error_code`, `file_type` | the E101–E103 and E105 paths |"
+            },
+            {
+              "replaces_lines": "274",
+              "text": "(removed)"
+            },
+            {
+              "replaces_lines": "291",
+              "text": "  open_file: { method: 'picker' | 'drop'; file_type: FileType };"
+            },
+            {
+              "replaces_lines": "403",
+              "text": "   - metrics: `track_count`, `speed_percent`."
+            }
+          ]
+        },
+        {
+          "label": "3. Keep whole KB and record why",
+          "what": "Nothing changes in what is sent. The field row records that Google's size is finer than Sentry's on purpose, with leocaseiro's reason in place of the placeholder.",
+          "pros": [
+            "No change to code or reports.",
+            "Exact sizes, if leocaseiro wants them for a decision such as moving the 25 MB open limit."
+          ],
+          "cons": [
+            "Google keeps the finer fact beside a lasting visitor ID, while Sentry, with no visitor ID, gets the coarser one.",
+            "Needs a reason the spec's goals do not give: none of the three goals, and not the bonus for NH-52 (the service-level-objective ticket that wants a failure rate), uses the exact size."
+          ],
+          "cost": "One table cell, plus a reason only leocaseiro can give.",
+          "after": [
+            {
+              "replaces_lines": "274",
+              "text": "Fields table, row `file_size_kb`, Values cell: the size, rounded to whole KB — finer than Sentry's report, which rounds it up to a power of two, because <leocaseiro's reason>"
+            }
+          ]
+        }
+      ],
+      "recommendation": "Option 1, share Sentry's rounding. It keeps the one use a size has in the reports — which files are small, ordinary or large, and whether failed opens are the large ones — and sends the rule already approved for the same fact in Sentry. Both tools then put a file in the same size range (the scratch script shows they agree for every file over 1 KB), and it costs three short text edits and one moved function.",
+      "flip_condition": "Choose option 2 if leocaseiro sees no use for file size in Google Analytics: dropping it is simpler and sends Google one fact fewer per file. Choose option 3 only if a decision needs exact sizes (for example, moving the 25 MB open limit) and leocaseiro accepts the finer fact beside the lasting visitor ID.",
+      "proposed_fix": "Recommended: round file_size_kb up to a power of two with Sentry's roundedSize(), applied to the size in whole KB, and move roundedSize() beside instrumentsValue() into web/lib/score-facts.ts, so both tools use one function.",
+      "why_it_works": "One function decides the size for both tools, so Google can never receive a finer size than Sentry, and a later change to the rule changes both. Rounding the KB value, not the bytes, keeps whole numbers and keeps an empty file (0) apart from a tiny one (1).",
+      "clear_fix": "no — a privacy and reporting trade-off for leocaseiro: how exact a size Google may hold, or none at all.",
+      "plain_terms": {
+        "file_size_kb": "the event field that carries the opened file's size",
+        "open_file": "the event sent when a visitor picks or drops their own file",
+        "score_failed": "the event sent when an open fails",
+        "roundedSize()": "the Sentry plan's function that rounds a size up to the next power of two (1, 2, 4, 8 ...); 0 stays 0",
+        "Choice 3": "the Sentry plan's third choice: how the file's type and size travel; it rounds the size",
+        "E101-E103, E105": "the open-failure codes E101-E103 and E105 (file too large, file unreadable, not a score, our own code failed while loading it)",
+        "G8": "decision G8: a typed list of twelve events; every field a fixed value or a number; release on every event",
+        "NH-52": "the ticket for CloudWatch and X-Ray service-level objectives; the spec's bonus says open_file and score_failed give it a failure rate",
+        "_ga": "Google Analytics' cookie that holds a lasting visitor ID",
+        "df7e287b": "the Sentry plan commit 'an empty E202 message sends its meaning; sizes round up', 2026-10-09",
+        "PR #191": "the Sentry pull request, which this branch rebases onto"
+      },
+      "severity_check": {
+        "agree": false,
+        "proposed": "P2",
+        "why": "Not P1: no promise the spec states becomes false. The Goal's promise (lines 20-21) is 'without sending the score, its file name, its track names or the music', and section 5's (lines 252-253) is that every field is a fixed value or a number; a whole-KB size breaks neither. Not P3 either, as the coherence reviewer filed it: it is a privacy choice that contradicts a rule leocaseiro approved for Sentry, about a fact Google receives on every open beside a lasting visitor ID, and the implementer meets the two rules side by side after the rebase onto PR #191 (the Sentry pull request)."
+      },
+      "cross_fix": [
+        "F-19 (the bundled beat's 'sample' value has no maker): its fix edits the same section 1 row (line 89). If both land with option 1, the Job cell reads: `instrumentsValue()` and `roundedSize()`, moved out of Sentry's `report.ts` (section 6), `trackInstrument()` and `SAMPLE_INSTRUMENTS`."
+      ]
+    },
+    {
+      "id": "F-17",
+      "verdict": "CONFIRMED",
+      "section_heading": "## 5. Events",
+      "section_lines": "249-328",
+      "quotes": [
+        {
+          "quote": "Sliders send their final value only; seeking and volume are not tracked.",
+          "verbatim": true,
+          "line": 253,
+          "note": "Quoted by both reviewers."
+        },
+        {
+          "quote": "a row in the Settings popover changes",
+          "verbatim": true,
+          "line": 267,
+          "note": ""
+        },
+        {
+          "quote": "the speed is set",
+          "verbatim": true,
+          "line": 265,
+          "note": ""
+        },
+        {
+          "quote": "the row's fixed key in `settings-schema.ts`, such as `player.enableCursor`",
+          "verbatim": true,
+          "line": 284,
+          "note": ""
+        },
+        {
+          "quote": "2. **What they use** — their own file or the bundled beat, play, loop, tempo, the mixer.",
+          "verbatim": true,
+          "line": 49,
+          "note": ""
+        },
+        {
+          "quote": "| `tempo_change` | the speed is set | `speed_percent` | `PlayerHeader.tsx` |",
+          "verbatim": true,
+          "line": 265,
+          "note": "Table padding collapsed here; the reviewer's padded quote matches the line exactly."
+        },
+        {
+          "quote": "| `loop_toggle` | Loop | `on`, `range` | `TransportRow.tsx` |",
+          "verbatim": true,
+          "line": 262,
+          "note": "Table padding collapsed here; the reviewer's padded quote matches the line exactly."
+        },
+        {
+          "quote": "| `setting_change` | a row in the Settings popover changes | `setting` | `SettingsPopover.tsx` |",
+          "verbatim": true,
+          "line": 267,
+          "note": "Table padding collapsed here; the reviewer's padded quote matches the line exactly."
+        }
+      ],
+      "central_claim_check": "Confirmed in the code. web/lib/alphatab/settings-schema.ts:288-331: the Settings popover's Player group starts with five rows that edit AlphaTab player values, not settings (source 'api'): Playback speed (%), Master volume, Metronome volume, Count-in volume and Loop; line 289 calls the speed row 'the control a drummer reaches for most'. web/app/play/SettingsPopover.tsx:112-114 sends each to the shell's applyApiValue (web/app/play/PlayerShell.tsx:646-674), which routes it to the one writer that a second control also calls: speed to applySpeed, also called by the header's tempo control (PlayerShell.tsx:606-615, 1010); Loop to applyLooping, also the transport's Loop button (1150); Metronome and Count-in volume to applyMetronomeVolume and applyCountInVolume, also the transport's Metronome and Count-In buttons, which only set 1 or 0 (1152-1154); Master volume to applyMasterVolume, also the mixer's master slider (1227; web/app/play/TracksPopover.tsx:419). These writers have no other callers (653-669, 1010, 1150-1154, 1227). So, as written, a speed or Loop change made in Settings sends only setting_change, with no speed_percent and no on or range, and the three volume rows send setting_change although line 253 says volume is not tracked. Goal 2 ('what they use', line 49) names loop and tempo. Also found: the Loop button's range comes from hasRange, which lives in PlayerShell.tsx (line 136) and is not passed to SettingsPopover.tsx, so a loop_toggle sent from the Settings row needs that prop or a call inside applyLooping.",
+      "contradicts": "none for options 1 and 3. Checked the intro rule 'seeking and volume are not tracked' (line 253), which both keep true; G8 (a typed list of twelve events; every field a fixed value or a number): every option keeps twelve; section 1's 'one track() each' (line 105; PlayerShell.tsx is under web/app/play/); setup step 4's dimension setting (line 402), unchanged; and the setting field's 'fixed key' (line 284): under options 1 and 3 it only ever names a settings path or a stylesheet key, never one of the five player rows, which have no path. Option 2 as the product-lens reviewer filed it ('setting_change stays as it is') would keep the volume contradiction, so option 2 below leaves out the volume rows. Round 1 made no decision on these rows.",
+      "spike": {
+        "ran": false,
+        "why": "A choice between behaviours, not a fact to measure; the routing it rests on was read in the code (see the claim check).",
+        "mark": "(untested)"
+      },
+      "scenario": "You slow a song to 80 % with the Playback speed slider in Settings, and you switch Loop on there too, instead of using the tempo control at the top and the Loop button at the bottom. Google Analytics files both as 'a setting changed', with no speed and no on or off. Your report of how many visitors use tempo and loop counts only the people who used the other two controls. And each move of the Metronome volume slider in Settings is counted too, although the design says volume is not tracked.",
+      "whats_wrong": "Five rows of the Settings popover edit the same values as other controls: Playback speed (the header's tempo control), Loop (the transport's Loop button) and the three volumes (the Metronome and Count-In buttons, which set their volume to 1 or 0, and the mixer's master slider). Section 5 sends tempo_change only from the header and loop_toggle only from the transport, while any Settings row sends setting_change. So one action sends a different event depending on the control, tempo and loop are undercounted against Goal 2 ('what they use'), and the volume rows send an event although the section says volume is not tracked.",
+      "before": [
+        {
+          "lines": "262",
+          "text": "| `loop_toggle` | Loop | `on`, `range` | `TransportRow.tsx` |  (table padding collapsed)"
+        },
+        {
+          "lines": "263",
+          "text": "| `metronome_toggle` | Metronome | `on` | `TransportRow.tsx` |  (option 3 only)"
+        },
+        {
+          "lines": "264",
+          "text": "| `count_in_toggle` | Count-In | `on` | `TransportRow.tsx` |  (option 3 only)"
+        },
+        {
+          "lines": "265",
+          "text": "| `tempo_change` | the speed is set | `speed_percent` | `PlayerHeader.tsx` |"
+        },
+        {
+          "lines": "267",
+          "text": "| `setting_change` | a row in the Settings popover changes | `setting` | `SettingsPopover.tsx` |"
+        }
+      ],
+      "options": [
+        {
+          "label": "1. One event per action (recommended)",
+          "what": "tempo_change and loop_toggle are sent from the one writer both of their controls call (applySpeed and applyLooping in PlayerShell.tsx), so a change counts the same whichever control made it. setting_change covers only rows no other event covers: not speed, not Loop, and not the three volume rows, which send nothing. That leaves 83 rows: 71 settings rows and 12 stylesheet rows (the two export rows send export_score).",
+          "pros": [
+            "Each action sends one event, whichever control the visitor used, so the tempo and loop counts of Goal 2 ('what they use') are complete.",
+            "The intro's 'volume is not tracked' becomes true with no new logic.",
+            "setting_change keeps one meaning, and its setting value always names a settings path or a stylesheet key.",
+            "applyLooping already knows whether a bar range is selected (range); the Settings popover does not."
+          ],
+          "cons": [
+            "Switching the metronome or count-in off by dragging its Settings volume to 0 is not counted (the transport buttons are).",
+            "The reports cannot tell the header's tempo control from the Settings slider.",
+            "A later automatic speed change through applySpeed would count as the visitor's own. An Auto-Speed practice toggle is planned (web/app/play/PlayerHeader.tsx:56-57); that feature would move the call into the two controls."
+          ],
+          "cost": "Three table rows. In code: one track() in applySpeed and one in applyLooping, in place of PlayerHeader.tsx and TransportRow.tsx; SettingsPopover.tsx skips its five player-value rows.",
+          "after": [
+            {
+              "replaces_lines": "262",
+              "text": "| `loop_toggle` | Loop, in the transport row or the Settings popover | `on`, `range` | `PlayerShell.tsx`: `applyLooping`, which both call |"
+            },
+            {
+              "replaces_lines": "265",
+              "text": "| `tempo_change` | the speed is set, in the header or the Settings popover | `speed_percent` | `PlayerShell.tsx`: `applySpeed`, which both call |"
+            },
+            {
+              "replaces_lines": "267",
+              "text": "| `setting_change` | a row in the Settings popover changes, except Playback speed and Loop (the events above) and the three volume rows (not tracked) | `setting` | `SettingsPopover.tsx` |"
+            }
+          ]
+        },
+        {
+          "label": "2. Both events",
+          "what": "As option 1 for tempo_change and loop_toggle, and setting_change still fires for the speed and Loop rows too, so a speed set in Settings sends tempo_change and setting_change. The three volume rows are left out of setting_change, so 'volume is not tracked' stays true (the product-lens reviewer's version kept them, which leaves that contradiction).",
+          "pros": [
+            "setting_change still counts every use of the Settings popover's rows, so 'how many visitors use Settings' is one event.",
+            "Tempo and loop are counted from both controls."
+          ],
+          "cons": [
+            "One action sends two events, so totals such as events per visit count it twice.",
+            "The speed row needs the burst handling of F-18 (an event per tick, wheel notch or keystroke) for two events instead of one."
+          ],
+          "cost": "Three table rows, as option 1.",
+          "after": [
+            {
+              "replaces_lines": "262",
+              "text": "| `loop_toggle` | Loop, in the transport row or the Settings popover | `on`, `range` | `PlayerShell.tsx`: `applyLooping`, which both call |"
+            },
+            {
+              "replaces_lines": "265",
+              "text": "| `tempo_change` | the speed is set, in the header or the Settings popover | `speed_percent` | `PlayerShell.tsx`: `applySpeed`, which both call |"
+            },
+            {
+              "replaces_lines": "267",
+              "text": "| `setting_change` | a row in the Settings popover changes, except the three volume rows (not tracked); Playback speed and Loop send it beside the events above | `setting` | `SettingsPopover.tsx` |"
+            }
+          ]
+        },
+        {
+          "label": "3. One event per action, with on/off from the volume rows",
+          "what": "Option 1, plus: the Settings popover's Metronome volume and Count-in volume rows send metronome_toggle or count_in_toggle when the volume reaches 0 or leaves it — the moment the transport's button changes state. They are sent from applyMetronomeVolume and applyCountInVolume, which both controls call.",
+          "pros": [
+            "Every on/off of the metronome and the count-in is counted, whichever control made it.",
+            "A volume change that does not reach or leave 0 still sends nothing, so 'volume is not tracked' holds."
+          ],
+          "cons": [
+            "Typing into a volume row's number box can reach 0 on the way ('0.5' starts as '0'): an off and an on for one edit. The settle step of F-18 (an event per tick, wheel notch or keystroke) merges them into one event, which can then report a change that did not happen.",
+            "The writers must compare the old and new values: a little more code."
+          ],
+          "cost": "Five table rows: option 1's three, plus the metronome and count-in rows.",
+          "after": [
+            {
+              "replaces_lines": "262",
+              "text": "| `loop_toggle` | Loop, in the transport row or the Settings popover | `on`, `range` | `PlayerShell.tsx`: `applyLooping`, which both call |"
+            },
+            {
+              "replaces_lines": "263",
+              "text": "| `metronome_toggle` | Metronome: the transport button, or the Settings volume reaching or leaving 0 | `on` | `PlayerShell.tsx`: `applyMetronomeVolume`, which both call |"
+            },
+            {
+              "replaces_lines": "264",
+              "text": "| `count_in_toggle` | Count-In: the transport button, or the Settings volume reaching or leaving 0 | `on` | `PlayerShell.tsx`: `applyCountInVolume`, which both call |"
+            },
+            {
+              "replaces_lines": "265",
+              "text": "| `tempo_change` | the speed is set, in the header or the Settings popover | `speed_percent` | `PlayerShell.tsx`: `applySpeed`, which both call |"
+            },
+            {
+              "replaces_lines": "267",
+              "text": "| `setting_change` | a row in the Settings popover changes, except Playback speed, Loop and the three volume rows (the events above; volume is not tracked) | `setting` | `SettingsPopover.tsx` |"
+            }
+          ]
+        }
+      ],
+      "recommendation": "Option 1. It makes each action one event, whichever control the visitor uses — what Goal 2 (what visitors use: their file or the bundled beat, play, loop, tempo, the mixer) needs for tempo and loop — and makes the intro's 'volume is not tracked' true without new logic. It also puts loop_toggle where range is already known.",
+      "flip_condition": "Choose option 3 if leocaseiro wants every metronome and count-in on/off counted, including the rare one made by dragging a Settings volume to 0, and accepts the extra comparison and the typing edge case. Choose option 2 if one 'Settings was used' count matters more than per-action totals that never count an action twice.",
+      "proposed_fix": "Recommended: send tempo_change and loop_toggle from the one writer both of their controls call, and narrow setting_change to the Settings rows no other event covers, leaving the three volume rows silent.",
+      "why_it_works": "Each value already has exactly one writer in PlayerShell.tsx (its comments call them 'the ONE writer'), so a call there counts the action once, whichever control made it, and setting_change can no longer repeat or contradict another rule.",
+      "clear_fix": "no — a reporting choice: whether a Settings change also counts as Settings use (option 2), and whether a volume row can count as an on/off (option 3).",
+      "plain_terms": {
+        "tempo_change": "the event for a speed change; field speed_percent",
+        "loop_toggle": "the event for Loop on or off; fields on and range (the whole score or a selected bar range)",
+        "setting_change": "the event for a Settings popover row; field setting, the row's key",
+        "metronome_toggle / count_in_toggle": "the events for the Metronome and Count-In buttons; field on",
+        "applySpeed, applyLooping, applyMetronomeVolume, applyCountInVolume": "the single writers in web/app/play/PlayerShell.tsx that every control for that value calls",
+        "api rows": "the five Settings rows that edit AlphaTab player values (speed, three volumes, Loop) instead of saved settings",
+        "Goal 2": "'What they use': their own file or the bundled beat, play, loop, tempo, the mixer (line 49)",
+        "G8": "decision G8: a typed list of twelve events; every field a fixed value or a number; release on every event",
+        "F-18": "the finding that tempo and number-field edits send an event per tick or keystroke",
+        "R2": "the residual note that seven typed events have no test"
+      },
+      "severity_check": {
+        "agree": true,
+        "proposed": "P2",
+        "why": "A real gap an implementer will hit: as written, tempo and loop counts miss every change made in Settings, and the volume rows break the section's own 'volume is not tracked'. Nothing promised to visitors becomes false."
+      },
+      "cross_fix": [
+        "F-18 (an event per tick, wheel notch or keystroke): under every option, tempo_change now also comes from the Settings speed row, whose number box reports each keystroke and whose slider commits on each arrow-key press, so that settle step must cover tempo_change from both controls. Option 2 adds a settled setting_change for the same edits; option 3 adds metronome and count-in toggles that need settling and can report an on-to-on change.",
+        "R2 (no test for seven of the typed events): the 'every control once' case it suggests would check whichever option is chosen; under options 1 and 3 the Settings row it changes must not be speed, Loop or a volume."
+      ]
+    },
+    {
+      "id": "F-18",
+      "verdict": "CONFIRMED_WITH_CORRECTION",
+      "correction": "The core holds. Three additions. (1) Keystroke reports also come from the number box beside each of the 5 slider rows (client/src/components/ui/SettingRow/SettingRow.tsx:246-262), not only from the 36 number rows. Every number box also reports its value again when it loses focus, even unchanged (SettingRow.tsx:164), so a keyboard user who only tabs past the boxes sends one event per box; the fix needs 'a change to the value a control already has sends nothing'. A slider also commits on every arrow-key press (client/src/components/ui/Slider/SliderDraft.ts:20-21; Base UI commits each keyboard step, client/node_modules/@base-ui/react/slider/root/SliderRoot.js:198-208), so a held arrow key sends one event per repeat. (2) Flush when the page turns hidden, not only on pagehide. Chrome's page-lifecycle guide says the change to hidden 'is also often the last state change that's reliably observable by developers', and that on phones pagehide is not fired when a tab or the browser app is closed (https://developer.chrome.com/docs/web-platform/page-lifecycle-api). (3) The held event should go through track() when it is sent, so a 'No' given during the 1-second wait still stops it — the promise for NH-349 (the 'Privacy choices' link that lets a visitor change an answer) that no hit follows a 'No' (lines 507-512).",
+      "section_heading": "## 5. Events",
+      "section_lines": "249-328",
+      "quotes": [
+        {
+          "quote": "Sliders send their final value only; seeking and volume are not tracked.",
+          "verbatim": true,
+          "line": 253,
+          "note": ""
+        },
+        {
+          "quote": "The call sites in section 5, under `web/app/play/`: one `track()` each.",
+          "verbatim": true,
+          "line": 105,
+          "note": "In section 1."
+        },
+        {
+          "quote": "the speed is set",
+          "verbatim": true,
+          "line": 265,
+          "note": ""
+        },
+        {
+          "quote": "a row in the Settings popover changes",
+          "verbatim": true,
+          "line": 267,
+          "note": ""
+        },
+        {
+          "quote": "**Not `client/`.**",
+          "verbatim": true,
+          "line": 38,
+          "note": "In Non-goals; the quote carries the spec's own bold."
+        }
+      ],
+      "central_claim_check": "Confirmed in client/ and its installed Base UI 1.6.0. TempoControl (client/src/components/ui/TempoControl/TempoControl.tsx:110-122, 129) passes every NumberField value change straight to onSpeedChange. Base UI fires that change on each typed digit that parses (client/node_modules/@base-ui/react/number-field/input/NumberFieldInput.js:236-248), on each wheel notch while the box has focus (root/NumberFieldRoot.js:280-310 in the same folder), and on each tick of a held + or - button: one step, then one every 60 ms after 400 ms (utils/constants.js:7-8; root/useNumberFieldButton.js:64-79). With a step of 1 BPM (TempoControl.tsx:132), holding + from 100 to 140 is 40 changes. The 1-second settle (EDIT_SETTLE_MS, TempoControl.tsx:46) only ends the edit's frozen base; no prop exposes it, and client/ is a non-goal (line 38). SettingRow reports a number row on every keystroke (SettingRow.tsx:163) and again on blur or Enter (164-166), and a colour row on every input event (206); MDN: input 'is fired on the <input> element every time the color changes' (https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/input/color). web/lib/alphatab/settings-schema.ts has 36 number rows and 6 colour rows, plus 5 slider rows whose number box reports the same way (SettingRow.tsx:254-258). Neither SettingsPopover.tsx's change() (112-127) nor PlayerShell.tsx's applySetting (678-709) skips an unchanged value. Text rows report only on blur or Enter (SettingRow.tsx:174-195) and sliders once per drag (SliderDraft.ts), as the spec expects.",
+      "contradicts": "none. Checked the intro rule (line 253), which the fix extends rather than replaces; the 'Not client/' non-goal (line 38), kept, since the settling lives in web/lib/analytics/; section 4's track() bullet (lines 232-235: nothing before the start, only declared keys), which the held event still passes through; round 1's change that makes track() send only the declared fields (commit 70b4a9e0), which the settle step sits in front of; section 9's track() unit test (lines 433-434), extended; and the rule for NH-349 (the 'Privacy choices' link that lets a visitor change an answer) that no hit follows a 'No' (lines 507-512), kept because the held event goes through track().",
+      "spike": {
+        "ran": true,
+        "what": "Two spikes. (1) A scratch Node test runs a settle helper under Node's fake timers: it keeps the latest fields per key (the event name, plus the setting key) and sends them 1 second after the last change, or at once on pagehide; the call sites skip an unchanged value. (2) A scratch Playwright script in the installed Chromium 149 (Playwright 1.61.1 from web/): a local page queues the spec's consent default, settings, js and config through a gtag() function kept local to the page's script, never put on window; then, after the load event, it adds Google's real gtag.js, served from a copy fetched once from Google's public address with a made-up ID. Every request to a Google host was answered locally (204), and Chromium's resolver also mapped every Google host to 'not found', so nothing could reach Google; the script counted requests seen against requests answered, and they matched in every run. In it, the page holds one tempo_change in the helper and is then left by a navigation, with the helper flushing on pagehide, on the change to hidden, on both, or not at all.",
+        "result": "(1) All 7 cases pass. A held + button (40 steps at 60 ms) sends one tempo_change with speed 140 %; typing 1, 15, 150 and then leaving the box 3 s later sends one setting_change; tabbing past a box sends none; a 30-move colour drag sends one; two rows edited in turn send one each; pagehide in the middle of a burst sends the held event at once, and only once; without the helper the same hold sends 40. (2) With no flush, the held event was lost on navigation; flushing on pagehide or on the change to hidden delivered it (on a same-tab navigation Chromium fired pagehide first). A tab close could not be observed in this harness — no hit at all arrived after a close, not even Google's own — so that case is (untested).",
+        "fix_holds": true
+      },
+      "scenario": "You hold the + button on the tempo control to go from 100 to 140 BPM. Google Analytics records forty tempo changes, one per step. Then you type 150 into a number box in Settings and press Tab: four 'setting changed' events — one per digit, and one more as you leave the box. A keyboard user who only tabs past ten number boxes sends up to ten, without changing anything. The report says visitors change the tempo and the settings far more often than they do.",
+      "whats_wrong": "The spec's only guard against bursts, 'Sliders send their final value only' (line 253), does not cover the controls that send most of them. The header's tempo control reports every step of a held button (every 60 ms), every wheel notch and every typed digit. The Settings number boxes (36 number rows, plus the box beside each of the 5 sliders) report every keystroke, and again on leaving the box, even unchanged. The 6 colour rows report every move of the picker. With one track() at each call site (line 105), tempo_change and setting_change count ticks and keystrokes, not edits.",
+      "before": [
+        {
+          "lines": "253",
+          "text": "cannot reach Google. Sliders send their final value only; seeking and volume are not tracked."
+        },
+        {
+          "lines": "88",
+          "text": "New files table, row `web/lib/analytics/track.ts`, Job cell: `track()`: sends one event, or nothing until Google Analytics has started"
+        },
+        {
+          "lines": "433-434",
+          "text": "- `track()`: nothing before the start; `['event', name, fields]` after it, without any key the event\n  does not declare."
+        }
+      ],
+      "after": [
+        {
+          "replaces_lines": "253",
+          "text": "cannot reach Google. Sliders send their final value only; seeking and volume are not tracked.\n`tempo_change` and `setting_change` send one event per edit: 1 second after the control's last\nchange (the settle time the header's tempo control already uses), or at once when the page is\nhidden or left. A held button, the mouse wheel, typed digits and a colour-picker drag are each one\nedit, and `tempo_change` carries the last speed. A change to the value a control already has sends\nnothing. The held event goes through `track()` when it is sent, so it obeys the answer given by then."
+        },
+        {
+          "replaces_lines": "88",
+          "text": "New files table, row `web/lib/analytics/track.ts`, Job cell: `track()`: sends one event, or nothing until Google Analytics has started; and the settle step that turns one edit into one event (section 5)"
+        },
+        {
+          "replaces_lines": "433-434",
+          "text": "- `track()`: nothing before the start; `['event', name, fields]` after it, without any key the event\n  does not declare. A burst of changes to one control sends one event, with the latest fields, 1\n  second after the last change, or at once when the page is hidden; an unchanged value sends nothing."
+        }
+      ],
+      "proposed_fix": "Send tempo_change and setting_change through a settle step in web/lib/analytics/ that keeps the latest fields per control (the event name, plus the setting key) and sends them once: 1 second after the last change, or at once when the page turns hidden or is left. A change to the value a control already has sends nothing. The held event goes through track(). Add the matching unit case to section 9. client/ stays untouched.",
+      "why_it_works": "Every source of bursts — a held button, the wheel, typing, a picker drag, focus leaving a box — ends with at least 1 second without changes, the same time TempoControl itself uses to decide that an edit is over, so each edit becomes one event with its final value. Flushing when the page turns hidden keeps the last edit on phones, where pagehide may never fire, and sending through track() keeps the answer rules in one place.",
+      "clear_fix": "no — it changes what Google receives (one event per edit, up to 1 second later). There is no competing option, so the only question is whether to apply it.",
+      "plain_terms": {
+        "tempo_change": "the event for a speed change; field speed_percent",
+        "setting_change": "the event for a Settings popover row; field setting, the row's key",
+        "settle step": "a small helper that waits until a control has been still for 1 second, then sends one event",
+        "pagehide": "the browser event fired as the page is left",
+        "the page turns hidden": "the browser's visibilitychange event to 'hidden': another tab, another app, or the page closing",
+        "TempoControl": "the header's tempo control in client/ (a Base UI number field)",
+        "SettingRow": "the client/ component that draws one Settings popover row",
+        "Base UI": "the component library under client/'s design system",
+        "BPM": "beats per minute",
+        "NH-349": "the 'Privacy choices' link that lets a visitor change an answer",
+        "F-17": "the finding that a Settings row edits a value another event already covers",
+        "F-21": "the finding that switching to 'Report errors only' leaves Google Analytics running",
+        "70b4a9e0": "round 1's commit 'send only the fields an analytics event declares'"
+      },
+      "severity_check": {
+        "agree": true,
+        "proposed": "P2",
+        "why": "A real gap an implementer will hit: a literal build counts ticks and keystrokes, and Goal 2's 'what they use' numbers would be wrong. Nothing promised to visitors becomes false."
+      },
+      "cross_fix": [
+        "F-17 (a Settings row edits a value another event already covers): whichever option is chosen, tempo_change also comes from the Settings speed row and must be settled from both controls; its option 2 adds a settled setting_change for the same edits; its option 3 adds toggles that need settling.",
+        "F-21 (switching to 'Report errors only' leaves Google Analytics running): the held event goes through track(), so it follows whatever stop rule that finding sets for NH-349 (the 'Privacy choices' link that lets a visitor change an answer)."
+      ]
+    },
+    {
+      "id": "F-19",
+      "verdict": "CONFIRMED",
+      "section_heading": "## 5. Events",
+      "section_lines": "249-328",
+      "quotes": [
+        {
+          "quote": "branded strings that only `instrumentsValue()` and its one-track twin `trackInstrument()` can make, so a free string never type-checks",
+          "verbatim": true,
+          "line": 313,
+          "note": "Spans lines 313-314."
+        },
+        {
+          "quote": "`drums` first, then each General MIDI program in three digits, such as `drums,025,033`; or `sample`.",
+          "verbatim": true,
+          "line": 277,
+          "note": ""
+        }
+      ],
+      "central_claim_check": "Confirmed. The bundled beat's score_loaded must carry instruments = sample (line 277), and only instrumentsValue() and trackInstrument() may make an Instruments value (lines 313-314). instrumentsValue() takes a list of tracks and returns 'drums' and three-digit programs, never 'sample' (the Sentry plan (PR #191, the Sentry pull request), its Task 5, the reporting functions in report.ts); trackInstrument() makes the one-track Instrument, a different brand. The Sentry plan makes 'sample' as a bare string, tagInstruments('sample'), when the player mounts (its Task 13, the instruments tag, in PlayerShell.tsx), into a parameter typed string — so there is nothing to reuse. The bundled beat is /notation/1-beat.gp (web/app/play/PlayerShell.tsx:82), so its file_type is gp.",
+      "contradicts": "none. Checked section 1's score-facts.ts row (line 89); the instruments field row (line 277), which already allows 'sample'; the events.ts sketch (lines 288-311); section 6's move of instrumentsValue() (lines 338-339): report.ts keeps calling tagInstruments('sample') with a plain string, which still compiles; and round 1's change that named trackInstrument() as the twin (commit 9f455125): the fix adds a third maker and undoes nothing.",
+      "spike": {
+        "ran": true,
+        "what": "A scratch TypeScript project checked with the repo's own compiler (web/node_modules/.bin/tsc, TypeScript 5.9.3, --noEmit --strict): a score-facts.ts whose brand is a unique symbol that is never exported, with instrumentsValue(), trackInstrument() and a third export SAMPLE_INSTRUMENTS typed Instruments; an events.ts with the sketch's score_loaded and mixer_change shapes; and call sites.",
+        "result": "track('score_loaded', { source: 'sample', file_type: 'gp', track_count: 1, instruments: SAMPLE_INSTRUMENTS }) type-checks. A free 'sample' fails with TS2322, 'Type 'string' is not assignable to type 'Instruments''; so do any other string, such as a track name, and a one-track Instrument (each held by @ts-expect-error, and the file passes). Without the constant, the only way to send 'sample' is a cast at the call site ('sample' as Instruments), which compiles without a word.",
+        "fix_holds": true
+      },
+      "scenario": "You open the player, and the bundled one-bar beat appears. The page must tell Google Analytics that the score on screen is the sample. The design allows only two producers of that value, and neither can say 'sample'. So the developer tells the checker to accept the word anyway, and from then on the check that keeps track names out of that field no longer guards that line.",
+      "whats_wrong": "The bundled beat's score_loaded must carry instruments = sample (line 277), but the paragraph under the sketch (lines 313-314) says only instrumentsValue() and trackInstrument() can make that type, and neither makes 'sample'. An implementer must cast the string, which switches off the check for that call, or invent a third maker the spec does not name.",
+      "before": [
+        {
+          "lines": "313-314",
+          "text": "`Instruments` and `Instrument` are branded strings that only `instrumentsValue()` and its one-track\ntwin `trackInstrument()` can make, so a free string never type-checks."
+        },
+        {
+          "lines": "89",
+          "text": "New files table, row `web/lib/score-facts.ts`, Job cell: `instrumentsValue()`, moved out of Sentry's `report.ts` (section 6), and `trackInstrument()`"
+        }
+      ],
+      "after": [
+        {
+          "replaces_lines": "313-314",
+          "text": "`Instruments` and `Instrument` are branded strings that only `instrumentsValue()`, its one-track\ntwin `trackInstrument()` and the bundled beat's `SAMPLE_INSTRUMENTS` (`sample`) can make, so a free\nstring never type-checks."
+        },
+        {
+          "replaces_lines": "89",
+          "text": "New files table, row `web/lib/score-facts.ts`, Job cell: `instrumentsValue()`, moved out of Sentry's `report.ts` (section 6), `trackInstrument()` and `SAMPLE_INSTRUMENTS`"
+        }
+      ],
+      "proposed_fix": "Export a constant SAMPLE_INSTRUMENTS = 'sample', typed Instruments, from web/lib/score-facts.ts beside the two functions, and name it in section 1's row and in the branded-string paragraph. The bundled beat's score_loaded uses it.",
+      "why_it_works": "The constant is made once, inside the module that owns the brand, so the call site needs no cast; a free string still fails everywhere else (the spike shows both).",
+      "clear_fix": "yes — one right answer: it names how a value the spec already sends is made, and changes no behaviour, scope or copy.",
+      "plain_terms": {
+        "branded string": "a string type the compiler accepts only from the functions that make it",
+        "Instruments / Instrument": "the whole-score instruments value (such as drums,025,033) and one track's value (drums or a three-digit program)",
+        "instrumentsValue() / trackInstrument()": "the two makers the spec names, in web/lib/score-facts.ts",
+        "SAMPLE_INSTRUMENTS": "the proposed third maker: the constant 'sample' for the bundled beat",
+        "score_loaded": "the event sent when a score reaches the screen",
+        "cast": "code that tells the compiler to accept a value as another type without checking it",
+        "Task 5 / Task 13": "steps of the Sentry plan (PR #191, the Sentry pull request): the reporting functions, and the instruments tag",
+        "9f455125": "round 1's commit 'give the mixer event a shape for whole-mixer controls'",
+        "F-16": "the finding that a file size exact to the KB lets Google single out a file"
+      },
+      "severity_check": {
+        "agree": true,
+        "proposed": "P3",
+        "why": "Small and cheap: one constant and two lines of text. The implementer would hit it, but the obvious workaround (a cast of a fixed word) sends nothing harmful."
+      },
+      "cross_fix": [
+        "F-16 (a file size exact to the KB lets Google single out a file): its option 1 edits the same section 1 row (line 89). If both land, the Job cell reads: `instrumentsValue()` and `roundedSize()`, moved out of Sentry's `report.ts` (section 6), `trackInstrument()` and `SAMPLE_INSTRUMENTS`."
+      ]
+    },
+    {
+      "id": "FYI-6",
+      "verdict": "CONFIRMED",
+      "section_heading": "## Why this exists; ## Extending later",
+      "section_lines": "43-58; 501-513",
+      "quotes": [
+        {
+          "quote": "On the free tier only, and ready for the database: a new field or a second destination must be a",
+          "verbatim": true,
+          "line": 53,
+          "note": ""
+        },
+        {
+          "quote": "- **A second destination** (NH-54's pipeline): a second sender inside `track()`; no event changes.",
+          "verbatim": true,
+          "line": 503,
+          "note": ""
+        },
+        {
+          "quote": "- **Page views** come from Google's enhanced measurement: one on load, and one on each client-side",
+          "verbatim": true,
+          "line": 236,
+          "note": "In section 4."
+        },
+        {
+          "quote": "Google's own: page, referrer, country, device",
+          "verbatim": true,
+          "line": 257,
+          "note": "In section 5's page_view row."
+        }
+      ],
+      "central_claim_check": "Confirmed from the spec and a browser spike. Page views come from Google's enhanced measurement (section 4, lines 236-239), and the page_view row's fields are 'Google's own: page, referrer, country, device' (line 257). In the spike, window.dataLayer held only our four entries (consent, set, js, config) and Google's own gtm.dom and gtm.load — no page_view — yet Google's script sent a page_view hit. So a sender inside track() never sees page views, the visitor ID (Google's _ga cookie), country or device; nor release, which reaches Google through config (line 222), not through track(). Goal 1 ('Who comes', line 48) and the first two steps of goal 3's funnel ('where they stop': / then /play, lines 323-324) rest on exactly those. Section 4's fallback (lines 238-239) already describes sending page_view from our own code.",
+      "contradicts": "none for the suggested edit. Checked section 4's fallback; section 7's privacy notice, 'Visit counts go to Sentry and Google Analytics' (lines 359-360); and the Non-goals bullet for NH-54 (the later AWS analytics pipeline), 'the typed event list is ready for a second sender' (lines 28-29), which stays true.",
+      "spike": {
+        "ran": true,
+        "what": "A scratch Playwright script in the installed Chromium 149 (Playwright 1.61.1 from web/): a local page queues the spec's consent default, settings, js and config through a gtag() function kept local to the page's script, never put on window; then, after the load event, it adds Google's real gtag.js, served from a copy fetched once from Google's public address with a made-up ID. Every request to a Google host was answered locally (204), and Chromium's resolver also mapped every Google host to 'not found', so nothing could reach Google; the script counted requests seen against requests answered, and they matched in every run. It checks the premise of the note, not a code change.",
+        "result": "window.dataLayer entries: consent default, set, js, config, then Google's gtm.dom and gtm.load. The page_view hit was made by Google's script alone (with gcs=G101, npa=1, dt=Notation Hero), and the cookies _ga and _ga_<container-id> were set.",
+        "fix_holds": true
+      },
+      "scenario": "Next year you add your own analytics database, NH-54 (the later AWS analytics pipeline), as a second destination. As the spec promises, it takes one change inside the event sender. But the new database receives no page views, no visitor ID, no country and no device: Google's own script makes those, and they never pass through the sender. It cannot count visits or build the Home to Play funnel.",
+      "summary": "True, and worth one sentence in the spec. The 'one-file change' promise (lines 53-54) holds for the eleven typed events only. Google's script makes page views, the visitor ID, country and device from its own cookie and the request; they never pass through track(), so a second sender there gets none of them, and not release either, which reaches Google through config. NH-54 (the later AWS analytics pipeline) would need page_view sent from our code (section 4's fallback) and a visitor ID of its own, and the popup's Details and the privacy notice would have to name the new destination. Writing that down now stops NH-54 (the AWS pipeline) being planned as a one-file job.",
+      "whats_wrong": "The spec promises that a second destination is a one-file change (lines 53-54, 503), but a sender inside track() would receive only the typed events: no page views, visitor ID, country or device, which goal 1 ('who comes') and goal 3 ('where they stop') need.",
+      "before": [
+        {
+          "lines": "503",
+          "text": "- **A second destination** (NH-54's pipeline): a second sender inside `track()`; no event changes."
+        },
+        {
+          "lines": "53-54",
+          "text": "On the free tier only, and ready for the database: a new field or a second destination must be a\none-file change."
+        }
+      ],
+      "after": [
+        {
+          "replaces_lines": "503",
+          "text": "- **A second destination** (NH-54's pipeline): a second sender inside `track()`; no event changes.\n  It gets the typed events only: page views, the visitor ID, country and device are Google's own,\n  so NH-54 also needs `page_view` from our code (section 4's fallback) and its own visitor ID, and\n  the popup's Details and the privacy notice must name it."
+        },
+        {
+          "replaces_lines": "53-54",
+          "text": "On the free tier only, and ready for the database: a new field, or sending the typed events to a\nsecond destination, must be a one-file change."
+        }
+      ],
+      "proposed_fix": "Optional: narrow the 'one-file change' sentence to the typed events, and say in 'Extending later' what NH-54 (the later AWS analytics pipeline) needs besides a second sender.",
+      "why_it_works": "It states the limit where the person planning NH-54 (the later AWS analytics pipeline) will read it, so the job is planned with page views and a visitor ID from the start.",
+      "clear_fix": "no — it narrows a goal leocaseiro stated ('a second destination must be a one-file change'); the alternative is to send page views from our own code now (section 4's fallback), which changes the design.",
+      "plain_terms": {
+        "NH-54": "the later AWS analytics pipeline (SQS/SNS to S3 to Athena), the 'second destination'",
+        "enhanced measurement": "Google's own automatic page views, made inside its script",
+        "_ga": "Google Analytics' cookie that holds a lasting visitor ID",
+        "release": "the app version sent on every event, set once through Google's config call",
+        "goal 1 / goal 3": "'Who comes' (visits, new and returning, country, device, source) and 'Where they stop' (the Home to Play funnel)"
+      },
+      "severity_check": {
+        "agree": true,
+        "proposed": "P3",
+        "why": "A note for later planning; nothing in this ticket ships wrong."
+      },
+      "cross_fix": []
+    },
+    {
+      "id": "FYI-7",
+      "verdict": "CONFIRMED_WITH_CORRECTION",
+      "correction": "The facts hold, and the browser spike confirms them. One wording fix: the suggested sentence 'track() is the only way to send an event' is too strong. Without the global, code can still push onto window.dataLayer by hand, or import gtag() from start.ts; both are visible in a review, unlike a global any script can call. The After says that.",
+      "section_heading": "## 4. Google Analytics in code",
+      "section_lines": "202-248",
+      "quotes": [
+        {
+          "quote": "window.gtag = function gtag() {",
+          "verbatim": true,
+          "line": 211,
+          "note": ""
+        },
+        {
+          "quote": "Every field comes from a fixed list or is a number, so text from the file cannot reach Google.",
+          "verbatim": true,
+          "line": 252,
+          "note": "Spans lines 252-253, in section 5."
+        }
+      ],
+      "central_claim_check": "Confirmed. The sketch puts gtag() on window (line 211), then calls it (214-222). Next.js 16.3.6's bundled docs say 'The sendGAEvent function can be used to measure user interactions on your page by sending events using the dataLayer object' (web/node_modules/next/dist/docs/01-app/02-guides/third-party-libraries.md:297-298); the published @next/third-parties 16.3.6 code pushes onto the queue directly (https://unpkg.com/@next/third-parties@16.3.6/dist/google/ga.js). The 2026-10-05 spike (throwaway, not in the repo) could not answer the question: the component it used declares its own global gtag() in its inline script (same file). In this check's browser spike, with gtag() local to the page and never on window, Google's real script read the queue, sent a page_view with gcs=G101, npa=1 and dt=Notation Hero, set its two cookies, and left window.gtag undefined: it neither needs the global nor creates it. A text search of the same script finds no assignment to window.gtag (it reads only window.gtag_enable_tcf_support). Not checked: whether a field that is not registered in setup step 4 shows anywhere in Google Analytics' screens — the reviewer's 'stays unseen' is (untested). What is certain is that the privacy test reads window.dataLayer only on the steps it drives (lines 461-466).",
+      "contradicts": "none. Checked G2 (our own small loader instead of Next.js's experimental Google Analytics component); section 4's order (consent, settings, js, config), unchanged; track() (lines 232-235); the consent update and switch for NH-349 (the 'Privacy choices' link that lets a visitor change an answer) (lines 507-512), which can import gtag(); and F-23 (the Berlin 'nothing sent' checks can pass on a broken build), whose fix checks that window.dataLayer does not exist before an answer: the function below pushes onto the queue but never creates it, so that check keeps its meaning.",
+      "spike": {
+        "ran": true,
+        "what": "A scratch Playwright script in the installed Chromium 149 (Playwright 1.61.1 from web/): a local page queues the spec's consent default, settings, js and config through a gtag() function kept local to the page's script, never put on window; then, after the load event, it adds Google's real gtag.js, served from a copy fetched once from Google's public address with a made-up ID. Every request to a Google host was answered locally (204), and Chromium's resolver also mapped every Google host to 'not found', so nothing could reach Google; the script counted requests seen against requests answered, and they matched in every run. A second scratch check ran the After sketch through the repo's tsc (5.9.3, --strict).",
+        "result": "window.gtag stayed undefined after Google's script ran, in all 9 runs; each run's first hit carried gcs=G101, npa=1, dt=Notation Hero and the release field. The After sketch type-checks, and in another file a bare gtag(...) and a window.gtag(...) both fail to type-check.",
+        "fix_holds": true
+      },
+      "scenario": "Months later, someone debugging the player adds one line that sends Google an event with the open song's title. It works at once: the page leaves Google's sender on the window, where any code can call it without the typed list. The title reaches Google, and the privacy test does not notice, because it checks only the steps it performs.",
+      "summary": "True. Nothing needs window.gtag: Google's script reads only window.dataLayer, and the spike shows it neither needs nor creates the global. Keeping gtag() as a function of start.ts that track.ts imports removes the one path that lets any script send Google free text without the typed list, with less code (no global type declaration). Recommended as a small edit to the sketch and one sentence in the track() bullet.",
+      "whats_wrong": "The loader sketch puts gtag() on window (line 211), which nothing needs; it gives any code a way to send Google an event around track(), the typed function the privacy promise rests on.",
+      "before": [
+        {
+          "lines": "205",
+          "text": "// web/lib/analytics/start.ts (sketch)"
+        },
+        {
+          "lines": "210-213",
+          "text": "  window.dataLayer = window.dataLayer ?? [];\n  window.gtag = function gtag() {\n    window.dataLayer.push(arguments); // gtag.js reads an `arguments` object, never an array\n  };"
+        },
+        {
+          "lines": "235",
+          "text": "  elsewhere with an extra key, such as a track name, therefore sends nothing more."
+        }
+      ],
+      "after": [
+        {
+          "replaces_lines": "205",
+          "text": "// web/lib/analytics/start.ts (sketch)\n/** Not on `window`: gtag.js reads only `window.dataLayer`. track.ts imports it. */\nexport function gtag(..._args: unknown[]): void {\n  window.dataLayer.push(arguments); // gtag.js reads an `arguments` object, never an array\n}\n(a blank line, then line 206, `export function startAnalytics(): void {`, as before)"
+        },
+        {
+          "replaces_lines": "210-213",
+          "text": "  window.dataLayer = window.dataLayer ?? [];"
+        },
+        {
+          "replaces_lines": "235",
+          "text": "  elsewhere with an extra key, such as a track name, therefore sends nothing more. `gtag()` is a\n  function of `start.ts`, not a global: other code reaches Google only by importing it or by pushing\n  onto `window.dataLayer` by hand, and a review sees both."
+        }
+      ],
+      "proposed_fix": "Make gtag() a function of web/lib/analytics/start.ts that track.ts imports, never assigned to window, and say so in the track() bullet.",
+      "why_it_works": "Google's script reads only the queue, so the global serves nothing; without it, a stray call needs an import, which review (or a lint rule) can see.",
+      "clear_fix": "yes — one right answer: the global serves nothing (the spike shows Google's script works without it and does not create it); no behaviour or copy changes.",
+      "plain_terms": {
+        "gtag()": "the small function that pushes a command onto window.dataLayer for Google's script",
+        "window.gtag": "the same function made global, callable from any script on the page",
+        "sendGAEvent": "Next.js's helper for sending a Google Analytics event, from @next/third-parties",
+        "G2": "decision G2: our own small loader instead of Next.js's experimental Google Analytics component",
+        "NH-349": "the 'Privacy choices' link that lets a visitor change an answer",
+        "F-23": "the finding that the Berlin 'nothing sent' checks can pass on a broken build",
+        "gcs=G101, npa=1, dt": "Google's hit fields: ad storage denied and analytics granted; no ad personalisation; the tab title"
+      },
+      "severity_check": {
+        "agree": true,
+        "proposed": "P3",
+        "why": "Defence in depth for the privacy promise; cheap, and nothing ships broken without it."
+      },
+      "cross_fix": [
+        "F-23 (the Berlin 'nothing sent' checks can pass on a broken build): compatible. gtag() pushes onto window.dataLayer but never creates it, so its check that the queue does not exist before an answer still means 'nothing started'."
+      ]
+    },
+    {
+      "id": "R2",
+      "verdict": "CONFIRMED",
+      "section_heading": "## 9. Testing; ## 8. Setup — done by leocaseiro, by hand",
+      "section_lines": "421-490; 382-420",
+      "quotes": [],
+      "central_claim_check": "Confirmed. Section 9 checks open_file, score_loaded and play (the Sydney case, lines 451-454) and the two mixer_change events (the Privacy case, lines 461-466); setup step 6 checks page views, open_file and score_loaded by hand (lines 406-409). That leaves seven of the eleven typed events with no check: score_failed, loop_toggle, metronome_toggle, count_in_toggle, tempo_change, setting_change and export_score — though Goal 2 ('what they use', line 49) names loop and tempo. The trap is real: web/app/play/TracksPopover.tsx:266-279 re-applies the mute and solo of every row that has one (and its volume and audio transposition) on each playerReady, which 're-fires on every MIDI reload and every player swap' (its own comment), and Solo all and Mute all call the same applySolo and applyMute once per track (422-429). A track() inside applyMute or applySolo would report presses nobody made, and one solo per track instead of one solo_all. web/e2e/player.e2e.ts already forces an E103 (the file is not a score) with a buffer that is not a score (line 574), so a score_failed check costs little.",
+      "contradicts": "none — the suggested case adds to section 9 and changes no existing case; checked the Sydney and Privacy cases, the fixture rules (lines 440-449) and setup step 6.",
+      "spike": {
+        "ran": false,
+        "why": "A missing test, not a claim to measure; the code it rests on was read (see the claim check).",
+        "mark": "(untested)"
+      },
+      "scenario": "A month after launch you open Google Analytics and see that nobody has ever pressed Loop. The real reason: the loop event was wired to a place that never runs. Or the reverse: each time a sound setting rebuilds the player, it re-applies every track's Solo, and an event placed there reports Solo presses nobody made. No test catches either, so you draw the wrong conclusion about what drummers use.",
+      "summary": "True. Four of the eleven typed events have a check; seven have none, including loop and tempo, which Goal 2 ('what they use') names. A call in the wrong place either reads as 'nobody uses it' or invents use, because the mixer re-applies every Solo and Mute each time the player reloads. One end-to-end case that uses each remaining control once and counts the events in window.dataLayer would catch both, with steps the suite already has (a file that is not a score, the Solo button).",
+      "whats_wrong": "Seven of the eleven typed events have no automated or hand check, so a call wired to the wrong place would ship unseen and make the reports wrong.",
+      "before": [
+        {
+          "lines": "454",
+          "text": "  opening a fixture; `play` after pressing ▶.\n(absent — no case checks score_failed, loop_toggle, metronome_toggle, count_in_toggle, tempo_change,\nsetting_change or export_score)"
+        }
+      ],
+      "after": [
+        {
+          "replaces_lines": "454 (a new bullet after it)",
+          "text": "  opening a fixture; `play` after pressing ▶.\n- **Every control once:** in Sydney, open a file that is not a score, then a fixture. Press Loop,\n  Metronome, Count-In and one track's Solo; step the tempo once; change one Settings row that\n  rebuilds the sound; export MIDI. `window.dataLayer` then holds one `score_failed` with `E103`,\n  and exactly one event for each control, with its fields. The rebuild reloads the player, which\n  re-applies the Solo; it adds no second `mixer_change`."
+        }
+      ],
+      "proposed_fix": "Optional: add one end-to-end case to section 9 that uses each untested control once and checks that window.dataLayer holds exactly one event for each, including after a player reload.",
+      "why_it_works": "Each event's call site is then proven to fire once per real action — not never, and not again when the player re-applies its state.",
+      "clear_fix": "no — it adds a test case (scope), though a small one.",
+      "plain_terms": {
+        "typed events": "the eleven events track() sends; page_view, the twelfth, is Google's own",
+        "playerReady": "AlphaTab's event when the player is ready; it fires again on every sound rebuild",
+        "applySolo / applyMute": "the mixer functions that set a track's solo or mute, called by clicks and by the replay on playerReady",
+        "E103": "the error code for a file that is not a score",
+        "Goal 2": "'What they use': their own file or the bundled beat, play, loop, tempo, the mixer (line 49)",
+        "F-17": "the finding that a Settings row edits a value another event already covers",
+        "F-18": "the finding that tempo and number-field edits send an event per tick or keystroke"
+      },
+      "severity_check": {
+        "agree": null,
+        "proposed": "P3",
+        "why": "No severity was filed for this residual. P3: a missing check, cheap to add, that protects the reports rather than the visitor's privacy."
+      },
+      "cross_fix": [
+        "F-17 (a Settings row edits a value another event already covers): the case checks whichever option is chosen; under options 1 and 3, the Settings row it changes must not be speed, Loop or a volume.",
+        "F-18 (an event per tick, wheel notch or keystroke): with the settle step, tempo_change and setting_change arrive 1 second after the change, so the case must wait for them, as the Privacy case waits."
+      ]
+    }
+  ]
+}

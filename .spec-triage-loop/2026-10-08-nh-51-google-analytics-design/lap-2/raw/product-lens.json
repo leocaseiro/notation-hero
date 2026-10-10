@@ -1,0 +1,41 @@
+{
+  "reviewer": "product-lens",
+  "findings": [
+    {
+      "title": "Tempo and loop events miss changes made in Settings",
+      "severity": "P2",
+      "section": "5. Events — the event table's 'Where the control lives' cells for tempo_change, loop_toggle, metronome_toggle and count_in_toggle",
+      "why_it_matters": "Goal 2 ('What they use': play, loop, tempo, the mixer) will undercount tempo and loop use, because each of those values has two controls but section 5 sends the event from only one of them. The Settings popover's 'Playback speed (%)' row (settings-schema.ts:289 calls it 'the control a drummer reaches for most') edits the same speed as the header stepper (PlayerShell.tsx:606-607: 'v0 ships two controls over this one value'), and its Loop, metronome-volume and count-in-volume rows reach the same writers as the transport buttons (applyApiValue, PlayerShell.tsx:646; the Metronome and Count-In buttons only set those volumes to 1 or 0, :1152-1154). Yet the table puts `tempo_change` only in PlayerHeader.tsx and `loop_toggle`, `metronome_toggle` and `count_in_toggle` only in TransportRow.tsx (spec lines 262-265), so a change made in Settings arrives only as a key-only `setting_change`, with no `speed_percent` and no `on`. Sending each of the four events whichever control made the change, as their 'Sent when' cells already describe ('the speed is set', 'Loop'), closes the gap, keeps `setting_change` meaning 'a Settings row changed', and adds no event to G8's twelve (the typed event list).",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "In section 5's event table, add `SettingsPopover.tsx` to the 'Where the control lives' cells of `tempo_change` (the 'Playback speed (%)' row), `loop_toggle` (the 'Loop' row), and `metronome_toggle` and `count_in_toggle` (their volume rows, only when the volume crosses zero), so each of these events is sent with the same fields whichever control changed the value; `setting_change` stays as it is, so a speed set in Settings sends both `tempo_change` and `setting_change`.",
+      "confidence": 75,
+      "evidence": [
+        "2. **What they use** — their own file or the bundled beat, play, loop, tempo, the mixer.",
+        "| `tempo_change`     | the speed is set                                                                                  | `speed_percent`                                     | `PlayerHeader.tsx`                                   |",
+        "| `loop_toggle`      | Loop                                                                                              | `on`, `range`                                       | `TransportRow.tsx`                                   |",
+        "| `setting_change`   | a row in the Settings popover changes                                                             | `setting`                                           | `SettingsPopover.tsx`                                |"
+      ]
+    },
+    {
+      "title": "Second destination would get no page views or visitor ID",
+      "severity": "P3",
+      "section": "Why this exists (the 'ready for the database' goal) and Extending later — the 'A second destination' bullet",
+      "why_it_matters": "Whoever scopes NH-54's pipeline (the later AWS second destination) from this spec will expect a one-file change, yet that destination could not count visits or build the Home → Play funnel. Page views come from Google's enhanced measurement, not from `track()`, and the visitor ID, country and device are Google's own (section 4, and section 5's `page_view` row), so a sender added inside `track()` receives only the eleven typed events: nothing for goal 1 ('Who comes') and none of goal 3's page steps. Saying so now keeps NH-54 from being scoped as one file; section 4's fallback, which sends `page_view` from our own code, is the piece it would reuse.",
+      "finding_type": "omission",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "In 'Why this exists', change the sentence to 'a new field, or sending the typed events to a second destination, must be a one-file change'; and add to the 'A second destination' bullet in 'Extending later': 'It receives the typed events only. Page views, the visitor ID, country and device come from Google, so NH-54 also needs `page_view` sent from our code (section 4's fallback) and a visitor ID of its own; the popup's Details and the privacy notice, which name where visit counts go, change with it.'",
+      "confidence": 50,
+      "evidence": [
+        "On the free tier only, and ready for the database: a new field or a second destination must be a",
+        "- **A second destination** (NH-54's pipeline): a second sender inside `track()`; no event changes.",
+        "- **Page views** come from Google's enhanced measurement: one on load, and one on each client-side",
+        "Google's own: page, referrer, country, device"
+      ]
+    }
+  ],
+  "residual_risks": [
+    "The undercount this spec documents has no gauge: ad blockers, visitors in Europe who never answer, and Safari's seven-day reset each shrink the counts, and the Sentry spec says how many are missed 'is not measured' because this project counts no visits outside Sentry (its Known limits). Early numbers therefore cannot tell low interest from a large uncounted share, and the 2026-06-20 decision to revisit GA4 'when undercount bites' (docs/spikes/2026-06-20-clean-slate-infra-tooling-app-skeleton.md:295) has no signal to act on."
+  ],
+  "deferred_questions": []
+}

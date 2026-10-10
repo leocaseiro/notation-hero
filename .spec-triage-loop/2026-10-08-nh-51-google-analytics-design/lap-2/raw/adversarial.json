@@ -1,0 +1,83 @@
+{
+  "reviewer": "adversarial",
+  "findings": [
+    {
+      "title": "KB-precise file size lets Google single out the file",
+      "severity": "P1",
+      "section": "5. Events - the field table (`file_size_kb`, sent on `open_file` and `score_failed`)",
+      "why_it_matters": "Google, and anyone with access to the Google Analytics property, could tell which widely shared tab a visitor opened, tied to the lasting `_ga` visitor ID - the music the Goal promises never leaves the device. `file_size_kb` is rounded only to whole KB and travels beside `file_type`, with `track_count` and `instruments` on `score_loaded` in the same visit. The owner has approved the opposite rule for Sentry (Choice 3 of the Sentry plan, written after this design's round 1 began): its report rounds the size up to a power of two because an exact size and the type 'could single out a widely shared file', and no goal in this spec needs the precise size either. Sending Google a finer size than Sentry, with a persistent ID Sentry never gets, breaks 'the promise Sentry keeps'; sharing Sentry's rounding gives both tools one standard.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "In section 5's field table, make `file_size_kb` 'the size after Sentry's rounding (bytes rounded up to a power of two), in KB', and in section 1's `web/lib/score-facts.ts` row add that rounding function, moved out of Sentry's `report.ts` beside `instrumentsValue()`, so both tools share one function.",
+      "confidence": 75,
+      "evidence": [
+        "the size, rounded to whole KB",
+        "Every field comes from a fixed list or is a number, so text from the file cannot reach Google.",
+        "without sending the score, its file name, its track names or the music — the promise Sentry keeps"
+      ]
+    },
+    {
+      "title": "A version change silently drops opt-outs outside Europe",
+      "severity": "P2",
+      "section": "2. The privacy choice - 'Kept in this browser' (the `version` field) and the visitor table",
+      "why_it_matters": "The first time the question changes - likely when NH-54 (the AWS analytics pipeline) adds a recipient that the popup's Details must name - every visitor outside Europe who chose 'No' or 'Report errors only' through NH-349's 'Privacy choices' link is tracked again, and never asked. 'version lets a later change to the question ask again' makes an older answer read as no answer; with no answer the time zone decides, and outside Europe that means everything on with no popup. An older answer should never allow more than it did, so only a saved 'all' may lapse, while Europe is still asked again.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "Add to 'Kept in this browser': 'An answer saved under another version never allows more than it did: until the visitor answers again, a saved \"errors\" or \"none\" still limits what starts in every time zone, while a visitor in Europe sees the popup again; only a saved \"all\" from another version counts as no answer.' Add an `allowed()` unit case: a version-1 \"none\" read by version-2 code allows nothing in `Australia/Sydney`.",
+      "confidence": 75,
+      "evidence": [
+        "`version` lets a later change to the question ask again.",
+        "An answer holds in every time zone once it is given; the time zone decides only while there is none.",
+        "Outside Europe, no answer given"
+      ]
+    },
+    {
+      "title": "Berlin's 'nothing sent' checks can pass on a broken build",
+      "severity": "P2",
+      "section": "9. Testing - End to end, the Berlin case (before an answer, and 'No, send nothing')",
+      "why_it_matters": "A build that wrongly starts Google Analytics or Sentry in Europe can still pass the one automated proof of G5 (in Europe nothing loads until the visitor answers). The Berlin case asserts that no request arrived but names no moment by which a wrongly started tool would have sent one: Google's script is added only after the page's load event, and Sentry sends asynchronously. Round 1 fixed exactly this for the Privacy case, and NH-124's own rule needs a sentinel for every 'nothing sent' check, which a 'No' case cannot send. Anchoring each check to a later event, and checking our own synchronous state (`window.dataLayer` exists only once `startAnalytics()` has run), makes a broken build fail every time.",
+      "finding_type": "omission",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "In section 9's Berlin case: while nothing is allowed, assert that `window.dataLayer` does not exist and no googletagmanager script was added; before an answer, force an uncaught error, see its `pageerror`, then press 'Yes' and wait for Sentry's session envelope - no recorded event may carry the forced error; after 'No', force an error, see its `pageerror`, reload, and check both recorders only after the second load.",
+      "confidence": 75,
+      "evidence": [
+        "**Berlin:** the popup shows, and **no** request reaches Google or Sentry before an answer. \"No, send nothing\": still none, also after a reload.",
+        "Without the wait, an empty queue would pass."
+      ]
+    },
+    {
+      "title": "IANA's canonical zones miss names browsers report for EEA places",
+      "severity": "P2",
+      "section": "2. The privacy choice - 'Europe, by time zone' (the full list), with 'To verify at plan time'",
+      "why_it_matters": "Visitors in Iceland and in EU regions such as Reunion, Mayotte, Guadeloupe and Saint-Martin could be counted and reported without being asked, breaking G3 (Europe asked first) for them. Browsers report CLDR names - V8 returns `Atlantic/Reykjavik`, `Indian/Reunion`, `Indian/Mayotte` and `America/Guadeloupe` (checked in Node 24) - while IANA's current data makes these links to `Africa/Abidjan`, `Asia/Dubai`, `Africa/Nairobi` and `America/Puerto_Rico`, and IANA's zone.tab tells new programs to use zone1970.tab, which files those places under the canonical zones. A list 'from the IANA time-zone database' built that way misses the names browsers send, and asks West and East Africa, the Gulf and the Caribbean instead; zone.tab keeps the reported names, and two unit cases pin them.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "Replace the bullet's last sentence with: 'The plan fixes the full list from IANA's zone.tab rows for the EU and EEA country codes, which keep the names browsers report (Atlantic/Reykjavik, Indian/Reunion, America/Guadeloupe) - not from zone1970.tab, which files those places under Africa/Abidjan, Asia/Dubai and America/Puerto_Rico.' Add `Atlantic/Reykjavik` and `Indian/Reunion` to the `asksFirst()` unit case, and say zone.tab in 'To verify at plan time'.",
+      "confidence": 75,
+      "evidence": [
+        "The plan fixes the full list from the IANA time-zone database.",
+        "such as `Atlantic/Canary`, `Atlantic/Madeira`, `Atlantic/Azores`, `Atlantic/Reykjavik`, `Asia/Nicosia` and the French overseas regions",
+        "`asksFirst()`: `Europe/Berlin`, `Europe/London`, `Atlantic/Canary`, `Asia/Nicosia`, `UTC` and an empty value ask first"
+      ]
+    },
+    {
+      "title": "Europe's late Yes loses landing page and campaign tags",
+      "severity": "P2",
+      "section": "3. The popup - 'Non-blocking' and 'Answering', with 4. Google Analytics in code - 'Addresses'",
+      "why_it_matters": "A visitor in Europe who clicks Play before answering - easy, since the card never blocks and stays across client-side page changes - is counted from /play on: `startAnalytics()` runs only at the answer, so the first page view carries `/play`, and the landing page with its campaign tags (the spec's own way of telling where a visitor came from) is never sent. Europe's sources then read as direct or referral, and the funnel loses its first step for them, a skew no section mentions. In Chromium the browser's navigation record still holds the landing address, with its `?` part, after a client-side page change (checked), so the loader can read it after the answer, keeping G5: nothing is kept or sent before consent.",
+      "finding_type": "omission",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "In section 4, add: when the answer comes after a client-side page change, `startAnalytics()` first sends a page view for the landing address - read after the answer from the browser's navigation record (`performance.getEntriesByType('navigation')`), without its `#` part - then the one for the current page. Add a Berlin case (land on `/?utm_source=probe`, click Play, answer 'Yes': the queue holds a page view for `/` with `utm_source` before the one for `/play`), and a Known-limits line: events from before the answer are never sent.",
+      "confidence": 75,
+      "evidence": [
+        "The player works while the card waits, and nothing is sent meanwhile. It returns on every page load until answered.",
+        "the campaign tags on a link you share, which is how it reports where a visitor came from",
+        "**Answering** saves the choice, hides the card and starts what it allows at once — no reload."
+      ]
+    }
+  ],
+  "residual_risks": [
+    "Outside Europe, Google's script runs only after the page's load event (section 4), so a visitor who clicks Play before then may also be counted from /play without the landing page's campaign tags, if gtag.js reads the address when it processes the queued `config` rather than when the call was queued. Unverified: section 8's step 6 can check it by opening `/?utm_source=probe` and clicking Play at once. The landing-page fix proposed for Europe's late answer would cover this case too."
+  ],
+  "deferred_questions": []
+}
