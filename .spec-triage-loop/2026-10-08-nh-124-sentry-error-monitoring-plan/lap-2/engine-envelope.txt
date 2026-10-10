@@ -1,0 +1,25 @@
+Document review complete (non-interactive mode).
+
+Applied 5 fixes:
+- Global Constraints and Task 15's web/AGENTS.md rule: both now name Choice 4's exception — an E202 whose message is empty sends E202's sentence (coherence)
+- Questions table, Q13 row: a drop's announcement skips the E105 raised after the swap, as the new catch does (coherence)
+- Task 11 Step 5: the expected failure says Vitest prints its 5-second test timeout for the two cases that never see an E105 (spike verifier)
+- Task 11 Step 6: delete the lone `//` together with the PRE-EXISTING line (spike verifier)
+- Task 11 Step 6: the after-swap catch's lead comment rewrapped to fit 100 columns at its real indent (spike verifier)
+
+Proposed fixes (nothing here has landed; awaiting the same grouped confirmation):
+
+[P3] Section: Task 1 Step 4 / Task 2 Step 5 / Task 16 Step 1 — a VERCEL_ENV line in a web/.env file opens the upload gate (security-lens, confidence 75)
+  Recommendation: Apply
+  Consequence if unchanged: after a production pull into web/, a local build uploads source maps under the release "local", or fails on the "[SENSITIVE]" placeholder token, and dev reports into the production project.
+  Change: the build script hands next build the shell's own VERCEL_ENV; the gate's comment and Choice 12 say why; the README warns against pulling Production variables into web/.
+  Basis: Next loads web/.env* files before next.config.ts and fills only missing variables (run on Next 16.3.6). Setting VERCEL_ENV on the command line keeps a file from setting it; on Vercel the real value passes through (run).
+
+FYI observations (anchor 50, no decision required):
+
+[P3] Section: Tasks 11-13, the PlayerShell tests' waits — fourteen waits allow 5 seconds, the same as Vitest's test timeout (spike verifier, confidence 50)
+  Consequence if unchanged: a run-to-fail step can print a timeout instead of its own failed check; the plan's text still names the right cause.
+[P3] Section: Task 11 Step 6, the comment above openInFlight — its "113-line body" is already stale (findings verifier, confidence 50)
+  Consequence if unchanged: a wrong number stays in a code comment.
+
+Review complete

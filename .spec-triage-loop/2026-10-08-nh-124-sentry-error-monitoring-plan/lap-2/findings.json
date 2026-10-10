@@ -1,0 +1,465 @@
+{
+  "header": {
+    "artifact_path": "docs/plans/2026-10-08-nh-124-sentry-error-monitoring-plan.md",
+    "artifact_worktree": "nh-320-vr-spec-lap-4-92e22a",
+    "artifact_path_from_root": ".claude/worktrees/nh-320-vr-spec-lap-4-92e22a/docs/plans/2026-10-08-nh-124-sentry-error-monitoring-plan.md",
+    "artifact_permalink": "https://github.com/leocaseiro/notation-hero/blob/8109b9fb7830311bf155e6b84f40534321cfb696/docs/plans/2026-10-08-nh-124-sentry-error-monitoring-plan.md",
+    "permalink_sha": "8109b9fb7830311bf155e6b84f40534321cfb696",
+    "branch": "claude/sentry-error-monitoring-89abc2",
+    "pr": "https://github.com/leocaseiro/notation-hero/pull/191",
+    "jira": "https://leocaseiro.atlassian.net/browse/NH-124 (status PLAN REVIEW)",
+    "spec": "docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md (settled; reviewed in three laps, ended 2026-10-08)",
+    "lap": 2,
+    "focused": true,
+    "focus_scope": "The owner's choice at lap 1's step 7 (2026-10-09): the reviewers read only what lap 1 changed — git diff fc745806..88e209ad -- the plan (959 lines: the review's five fixes in 47827227 and the triage's nine decisions in 82d11a95, df7e287b, a33cc454, a3ad4ace) — and the plan around each hunk for context only. A passage lap 1 did not edit was in scope only when an edit made it stale.",
+    "review_skill": "compound-engineering:ce-doc-review 3.30.4",
+    "review_mode": "mode:headless (the deprecated alias of mode:non-interactive)",
+    "state_store": "The plan's YAML frontmatter: lap: 1, last_applied: P1 when this review ran; the triage half wrote lap: 2, last_applied: P3 (2026-10-10).",
+    "document_type": "plan",
+    "review_baseline_commit": "88e209ad",
+    "id_note": "Lap 2 numbers its items on from lap 1's, so no id repeats across the plan review: lap 1 used PF-1–PF-8, PQ-1–PQ-4, PO-1, PO-2 and R-1. PF-n are findings, PO-n observations, PQ-n questions, R-n residual concerns.",
+    "severity_scale": {
+      "P0": "immediate critical harm",
+      "P1": "ships broken — following the plan produces a red build or a broken promise",
+      "P2": "a real gap an implementer will hit",
+      "P3": "worth fixing — small, cheap"
+    },
+    "confidence_scale": {
+      "100": "the reviewer confirmed it against the source",
+      "75": "inferred from reading, not run",
+      "50": "a suspicion or advisory worth checking, not a finding to act on as it stands"
+    },
+    "triage_cap": "12 findings or 5 picker rounds, whichever first; a finding that needs two rounds counts twice",
+    "triaged": true,
+    "permalink_note": "The plan as reviewed (88e209ad) plus the five wording fixes this review applied (this sha, 8109b9fb). This findings file is committed on top of it; the plan is identical at both.",
+    "line_numbers_note": "Line numbers below refer to the plan at 8109b9fb. Every item also names its task and step, which do not move.",
+    "reviewers_dispatched": {
+      "coherence": "always on; sonnet, not the cheapest tier: lap 1's haiku pass found nothing in the whole plan, and this lap's main job is checking changed text against the rest — 2 findings",
+      "feasibility": "always on; parent model — 0 findings",
+      "security-lens": "the token gate, the slug check, the IP test, the web/AGENTS.md rule (parent model) — 1 finding",
+      "design-lens": "the new E105 toast and Task 7's home page (sonnet) — 0 findings",
+      "not dispatched": "scope-guardian, adversarial and product-lens: the owner set this lap's team at lap 1's step 7"
+    },
+    "reviewer_context": "Each reviewer got ce-doc-review's subagent template with its persona and the findings schema; the settled decisions (the spec's S1–S4/D1–D5, the spec laps' outcomes, and every decision of the plan review's lap 1); a decision primer listing lap 1's 13 applied items (to check that each landed) and the one kept as written (Q13); the focused scope (the 959-line diff, the plan around each hunk, and any passage a change made stale); and a one-paragraph lens note per reviewer.",
+    "spike_verifier": "One agent applied Tasks 1 (the install), 4, 5, 10 and 11 in a throwaway worktree with @sentry/nextjs 11.1.0 (pnpm with --ignore-scripts; the shared git hooks were unchanged afterwards, checked by hash). report.test.ts 25/25, OpenFileControl.test.tsx 4/4, PlayerShell.test.tsx 5/5; the whole web unit lane 163/163; ESLint (--max-warnings 0), tsc and Prettier clean; check:error-codes OK. Every run-to-fail step failed as the plan says. Task 11's two after-the-swap cases (lap 1's PQ-3) pass with the new catch and fail without it, so they really test it. Its three minor points became PF-11, PF-12 and PF-13, and PO-3. See verify-tests.json.",
+    "coverage_notes": [
+      "Cross-model peer pass SKIPPED: it would send the plan to an outside AI provider, which the owner has not authorized.",
+      "No finding re-raises a settled decision. Every lap-1 change landed: feasibility and design-lens found nothing, and the spike verifier ran the changed code.",
+      "Compound Packs: none declared.",
+      "Dropped (anchors 0/25): 0. Restated: 0."
+    ],
+    "finding_counts": {
+      "raw_from_reviewers": 3,
+      "raw_from_spike_verifier": 3,
+      "items": 8,
+      "applied_by_the_review": 5,
+      "proposed_fixes_undecided": 1,
+      "fyi_observations": 2,
+      "verified_items": 6,
+      "verified_pass": 5,
+      "verified_pass_with_correction": 1,
+      "verified_fail_dropped": 0,
+      "note": "Items for triage: 1 decision (PF-14). PO-3 and PO-4 are FYI observations — no decision needed. PF-9 to PF-13 were applied by the review and are reported, not asked."
+    },
+    "exit_signal_raw": "NOT CLEAN — the headless envelope carries a Proposed fixes section (1: PF-14, a P3). It carries no Decisions section. See engine-envelope.txt.",
+    "applied_by_the_review": "PF-9 to PF-13, in commit 8109b9fb, after a separate agent verified each one (the section exists, the quotes are verbatim, nothing else in the plan contradicts the fix, and Prettier leaves every code block unchanged). Authority: the owner's standing rule (2026-10-09) that a fix which only removes an ambiguity is applied and reported, not asked. Each is P3. Revert all five with `git revert 8109b9fb`, or one by hand from its before_after.",
+    "verification": "Two dispatched agents. The spike verifier ran Tasks 1, 4, 5, 10 and 11 (see spike_verifier). The findings verifier checked every item against the plan and the spec, tried every fix on a copy of the plan under Prettier, and spiked PF-14 by running Next 16.3.6's own `next build` and env loader. See verify-findings.json.",
+    "artifact_files": [
+      "findings.json",
+      "engine-envelope.txt",
+      "verify-tests.json",
+      "verify-findings.json",
+      "raw/<reviewer>.json (the four reviewers' JSON)"
+    ],
+    "finding_count_for_triage": 1,
+    "triage_progress": {
+      "undecided": [],
+      "decided": ["PF-14"]
+    },
+    "triaged_on": "2026-10-10"
+  },
+  "already_applied": [
+    {
+      "id": "PF-9",
+      "severity": "P3",
+      "severity_meaning": "worth fixing — small, cheap",
+      "confidence": 75,
+      "confidence_meaning": "inferred from reading by the reviewer; then verified against the plan and the spec by a separate agent",
+      "reviewers": ["coherence"],
+      "section": "Global Constraints, the 'Fixed sentences' bullet; Task 15 Step 5, the web/AGENTS.md rule (the agents' rule for catches)",
+      "title": "Two rules still said only E101–E103 replace an error's message",
+      "scenario": "Months from now, a code reviewer checks Task 5's reporting code against the plan's Global Constraints. The constraint says E201–E204 keep their message, but the code replaces an empty E202 message with E202's sentence — the choice you approved in lap 1 (QP-1, Choice 4). The reviewer flags your own decision as a bug. And web/AGENTS.md, which stays in the repository, repeats the old rule to every future agent.",
+      "whats_wrong": "Lap 1 approved Choice 4 (an E202 whose message is empty sends E202's sentence) but left two passages stating the old rule.",
+      "before_after": [
+        {
+          "where": "Global Constraints, 'Fixed sentences' bullet, plan lines 62-64",
+          "before": "  ours: the code, then its meaning from `docs/reference/error-codes.md`\". E105, E901 and E201–E204\n  keep their message.\n",
+          "after": "  ours: the code, then its meaning from `docs/reference/error-codes.md`\". E105, E901 and E201–E204\n  keep their message, except that an E202 whose message is empty sends E202's sentence instead\n  (Choice 4).\n"
+        },
+        {
+          "where": "Task 15 Step 5, the web/AGENTS.md bullet (inside the markdown fence), plan lines 4822-4825",
+          "before": "  `reportError` keeps the error's message for every code except E101–E103, and the names filter\n  removes names, not a file's contents. A catch around code that reads or parses the visitor's\n  file, such as the cached-score path E104 is reserved for, needs a fixed sentence: add its code to\n  `FIXED_MESSAGES` in `web/lib/monitoring/report.ts`, and to the fixed-sentence test beside it.\n",
+          "after": "  `reportError` keeps the error's message for every code except E101–E103 (and an E202 whose message\n  is empty), and the names filter removes names, not a file's contents. A catch around code that\n  reads or parses the visitor's file, such as the cached-score path E104 is reserved for, needs a\n  fixed sentence: add its code to `FIXED_MESSAGES` in `web/lib/monitoring/report.ts`, and to the\n  fixed-sentence test beside it.\n"
+        }
+      ],
+      "what_changed": "Both passages now name the exception. The Global Constraints keep the spec's own words first (spec 3.2), then the plan's approved exception with its decision named, as the section's rule asks.",
+      "why_it_works": "The rule and the decision now say the same thing wherever a reviewer or an agent reads it.",
+      "verification": "PASS with a correction: the quotes are verbatim (at 88e209ad, lines 63–64 and 4822–4823); the reviewer's Task 15 wording read as a three-item list, so the exception went in brackets. Not changed on purpose: the scrub.ts module comment (Task 4 Step 3, line 1204) still says E201–E204 keep their message — it explains why the names filter exists, an empty message holds no name, and it is the spec's own sentence.",
+      "revert": "git revert 8109b9fb (all five), or restore the two before texts."
+    },
+    {
+      "id": "PF-10",
+      "severity": "P3",
+      "severity_meaning": "worth fixing — small, cheap",
+      "confidence": 50,
+      "confidence_meaning": "raised as a suspicion; then confirmed against the code and the test by a separate agent",
+      "reviewers": ["coherence"],
+      "section": "Questions the spec left to the plan — the Q13 row (the picker's announcement)",
+      "title": "The Q13 row said every dropped file's E105 is announced",
+      "scenario": "A code reviewer reads the Q13 row: 'A drop also writes it into the player's announcement.' Then they see that Task 11's new catch — the E105 after the swap, which you approved in Q12 — writes no announcement for a dropped file. They file it as a missing announcement, and you spend a triage round on a choice already made.",
+      "whats_wrong": "Lap 1 added a second kind of E105 (after the swap). The Q13 row still reads as if every dropped file's E105 is written into the player's announcement.",
+      "before_after": [
+        {
+          "where": "Questions table, the Q13 row (plan line 261), its last sentence",
+          "before": "A drop also writes it into the player's announcement.",
+          "after": "A drop also writes its E105 into the player's announcement, except one raised after the swap (Q12)."
+        }
+      ],
+      "what_changed": "The last sentence names the exception. It is shorter than the reviewer's, so the table keeps its column width.",
+      "why_it_works": "It now matches the catch, which writes no announcement: an E105 after the swap is announced by its toast alone (a polite live region), for a picked and a dropped file alike.",
+      "verification": "PASS: the catch calls reportError, toast.dismiss and toast.error and never setAnnouncement; the dropped after-swap test asserts that the 'could not be opened' announcement is absent.",
+      "revert": "git revert 8109b9fb, or restore the before sentence."
+    },
+    {
+      "id": "PF-11",
+      "severity": "P3",
+      "severity_meaning": "worth fixing — small, cheap",
+      "confidence": 100,
+      "confidence_meaning": "confirmed by running the tests",
+      "reviewers": ["spike verifier"],
+      "section": "Task 11 Step 5 — the 'Expected: FAIL' text for PlayerShell.test.tsx",
+      "title": "The expected failure did not say Vitest prints a timeout",
+      "scenario": "You implement Task 11 test-first. You run PlayerShell.test.tsx and expect the failures the plan lists. Two cases print 'Test timed out in 5000ms' instead of a failed check, and you may think the test is stuck, not that no E105 arrived.",
+      "whats_wrong": "Those two cases wait up to 5 seconds for an E105 — the same as Vitest's default test timeout (web/vitest.config.ts sets none) — so the test's own timeout fires first.",
+      "before_after": [
+        {
+          "where": "Task 11 Step 5, the Expected text (plan lines 3622–3627)",
+          "before": "throw reaches the picker's catch), and the dropped file's never sees an E105.",
+          "after": "throw reaches the picker's catch), and the dropped file's never sees an E105. Vitest reports the\ntwo that never see an E105 as `Test timed out in 5000ms`, not as a failed check: their wait\nallows the same 5 seconds as the test itself."
+        }
+      ],
+      "what_changed": "One sentence names what Vitest prints for those two cases.",
+      "why_it_works": "The plan now says what you will literally see, so the run-to-fail step reads as expected.",
+      "verification": "Run by the spike verifier: both drop cases printed 'Error: Test timed out in 5000ms.'; with a 4000 ms wait they print their own assertion instead. A probe on the checkout's Vitest (4.1.11, default testTimeout 5000) showed the same.",
+      "revert": "git revert 8109b9fb, or delete the added sentence."
+    },
+    {
+      "id": "PF-12",
+      "severity": "P3",
+      "severity_meaning": "worth fixing — small, cheap",
+      "confidence": 100,
+      "confidence_meaning": "confirmed in the real file and by applying the step",
+      "reviewers": ["spike verifier"],
+      "section": "Task 11 Step 6 — the comment block above openInFlight in web/app/play/PlayerShell.tsx",
+      "title": "Deleting only the PRE-EXISTING line left an empty `//`",
+      "scenario": "You follow Task 11 Step 6 and delete the 'PRE-EXISTING: …' line, as told. The comment block now ends with a lone `//` line right above `const openInFlight = useRef(false);`.",
+      "whats_wrong": "In today's PlayerShell.tsx, a lone `//` separator sits just above the PRE-EXISTING line.",
+      "before_after": [
+        {
+          "where": "Task 11 Step 6, plan lines 3663-3664",
+          "before": "In the comment block above `openInFlight`, delete the last line, \"PRE-EXISTING: this path is\nunchanged by this feature, and the race predates it.\" — this change touches the path.\n",
+          "after": "In the comment block above `openInFlight`, delete its last two lines — the lone `//` and the line\nbelow it, \"PRE-EXISTING: this path is unchanged by this feature, and the race predates it.\" — this\nchange touches the path.\n"
+        }
+      ],
+      "what_changed": "The step deletes both lines and names each one.",
+      "why_it_works": "The block ends at '… and an unreadable score.', as intended.",
+      "verification": "Confirmed in PlayerShell.tsx (lines 912–913) and when the spike applied Task 11. This text is older than lap 1, but it is in the task the owner asked the verifier to run.",
+      "revert": "git revert 8109b9fb, or restore the before text."
+    },
+    {
+      "id": "PF-13",
+      "severity": "P3",
+      "severity_meaning": "worth fixing — small, cheap",
+      "confidence": 100,
+      "confidence_meaning": "measured by both verifiers",
+      "reviewers": ["spike verifier"],
+      "section": "Task 11 Step 6 — the after-swap try/catch's lead comment",
+      "title": "The new catch's comment ran past 100 columns where it sits",
+      "scenario": "You paste the new try/catch into runRequestNotation, where it sits 6 spaces in. Three comment lines run to 102–103 characters, past the repo's 100-column habit. No linter or Prettier flags it, so it stays that way.",
+      "whats_wrong": "The snippet is shown at column 0, so its comment was wrapped for column 0.",
+      "before_after": [
+        {
+          "where": "Task 11 Step 6, the after-swap try/catch snippet's lead comment, plan lines 3671-3674",
+          "before": "// The new score is on screen from here, so a bug of ours in the steps left must not say the file\n// \"could not be opened\": this catch reports it as E105 with its own sentence, and the open ends\n// here instead of reaching either open path's catch. No announcement: the toast is a polite live\n// region, as the picker's E105 already relies on.\n",
+          "after": "// The new score is on screen from here, so a bug of ours in the steps left must not say the\n// file \"could not be opened\": this catch reports it as E105 with its own sentence, and the\n// open ends here instead of reaching either open path's catch. No announcement: the toast is\n// a polite live region, as the picker's E105 already relies on.\n"
+        }
+      ],
+      "what_changed": "Rewrapped to at most 94 characters, words unchanged.",
+      "why_it_works": "At its real 6-space indent every line now fits in 100 columns.",
+      "verification": "Measured by both verifiers; Prettier leaves the rewrapped block unchanged.",
+      "revert": "git revert 8109b9fb, or restore the before comment."
+    }
+  ],
+  "undecided_findings": [],
+  "fyi_observations": [
+    {
+      "id": "PO-3",
+      "severity": "P3",
+      "confidence": 50,
+      "confidence_meaning": "an advisory: the mechanism was run, but nothing is wrong with what the tests prove",
+      "reviewers": ["spike verifier", "findings verifier"],
+      "section": "Tasks 11, 12 and 13 — the PlayerShell tests' waits",
+      "title": "Fourteen waits allow 5 seconds, the same as Vitest's test timeout",
+      "scenario": "When you run a Task 12 or Task 13 test before its change, a wait that never succeeds prints 'Test timed out in 5000ms' rather than its own failed check.",
+      "observation": "14 `waitFor(…, { timeout: 5000 })` in Tasks 11–13 (lap 1 added 2) equal Vitest's default testTimeout, so the test's own timeout fires first. PF-11 now says so for Task 11. Task 13 Step 3's run-to-fail step will likely print timeouts too (reasoned from a probe, not run); its Expected text still names the right cause. Lowering every wait to 4000 ms would make each failure print its own check, at a small risk on a slow runner (the slowest passing case takes about 2.1 s here).",
+      "recommendation": "No change. Report it in one line; offer the 4000 ms change only if the owner asks.",
+      "decision_needed": false
+    },
+    {
+      "id": "PO-4",
+      "severity": "P3",
+      "confidence": 50,
+      "confidence_meaning": "an advisory about existing code, outside this lap's scope",
+      "reviewers": ["findings verifier"],
+      "section": "Task 11 Step 6 — the comment block above openInFlight in web/app/play/PlayerShell.tsx",
+      "title": "The comment's '113-line body' is already stale",
+      "scenario": "Reading PlayerShell.tsx, you trust the comment's '113-line body' — but runRequestNotation's body is 124 lines today, and Task 11's try/catch lengthens it.",
+      "observation": "A number in existing code, wrong before this feature. The block is the one Task 11 Step 6 already edits, so the implementer can drop the number then.",
+      "recommendation": "No change to the plan. Report it in one line.",
+      "decision_needed": false
+    }
+  ],
+  "rejected_findings": [],
+  "residual_concerns": [],
+  "deferred_questions": [],
+  "dedup_notes": [
+    "No two findings shared a fix; nothing merged.",
+    "The spike verifier's three points became PF-11 (the expected-failure text), PF-12 and PF-13; the rest of its timeout point became PO-3.",
+    "The findings verifier's side note on the stale '113-line body' comment became PO-4.",
+    "PF-14 is security-lens's finding, raised at confidence 50, then spiked: confirmed, and widened by the '[SENSITIVE]' placeholder and the pulled DSN."
+  ],
+  "cross_fix_conflicts": [],
+  "carry_forward_constraints": [
+    "Settled, not re-asked: the spec's ten decisions (S1, S2, S2b, S3, S4, D1–D5), every outcome in the NH-124 changelog entry (spec laps 1–3 and 'Changed by the plan review, lap 1'), and every decision in lap 1's findings.json — PQ-3's option 2 included, leocaseiro's pick over the recommendation.",
+    "Ambiguity-only fixes: apply them and report them; no picker (leocaseiro, 2026-10-09).",
+    "An approved item that changes a settled detail (PF-14 would refine Choice 12) is recorded in the NH-124 entry of docs/decisions/decision-changelog.md, under a new 'Changed by the plan review, lap 2' list.",
+    "The red pr-checklist / CI Green on the draft is expected — never enable Auto-fix.",
+    "Write the PR body BEFORE every push (a body edit cancels a running CI).",
+    "Apply as you go: one commit per picker round, each revertable.",
+    "Dependabot alert #93 is separate work; NH-349, NH-278 and NH-350 are out of scope.",
+    "The cross-model pass stays skipped: no consent to send the plan to an outside AI provider.",
+    "Never ask for, read, print or test SENTRY_AUTH_TOKEN; the owner does spec section 5 by hand.",
+    "Public repo: no personal data and no machine paths in committed files.",
+    "Prettier formats this plan's code blocks: give JSX as whole files, and diff the code blocks after prettier --write (only table realignment should change)."
+  ],
+  "triage_plan": {
+    "report_first": "PF-9 to PF-13, applied by the review in 8109b9fb: one short list, each revertable. Then PO-3 and PO-4, one line each, no decision.",
+    "rounds": [
+      "Round 1 — PF-14 (the upload gate and web/.env files): one card with 1️⃣ pin + warn (Recommended), 2️⃣ warn only, 3️⃣ leave it, and Skip — decide later; then [Q-add]."
+    ],
+    "cap_note": "1 decision in 1 round: well under the 12-finding / 5-round cap.",
+    "finally": "Write the plan's frontmatter (lap: 2, last_applied: P3 — everything applied this lap is P3), mark this file triaged, add PF-14 to the NH-124 changelog entry under 'Changed by the plan review, lap 2' if it is applied, commit, PR body, push — then step 7.",
+    "step7_heads_up": "Lap 2 found and applied nothing above P3. The exit signal is not clean only because of PF-14, a P3 proposed fix. Step 7a comes first: lap 1 left 0 unresolved P0/P1 and lap 2 has 0, so 'this lap did not reduce the count of unresolved P0/P1' fires, and the rule halts and hands the choice to the owner. Recommend stopping the plan review and moving NH-124 to CODE (Jira transition 61): both laps' changes were verified by running code and nothing above P3 remains. Flip to a lap 3 only if the owner wants PF-14's edit re-read by reviewers."
+  },
+  "notes": [
+    "Lap 2 is focused (the owner's choice at lap 1's step 7): only lap 1's changes, and the passages they made stale.",
+    "The spike verifier's logs and applied diff stay in the session scratchpad, not the repository; verify-tests.json carries their results.",
+    "A probe by the findings verifier added one entry to the checkout's git-ignored Vitest cache and an empty temp folder; both were reverted, and git status stayed clean.",
+    "Triage (2026-10-10): PF-9 to PF-13 were reported as applied and kept; PO-3 and PO-4 were reported as FYI, with no change; the owner added nothing on the [Q-add] card."
+  ],
+  "resume": {
+    "status": "The plan review ended after lap 2 (2026-10-10), and NH-124 is in CODE. Next: implement Tasks 1-17 of the plan.",
+    "plan_path_from_root": ".claude/worktrees/nh-320-vr-spec-lap-4-92e22a/docs/plans/2026-10-08-nh-124-sentry-error-monitoring-plan.md",
+    "artifact_path_from_root": ".claude/worktrees/nh-320-vr-spec-lap-4-92e22a/.spec-triage-loop/2026-10-08-nh-124-sentry-error-monitoring-plan/lap-2/findings.json"
+  },
+  "decided_findings": [
+    {
+      "id": "PF-14",
+      "kind": "proposed_fix",
+      "severity": "P3",
+      "severity_meaning": "worth fixing — small, cheap",
+      "confidence": 75,
+      "confidence_meaning": "the mechanism was run: a real `next build` (Next 16.3.6) with VERCEL_ENV=production in web/.env.local opened the gate, and the pin closed it. The trigger — a production pull writing that line — comes from the Vercel CLI's source and files it wrote, not from running the CLI.",
+      "reviewers": [
+        "security-lens (raised at confidence 50)",
+        "findings verifier (confirmed and widened it)"
+      ],
+      "section": "Task 1 Step 4 (web/next.config.ts, the production-only token gate — Choice 12, lap 1's PF-7); Task 2 Step 5 (web/package.json's build script); Task 16 Step 1 (the README's Deploy note); Choice 12",
+      "title": "A VERCEL_ENV line in a web/.env file can still open the upload gate",
+      "terms_first": "VERCEL_ENV: the variable Vercel sets at build time — production, preview or development. Lap 1's gate (Choice 12) uploads source maps only when it reads production. web/.env.local: a git-ignored file of local variables that `next build` and `next dev` load by themselves. `vercel env pull`: Vercel's command that copies a project's variables into such a file. SENTRY_AUTH_TOKEN: the secret that lets a build upload source maps.",
+      "scenario": "You want to check the production DSN on your machine, so you run `vercel env pull --environment=production` inside web/. Vercel writes web/.env.local with VERCEL_ENV=\"production\", the real NEXT_PUBLIC_SENTRY_DSN, and SENTRY_AUTH_TOKEN=\"[SENSITIVE]\" (a placeholder for a Secret). Later you run `pnpm build`. Next.js loads web/.env.local before it reads next.config.ts, so the upload gate sees production and opens. With a real Sentry token in your shell, the build uploads source maps into the production project under the release name 'local'. Without one, it takes '[SENSITIVE]' as the token and every local build fails. And `pnpm dev` now reports your local errors into the production project.",
+      "whats_wrong": "Next.js loads web/.env.production.local, .env.local, .env.production and .env before it evaluates next.config.ts, and fills in every variable the shell lacks. So the gate can read VERCEL_ENV from a file, not only from Vercel, and the README's 'never makes a local build upload' is then untrue.",
+      "evidence_quotes": [
+        "Task 1 Step 4: const uploadToken = process.env.VERCEL_ENV === 'production' ? process.env.SENTRY_AUTH_TOKEN : undefined;",
+        "Task 16 Step 1, the README: so a `SENTRY_AUTH_TOKEN` in your own shell — Sentry's command-line tools read that name — never makes a local build upload.",
+        "Next 16.3.6, dist/build/index.js:486-487: '// attempt to load global env values so they are available in next.config.js' then loadEnvConfig(dir, false, …); the config is loaded after, at :498."
+      ],
+      "verification": {
+        "ran": [
+          "The real `next build` (Next 16.3.6) on scratch apps whose .env.local said VERCEL_ENV=production, with a next.config that printed the gate: no VERCEL_ENV in the shell -> 'VERCEL_ENV=\"production\"; upload gate: true' (a .ts config too).",
+          "The same with the pin, sh -c 'VERCEL_ENV=$VERCEL_ENV next build' -> 'VERCEL_ENV=\"\"; upload gate: false'. With VERCEL_ENV=production in the shell, as on Vercel -> 'upload gate: true'.",
+          "@next/env loadEnvConfig in fresh node processes: VERCEL_ENV unset -> becomes \"production\"; preset to '' -> stays ''. It never replaces a variable that is already present, even an empty one."
+        ],
+        "read_not_run": [
+          "The Vercel CLI's source (packages/cli/src/commands/env/pull.ts): env pull writes every variable the API returns, dropping only three analytics ids; Secret variables are written as the placeholder '[SENSITIVE]'. Public CLI-written files show VERCEL_ENV=\"production\" from production pulls. Vercel's docs do not say either way. The CLI was not run.",
+          "Task 6's init reads NEXT_PUBLIC_SENTRY_DSN, so a pulled real DSN makes `pnpm dev` report into the production project (against D5, production only); the e2e lane sets its own fake DSN, which a .env file cannot override."
+        ],
+        "today": "Not happening today: this worktree has no web/.env* file and no Vercel link; .gitignore covers .env files; a default `vercel env pull` writes VERCEL_ENV=\"development\", which keeps the gate shut. It needs a deliberate production pull into web/.",
+        "compatibility": "The pin fits the build script as it is: app-version.mjs and assert-no-auth-token.mjs run as their own node processes and already read only the shell's VERCEL_ENV, so the release name and the gate can no longer disagree. web/vercel.json's buildCommand runs `pnpm run build`, and the e2e lane builds with `pnpm build`, so both get the pin. Next 16.3.6 reads VERCEL_ENV only as === 'preview', so '' and unset behave the same. The pin does not cover `pnpm dev`, which never uploads."
+      },
+      "options": [
+        {
+          "label": "1️⃣ Pin it, and warn against pulling Production variables (Recommended)",
+          "what": "Task 2 Step 5's build script hands `next build` the shell's own VERCEL_ENV (`VERCEL_ENV=$VERCEL_ENV next build`), with one sentence under the snippet. Task 1 Step 4's comment and Choice 12 say why. Task 16's README note says so, and warns against pulling Production variables into web/.",
+          "why": "The README's promise becomes true by construction: a .env file can no longer open the gate, and on Vercel the real value passes through unchanged (both run). The README sentence covers what the pin cannot: the pulled production DSN.",
+          "cost": "Four small plan edits. The pin looks like a no-op to a future reader, so it depends on its comment and the sentence under the snippet.",
+          "pros": [
+            "Closes the gap whether or not anyone reads the README",
+            "One token on one line",
+            "Spiked: closes the gate locally, keeps it open on Vercel"
+          ],
+          "cons": [
+            "A line that looks like it does nothing",
+            "Does not stop `pnpm dev` using a pulled DSN (the README line does)"
+          ],
+          "before_after": [
+            {
+              "where": "Task 2 Step 5, web/package.json (plan line 734)",
+              "before": "\"build\": \"node scripts/vendor-alphatab.mjs && NEXT_PUBLIC_APP_VERSION=$(node scripts/app-version.mjs) next build && node scripts/assert-design-system-css.mjs && node scripts/assert-no-auth-token.mjs\",",
+              "after": "\"build\": \"node scripts/vendor-alphatab.mjs && NEXT_PUBLIC_APP_VERSION=$(node scripts/app-version.mjs) VERCEL_ENV=$VERCEL_ENV next build && node scripts/assert-design-system-css.mjs && node scripts/assert-no-auth-token.mjs\","
+            },
+            {
+              "where": "Task 2 Step 5, a new sentence under the snippet",
+              "before": "(absent)",
+              "after": "`VERCEL_ENV=$VERCEL_ENV` hands `next build` the shell's own value, empty when there is none:\n`next build` loads `web/.env*` files before `next.config.ts` and fills only the variables that are\nmissing, so a `VERCEL_ENV` line in one of those files cannot open the upload gate (Choice 12)."
+            },
+            {
+              "where": "Task 1 Step 4, the comment above `const uploadToken` (plan lines 466–471)",
+              "before": "// Sentry's build step: it uploads the production build's source maps to Sentry, then deletes them\n// from the deploy. Only a production build on Vercel reads the token: Sentry's own command-line\n// tools read a variable of the same name from a developer's shell, and a local build must never\n// upload with it. VERCEL_ENV needs Vercel's system environment variables on, which the version\n// in the wordmark (scripts/app-version.mjs) already relies on. Previews, CI and local builds\n// upload nothing — and, with the hook off, print nothing about it either.",
+              "after": "// Sentry's build step: it uploads the production build's source maps to Sentry, then deletes them\n// from the deploy. Only a production build on Vercel reads the token: Sentry's own command-line\n// tools read a variable of the same name from a developer's shell, and a local build must never\n// upload with it. VERCEL_ENV needs Vercel's system environment variables on, which the version\n// in the wordmark (scripts/app-version.mjs) already relies on. Previews, CI and local builds\n// upload nothing — and, with the hook off, print nothing about it either. The build script hands\n// `next build` the shell's own VERCEL_ENV, so a VERCEL_ENV line in a web/.env file cannot open\n// this gate."
+            },
+            {
+              "where": "Choice 12's last two lines (plan lines 318–319)",
+              "before": "    relies on them, and on 2026-10-09 the production bundle carried a `v0.` version, which only a\n    `production` build prints. Approved in the plan review, lap 1.",
+              "after": "    relies on them, and on 2026-10-09 the production bundle carried a `v0.` version, which only a\n    `production` build prints. The build script hands `next build` the shell's own `VERCEL_ENV`,\n    because `next build` loads `web/.env*` files first and would take a `VERCEL_ENV` from one of\n    them. Approved in the plan review, lap 1; the pin in lap 2."
+            },
+            {
+              "where": "Task 16 Step 1, the README's Deploy note (plan lines 4874–4877)",
+              "before": "token in Vercel if it was revoked. Only a production build reads the token (`VERCEL_ENV` is\n`production`), so a `SENTRY_AUTH_TOKEN` in your own shell — Sentry's command-line tools read that\nname — never makes a local build upload. The one-time setup is section 5 of\n[the spec](../docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md).",
+              "after": "token in Vercel if it was revoked. Only a production build reads the token (`VERCEL_ENV` is\n`production`), so a `SENTRY_AUTH_TOKEN` in your own shell — Sentry's command-line tools read that\nname — never makes a local build upload: the build script hands `next build` your shell's\n`VERCEL_ENV`, so a `web/.env` file cannot make it `production`. Do not pull Production variables\ninto `web/` (`vercel env pull --environment=production`): they include the production DSN, so\n`pnpm dev` would report into the production project. The one-time setup is section 5 of\n[the spec](../docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md)."
+            }
+          ]
+        },
+        {
+          "label": "2️⃣ Warn only",
+          "what": "Task 16's README note admits the gap and warns against pulling Production variables into web/. No code change.",
+          "why": "The rule is written down where the setup lives, and the build script stays as it is.",
+          "cost": "It relies on people reading the README. The gate stays open to a VERCEL_ENV line in a .env file, and Choice 12's promise is weakened in writing.",
+          "pros": ["No change to the build", "States the risk honestly"],
+          "cons": [
+            "A rule people must remember",
+            "A real upload or a broken local build is still one pull away"
+          ],
+          "before_after": [
+            {
+              "where": "Task 16 Step 1, the README's Deploy note",
+              "before": "token in Vercel if it was revoked. Only a production build reads the token (`VERCEL_ENV` is\n`production`), so a `SENTRY_AUTH_TOKEN` in your own shell — Sentry's command-line tools read that\nname — never makes a local build upload. The one-time setup is section 5 of\n[the spec](../docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md).",
+              "after": "token in Vercel if it was revoked. Only a production build reads the token (`VERCEL_ENV` is\n`production`), so a `SENTRY_AUTH_TOKEN` in your own shell — Sentry's command-line tools read that\nname — does not make a local build upload, unless a `web/.env` file sets `VERCEL_ENV` to\n`production`. Do not pull Production variables into `web/` (`vercel env pull\n--environment=production`): they set it, and they include the production DSN. The one-time setup\nis section 5 of [the spec](../docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md)."
+            }
+          ]
+        },
+        {
+          "label": "3️⃣ Leave it",
+          "what": "No change.",
+          "why": "The risk needs a deliberate production pull into web/; nothing like that exists today, and a default pull writes VERCEL_ENV=\"development\", which keeps the gate shut.",
+          "cost": "The README's 'never makes a local build upload' stays slightly untrue. If it happens: with a shell token, an upload into production under the release 'local'; without one, every local build fails — before Task 17 with 'web/next.config.ts: set org and project before SENTRY_AUTH_TOKEN reaches a production build.', after it with Sentry refusing '[SENSITIVE]'.",
+          "pros": ["Zero plan churn"],
+          "cons": [
+            "A known gap kept on purpose",
+            "The failure, if it comes, points nowhere near a .env file"
+          ],
+          "worked_example": "vercel env pull --environment=production   # inside web/\npnpm build\n# -> with a token in your shell: source maps uploaded, release 'local'\n# -> without one: Error: web/next.config.ts: set org and project before SENTRY_AUTH_TOKEN reaches a production build."
+        }
+      ],
+      "comparison_table": [
+        {
+          "option": "1️⃣ Pin + warn",
+          "pros": "closes the gap by construction; spiked",
+          "cons": "a line that looks like a no-op",
+          "best_when": "the README promise should hold without anyone remembering it"
+        },
+        {
+          "option": "2️⃣ Warn only",
+          "pros": "no build change",
+          "cons": "relies on reading the README",
+          "best_when": "build-script changes are unwelcome"
+        },
+        {
+          "option": "3️⃣ Leave it",
+          "pros": "zero churn",
+          "cons": "a known gap; a confusing failure if it hits",
+          "best_when": "nobody will ever pull Production variables locally"
+        }
+      ],
+      "weighted_matrix": {
+        "criteria": {
+          "Protection (x3)": "does it stop the upload and the broken build?",
+          "Simplicity (x2)": "how easy to read and keep",
+          "Cost to change the plan (x1)": "edits needed now"
+        },
+        "scores": {
+          "1️⃣ Pin + warn": {
+            "Protection (x3)": "5 -> 15",
+            "Simplicity (x2)": "3 -> 6",
+            "Cost (x1)": "4 -> 4",
+            "total": 25
+          },
+          "2️⃣ Warn only": {
+            "Protection (x3)": "2 -> 6",
+            "Simplicity (x2)": "5 -> 10",
+            "Cost (x1)": "5 -> 5",
+            "total": 21
+          },
+          "3️⃣ Leave it": {
+            "Protection (x3)": "1 -> 3",
+            "Simplicity (x2)": "5 -> 10",
+            "Cost (x1)": "5 -> 5",
+            "total": 18
+          }
+        }
+      },
+      "decisive_tradeoff": "A one-token pin that makes the promise true by construction, against a rule people must remember.",
+      "recommendation": "1️⃣, because it keeps lap 1's promise (Choice 12) true with one token, spiked both ways. Flip to 3️⃣ if you will never pull Production variables into web/ and want no more plan changes.",
+      "considered_not_proposed": "Gate on the computed release (NEXT_PUBLIC_APP_VERSION starting 'v0.'): as strong, since the command line always sets it, but it ties uploads to the version format; the pin is simpler (findings verifier).",
+      "spec_change": "None to the spec. It refines Choice 12 (lap 1). If applied, add a line to the NH-124 changelog entry under a new 'Changed by the plan review, lap 2' list.",
+      "drop_consequence": "If dropped, the gate stays open to a VERCEL_ENV line in a web/.env file and the README's promise stays slightly untrue; nothing changes today.",
+      "raw_reviewer_finding": {
+        "title": "A VERCEL_ENV line in web/.env files reopens local uploads",
+        "severity": "P3",
+        "section": "Task 1 Step 4 — Wrap the Next config (Choice 12, the production-only token gate); Task 2 Step 5 — the build script; Task 16 Step 1 — the README's Deploy note",
+        "why_it_matters": "A local build can still upload with a developer's token. With a SENTRY_AUTH_TOKEN in the shell (the premise of Choice 12, the production-only token gate) and VERCEL_ENV=production in any web/.env* file, the maps go up as release `local` into the production project, or the build fails on a read-only token. The cause: `next build` loads web/.env.production.local, .env.local, .env.production and .env before it evaluates next.config.ts, and fills in any variable the shell lacks (read in Next 16.3.6's loadConfigImpl and @next/env). The natural way to get the Production-only DSN for a local check, `vercel env pull --environment=production`, writes exactly that line (from Vercel's CLI documentation; not run here). Next never overwrites a variable that is already set, even to an empty value, so passing the shell's own VERCEL_ENV to next build makes the README's 'never makes a local build upload' true for every `pnpm run build`. Relied on: @sentry/nextjs 11.1.0, read from the local pnpm store, uploads only from the runAfterProductionCompile hook, which `Boolean(uploadToken)` switches on.",
+        "finding_type": "error",
+        "autofix_class": "gated_auto",
+        "suggested_fix": "In Task 2 Step 5's build script, pass the shell's own value to next build — `NEXT_PUBLIC_APP_VERSION=$(node scripts/app-version.mjs) VERCEL_ENV=$VERCEL_ENV next build` — and add one sentence under the snippet: 'VERCEL_ENV is passed through, and is empty when the shell has none: next build loads web/.env* files before next.config.ts and fills only variables that are missing, so a VERCEL_ENV line in one of those files cannot open the upload gate (Choice 12).'",
+        "confidence": 50,
+        "evidence": [
+          "process.env.VERCEL_ENV === 'production' ? process.env.SENTRY_AUTH_TOKEN : undefined;",
+          "Only a production build on Vercel reads the token: Sentry's own command-line tools read a variable of the same name from a developer's shell, and a local build must never upload with it.",
+          "so a `SENTRY_AUTH_TOKEN` in your own shell — Sentry's command-line tools read that name — never makes a local build upload.",
+          "`VERCEL_ENV` needs Vercel's system environment variables exposed to the build"
+        ]
+      },
+      "decision": "Apply — option 1️⃣ Pin + warn (the recommendation)",
+      "decided_on": "2026-10-10",
+      "triage_round": 1,
+      "decision_note": "Applied. Task 2 Step 5's build script runs `VERCEL_ENV=$VERCEL_ENV next build`, with a sentence under the snippet; Task 1 Step 4's comment, Choice 12 and Task 16's README note say why, and the README warns against pulling Production variables into web/. Every edit is the option's before_after, verbatim; Prettier left the plan unchanged. A line was added to the NH-124 changelog entry under 'Changed by the plan review, lap 2'. Applied in the same commit as this triage record."
+    }
+  ],
+  "step7": {
+    "decided_on": "2026-10-10",
+    "rule": "Bound first: lap 1 left no unresolved P0 or P1 after its triage, and lap 2 left none (0 -> 0), so this lap did not reduce the count; the no-progress bound fired and the loop halted to ask the owner. Lap 2 of 5, so the lap cap was not reached. Without the bound the rule would have re-lapped: the exit signal was not clean (PF-14, a P3, since applied).",
+    "owner_decision": "Move to CODE (option 1 of 3, the recommendation; the others were a lap 3 focused on lap 2's changes and a full lap 3). The plan review ends after lap 2.",
+    "jira": "NH-124 moved from PLAN REVIEW to CODE (transition 61) on 2026-10-10.",
+    "carry_forward_undecided": []
+  }
+}

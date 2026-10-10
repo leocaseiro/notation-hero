@@ -1,0 +1,124 @@
+{
+  "verifier": "B",
+  "items": [
+    {
+      "id": "PF-1",
+      "section_exists": "Yes. '### Task 14: The music-font clock, and AlphaTab's own error event' (plan line 4095) and '- [ ] **Step 3: The end-to-end assertions**' (4351). Choice 7 '7. **The E204 clock is a one-second counter**' (286) under '## Choices this plan makes' (264).",
+      "quotes_verbatim": true,
+      "missing_quotes": [],
+      "contradiction": "none. The fix corrects the plan's own 'Expected: PASS — including the existing 60-second backstop case' (4377-4378). Spec 2.4 (lines 300-312) does not mention this case. No other web/e2e case uses page.clock.",
+      "facts": "web/e2e/player.e2e.ts, case 'a music font that arrives after the 60 s backstop clears the error' (title at line 230). page.clock lines: 243 `  await page.clock.install();` | 249 `    await page.clock.fastForward(61_000);` | 252 `  await page.clock.resume();`. No runFor, pauseAt or setFixedTime. toPass block (248-251): `  await expect(async () => {` / `    await page.clock.fastForward(61_000);` / `    await expect(page.getByTestId('engine-error')).toContainText('Error E204', { timeout: 1000 });` / `  }).toPass({ timeout: 20_000 });`. Playwright 1.61.1 docs (playwright-core types/types.d.ts:18454): fastForward 'Only fires due timers at most once.'; runFor (18535) 'Advance the clock, firing all the time-related callbacks.' Code (playwright-core lib/coreBundle.js, embedded clock source): _innerFastForwardTo does `for (const timer of this._timers.values()) { if (to > timer.callAt) timer.callAt = to; }` then `await this._runTo(to);`, and _takeFirstTimer reschedules an Interval with `timer.callAt = shiftTicks(timer.callAt, timer.delay);` (to + delay, past `to`), so one firing per jump. runFor does `await this._runTo(shiftTicks(this._now.ticks, ticks));` with no bump, and _runTo loops `while (true) { const result = await this._callFirstTimer(to); if (!result.timerFound) break;`, so an interval fires once per period (61 times for 61000 ms). Measured on a scratch page (1 s visible-seconds interval, same install-then-goto order): fastForward(61000) x3 gave counter 1, 2, 3; the plan's retry shape for 20 s gave 40 of 60 and no E204; one runFor(61000) gave 60 and E204 in 0.33 s. Clock install: `page.clock.install()` with no pauseAt leaves the clock running in real time (log replay ends with `this._innerResume()`), and both calls run inside _runWithDisabledRealTimeSync, so runFor works and leaves the same state as fastForward; the later `page.clock.resume()` stays valid. Advisory: runFor fires every due timer, not only the tick. With a requestAnimationFrame loop alive the scratch page took 19 s (3813 callbacks). web/ and AlphaTab 1.8.4 call rAF only one-shot, or in a bounded scroll animation, while the font is held (PlayerShell.tsx:86 and :460, live-settings.ts:79, alphaTab.core.mjs:41290 and :41444), so it should be fast, but I did not run the real app; Step 3's run of this case is the check.",
+      "before_after": "Only line 249 changes. Before: `    await page.clock.fastForward(61_000);` After: `    await page.clock.runFor(61_000);` The rest of the block (the `await expect(async () => {` line, the `toContainText('Error E204', { timeout: 1000 })` line, `}).toPass({ timeout: 20_000 });`) stays. Reword the comment at lines 245-247 ('RETRY the fast-forward ...'). Name the case by its title in the plan, since earlier tasks add lines to this file.",
+      "verdict": "pass",
+      "correction": "none"
+    },
+    {
+      "id": "PF-2",
+      "section_exists": "Yes. '### Task 5: The reporting functions, `report.ts`' (1283), '- [ ] **Step 2: Write the failing test**' (1324); the beforeEach is lines 1341-1345; 'Expected: PASS — 22 tests.' is line 1714.",
+      "quotes_verbatim": true,
+      "missing_quotes": [],
+      "contradiction": "none. Task 8 (plan 2406-2407), Task 9 (2653) and Task 11 (3143, 3369) already clear their Sentry mocks by hand, so the fix matches the plan's own pattern. Task 11's E105 case in report.test.ts (3107-3111) reads captured()[0] and needs the same clear.",
+      "facts": "Premise holds. Installed Vitest 4.1.11, dist/chunks/utils.BX5Fg8C4.js: `function resetModules(modules, resetMocks = false) { const skipPaths = [ ..., ...!resetMocks ? [/^mock:/] : [] ];` and dist/chunks/test.DNmyFkvJ.js: `resetModules() { resetModules(state().evaluatedModules); return utils; }`, so a factory-mocked module and its vi.fn()s survive vi.resetModules(). web/vitest.config.ts sets no clearMocks, mockReset or restoreMocks.",
+      "before_after": "In the beforeEach, after `sentry = await import('@sentry/nextjs');` (plan 1344) add `vi.mocked(sentry.captureException).mockClear();` and `vi.mocked(sentry.addBreadcrumb).mockClear();`; reword the comment at 1337-1338.",
+      "verdict": "pass",
+      "correction": "none"
+    },
+    {
+      "id": "PF-3",
+      "section_exists": "Yes. '### Task 14 ...' (4095), '- [ ] **Step 1: Write the failing tests**' (4113). STAND_IN_API is line 4142, the renderFinished case 4208-4217, 'Expected: PASS — 6 tests.' (Step 2) line 4349.",
+      "quotes_verbatim": true,
+      "missing_quotes": [],
+      "contradiction": "none. The comment at plan 4141 ('The component only needs an api to exist') needs the rewording the fix already asks for.",
+      "facts": "web/app/play/NotationSurface.tsx:166 is `setRenderedTrackCount(api?.tracks.length ?? 0);`, so `{}` throws. The fix's open point ('VERIFY which form') is settled by the repo's web ESLint config run through stdin on the plan's Task 14 test file (path mapped to an existing test file) and by tsc on a scratch file. As written: unicorn/no-useless-undefined (the `?.(undefined)` line) and unicorn/numeric-separators-style (`pass(5_000)`, which is PF-4). With `{ tracks: [] }`, `?.(null)` and `pass(5000)`: 0 messages. With `{ tracks: [] }`, a Map typed `(args?: unknown) => void`, `?.()` and `pass(5000)`: 0 messages. `?.()` on the plan's Map typed `(args: unknown) => void`: tsc TS2554 'Expected 1 arguments, but got 0'. `?.(null)` and the optional-parameter Map both type-check.",
+      "before_after": "Before: `const STAND_IN_API: unknown = {};` and `act(() => handlers.get('renderFinished')?.(undefined));` After: `const STAND_IN_API: unknown = { tracks: [] };` and `act(() => handlers.get('renderFinished')?.(null));` (one-token edit), or keep `?.()` and type the Map as `(args?: unknown) => void`.",
+      "verdict": "pass",
+      "correction": "none; pick one form. `?.(null)` is the smaller edit, and `?.()` alone is a type error."
+    },
+    {
+      "id": "PF-4",
+      "section_exists": "Yes, all seven: Task 2 (505), Task 3 (708), Task 5 (1283), Task 6 (1733), Task 11 (3052), Task 13 (3701), Task 14 (4095). Quoted code sits at plan lines 656, 789, 876, 1469, 1483, 1824, 1904, 3736, 3876, 3954, 4232.",
+      "quotes_verbatim": true,
+      "missing_quotes": [],
+      "contradiction": "none. The two reviewers' edits agree wherever they overlap; the union only adds String.raw, the sort comparator, pass(5000) and the import order. The NotationSurface test lines overlap with PF-3 without conflict.",
+      "facts": "Ran the repo's web ESLint config through stdin on the plan's code, with and without the fix. Task 2 script: unicorn/no-array-callback-reference -> 0 with `(folder) => filesUnder(folder)`. Task 3 module: same rule on `frames.every(isEngineFile)` -> 0; Task 3 test: unicorn/consistent-function-scoping on `stack` -> 0 at module scope. Task 5 test: unicorn/prefer-string-raw x2 and consistent-function-scoping on `track` and `tagOn` -> none left (with PF-2's mockClear lines applied). Task 6 recorder: `bodies.flatMap(eventsIn)` -> 0 with an arrow; Task 6 e2e: sonarjs/no-alphabetical-sort -> 0 with `.toSorted((a, b) => a.localeCompare(b))`. Task 11 PlayerShell.test.tsx header: two import/order errors (`node:fs`, `node:path` must come before `@coderline/alphatab`) -> 0 when reordered. Task 14: numeric-separators-style -> 0 with `pass(5000)`. Messages that remained were no-unsafe-assignment noise from imports of files that do not exist yet. Not linted: Task 13's fragments (`tagNow`, `let release!`), which sit inside Task 11's file; player.e2e.ts:232 already uses the `let releaseFont!:` pattern.",
+      "before_after": "n/a (a list of mechanical edits; each one is listed in the finding).",
+      "verdict": "pass",
+      "correction": "none"
+    },
+    {
+      "id": "PF-5",
+      "section_exists": "Yes. '### Task 7: The three error pages, and the copy' (2066), '- [ ] **Step 6: The home page copy**' (2303). The second fence is lines 2318-2329 and ends `</p>;` at 2328.",
+      "quotes_verbatim": true,
+      "missing_quotes": [],
+      "contradiction": "none. Spec 3.4 (lines 463-496) copy matches; Step 7's check that the paragraph sits below the button and Step 9's `git add` (2368) are unaffected.",
+      "facts": "Reproduced with the repo's Prettier 3.8.4 via stdin (nothing written): a fence holding a JSX comment plus an element comes back as a braced comment block and `</p>;`, exactly the plan's current text, so fixing the fence alone does not hold. A complete web/app/page.tsx (current file with the reworded tagline and the new comment and paragraph after `</Button>`) is stable inside a tsx fence: Prettier changed nothing and added no `;`. At the file's 8-space indent the tagline wraps after 'Your' ('Your' / 'scores never leave this device.'), so write the fence from Prettier's output.",
+      "before_after": "Before: two fragments, the second ending `</p>;`. After: one fence with the whole file; the new comment and `<p className=\"text-sm text-muted-foreground\">` follow `</Button>` inside `<main>`, and nothing follows `</p>`.",
+      "verdict": "pass",
+      "correction": "none"
+    },
+    {
+      "id": "PF-6",
+      "section_exists": "Yes. Task 7 (2066); '- [ ] **Step 8: Look at the three error pages in a real browser**' (2344), item 3 at lines 2353-2354.",
+      "quotes_verbatim": true,
+      "missing_quotes": [],
+      "contradiction": "none. Items 1, 2 and 4 touch files nothing earlier in the task edits. Minor: item 4 ends 'Undo it the same way.' (2356), which after the fix chains back to item 3's new wording.",
+      "facts": "Step 6 (2303) edits web/app/page.tsx; Step 7 (2331) regenerates the landing screenshot; Step 8 (2344) item 3 adds a throw to the same file; the first commit that includes web/app/page.tsx is Step 9 (`git add ... web/app/page.tsx ...`, 2368), so Step 6's edit is uncommitted when item 3 runs. Item 2 defines the undo (2352): `2. Undo it: `git checkout -- web/app/play/PlayerShell.tsx`.` Item 3, verbatim (2353-2354): 'Add the same line as the first line of `Home()` in `web/app/page.tsx`, open `/`, and screenshot `web/app/error.tsx` the same way. Undo it the same way.' So following it literally runs `git checkout -- web/app/page.tsx` and discards Step 6.",
+      "before_after": "Before (item 3 ending): 'Undo it the same way.' After: 'Undo it by deleting the line you added; do not use `git checkout` here, because `web/app/page.tsx` also holds Step 6's uncommitted copy.' Expected paragraph (2358-2360) gains: `git diff web/app/page.tsx` shows only Step 6's copy change.",
+      "verdict": "pass_with_correction",
+      "correction": "Optional: give item 4 its own explicit undo (`git checkout -- web/app/layout.tsx`), because its 'Undo it the same way.' now chains to item 3's changed wording."
+    },
+    {
+      "id": "PF-7",
+      "section_exists": "Yes. '### Task 1: Install `@sentry/nextjs`, wrap the build' (334), '- [ ] **Step 4: Wrap the Next config**' (422); '### Task 16: The documents' (4577), '- [ ] **Step 1: README — the two variables, and what a failed deploy means**' (4588). One evidence quote is from Task 2 Step 5 (695), outside the two named sections.",
+      "quotes_verbatim": false,
+      "missing_quotes": [
+        "Only Vercel's Production environment holds SENTRY_AUTH_TOKEN, so previews, CI and local builds upload nothing => the plan wraps this inside a `//` comment: line 443 ends '... so previews, CI' and line 444 starts '// and local builds upload nothing — and, with the hook off, print nothing about it either.' Identical once the '// ' marker is dropped."
+      ],
+      "contradiction": "No unrecorded contradiction. The fix departs from spec section 4 (token-only gate, lines 517-521, and the snippet at 538-552) and says the plan records it; the plan header says the spec wins unless a section records the change, so record it as a plan choice and in the Task 16 changelog entry's choices. Task 1's comment (442-444), Choice 2 (271-274) and the README sentence (4593-4595) stay true but should name the new gate. Task 2's check keeps reading SENTRY_AUTH_TOKEN, as the fix says.",
+      "facts": "(a) web/scripts/app-version.mjs: line 64 `const vercelEnv = env.VERCEL_ENV;`, line 65 `if (!vercelEnv) return null;`, line 67 `if (vercelEnv === 'production') return RELEASE_PREFIX;`; comment 60-63: 'No VERCEL_ENV means no Vercel, so: local. It also means \"local\" would appear on a deployed page if the project ever had system environment variables switched off'. (b) playwright 1.61.1 lib/runner/index.js lines 834-838: `env: { ...DEFAULT_ENVIRONMENT_VARIABLES, ...process.env, ...this._options.env },`; web/playwright.e2e.config.ts:57 `command: 'pnpm build && pnpm start --port 4174'`, so a token exported in the shell reaches the e2e build. (c) The user-level sentry skill, SKILL.md line 23: '3. Set `SENTRY_AUTH_TOKEN` as an environment variable in their system.' (line 14: '- Set `SENTRY_AUTH_TOKEN` as an env var.'; line 22 names read-only scopes project:read, event:read, org:read). I did not read, print or test the variable. (d) Vercel docs (system-environment-variables, last updated 2026-07-15): VERCEL_ENV 'Available at: Both build and runtime'; 'The value can be either production, preview, or development.'; the page's switch for these variables is 'Select the Enable access to System Environment Variables checkbox' (older dashboard name: Automatically expose System Environment Variables); VERCEL is 'An indicator to show that system environment variables have been exposed'. The page does not say what VERCEL_ENV is when the box is off; app-version.mjs assumes it is unset. Lint: next.config.ts with the gate passes the web ESLint config (0 messages). Not verified: how the real Sentry service answers a read-only token (no token was used).",
+      "before_after": "Before: `authToken: process.env.SENTRY_AUTH_TOKEN,` / `sourcemaps: { disable: !process.env.SENTRY_AUTH_TOKEN },` / `useRunAfterProductionCompileHook: Boolean(process.env.SENTRY_AUTH_TOKEN),` (plan 446-450). After: `const uploadToken = process.env.VERCEL_ENV === 'production' ? process.env.SENTRY_AUTH_TOKEN : undefined;` above the call, then `authToken: uploadToken,` / `sourcemaps: { disable: !uploadToken },` / `useRunAfterProductionCompileHook: Boolean(uploadToken),` (the const line needs wrapping for Prettier).",
+      "verdict": "pass_with_correction",
+      "correction": "Keep the fix and add: (1) the gate now also depends on Vercel's 'Enable access to System Environment Variables' being on, the setting app-version.mjs already needs. With it off, VERCEL_ENV is unset, sourcemaps.disable is true, no maps are built, nothing uploads, nothing warns and errorHandler never fires, so production frames are unreadable. State this in Task 1's comment and the Choices entry. (2) Guard it: Task 17 Step 1 asks the owner to confirm the box is on (the wordmark tooltip reads v0.… on production, not local), and Step 7's readable-frame check (4752-4754) is named as the guard. (3) The evidence quote above is not verbatim (comment marker)."
+    },
+    {
+      "id": "PO-1",
+      "section_exists": "Yes. Task 6 (1733), the integrations case 'the SDK runs with exactly the integrations the spec chose' (1900-1905); Task 17 (4670), '- [ ] **Step 7: After merge — for the owner, by hand**' (4744).",
+      "quotes_verbatim": true,
+      "missing_quotes": [],
+      "contradiction": "none (FYI; no chosen fix). Task 17 Step 1 (4683-4684) already asks about 'Prevent Storing of IP Addresses'; Step 7 (4750-4757) has no IP check; nothing in the plan or spec says the event must lack sdk.settings.",
+      "facts": "The plan-time spike's recorded envelope (11.1.0, listed as npm:@sentry/nextjs 11.1.0) holds `\"settings\": { \"infer_ip\": \"never\" }` inside `sdk`, and has no `ip_address` and no `user` key. Plan line 168 confirms unset dataCollection keys default to permissive (`true`), and line 1793 shows RecordedEvent.sdk has only `integrations`.",
+      "before_after": "n/a (suggested only): add `settings?: { readonly infer_ip?: string }` to RecordedEvent.sdk, two expects in the integrations case, and one Task 17 Step 7 bullet.",
+      "verdict": "pass",
+      "correction": "none"
+    },
+    {
+      "id": "PO-2",
+      "section_exists": "Yes. '### Task 15: The lint rule that keeps every catch reporting' (4392), '- [ ] **Step 5: The rule, in words, for the next agent**' (4551); the bullet is 4556-4562. Supporting quotes sit in Task 5 (1579-1581) and Task 4 (1156-1157).",
+      "quotes_verbatim": false,
+      "missing_quotes": [
+        "// E101–E103 send one of these in place of the exception's own message, which can quote text from inside the file. => plan line 1579 ends '... which can quote text from' and line 1580 starts '// inside the file. The code, then its meaning from docs/reference/error-codes.md ...'",
+        "The names filter: a file name, a score's title or credits, or a track name quoted in an error's message becomes `[file]`. => plan line 1156 is ' * The names filter: ... quoted in an error's' and line 1157 starts ' * message becomes `[file]`. Click breadcrumbs are off ...'"
+      ],
+      "contradiction": "none (FYI; no chosen fix). FIXED_MESSAGES holds E101-E103 only (plan 1582-1587) and the sentence test loops only E101-E103 (1398), so adding E104 later also needs a test row.",
+      "facts": "Both missing quotes are identical to the plan once the comment marker ('// ' or ' * ') at the start of the continuation line is dropped. The premise holds: E104 is the reserved 'A cached or catalog score could not be loaded' row (docs/reference/error-codes.md lines 30 and 32); web/AGENTS.md has '## This package' (line 7) with a first bullet at line 9.",
+      "before_after": "n/a (suggested only): one added sentence in the Step 5 bullet.",
+      "verdict": "pass_with_correction",
+      "correction": "Evidence quotes 2 and 3 lose the comment marker at the wrap; the claim itself holds."
+    },
+    {
+      "id": "PQ-2-bytes",
+      "section_exists": "Partly by form: 'Left open for the plan review' is a bold paragraph label (line 250), not a heading, under '## Questions the spec left to the plan' (236); the Q8 bullet is '**Lap 2's Q8 — the file size.**' (257).",
+      "quotes_verbatim": true,
+      "missing_quotes": [],
+      "contradiction": "none with the plan: the suggested size updates match the only exact-size assertions, report.test.ts 31 -> 32 (plan 1387, 1393), OpenFileControl.test.tsx 5 -> 8 (3183; the 1 at 3161 stays 1) and end-to-end case 2 29 -> 32 (2986-2998, the string is 29 bytes). The E105 case at 3109 asserts no size. Rounding departs from the spec's wording 'a size in bytes' (spec lines 163 and 495-496), so it needs the owner's decision recorded (already Q8).",
+      "facts": "`const facts = { type: fileType(file.name), bytes: file.size };` is at plan 3241 and 3491; `file: { type: next.type, bytes: next.bytes.byteLength },` at 3024. Next power of two at or above 31, 5, 29, 1 is 32, 8, 32, 1.",
+      "before_after": "n/a (open question Q8).",
+      "verdict": "pass",
+      "correction": "none"
+    }
+  ],
+  "residual": {
+    "verified": true,
+    "facts": "Verified in source. @sentry/bundler-plugins 11.0.0 (the lap-3 spike install in the scratchpad, build/cjs/core/build-plugin-manager.js) and 11.1.0 (GitHub tag 11.1.0: packages/bundler-plugins/src/core/build-plugin-manager.ts and packages/nextjs/src/config/handleRunAfterProductionCompile.ts, read with WebFetch and asked for verbatim text; the output matched the 11.0.0 build apart from types and comments). canUploadSourceMaps (11.0.0 lines 530-558): `if (!utils.getProjects(options.project)?.[0]) { logger.warn(`No project provided. Will not upload source maps. ...`); return false; }`. createRelease (245-269): `} else if (!options.project || Array.isArray(options.project) && options.project.length === 0) { logger$1.warn(`No project provided. Will not create release. ...`); return; }`. An sntrys_ token needs no org (`!options.org && !options.authToken.startsWith(\"sntrys_\")`). options.errorHandler is called only in handleRecoverableError (102-126), reached from catch blocks (321, 340, 476, 524) and from a failed validateOptions (128); validateOptions rejects only bad setCommits, deploy, and an empty or invalid project ARRAY, not a missing project (options-mapping.js 73-113). In handleRunAfterProductionCompile the order is createRelease, injectDebugIds, uploadSourcemaps, deleteArtifacts, and deleteArtifacts (503-526, same text in 11.1.0) deletes filesToDeleteAfterUpload whether or not anything uploaded; @sentry/nextjs 11.0.0 turns on browser source maps and deleteSourcemapsAfterUpload: true for Turbopack when sourcemaps.disable is falsy (config/withSentryConfig/getFinalConfigObjectBundlerUtils.js 123-147). So token with no project gives a green build, maps built then deleted, unreadable frames, and a silent errorHandler. The registry row F7-sentry (docs/decisions/decision-registry.md:227) wants the token in Vercel before the code merges, so Task 17 Step 2 (slugs committed first) and Step 7 (readable frame) are the only guards. PF-7's gate adds a second silent path of the same kind (VERCEL_ENV unset: no maps, no upload, no warning). Not verified: 11.1.0's maybeEnableTurbopackSourcemaps (read in 11.0.0 only); the live Sentry service."
+  }
+}

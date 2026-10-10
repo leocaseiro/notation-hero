@@ -1,0 +1,81 @@
+{
+  "reviewer": "feasibility",
+  "findings": [
+    {
+      "title": "Visible-seconds E204 clock breaks the existing fake-clock e2e case",
+      "severity": "P1",
+      "section": "Task 14 — The music-font clock, and AlphaTab's own error event (Step 3, player.e2e.ts)",
+      "why_it_matters": "If the implementer follows Task 14 as written, the web e2e lane goes red. The existing case 'a music font that arrives after the 60 s backstop clears the error' (web/e2e/player.e2e.ts:230) reaches E204 by retrying `page.clock.fastForward(61_000)` inside a 20-second `toPass`. In Playwright 1.61.1, fastForward fires each due timer at most once: `_innerFastForwardTo` moves every timer's callAt to the target, then `_runTo` runs it once. So each retry adds one tick to the new one-second counter, which needs 60. The plan says this case passes unchanged because the page is always visible, which points the implementer at the clock design (choice 7, the one-second counter) instead of the test. Switching the case to `runFor`, which fires every interval tick, keeps both the design and what the case proves.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "Add web/e2e/player.e2e.ts:230 to Task 14's Files and Step 3. In 'a music font that arrives after the 60 s backstop clears the error', replace `await page.clock.fastForward(61_000);` with `await page.clock.runFor(61_000);`. Reword the comment above it: fastForward fires a due timer at most once, while runFor fires every one-second tick of the visible-time clock. Keep the toPass retry.",
+      "confidence": 100,
+      "evidence": [
+        "Expected: PASS — including the existing 60-second backstop case, which headless Chromium runs in a page that is always visible.",
+        "const clock = globalThis.setInterval(() => {",
+        "The E204 clock is a one-second counter"
+      ]
+    },
+    {
+      "title": "report.test.ts cases see earlier cases' stand-in Sentry calls",
+      "severity": "P2",
+      "section": "Task 5 — The reporting functions, report.ts (Step 2, report.test.ts)",
+      "why_it_matters": "About nine of the 22 cases in Task 5's own test file fail, and so does the E105 case Task 11 adds. In Vitest 4.1.11, `vi.resetModules()` resets modules but skips every id that starts with `mock:` (resetModules in vitest/dist/chunks/utils). The factory-mocked @sentry/nextjs from web/vitest.setup.ts, and its two vi.fn()s, therefore survive between cases, and web/vitest.config.ts sets no clearMocks. From the second reportError case on, `captured()` still holds the earlier calls. The exact toEqual checks fail, `const [[sent]] = captured()` reads the first case's error, and the noteError case's `expect(captured()).toEqual([])` fails too. Task 8 already clears these mocks in transport-storage.test.ts; doing the same here gives the isolation the comment assumes.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "In report.test.ts's beforeEach, after re-importing the SDK, add `vi.mocked(sentry.captureException).mockClear(); vi.mocked(sentry.addBreadcrumb).mockClear();`. Reword the comment to say that resetModules re-evaluates report.ts but keeps the setup file's mocked SDK, which is why its calls are cleared here.",
+      "confidence": 100,
+      "evidence": [
+        "copy of it — and of the stand-in SDK from web/vitest.setup.ts, whose two mocks it calls.",
+        "expect(captured()).toEqual([[error, { captureContext: { level: 'error', tags: {} } }]]);",
+        "Expected: PASS — 22 tests."
+      ]
+    },
+    {
+      "title": "NotationSurface test's empty stand-in api crashes renderFinished case",
+      "severity": "P2",
+      "section": "Task 14 — The music-font clock, and AlphaTab's own error event (Step 1, NotationSurface.test.tsx)",
+      "why_it_matters": "The case 'once a render has finished, hiding and showing the tab raises nothing a minute later' throws instead of passing. It calls the captured renderFinished handler, and that handler's last line, which the plan leaves unchanged, is `setRenderedTrackCount(api?.tracks.length ?? 0)` (NotationSurface.tsx:166). With STAND_IN_API = {}, the optional chain stops only at `api`, so `undefined.length` raises a TypeError inside act(). The same line also fails web's lint: unicorn/no-useless-undefined, with checkArguments on, is an error there. Its autofix, `?.()`, would not type-check against the `(args: unknown) => void` handler map. An empty `tracks` and a null argument fix both without changing what the case proves.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "In Task 14 Step 1, declare `const STAND_IN_API: unknown = { tracks: [] };`, and say in its comment that the render handler reads `api.tracks`. Deliver the event as `act(() => handlers.get('renderFinished')?.(null));`.",
+      "confidence": 100,
+      "evidence": [
+        "const STAND_IN_API: unknown = {};",
+        "act(() => handlers.get('renderFinished')?.(undefined));",
+        "Expected: PASS — 6 tests."
+      ]
+    },
+    {
+      "title": "Several plan snippets fail web's lint and block their commits",
+      "severity": "P2",
+      "section": "Tasks 2, 3, 5, 6 and 13 — code snippets (token check, known engine noise, report tests, envelope recorder, instruments tests)",
+      "why_it_matters": "These snippets fail web/eslint.config.mjs with errors that `eslint --fix` cannot repair, so each task's 'Lint, types, commit' step fails as written. That config also lints scripts/*.mjs, tests and e2e files, runs with --max-warnings 0, and lefthook's pre-commit runs `eslint --fix` on staged web files. (1) unicorn/no-array-callback-reference: `.flatMap(filesUnder)` in Task 2's script, `frames.every(isEngineFile)` in Task 3, and `bodies.flatMap(eventsIn)` in Task 6's recorder. (2) unicorn/consistent-function-scoping: the `stack` helper inside a describe (Task 3 test), `track` and `tagOn` (Task 5 test), `tagNow` inside the OpenFileControl case, and the `release` no-op initialisers (Task 13). (3) sonarjs/no-alphabetical-sort: the integrations case's bare `.toSorted()` (Task 6). I ran the repo's ESLint over the plan's exact code to confirm each one. Every fix is mechanical and changes no behaviour.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "Edit the snippets. Wrap the passed functions in arrows: `.flatMap((dir) => filesUnder(dir))`, `.every((frame) => isEngineFile(frame))` and `.flatMap((body) => eventsIn(body))`. Move `stack`, `track`, `tagOn` and the OpenFileControl case's `tagNow` to module scope. Declare `let release!: (value: ArrayBuffer) => void;`, as player.e2e.ts:232 does for `releaseFont`. Sort with `.toSorted((a, b) => a.localeCompare(b))`.",
+      "confidence": 100,
+      "evidence": [
+        ".flatMap(filesUnder)",
+        "return isKnownMessage(message) && frames.length > 0 && frames.every(isEngineFile);",
+        "return { raw: () => [...bodies], events: () => bodies.flatMap(eventsIn) };",
+        "expect([...(sentinel.sdk?.integrations ?? [])].toSorted()).toEqual(EXPECTED_INTEGRATIONS);",
+        "const track = (program: number) => ({ program, isPercussion: false });",
+        "let release: (value: ArrayBuffer) => void = () => {};"
+      ]
+    },
+    {
+      "title": "Home-page copy snippet carries a stray semicolon into JSX",
+      "severity": "P2",
+      "section": "Task 7 — The three error pages, and the copy (Step 6, web/app/page.tsx)",
+      "why_it_matters": "Pasted 'after the closing </Button>' as instructed, the second fragment ends in `</p>;`. Inside JSX children that `;` is text, so the home page shows a stray ';' under the new privacy paragraph. Step 7 then regenerates landing-chromium-linux.png with the ';' in it, and no lint or type rule objects. The `;` and the `{ /* … */ }` block are what the repo's Prettier does to a tsx fence that opens with a JSX comment; running Prettier on such a fence reproduces both. Editing the fence alone will therefore not hold. Showing the whole new file, as Step 3 already does for the error pages, keeps the snippet valid JSX children.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "Replace Step 6's two fragments with the complete new `web/app/page.tsx`: its existing comments unchanged, the reworded tagline, and the new comment plus `<p className=\"text-sm text-muted-foreground\">…</p>` after `</Button>`. Prettier then formats it as a component and adds no `;`.",
+      "confidence": 75,
+      "evidence": ["and, after the closing `</Button>`:", "</p>;"]
+    }
+  ],
+  "residual_risks": [],
+  "deferred_questions": []
+}
