@@ -80,17 +80,17 @@ No new dependency: the loader is our own (G2).
 
 **New files:**
 
-| File                            | Job                                                                                                               |
-| ------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `web/lib/privacy/choice.ts`     | `asksFirst()`, `savedChoice()`, `saveChoice()`, `allowed()`: the one rule both tools follow (section 2)           |
-| `web/lib/analytics/events.ts`   | the typed event list (section 5)                                                                                  |
-| `web/lib/analytics/start.ts`    | `startAnalytics()` and `gtag()` (section 4)                                                                       |
-| `web/lib/analytics/track.ts`    | `track()`: sends one event, or nothing until Google Analytics has started                                         |
-| `web/lib/score-facts.ts`        | `instrumentsValue()`, moved out of Sentry's `report.ts` (section 6), `trackInstrument()` and `SAMPLE_INSTRUMENTS` |
-| `web/app/PrivacyChoices.tsx`    | the popup (section 3)                                                                                             |
-| `web/app/privacy/page.tsx`      | the privacy notice (section 7)                                                                                    |
-| `web/e2e/google-analytics.ts`   | the shared fixture: answers Google's hosts locally (an empty `gtag.js`) and records every request                 |
-| `web/e2e/privacy-choice.e2e.ts` | the consent, privacy, no-overlap, drop-through and keyboard cases (section 9)                                     |
+| File                            | Job                                                                                                                                   |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `web/lib/privacy/choice.ts`     | `asksFirst()`, `savedChoice()`, `saveChoice()`, `allowed()`: the one rule both tools follow (section 2)                               |
+| `web/lib/analytics/events.ts`   | the typed event list (section 5)                                                                                                      |
+| `web/lib/analytics/start.ts`    | `startAnalytics()` and `gtag()` (section 4)                                                                                           |
+| `web/lib/analytics/track.ts`    | `track()`: sends one event, or nothing until Google Analytics has started                                                             |
+| `web/lib/score-facts.ts`        | `instrumentsValue()` and `roundedSize()`, moved out of Sentry's `report.ts` (section 6), `trackInstrument()` and `SAMPLE_INSTRUMENTS` |
+| `web/app/PrivacyChoices.tsx`    | the popup (section 3)                                                                                                                 |
+| `web/app/privacy/page.tsx`      | the privacy notice (section 7)                                                                                                        |
+| `web/e2e/google-analytics.ts`   | the shared fixture: answers Google's hosts locally (an empty `gtag.js`) and records every request                                     |
+| `web/e2e/privacy-choice.e2e.ts` | the consent, privacy, no-overlap, drop-through and keyboard cases (section 9)                                                         |
 
 Each `lib` file and the popup has its unit test beside it.
 
@@ -290,7 +290,7 @@ cannot reach Google. Sliders send their final value only; seeking and volume are
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `method`        | `picker`, `drop`                                                                                                                                                          |
 | `file_type`     | an extension the open-file picker accepts (`gp` … `alphatex`) or `other` — the same function Sentry's file facts use                                                      |
-| `file_size_kb`  | the size, rounded to whole KB                                                                                                                                             |
+| `file_size_kb`  | the size in KB, rounded up to a power of two by Sentry's `roundedSize()` (section 6): 0 for an empty file, 1 for one up to 1 KB. A dimension, so reports group by size    |
 | `source`        | `own_file`, `sample` (the bundled beat)                                                                                                                                   |
 | `track_count`   | a number                                                                                                                                                                  |
 | `instruments`   | `instrumentsValue()`: `drums` first, then each General MIDI program in three digits, such as `drums,025,033`; or `sample`. Cut at a comma to Google's 100-character limit |
@@ -355,8 +355,10 @@ Made in this ticket's pull request, after NH-124 merges:
   visitor allows error reports. A second call does nothing.
 - **The visit count follows its own purpose.** With "Report errors only", Sentry starts without its
   Release Health session integration, so no visit ping is sent.
-- **`instrumentsValue()` moves to `web/lib/score-facts.ts`**, so analytics uses it without importing
-  Sentry's module. `report.ts` imports it from there; nothing else changes.
+- **`instrumentsValue()` and `roundedSize()` move to `web/lib/score-facts.ts`**, so analytics uses
+  them without importing Sentry's module. `roundedSize()` is private in the Sentry plan's
+  `report.ts`, so the move exports it; analytics calls `roundedSize(Math.ceil(bytes / 1024))`.
+  `report.ts` imports both from there; nothing else changes.
 - **What this changes in NH-124's decisions.** S1 ("report every error") now holds outside Europe;
   a visitor in Europe is reported only after allowing it, and nothing from before their answer. S4's
   health number likewise counts only visits that allowed it. The changelog records this.
@@ -418,9 +420,9 @@ An agent may not create accounts.
    can carry a title) and form interactions. In the same Events section, **Redact data**: email on,
    and the query parameters `fbclid`, `gclid` and `msclkid`.
 4. **Custom definitions, before launch** (data shows 24–48 hours after registering):
-   - dimensions: `method`, `file_type`, `source`, `instruments`, `error_code`, `on`, `range`,
-     `control`, `instrument`, `setting`, `format`, `release`;
-   - metrics: `file_size_kb`, `track_count`, `speed_percent`.
+   - dimensions: `method`, `file_type`, `file_size_kb`, `source`, `instruments`, `error_code`, `on`,
+     `range`, `control`, `instrument`, `setting`, `format`, `release`;
+   - metrics: `track_count`, `speed_percent`.
 5. **Vercel → Environment Variables, Production only:** `NEXT_PUBLIC_GA_ID`. Public by design — it
    ships inside the page. Then redeploy: variables reach new deployments only.
 6. **After the first production deploy, in the Realtime report:** a page view on `/`; **a page view
