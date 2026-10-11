@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 import { KNOWN_ENGINE_NOISE } from '../lib/monitoring/known-engine-noise';
 import { abortEngine } from './player-states';
-import { recordSentry, throwSentinel, withCode } from './sentry-envelopes';
+import { messageOf, recordSentry, throwSentinel, withCode } from './sentry-envelopes';
 
 // The reporting and privacy cases (spec section 6). Every case throws on purpose, so this file
 // does NOT install failOnUnexpectedPageErrors — only *.vr.ts files must. Each case reads event
@@ -40,6 +40,31 @@ test('the SDK runs with exactly the integrations the spec chose', async ({ page 
   // without that line, `infer_ip` reads `auto` and the session ping carries ip_address "{{auto}}".
   expect(sentinel.sdk?.settings?.infer_ip).toBe('never');
   expect(sentry.raw().join('\n')).not.toContain('ip_address');
+});
+
+// Case 2. The visitor's file, not our bug: a warning, with what kind of file it is and its size.
+test('a file that is not a score sends an E103 warning with its type and size, never its name', async ({
+  page,
+}) => {
+  const sentry = await recordSentry(page);
+  await page.goto('/play');
+  const bytes = Buffer.from('this is not a guitar pro file');
+  await page.getByTestId('open-file-input').setInputFiles({
+    name: 'secret-song-name.gp5',
+    mimeType: 'application/octet-stream',
+    buffer: bytes,
+  });
+  await expect(page.getByText(/\(Error E103\)/)).toBeVisible({ timeout: 15_000 });
+
+  await expect.poll(() => withCode(sentry, 'E103').length).toBe(1);
+  const e103 = withCode(sentry, 'E103')[0] ?? {};
+  expect(e103.level).toBe('warning');
+  expect(e103.tags?.file_type).toBe('gp5');
+  // 29 bytes, sent rounded up to the next power of two.
+  expect(e103.contexts?.file).toEqual({ type: 'gp5', bytes: 32 });
+  // The fixed sentence, not the engine's parse message, which can quote the file.
+  expect(messageOf(e103)).toBe('E103: No AlphaTab importer accepts the bytes.');
+  expect(sentry.raw().join('\n')).not.toContain('secret-song-name');
 });
 
 // Case 6. NH-338's throw breaks nothing a person can see; sent as it is, it would use the monthly

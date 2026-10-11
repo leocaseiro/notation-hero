@@ -14,6 +14,22 @@ import type { LoadedNotation } from './PlayerShell';
 // it. So is `.mid`: AlphaTab has no MIDI importer.
 const ACCEPT = '.gp,.gp3,.gp4,.gp5,.gpx,.musicxml,.mxl,.xml,.capx,.atex,.alphatex';
 
+// The types a report may name: each extension in ACCEPT, without its dot.
+const ACCEPTED_TYPES: ReadonlySet<string> = new Set(
+  ACCEPT.split(',').map((extension) => extension.slice(1)),
+);
+
+/**
+ * What kind of file this is, for an error report: its extension, in lower case, when the picker
+ * accepts it — otherwise `other`. Never the name, which a report must not carry. Browsers give
+ * .gp, .gp5, .gpx and .atex files an empty MIME type, so the name is the only source.
+ */
+export function fileType(fileName: string): string {
+  const dot = fileName.lastIndexOf('.');
+  const extension = dot === -1 ? '' : fileName.slice(dot + 1).toLowerCase();
+  return ACCEPTED_TYPES.has(extension) ? extension : 'other';
+}
+
 // Notation-only files are 3-16 KB, but a Guitar Pro file with an embedded backing track is
 // legitimately 7-8 MB, so the bound is deliberately generous. It exists because
 // loadScoreFromBytes is SYNCHRONOUS and runs on the main thread: a mis-dropped video or disk
@@ -39,7 +55,7 @@ export async function readNotation(file: File): Promise<LoadedNotation> {
   }
   const buffer = await file.arrayBuffer();
   // loadScoreFromBytes takes a Uint8Array, so wrap here rather than at the call site.
-  return { name: file.name, bytes: new Uint8Array(buffer) };
+  return { name: file.name, type: fileType(file.name), bytes: new Uint8Array(buffer) };
 }
 
 /**

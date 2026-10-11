@@ -63,6 +63,8 @@ import type { SettingValue } from '@notation-hero/client';
 /** What the picker produces: a file read into memory, not yet parsed. */
 export interface LoadedNotation {
   name: string;
+  /** `fileType(name)`: all an error report may say about the file, with its size. */
+  type: string;
   bytes: Uint8Array;
 }
 
@@ -886,7 +888,15 @@ function Player() {
       let score: AlphaTab.model.Score;
       try {
         score = at.importer.ScoreLoader.loadScoreFromBytes(next.bytes);
-      } catch {
+      } catch (error) {
+        // The visitor's file, not our bug: a warning, with its type and size, never its name.
+        // reportError sends E103's fixed sentence in place of the engine's parse message, which
+        // can quote text from inside the file.
+        reportError(error, {
+          code: ERROR.notAScore,
+          level: 'warning',
+          file: { type: next.type, bytes: next.bytes.byteLength },
+        });
         setOpening(false);
         // Dismiss the spinner explicitly, then raise the error under its OWN id. Sharing
         // 'notation-load' is what made an error REPLACE the spinner — necessary while toasts
