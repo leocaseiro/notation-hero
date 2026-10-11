@@ -622,6 +622,10 @@ hands Google, in `window.dataLayer`; what Google's script sends is checked by ha
   days of browser use without a click, tap or key press on the site. A visitor who returns later
   counts as new, so returning visitors are undercounted. The saved answer goes too: a visitor in
   Europe is asked again, and one elsewhere who said "No" through NH-349's link is counted again.
+- **How many go uncounted is not measured.** Ad blockers, visitors in Europe who never answer, and
+  Safari's seven-day reset all shrink the counts, and Sentry's visit count, the only other one,
+  misses the same blocked and unanswered visitors. So low numbers cannot tell little interest from a
+  large uncounted share.
 - **The home note is on `/` only.** A visitor who opens `/play` directly does not see it; in Europe,
   the popup still asks.
 - **Nothing from before an answer** is reported in Europe: an error in the first seconds is lost.
