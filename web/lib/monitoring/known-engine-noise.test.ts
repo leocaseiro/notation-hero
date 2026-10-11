@@ -48,6 +48,19 @@ describe('isKnownEngineNoise, the Sentry filter', () => {
       false,
     );
   });
+
+  it('pins the every-exception rule: fails when one exception is known and one is ours', () => {
+    expect(
+      isKnownEngineNoise({
+        exception: {
+          values: [
+            { value: voices, stacktrace: { frames: [{ filename: ENGINE }, { filename: ENGINE }] } },
+            { value: 'Our own error', stacktrace: { frames: [{ filename: OURS }] } },
+          ],
+        },
+      }),
+    ).toBe(false);
+  });
 });
 
 /** A V8 stack string for the known throw: its first line, then one frame in each file given. */
@@ -67,5 +80,11 @@ describe('isKnownEngineNoiseStack, the end-to-end gate', () => {
 
   it('fails a stack with no frames at all', () => {
     expect(isKnownEngineNoiseStack(voices, `TypeError: ${voices}`)).toBe(false);
+  });
+
+  it('pins the message check: fails an unknown message even when every frame is the engine', () => {
+    expect(
+      isKnownEngineNoiseStack('Soundfont is not a valid Soundfont2 file', stack(ENGINE, ENGINE)),
+    ).toBe(false);
   });
 });
