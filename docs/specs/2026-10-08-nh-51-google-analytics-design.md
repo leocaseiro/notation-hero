@@ -50,8 +50,8 @@ and says "this project counts no visits outside Sentry". leocaseiro wants to lea
 3. **Where they stop** — Home → Play page → file opened → pressed play. Nice to have: built in
    Google Analytics' Explore screen, with no extra code.
 
-On the free tier only, and ready for the database: a new field or a second destination must be a
-one-file change.
+On the free tier only, and ready for the database: a new field, or sending the typed events to a
+second destination, must be a one-file change.
 
 NH-51 was first written as "emit usage events to the pipeline" (NH-54). It was rewritten for this
 work on 2026-10-05; the old text is kept in the ticket.
@@ -579,6 +579,9 @@ hands Google, in `window.dataLayer`; what Google's script sends is checked by ha
 ## Extending later
 
 - **A second destination** (NH-54's pipeline): a second sender inside `track()`; no event changes.
+  It gets the typed events only: page views, the visitor ID, country and device are Google's own,
+  so NH-54 also needs `page_view` from our code (section 4's fallback) and its own visitor ID, and
+  the popup's Details and the privacy notice must name it.
 - **Database fields** (a catalog song ID, say): one line in `events.ts`, plus registering the field
   in Google Analytics.
 - **Accounts:** a Google Analytics user ID only with consent, never an email. Out of scope.
