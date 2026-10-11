@@ -1,0 +1,874 @@
+{
+  "group": "A",
+  "items": [
+    {
+      "id": "F-1",
+      "verdict": "CONFIRMED",
+      "section_heading": "## 2. The privacy choice",
+      "section_lines": "99-139",
+      "quotes": [
+        {
+          "quote": "/** The table above, for this visitor. */",
+          "verbatim": true,
+          "line": 119,
+          "note": "adversarial, feasibility and security-lens all quote it"
+        },
+        {
+          "quote": "`allowed()`: the 15 cells of section 2's table.",
+          "verbatim": true,
+          "line": 372,
+          "note": "section 9, Testing"
+        },
+        {
+          "quote": "Visitors in Europe are asked first; everyone else gets everything by default, with no popup",
+          "verbatim": true,
+          "line": 58,
+          "note": "decision G3"
+        },
+        {
+          "quote": "NH-349's link reuses `PrivacyChoices` and `saveChoice()`.",
+          "verbatim": false,
+          "line": 416,
+          "note": "Fails the strict test only because the spec bolds the lead: '**NH-349's link** reuses …'. The words are exact."
+        },
+        {
+          "quote": "Visitors in Europe are asked first, and one answer governs both Google Analytics and Sentry.",
+          "verbatim": true,
+          "line": 15,
+          "note": "Goal; spans lines 15-16"
+        },
+        {
+          "quote": "**NH-349's link** reuses `PrivacyChoices` and `saveChoice()`. Changing to \"No\" must stop Google Analytics (a consent update to denied, and no more events) and close Sentry for the rest of the visit.",
+          "verbatim": true,
+          "line": 416,
+          "note": "'Extending later'; spans lines 416-418"
+        },
+        {
+          "quote": "narrowed on 2026-10-05 to a \"Privacy choices\" link for every visitor",
+          "verbatim": true,
+          "line": 25,
+          "note": "Non-goals"
+        }
+      ],
+      "central_claim_check": "True. The table (lines 101-107) has one 'Outside Europe' row, all ✅, and no row for a saved answer. allowed() is documented as that table (line 119) and unit-tested as its 15 cells, 5 rows × 3 purposes (line 372), so the time zone decides first and a saved refusal outside Europe is never read. Jira NH-349, read 2026-10-08, promises its link lets 'any visitor — inside or outside Europe — … change their answer later (and a visitor outside Europe can turn things off)', which needs a saved answer to win outside Europe. The spike below shows the two rules differ in exactly the cells the finding names, and nowhere else.",
+      "contradicts": "none — checked the Goal (14-16), G3 (58), G4 (59), section 2's 'Blocked storage' bullet (133-136: an answer kept in memory still counts as given), section 3 ('It returns on every page load until answered', 155), section 6 (293-295), section 9's PrivacyChoices line (377-378), 'Extending later' (416-418) and the 'A time zone is a guess' limit (422-423). The table keeps five rows, so '15 cells' stays true.",
+      "spike": {
+        "ran": true,
+        "what": "A scratch Node model of allowed(): the rule as written (time zone first) and the proposed rule (saved answer first), run over 4 time zones (Europe/Berlin, Australia/Sydney, America/New_York, UTC) × 4 saved states (nothing saved, 'all', 'errors', 'none') × 3 purposes.",
+        "result": "48 checks; 10 differ, and they are exactly a saved 'errors' or 'none' answer on Sydney or New York time (as written: allowed; proposed: refused). The scenario's case — 'none' saved, New York time, Google Analytics — returns true as written and false as proposed. Every Europe cell and every unanswered cell is identical under both rules.",
+        "fix_holds": true
+      },
+      "scenario": "You open Notation Hero in Berlin and press 'No, send nothing'. A week later you open it again on the same laptop, which now shows New York time after a trip. No question appears, Google Analytics counts your visit, and Sentry may report your errors. Your 'No' is still saved in the browser, but the rule reads it only when the clock says Europe.",
+      "whats_wrong": "Section 2's table gives 'Outside Europe' everything and has no row for a saved answer. allowed() is defined as that table, and its unit test checks exactly its 15 cells. So a saved 'Report errors only' or 'No, send nothing' is ignored whenever the browser's time zone is outside Europe: after a trip, after a time-zone change, and later for every 'No' that NH-349's link saves for a visitor outside Europe, which its Jira ticket promises.",
+      "before": [
+        {
+          "lines": "101-107",
+          "text": "| Visitor                                          | Error reports (Sentry) | Visit count (Sentry's Release Health) | Google Analytics |\n| ------------------------------------------------ | ---------------------- | ------------------------------------- | ---------------- |\n| Outside Europe                                   | ✅                     | ✅                                    | ✅               |\n| In Europe, \"Yes, count visits and report errors\" | ✅                     | ✅                                    | ✅               |\n| In Europe, \"Report errors only\"                  | ✅                     | —                                     | —                |\n| In Europe, \"No, send nothing\"                    | —                      | —                                     | —                |\n| In Europe, before answering                      | —                      | —                                     | —                |"
+        },
+        {
+          "lines": "119",
+          "text": "/** The table above, for this visitor. */"
+        },
+        {
+          "lines": "372",
+          "text": "- `allowed()`: the 15 cells of section 2's table."
+        }
+      ],
+      "after": [
+        {
+          "replaces_lines": "101-107",
+          "text": "| Visitor                                          | Error reports (Sentry) | Visit count (Sentry's Release Health) | Google Analytics |\n| ------------------------------------------------ | ---------------------- | ------------------------------------- | ---------------- |\n| Outside Europe, no answer given                  | ✅                     | ✅                                    | ✅               |\n| Answered \"Yes, count visits and report errors\"   | ✅                     | ✅                                    | ✅               |\n| Answered \"Report errors only\"                    | ✅                     | —                                     | —                |\n| Answered \"No, send nothing\"                      | —                      | —                                     | —                |\n| In Europe, before answering                      | —                      | —                                     | —                |\n\nAn answer holds in every time zone once it is given; the time zone decides only while there is\nnone. A \"No\" given in Berlin still holds when the laptop later shows New York time, and NH-349's\nlink can stop both tools for a visitor outside Europe."
+        },
+        {
+          "replaces_lines": "119",
+          "text": "/** The table above: an answer, saved or kept in memory, wins in any time zone. */"
+        },
+        {
+          "replaces_lines": "372",
+          "text": "- `allowed()`: the 15 cells of section 2's table, each answered row in both `Europe/Berlin` and\n  `Australia/Sydney`: a saved `none` in Sydney allows nothing."
+        }
+      ],
+      "proposed_fix": "Make a saved answer win in every time zone, and let the time zone decide only for a visitor with no answer. Relabel the table so its three answered rows apply anywhere, add one sentence under it, and update allowed()'s comment and its unit test.",
+      "why_it_works": "allowed() then reads the answer before the time zone, so a refusal holds wherever the laptop's clock points, and NH-349's link works for visitors outside Europe with no further change here. Visitors who never answered see no change: Europe is still asked first, and everyone else still gets everything by default (G3). The model shows the new rule changes only the 10 cells where a refusal is saved outside Europe.",
+      "plain_terms": {
+        "allowed()": "the one function both tools ask before they start: may this purpose (error reports, the visit count, Google Analytics) run for this visitor?",
+        "G3": "decision G3: visitors in Europe are asked first; everyone else gets everything by default, with no popup",
+        "NH-349": "the Jira ticket for a \"Privacy choices\" link that lets any visitor, in or outside Europe, change their answer later; status To Do (Jira, read 2026-10-08)",
+        "Sentry's Release Health": "Sentry's count of visits per release — the 'visit count' column of the table"
+      },
+      "severity_check": {
+        "agree": true,
+        "proposed": "P2",
+        "why": "A real gap the implementer will hit, and the spec's own unit test would lock in the wrong rule. Not P1: today only a time-zone change after answering triggers it; it becomes the normal case once NH-349's link exists."
+      },
+      "cross_fix": [
+        "FYI-1 — Safari deletes a site's localStorage after seven days of browser use without the visitor using the site, so a saved refusal can disappear; with this fix, a visitor outside Europe then falls back to 'everything by default'. NH-349 should repeat FYI-1's line.",
+        "R1 — this fix makes a 'No' hold on the next page loads; R1's fix stops the Google tag already loaded on the page where the answer changes. NH-349 needs both."
+      ]
+    },
+    {
+      "id": "F-2",
+      "verdict": "CONFIRMED",
+      "section_heading": "## Known limits",
+      "section_lines": "420-431",
+      "quotes": [
+        {
+          "quote": "Until NH-349 ships, a visitor in Europe can change their answer only by clearing the site's data. GDPR Article 7(3) requires withdrawing to be as easy as agreeing, so NH-349 should land before or with this ticket's go-live.",
+          "verbatim": false,
+          "line": 424,
+          "note": "Fails the strict test only because the spec bolds the lead: '**Until NH-349 ships**, a visitor …'. The words are exact; spans lines 424-426."
+        },
+        {
+          "quote": "The popup and the rule apply only when `NEXT_PUBLIC_SENTRY_DSN` or `NEXT_PUBLIC_GA_ID` is set.",
+          "verbatim": true,
+          "line": 137,
+          "note": "spans lines 137-138"
+        },
+        {
+          "quote": "This spec now; the code after NH-124 merges, then a rebase",
+          "verbatim": true,
+          "line": 65,
+          "note": "decision G10"
+        },
+        {
+          "quote": "GDPR Article 7(3) requires withdrawing to be as easy as agreeing, so NH-349 should land before or with this ticket's go-live.",
+          "verbatim": true,
+          "line": 425,
+          "note": "spans lines 425-426"
+        },
+        {
+          "quote": "Not implemented. The plan comes next; the code waits for NH-124 to merge.",
+          "verbatim": true,
+          "line": 5,
+          "note": "the Status line"
+        },
+        {
+          "quote": "**Jira:** NH-51 rewritten and NH-349 narrowed (both done on 2026-10-05).",
+          "verbatim": true,
+          "line": 406,
+          "note": ""
+        },
+        {
+          "quote": "GDPR Article 7(3) requires withdrawing to be as easy as agreeing, so NH-349 should land",
+          "verbatim": true,
+          "line": 425,
+          "note": ""
+        },
+        {
+          "quote": "ships inside the page. Then redeploy: variables reach new deployments only.",
+          "verbatim": true,
+          "line": 358,
+          "note": "section 8, step 5"
+        },
+        {
+          "quote": "No way yet to change an answer.",
+          "verbatim": true,
+          "line": 24,
+          "note": "Non-goals"
+        }
+      ],
+      "central_claim_check": "True. Jira, read 2026-10-08: NH-349 is 'To Do' (Medium) and its only link is 'relates to NH-124'; NH-51 (SPEC/PLAN REVIEW) has no link to NH-349. The code waits only for NH-124 (Status, line 5; G10, line 65). The popup goes live with this ticket's merge: web/README.md:31 says the Vercel GitHub integration 'auto-deploys on push to `master`', and section 2 shows the popup when either `NEXT_PUBLIC_SENTRY_DSN` or `NEXT_PUBLIC_GA_ID` is set (137-139). Sentry's DSN is live before then: NH-124's plan (PR #191's branch, docs/plans/2026-10-08-nh-124-sentry-error-monitoring-plan.md, Task 17) asks the owner before code review whether both Sentry variables are in Vercel Production (Step 1, lines 4680-4688) and runs the live check after merge (Step 7, lines 4744-4760). GDPR Article 7(3): 'It shall be as easy to withdraw as to give consent' (https://gdpr-info.eu/art-7-gdpr/). EDPB Guidelines 05/2020, paragraphs 113-114: withdrawal with the same ease, through the same interface (https://gdpr-text.com/guidelines/consent/, a mirror; edpb.europa.eu did not resolve from this machine). The same 'should' sits in the changelog entry this pull request adds ('Recorded for the launch …') and in the PR body.",
+      "contradicts": "none for any option — checked G7 (62: NH-349 stays its own ticket; option 1 keeps that), G10 (65), Non-goals (24-25), section 2 (137-139), section 8, step 5 (357-358), section 10 (406-408) and 'Extending later' (416-418). Option 1 also needs the last sentence of the 2026-10-08 changelog entry to match.",
+      "spike": {
+        "ran": false,
+        "why": "A launch-order decision; there is nothing to run. The Jira status and links, the deploy rule in web/README.md and NH-124's plan were read instead.",
+        "mark": "(untested)"
+      },
+      "scenario": "You live in Paris. Notation Hero asks whether it may count your visits and report errors, and you press 'Yes'. The next day you change your mind. There is no button or link anywhere to withdraw it; the only way is to find your browser's settings and clear the site's data. The spec says the 'Privacy choices' link 'should' arrive by launch, but nothing stops the launch without it.",
+      "whats_wrong": "Known limits says Article 7(3) of the GDPR (the EU General Data Protection Regulation) needs withdrawing to be as easy as agreeing, so NH-349 'should land before or with this ticket's go-live'. Nothing enforces it. The code waits only for NH-124; a merge to master deploys to production; Sentry's address is already set by then, so the popup asks in Europe from that deploy. NH-349 is 'To Do' with no link to NH-51. A visitor in Europe who says 'Yes' can then withdraw only by clearing the site's data.",
+      "before": [
+        {
+          "lines": "4-5",
+          "text": "Status: Design approved by leocaseiro section by section (seven sections, ten decisions), 2026-10-05\nto 2026-10-08. Not implemented. The plan comes next; the code waits for NH-124 to merge."
+        },
+        {
+          "lines": "357-358",
+          "text": "5. **Vercel → Environment Variables, Production only:** `NEXT_PUBLIC_GA_ID`. Public by design — it\n   ships inside the page. Then redeploy: variables reach new deployments only."
+        },
+        {
+          "lines": "406-408",
+          "text": "- **Jira:** NH-51 rewritten and NH-349 narrowed (both done on 2026-10-05). The future same-origin\n  privacy test on [NH-298](https://leocaseiro.atlassian.net/browse/NH-298) must allow Google's hosts\n  as well as Sentry's."
+        },
+        {
+          "lines": "424-426",
+          "text": "- **Until NH-349 ships**, a visitor in Europe can change their answer only by clearing the site's\n  data. GDPR Article 7(3) requires withdrawing to be as easy as agreeing, so NH-349 should land\n  before or with this ticket's go-live."
+        }
+      ],
+      "options": [
+        {
+          "label": "1 — Ship with NH-349 (stacked pull request)",
+          "what": "NH-349's link is built in its own pull request, stacked on this branch and merged into it first, so one merge to master ships the popup and the link together. Jira gets 'NH-349 blocks NH-51'. Changes the Status line, the Known-limits bullet and section 10; the changelog entry's last sentence changes to match.",
+          "pros": [
+            "Every visitor in Europe can withdraw any answer — Sentry's and Google Analytics' — from the first deploy that asks.",
+            "Keeps G7: NH-349 stays its own ticket and pull request.",
+            "Nothing to remember on launch day; Jira shows the order."
+          ],
+          "cons": [
+            "This ticket's go-live waits for NH-349's design and build. NH-349's ticket also holds an open 'extra detail' idea, which must stay out of that pull request or it delays both.",
+            "The merge order matters: NH-349's pull request merges into this branch first. Merged right after this one instead, before GitHub retargets it to master, it can land on a branch that is already merged.",
+            "F-3's window (Sentry reporting Europe without asking) lasts longer, unless F-3 closes it."
+          ],
+          "cost": "Three text edits here, one changelog sentence, one Jira link; NH-349's small link becomes a prerequisite.",
+          "after": [
+            {
+              "replaces_lines": "4-5",
+              "text": "Status: Design approved by leocaseiro section by section (seven sections, ten decisions), 2026-10-05\nto 2026-10-08. Not implemented. The plan comes next; the code waits for NH-124 to merge, and this\npull request merges only together with NH-349's (see \"Known limits\")."
+            },
+            {
+              "replaces_lines": "424-426",
+              "text": "- **Withdrawing needs NH-349.** GDPR Article 7(3) requires withdrawing to be as easy as agreeing,\n  so this ticket goes live only with NH-349's \"Privacy choices\" link. That link's pull request is\n  stacked on this branch and merged into it first, so one merge to master ships both."
+            },
+            {
+              "replaces_lines": "406-408",
+              "text": "- **Jira:** NH-51 rewritten and NH-349 narrowed (both done on 2026-10-05); NH-349 blocks NH-51. The\n  future same-origin privacy test on [NH-298](https://leocaseiro.atlassian.net/browse/NH-298) must\n  allow Google's hosts as well as Sentry's."
+            }
+          ]
+        },
+        {
+          "label": "2 — Hold the Google Analytics ID until NH-349 ships",
+          "what": "Section 8, step 5 says to set NEXT_PUBLIC_GA_ID only once NH-349's link is live. This ticket can merge alone.",
+          "pros": [
+            "No coupling between the two pull requests.",
+            "Google Analytics, with its lasting cookie, never runs before a way to withdraw exists."
+          ],
+          "cons": [
+            "Does not close the gap for Sentry: its DSN is already set by NH-124, so the popup still asks in Europe at this ticket's deploy, and a 'Yes' or 'Report errors only' still cannot be withdrawn. Closing that half too means holding Sentry's DSN as well (F-3's option A, extended to NH-349), which stops all error reports until then.",
+            "No Google Analytics data anywhere, also outside Europe, until NH-349 ships.",
+            "The popup and the home note name Google Analytics and its cookie while it is off; they overstate, which is harmless.",
+            "A launch-day step someone must remember."
+          ],
+          "cost": "One sentence in step 5 and one Known-limits bullet.",
+          "after": [
+            {
+              "replaces_lines": "357-358",
+              "text": "5. **Vercel → Environment Variables, Production only:** `NEXT_PUBLIC_GA_ID`, once NH-349's \"Privacy\n   choices\" link is live (see \"Known limits\"). Public by design — it ships inside the page. Then\n   redeploy: variables reach new deployments only."
+            },
+            {
+              "replaces_lines": "424-426",
+              "text": "- **Until NH-349 ships**, Google Analytics stays off (section 8, step 5). Sentry's DSN is already\n  set, so the popup still asks in Europe, and a visitor who allows error reports can withdraw that\n  only by clearing the site's data. GDPR Article 7(3) requires withdrawing to be as easy as agreeing."
+            }
+          ]
+        },
+        {
+          "label": "3 — Keep 'should' and accept the gap",
+          "what": "Known limits records the gap as accepted from this ticket's go-live until NH-349 ships; the changelog records the choice.",
+          "pros": [
+            "No delay and nothing to coordinate.",
+            "Honest: the spec states the risk instead of implying a gate."
+          ],
+          "cons": [
+            "From go-live until NH-349, consent in Europe cannot be withdrawn as easily as it is given, which GDPR Article 7(3) and EDPB paragraphs 113-114 require — the kind of gap G5 ('whatever is good by law', in the changelog) was chosen to avoid.",
+            "Depends on someone remembering NH-349; it is To Do with no link."
+          ],
+          "cost": "One sentence.",
+          "after": [
+            {
+              "replaces_lines": "424-426",
+              "text": "- **Until NH-349 ships**, a visitor in Europe can change their answer only by clearing the site's\n  data. GDPR Article 7(3) requires withdrawing to be as easy as agreeing; leocaseiro accepts this gap\n  from this ticket's go-live until NH-349 ships, and the changelog records it."
+            }
+          ]
+        }
+      ],
+      "recommendation": "Option 1. It is the only option that lets every visitor in Europe withdraw any answer, for Sentry and for Google Analytics, from the first deploy that asks, and it keeps G7: NH-349 stays its own ticket and pull request. Keep NH-349's 'extra detail' idea out of that pull request so it stays small.",
+      "flip_condition": "Choose option 3 if leocaseiro judges the window short and the number of visitors in Europe small, and records that. Choose option 2 only together with holding Sentry's DSN until NH-349 as well; alone, it leaves the Sentry half open.",
+      "proposed_fix": "Turn 'should land before or with' into a gate: NH-349's link ships in the same deploy as this ticket's popup, through a pull request stacked on this branch, with a Jira 'blocks' link (option 1).",
+      "why_it_works": "The question and the way to change the answer reach visitors together, so no 'Yes' given in Europe exists before it can be withdrawn. The gate sits in the Status line, Known limits and Jira, where the plan and the person who merges will see it.",
+      "plain_terms": {
+        "GDPR Article 7(3)": "the EU rule that a person may withdraw consent at any time, and that withdrawing must be as easy as giving it",
+        "NH-349": "the Jira ticket for a \"Privacy choices\" link that lets any visitor, in or outside Europe, change their answer later; status To Do (Jira, read 2026-10-08)",
+        "NH-124": "the Jira ticket for Sentry error reporting in web/, specified in the Sentry spec (PR #191); it merges and goes live before this ticket",
+        "G7": "decision G7: the popup is built in this ticket; NH-349 stays open, narrowed to the \"Privacy choices\" link",
+        "G10": "decision G10: this spec now; the code after NH-124 merges, then a rebase",
+        "DSN": "Sentry's project address (NEXT_PUBLIC_SENTRY_DSN); without it, Sentry sends nothing",
+        "stacked pull request": "a pull request whose base is another pull request's branch instead of master"
+      },
+      "severity_check": {
+        "agree": true,
+        "proposed": "P2",
+        "why": "A real launch gap the plan must order; the spec names the legal need but enforces nothing."
+      },
+      "cross_fix": [
+        "F-3 — option 1 makes this ticket's go-live later, so F-3's window (Sentry reporting Europe without asking, from NH-124's deploy to this one) grows unless F-3 closes it.",
+        "F-4 — a privacy notice must say how to change an answer; with option 1 it can name the 'Privacy choices' link from the first day."
+      ]
+    },
+    {
+      "id": "F-3",
+      "verdict": "CONFIRMED",
+      "section_heading": "## 6. Changes to Sentry's design",
+      "section_lines": "289-307",
+      "quotes": [
+        {
+          "quote": "This spec now; the code after NH-124 merges, then a rebase",
+          "verbatim": true,
+          "line": 65,
+          "note": "decision G10"
+        },
+        {
+          "quote": "In Europe nothing loads — Sentry included — until the visitor answers",
+          "verbatim": true,
+          "line": 60,
+          "note": "decision G5"
+        },
+        {
+          "quote": "Made in this ticket's pull request, after NH-124 merges:",
+          "verbatim": true,
+          "line": 291,
+          "note": "section 6"
+        },
+        {
+          "quote": "NH-349 should land before or with this ticket's go-live.",
+          "verbatim": true,
+          "line": 425,
+          "note": "spans lines 425-426"
+        }
+      ],
+      "central_claim_check": "True. G5 (line 60) says in Europe nothing loads, Sentry included, until the visitor answers; G10 (65) and section 6 (291) put this ticket's code after NH-124 merges. NH-124 goes live first with reporting on: the Sentry spec (PR #191) sets NEXT_PUBLIC_SENTRY_DSN in Vercel Production (its section 5, step 5, lines 581-583) and checks a live E103 report after its first production deploy (step 6, lines 584-591). NH-124's plan (PR #191's branch, docs/plans/2026-10-08-nh-124-sentry-error-monitoring-plan.md, Task 17, Steps 1 and 7, lines 4680-4688 and 4744-4760) asks the owner before code review whether both Sentry variables are in Vercel Production and runs that check after merge; it never mentions Europe, NH-51 or NH-349. Section 8 (Setup) and Known limits of this spec are silent on it too. A merge to master deploys to production (web/README.md:31). Release Health pings on every visit (Sentry spec, line 752), so each visitor in Europe also sends a visit ping. The Sentry spec accepts the window itself — its Non-goals, lines 39-41: 'Until it ships, every production visit reports as this spec describes' — but names NH-349 as the popup, which G7 moved to this ticket. This spec says nothing about the time between the two deploys.",
+      "contradicts": "none — checked G5 (60), G10 (65: 'the code after NH-124 merges' still holds in all three options), section 2 (137-139), section 6 (291-307), section 8 (357-362), section 9 (395-396) and Known limits (424-430). Option C changes section 1: web/lib/privacy/choice.ts and the Playwright time-zone line become changes to files NH-124 adds.",
+      "spike": {
+        "ran": false,
+        "why": "A launch-order decision across two tickets; there is nothing to run. NH-124's spec and its plan on PR #191's branch were read instead (GitHub API, read-only).",
+        "mark": "(untested)"
+      },
+      "scenario": "You live in Madrid. In the week NH-124 goes live, you open Notation Hero and a font fails to load. Sentry receives an error report and a visit ping from your browser, and nobody asked you: the question for visitors in Europe arrives only with this later ticket. The spec says that in Europe nothing loads, Sentry included, until you answer. For that week, it is not true.",
+      "whats_wrong": "G5 promises that in Europe nothing loads, Sentry included, until the visitor answers. But this ticket's code follows NH-124, and NH-124 goes live first, with Sentry's address set and a live check right after its first deploy. From NH-124's deploy to this ticket's, every visitor in Europe is reported, with a visit ping, without being asked. The Sentry spec accepts this in its Non-goals but names NH-349 as the popup, which G7 moved here; this spec does not mention the gap.",
+      "before": [
+        {
+          "lines": "357-358",
+          "text": "5. **Vercel → Environment Variables, Production only:** `NEXT_PUBLIC_GA_ID`. Public by design — it\n   ships inside the page. Then redeploy: variables reach new deployments only."
+        },
+        {
+          "lines": "after 307",
+          "text": "(absent — section 6 lists only what changes after NH-124 merges; nothing covers the time between the two deploys)"
+        },
+        {
+          "lines": "after 430",
+          "text": "(absent — Known limits has no line about the time between NH-124's deploy and this ticket's)"
+        },
+        {
+          "lines": "75",
+          "text": "| `web/lib/privacy/choice.ts`     | `asksFirst()`, `savedChoice()`, `saveChoice()`, `allowed()`: the one rule both tools follow (section 2) |"
+        },
+        {
+          "lines": "94-95",
+          "text": "- `web/playwright.e2e.config.ts`: `timezoneId: 'Australia/Sydney'` for every project, and a fake\n  Google Analytics ID."
+        }
+      ],
+      "options": [
+        {
+          "label": "A — Hold Sentry's DSN until this ticket's deploy",
+          "what": "NH-124 goes live without NEXT_PUBLIC_SENTRY_DSN, so its SDK sends nothing. The owner adds the DSN in this ticket's section 8, step 5, beside the Google Analytics ID. Also changes the Sentry spec's section 5 (steps 5-6) and NH-124's plan, Task 17 (Steps 1 and 7).",
+          "pros": [
+            "No new code anywhere.",
+            "G5 holds from the first report ever sent.",
+            "Nothing to undo later."
+          ],
+          "cons": [
+            "No error reports from anyone, anywhere, until this ticket ships — longer if F-2's option 1 makes it wait for NH-349.",
+            "NH-124's own launch proves less: its live E103 check, the readable stack and the alert email move to this ticket's deploy (the source-map upload still runs, because it needs only the token)."
+          ],
+          "cost": "Two sentences here; one setup step and one after-merge step in NH-124's spec and plan.",
+          "after": [
+            {
+              "replaces_lines": "357-358",
+              "text": "5. **Vercel → Environment Variables, Production only:** `NEXT_PUBLIC_GA_ID`, and Sentry's\n   `NEXT_PUBLIC_SENTRY_DSN` with it: NH-124 goes live without its DSN, so its SDK sends nothing until\n   this ticket's popup can ask. Both are public by design — they ship inside the page. Then redeploy:\n   variables reach new deployments only. The Sentry spec's first live check (its section 5, step 6)\n   runs after this deploy."
+            },
+            {
+              "replaces_lines": "new bullet after 430",
+              "text": "- **No error reports before this ticket ships.** NH-124 goes live without its DSN (section 8, step\n  5), so from NH-124's deploy to this one, Sentry reports nothing from anyone."
+            }
+          ]
+        },
+        {
+          "label": "B — Accept the window and record it",
+          "what": "NH-124 goes live as planned and reports every visitor, Europe included, until this ticket's popup ships. This spec's Known limits records it, and the Sentry spec's Non-goals line is corrected to name this ticket, not NH-349, as the popup.",
+          "pros": [
+            "No delay for NH-124 and nothing new to build.",
+            "Error reports from everyone from day one."
+          ],
+          "cons": [
+            "For the whole window, G5 is false: visitors in Europe are reported, and send visit pings, without being asked. The European Data Protection Board's (EDPB) Guidelines 2/2023 and France's regulator, the CNIL, do not exempt error reporting from consent (the reason given for G5).",
+            "The window grows if F-2 makes this ticket wait for NH-349."
+          ],
+          "cost": "One bullet here; one corrected line in the Sentry spec.",
+          "after": [
+            {
+              "replaces_lines": "new bullet after 430",
+              "text": "- **Between NH-124's deploy and this one,** Sentry reports every visitor, in Europe too, without\n  asking — the Sentry spec's \"No choice popup yet\". G5 holds from this ticket's deploy on;\n  leocaseiro accepted the gap on <date>."
+            }
+          ]
+        },
+        {
+          "label": "C — NH-124 ships 'no Sentry in Europe' first",
+          "what": "NH-124 starts Sentry only when asksFirst() is false. asksFirst() — section 2's time-zone rule, with its list of zones from the IANA time-zone database and its unit test — lands with NH-124 in web/lib/privacy/choice.ts, and NH-124's Playwright config gets timezoneId: 'Australia/Sydney' (the continuous-integration (CI) machines run in UTC, which asksFirst() treats as Europe; without it, NH-124's own end-to-end reporting cases would see no Sentry). This ticket then adds the rest of choice.ts and replaces the check with allowed('errors').",
+          "pros": [
+            "G5 holds from NH-124's first deploy, and NH-124's 'report every error' (S1) holds outside Europe from day one.",
+            "NH-124's live check, run from Sydney, is unchanged.",
+            "The code is code this ticket needs anyway, written earlier — little is thrown away."
+          ],
+          "cons": [
+            "Reopens NH-124's spec and its plan (written 2026-10-08, now at PLAN REVIEW) to add a task.",
+            "Visitors in Europe send no error reports at all until this ticket ships.",
+            "NH-124's home note ('This site counts visits and crashes…') overstates for visitors in Europe until then; harmless."
+          ],
+          "cost": "In NH-124: one function with its zone list and unit test, a two-line start condition, one Playwright config line. Here: one paragraph in section 6, and section 1 lists choice.ts and the time-zone line as changes to NH-124's files.",
+          "after": [
+            {
+              "replaces_lines": "new paragraph after 307",
+              "text": "**Before this ticket ships, NH-124 already skips Europe.** Its `instrumentation-client.ts` starts\nSentry only when `asksFirst()` is false; `asksFirst()`, its unit test, and\n`timezoneId: 'Australia/Sydney'` in `web/playwright.e2e.config.ts` land with NH-124. This ticket adds\nthe rest of `web/lib/privacy/choice.ts` and replaces that check with `allowed('errors')`."
+            },
+            {
+              "replaces_lines": "94-95",
+              "text": "- `web/playwright.e2e.config.ts` (NH-124 already sets `timezoneId: 'Australia/Sydney'`): a fake\n  Google Analytics ID."
+            }
+          ]
+        }
+      ],
+      "recommendation": "Option C. It keeps both promises from the first deploy: G5 in Europe, and NH-124's 'report every error' outside it. The code is code this ticket needs anyway (asksFirst() and the Sydney time zone for the end-to-end tests), written earlier, and NH-124 is still at plan review, the cheapest moment to add a task. It matters more if F-2's option 1 makes this ticket wait for NH-349. Whatever the option, correct the Sentry spec's Non-goals line that still names NH-349 as the popup.",
+      "flip_condition": "Choose option A if leocaseiro prefers not to reopen NH-124's reviewed plan and this ticket will follow NH-124 within days. Choose option B if leocaseiro judges a short window acceptable and records it.",
+      "proposed_fix": "Close the window between NH-124's deploy and this ticket's: NH-124 starts Sentry only outside Europe until the popup exists (option C), and this spec says so in section 6.",
+      "why_it_works": "With no popup to ask, 'in Europe nothing loads until the visitor answers' means 'in Europe nothing loads'. A time-zone check in NH-124 does exactly that, and this ticket later replaces it with allowed('errors').",
+      "plain_terms": {
+        "G5": "decision G5: in Europe nothing loads, Sentry included, until the visitor answers",
+        "G7": "decision G7: the popup is built in this ticket; NH-349 is narrowed to a \"Privacy choices\" link",
+        "G10": "decision G10: this spec now; the code after NH-124 merges, then a rebase",
+        "S1": "NH-124's decision S1: report every error",
+        "NH-124": "the Jira ticket for Sentry error reporting in web/, specified in the Sentry spec (PR #191); it merges and goes live before this ticket",
+        "DSN": "Sentry's project address (NEXT_PUBLIC_SENTRY_DSN); without it, Sentry sends nothing",
+        "asksFirst()": "section 2's rule: true when the browser's time zone is in Europe (or UTC, or unknown)",
+        "Release Health": "Sentry's visit count: a small ping on every visit",
+        "SDK": "software development kit — here, Sentry's library in the browser",
+        "E103": "the error code for a file that is not a score; the Sentry spec's first live check opens such a file",
+        "IANA time-zone database": "the standard list of time-zone names, such as Europe/Berlin",
+        "PLAN REVIEW": "the Jira status of a ticket whose implementation plan is being reviewed"
+      },
+      "severity_check": {
+        "agree": true,
+        "proposed": "P2",
+        "why": "A real gap in the launch order that breaks G5 for a period; the fix is a choice about another ticket's go-live."
+      },
+      "cross_fix": [
+        "F-2 — F-2's option 1 (ship with NH-349) makes this window longer. Option A here plus F-2's option 2 still leaves a Sentry 'Yes' impossible to withdraw at this ticket's deploy, unless the DSN also waits for NH-349.",
+        "Option C moves timezoneId: 'Australia/Sydney' into NH-124's Playwright config; the screenshot note in section 9 (395-396) then describes NH-124's config, not a change made here."
+      ]
+    },
+    {
+      "id": "F-4",
+      "verdict": "CONFIRMED",
+      "section_heading": "## 3. The popup",
+      "section_lines": "141-168",
+      "quotes": [
+        {
+          "quote": "Can we count visits (with a cookie) and get error reports? Your scores stay on your device.",
+          "verbatim": true,
+          "line": 144,
+          "note": ""
+        },
+        {
+          "quote": "Error reports go to Sentry, a bug-tracking service. Visit counts go to Sentry and Google Analytics. Neither gets your file, its name, or the music in it. How Google uses data ↗",
+          "verbatim": true,
+          "line": 147,
+          "note": "spans lines 147-148"
+        },
+        {
+          "quote": "The home page names Google Analytics because its terms require the site to disclose it and link to Google's page (G9).",
+          "verbatim": true,
+          "line": 331,
+          "note": "spans lines 331-332"
+        },
+        {
+          "quote": "No way yet to change an answer.",
+          "verbatim": true,
+          "line": 24,
+          "note": "Non-goals"
+        }
+      ],
+      "central_claim_check": "True. EDPB Guidelines 05/2020 on consent, paragraph 64: valid consent needs at least 'the controller's identity', 'the purpose of each of the processing operations', 'what (type of) data will be collected and used' and 'the existence of the right to withdraw consent' (read on https://gdpr-text.com/guidelines/consent/, a mirror; edpb.europa.eu did not resolve from this machine). GDPR Article 7(3): 'Prior to giving consent, the data subject shall be informed thereof' (https://gdpr-info.eu/art-7-gdpr/). The CNIL (https://www.cnil.fr/fr/cookies-et-autres-traceurs/regles/cookies/que-dit-la-loi) lists 'l'identité des responsables du ou des traitements' and the means to 'retirer son consentement'. Google Analytics' terms, section 7 (https://marketingplatform.google.com/about/analytics/terms/us/, updated 15 May 2023): 'You will have and abide by an appropriate Privacy Policy…' and 'You must post a Privacy Policy and that Privacy Policy must provide notice of Your use of cookies…'; the separate disclosure of Google Analytics 'can be done by displaying a prominent link' — the only part G9 relies on. The popup's words (144-148) give purposes and tools, not who runs the site or that an answer can be withdrawn, and web/app has two pages only (page.tsx, play/page.tsx), so no privacy page exists. GDPR Article 13 lists what a notice holds: identity and contact, purposes, recipients, storage period, the right to withdraw, the right to complain (https://gdpr-info.eu/art-13-gdpr/).",
+      "contradicts": "Option 1 conflicts with Non-goals line 27 ('`web/` stays two static pages'), which changes with it; section 1 gains a file and section 9 an accessibility scan. Option 2 reopens the words approved on 2026-10-08 (166-168). Checked G9 (64), section 3 (141-168), section 7 (309-334), section 9 (393-398) and Known limits (424-429).",
+      "spike": {
+        "ran": false,
+        "why": "A legal and wording decision; the EDPB guidelines, GDPR Articles 7 and 13, the CNIL page and the Google Analytics terms were read instead.",
+        "mark": "(untested)"
+      },
+      "scenario": "You live in Vienna. The card asks 'Can we count visits (with a cookie) and get error reports?', and you press 'Yes'. Nothing tells you who is asking, how to reach them, or that you can change your mind later, and the site has no privacy page where you could check. Under EU guidance, a 'Yes' given without those facts may not count as consent. Google Analytics' own terms also ask the site to post a privacy policy.",
+      "whats_wrong": "EU guidance says a person must know at least who is asking, each purpose, what data, and that they can withdraw, for consent to count as informed; Article 7(3) of the GDPR (the EU General Data Protection Regulation) adds that they hear about withdrawing before they agree. The approved words give the purposes and the tools, not who runs the site or that an answer can be withdrawn, and web/ has no privacy page. G9 rests on the part of Google Analytics' terms that asks for a disclosure link, but the same section says 'You must post a Privacy Policy'.",
+      "before": [
+        {
+          "lines": "147-148",
+          "text": "  Error reports go to Sentry, a bug-tracking service. Visit counts go to Sentry and Google\n  Analytics. Neither gets your file, its name, or the music in it. How Google uses data ↗"
+        },
+        {
+          "lines": "27",
+          "text": "- **No server code.** `web/` stays two static pages: no location headers, no Measurement Protocol."
+        },
+        {
+          "lines": "320",
+          "text": "  How Google uses data ↗"
+        },
+        {
+          "lines": "after 80",
+          "text": "(absent — section 1 lists no privacy page)"
+        },
+        {
+          "lines": "after 429",
+          "text": "(absent — Known limits says nothing about a privacy notice)"
+        }
+      ],
+      "options": [
+        {
+          "label": "1 — A short privacy notice page",
+          "what": "A new static page, /privacy, linked from the popup's Details and from the home note. It says who runs Notation Hero and how to reach them; what Sentry and Google Analytics receive and how long each keeps it (Sentry 30 days, from the Sentry spec; Google Analytics 14 months, section 8); the cookie; and how to change an answer.",
+          "pros": [
+            "Meets the EDPB's minimum content for informed consent (paragraph 64) and Google Analytics' 'post a Privacy Policy' term, for every visitor, not only in Europe.",
+            "One place for later changes (NH-349, NH-54) while the card stays short."
+          ],
+          "cons": [
+            "A third page: Non-goals line 27 ('two static pages') changes; the page needs its own accessibility scan, and maybe a screenshot.",
+            "New words to approve, and a name and a contact become public; which ones is leocaseiro's choice.",
+            "Its 'change your answer' line depends on NH-349 (F-2)."
+          ],
+          "cost": "One static page, two links and their tests; edits to Non-goals and sections 1, 3, 7 and 9.",
+          "after": [
+            {
+              "replaces_lines": "147-148",
+              "text": "  Error reports go to Sentry, a bug-tracking service. Visit counts go to Sentry and Google\n  Analytics. Neither gets your file, its name, or the music in it. How Google uses data ↗\n  Who runs this site, and how to change your answer: Privacy notice"
+            },
+            {
+              "replaces_lines": "new block in section 7, after 320",
+              "text": "Privacy notice (new page, /privacy, linked from the home note and the popup's Details):\n  Notation Hero is run by <name> (<contact>). Error reports go to Sentry, which keeps them 30\n  days. Visit counts go to Sentry and Google Analytics, which keeps visit-level data 14 months and\n  sets a cookie (_ga). Neither gets your file, its name, or the music in it. In Europe nothing is\n  sent until you answer. Change your answer at any time: <the Privacy choices link (NH-349)>.\n  How Google uses data ↗"
+            },
+            {
+              "replaces_lines": "new row in section 1, after 80",
+              "text": "| `web/app/privacy/page.tsx`      | the privacy notice (section 7)                                                                          |"
+            },
+            {
+              "replaces_lines": "27",
+              "text": "- **No server code.** `web/` stays three static pages: no location headers, no Measurement\n  Protocol."
+            },
+            {
+              "replaces_lines": "320",
+              "text": "  How Google uses data ↗ · Privacy notice"
+            }
+          ]
+        },
+        {
+          "label": "2 — A few more words in Details only",
+          "what": "Details gains one sentence: who runs the site, with a contact, and how to change the answer.",
+          "pros": [
+            "Smallest change; no new page.",
+            "The facts sit next to the buttons, before the visitor agrees."
+          ],
+          "cons": [
+            "Does not meet Google Analytics' 'post a Privacy Policy' term.",
+            "The card grows on a phone; until NH-349 the 'how' is 'clear this site's data', which reads badly.",
+            "Reopens words approved after two rounds."
+          ],
+          "cost": "One or two sentences, approved by leocaseiro.",
+          "after": [
+            {
+              "replaces_lines": "147-148",
+              "text": "  Error reports go to Sentry, a bug-tracking service. Visit counts go to Sentry and Google\n  Analytics. Neither gets your file, its name, or the music in it. How Google uses data ↗\n  Notation Hero is run by <name> (<contact>). You can change your answer at any time:\n  <the Privacy choices link, or clear this site's data>."
+            }
+          ]
+        },
+        {
+          "label": "3 — Defer",
+          "what": "Known limits records the gap, and a new ticket adds the notice later.",
+          "pros": ["No work now; the approved words stay."],
+          "cons": [
+            "From go-live, a 'Yes' given in Europe may not count as informed consent.",
+            "Google Analytics' terms are not met for any visitor, also outside Europe."
+          ],
+          "cost": "One bullet and a ticket.",
+          "after": [
+            {
+              "replaces_lines": "new bullet after 429",
+              "text": "- **No privacy notice yet.** The popup does not say who runs the site or that an answer can be\n  withdrawn, and Google Analytics' terms ask for a posted privacy policy. NH-<new> adds one."
+            }
+          ]
+        }
+      ],
+      "recommendation": "Option 1. Only a posted notice meets Google Analytics' 'post a Privacy Policy' term, which applies to every visitor, and it carries what the card cannot hold (who, how to reach them, how long data is kept, how to change an answer) while the card stays short.",
+      "flip_condition": "Choose option 2 if leocaseiro wants no third page in v0 and accepts that the Google Analytics term stays unmet until one exists. Choose option 3 only if go-live in Europe is postponed anyway.",
+      "proposed_fix": "Add a short privacy notice page, linked from the popup's Details and from the home note, that names who runs Notation Hero and how to reach them, what each tool receives and how long it keeps it, the cookie, and how to change an answer.",
+      "why_it_works": "A visitor gets, before pressing 'Yes', the facts EU guidance counts as the minimum for informed consent, and the site has the posted privacy policy that Google Analytics' terms require.",
+      "plain_terms": {
+        "EDPB": "the European Data Protection Board, which writes the EU guidance on consent",
+        "GDPR": "the EU data-protection law",
+        "controller": "whoever decides why and how the data is used — here, whoever runs Notation Hero",
+        "G9": "decision G9: the home page names Google Analytics (its terms require it); Sentry is named only in the popup's Details",
+        "G5": "decision G5: in Europe nothing loads, Sentry included, until the visitor answers (\"whatever is good by law\", in the changelog)",
+        "CNIL": "France's data-protection authority",
+        "v0": "the first public version of web/, now being built",
+        "NH-54": "the later ticket for an AWS analytics pipeline, a second destination for the same events"
+      },
+      "severity_check": {
+        "agree": true,
+        "proposed": "P2",
+        "why": "A real gap at launch that the spec does not mention; which name and contact to publish is leocaseiro's decision."
+      },
+      "cross_fix": [
+        "F-2 — the notice's 'change your answer' line depends on NH-349: with F-2's option 1 it names the 'Privacy choices' link; otherwise it says 'clear this site's data'."
+      ]
+    },
+    {
+      "id": "FYI-1",
+      "verdict": "CONFIRMED_WITH_CORRECTION",
+      "correction": "The effect holds; the reason given is out of date. WebKit's 2019 rule capped cookies written by a script at a 7-day expiry (Intelligent Tracking Prevention, ITP 2.1). A 2022 WebKit release removed that cap and now deletes cookies written by a script, together with all other storage a script can write (localStorage too), when the site gets no click, tap or key press during 7 days of browser use. So a visitor who returns after a week without using the site still counts as new, and the same rule also deletes the saved privacy answer, so a visitor in Europe is asked again.",
+      "section_heading": "## Why this exists",
+      "section_lines": "33-47",
+      "quotes": [
+        {
+          "quote": "Who comes — visits, new and returning, country, device, and where they came from.",
+          "verbatim": false,
+          "line": 38,
+          "note": "Fails the strict test only because the spec bolds the lead: '1. **Who comes** — visits, …'. The words are exact."
+        },
+        {
+          "quote": "\"Anonymously\" goes: Google Analytics' cookie is a lasting ID.",
+          "verbatim": true,
+          "line": 330,
+          "note": "section 7"
+        }
+      ],
+      "central_claim_check": "WebKit's tracking-prevention page today, section '7-Day Cap on All Script-Writeable Storage': 'ITP deletes all cookies created in JavaScript and all other script-writeable storage after 7 days of no user interaction with the website' (https://webkit.org/tracking-prevention/). The 2019 expiry cap: 'all persistent client-side cookies, i.e. persistent cookies created through document.cookie, are capped to a seven day expiry' (https://webkit.org/blog/8613/intelligent-tracking-prevention-2-1/). The 2020 rule for other storage, LocalStorage included: deleted 'after seven days of Safari use without user interaction on the site' (https://webkit.org/blog/10218/full-third-party-cookie-blocking-and-more/). The 2022 change from the cap to deletion: https://www.simoahava.com/privacy/first-party-cookies-webkit-revisited/ (14 November 2022; a secondary source quoting WebKit's documentation). Other iPhone and iPad browsers: since iOS 14 they get the same rules through WebKit's WKWebView (https://www.simoahava.com/privacy/intelligent-tracking-prevention-ios-14-ipados-14-safari-14/, secondary). `_ga` is written by script: in the R1 spike it appeared although every collect request was answered locally with no Set-Cookie header. Safari's deletion itself is (untested) here.",
+      "contradicts": "none — checked goal 1 (38), section 2's 'Kept in this browser' (130-132), section 7's 'a lasting ID' (330; still true outside WebKit browsers) and Known limits (420-431).",
+      "spike": {
+        "ran": true,
+        "what": "The R1 spike (Chromium, Google's real gtag.js, a made-up ID, every collect request answered locally) recorded the cookies after the first page view.",
+        "result": "`_ga` and `_ga_<ID>` were set although no response carried a Set-Cookie header, so gtag.js writes them by script — the kind WebKit deletes. Safari's 7-day deletion itself was not run: Playwright's WebKit build is not Safari, so it is (untested) and rests on WebKit's documentation.",
+        "fix_holds": true
+      },
+      "scenario": "You open Notation Hero on your iPhone every second Sunday to practise a drum part. Each time, Google Analytics counts you as a new visitor, because Safari deleted its cookie during the week you did not use the site. The 'returning visitors' number stays near zero, and it looks as if nobody comes back. If you are in Europe, the question also appears again each time.",
+      "whats_wrong": "Goal 1 counts new and returning visitors, and section 7 calls the cookie 'a lasting ID'. On Safari, and on iPhones and iPads, it is not: WebKit deletes cookies written by a script, such as `_ga`, and the site's localStorage after 7 days of browser use without the visitor using the site. Returning visitors are undercounted, the saved answer disappears, and the spec says neither.",
+      "before": [
+        {
+          "lines": "after 427",
+          "text": "(absent — Known limits has no line on Safari; the new bullet goes after 'Ad blockers', line 427)"
+        }
+      ],
+      "after": [
+        {
+          "replaces_lines": "new bullet after 427",
+          "text": "- **Safari forgets after a week.** Safari, and other browsers on an iPhone or iPad, delete cookies\n  written by a script, such as Google Analytics' `_ga`, and the site's `localStorage` after seven\n  days of browser use without a click, tap or key press on the site. A visitor who returns later\n  counts as new, so returning visitors are undercounted, and a visitor in Europe is asked again."
+        }
+      ],
+      "proposed_fix": "Add one Known-limits bullet naming the WebKit rule and its two effects: returning visitors undercounted, and the saved answer deleted.",
+      "why_it_works": "A low returning share on Safari and iPhones is then read as a browser limit, not as 'nobody comes back', and a question that reappears for a visitor in Europe is expected, not a bug.",
+      "plain_terms": {
+        "WebKit": "the browser engine inside Safari and, since iOS 14, inside every browser on an iPhone or iPad",
+        "ITP": "Intelligent Tracking Prevention, WebKit's limits on trackers",
+        "_ga": "Google Analytics' visitor cookie; a new `_ga` means a new visitor",
+        "localStorage": "the browser storage where section 2 keeps the visitor's answer"
+      },
+      "severity_check": {
+        "agree": true,
+        "proposed": "P3",
+        "why": "Small and cheap: one line that prevents a wrong reading of the numbers."
+      },
+      "cross_fix": [
+        "F-1 — with F-1's fix, a refusal saved by a visitor outside Europe (through NH-349's link) is deleted by the same rule, after which that visitor gets 'everything by default' again. NH-349 should repeat this line."
+      ]
+    },
+    {
+      "id": "FYI-3",
+      "verdict": "CONFIRMED",
+      "section_heading": "## 8. Setup — done by leocaseiro, by hand",
+      "section_lines": "336-362",
+      "quotes": [
+        {
+          "quote": "**After the first production deploy, in the Realtime report:** a page view on `/`",
+          "verbatim": true,
+          "line": 359,
+          "note": "step 6"
+        },
+        {
+          "quote": "Visitors in Europe are asked first; everyone else gets everything by default, with no popup",
+          "verbatim": true,
+          "line": 58,
+          "note": "decision G3"
+        },
+        {
+          "quote": "**Reporting identity: device-based**, so thresholds do not hide small numbers.",
+          "verbatim": true,
+          "line": 348,
+          "note": "step 2"
+        }
+      ],
+      "central_claim_check": "True. Google's help page 'Filter out internal traffic' (https://support.google.com/analytics/answer/10104470): the rule is made under the web data stream → Configure tag settings → Show more → Define internal traffic, with traffic_type 'internal' and IP matches (equals, begins with, range, regular expression…); the data filter has three states — Testing ('identifies matching data with the \"Test data filter name\" dimension'), Active ('makes permanent changes'), Inactive — and 'Once you apply a data filter, the effect on the data is permanent … the excluded data is never processed and will never be available in Analytics or BigQuery.' Google's 'Data filters' page (https://support.google.com/analytics/answer/10108813): 'Analytics evaluates data filters from the point of creation forward.' Section 8 has no such step, step 6 asks for production visits, G3 counts every visitor outside Europe by default, and the property's time zone is Australia/Sydney (340).",
+      "contradicts": "none — checked section 8, steps 1-6 (340-362), G3 (58) and Known limits; the new step comes after step 6, so step 6's Realtime check still sees the owner's visits.",
+      "spike": {
+        "ran": false,
+        "why": "It needs the real property and the owner's own IP addresses.",
+        "mark": "(untested)"
+      },
+      "scenario": "You run Notation Hero from Sydney. You open it after each deploy to check it, and you show it to people from your own laptop and phone. Google Analytics counts each of those visits like a stranger's, and on a small site your own visits become a large part of 'who comes', 'what they use' and the funnel.",
+      "whats_wrong": "Section 8 tunes the property for small numbers but never excludes the owner's own visits. Everyone outside Europe is counted by default (G3), so every check and every demo from the owner's devices lands in the reports.",
+      "before": [
+        {
+          "lines": "after 362",
+          "text": "(absent — section 8 ends at step 6)"
+        }
+      ],
+      "after": [
+        {
+          "replaces_lines": "new step 7 after 362",
+          "text": "7. **Then exclude your own visits.** In the web data stream: Configure tag settings → Show more →\n   Define internal traffic, with your own IP addresses (`traffic_type` `internal`). Then set the\n   \"Internal Traffic\" data filter to **Testing** for a few days, then **Active**. Only after step 6:\n   an active filter drops matching visits for good, and would hide step 6's own check."
+        }
+      ],
+      "proposed_fix": "Add a step 7 to section 8: after step 6, define internal traffic by the owner's IP addresses and move the 'Internal Traffic' data filter from Testing to Active.",
+      "why_it_works": "Google Analytics then drops the owner's visits before they reach any report, with no code, and the Testing state shows first that the rule matches only those visits.",
+      "plain_terms": {
+        "G3": "decision G3: visitors in Europe are asked first; everyone else gets everything by default, with no popup",
+        "Realtime report": "Google Analytics' live view of the last minutes, used in step 6",
+        "data filter": "a Google Analytics property setting that drops matching visits; in Testing it only labels them",
+        "traffic_type": "the label Google Analytics gives a visit that matches the internal-traffic rule"
+      },
+      "severity_check": {
+        "agree": true,
+        "proposed": "P3",
+        "why": "Small and cheap; it keeps the owner out of a small sample."
+      },
+      "cross_fix": [
+        "F-1 + NH-349 — once NH-349's link exists and F-1's fix holds, the owner can also choose 'Report errors only' in each of their own browsers; that covers a phone whose IP address changes, which an IP rule misses."
+      ]
+    },
+    {
+      "id": "FYI-5",
+      "verdict": "CONFIRMED",
+      "section_heading": "## 4. Google Analytics in code",
+      "section_lines": "170-215",
+      "quotes": [
+        {
+          "quote": "Google Analytics receives the page address with its `?` part — the campaign tags on a link you share",
+          "verbatim": true,
+          "line": 209,
+          "note": "spans lines 209-210"
+        },
+        {
+          "quote": "No address in `web/` carries anything of the visitor's.",
+          "verbatim": true,
+          "line": 211,
+          "note": "spans lines 211-212"
+        }
+      ],
+      "central_claim_check": "True. Google's '[GA4] Data redaction' (https://support.google.com/analytics/answer/13544947): 'client-side text redaction of email addresses and user-defined URL Query Parameters', which 'occurs client side … and before data is sent to Analytics', over page_location, page_referrer, page_path, link_url, video_url and form_destination; set under the web data stream's Events section → 'Redact data'; email redaction is on by default for new properties; web data streams only. Query parameters are redacted only when listed, so by default Google Analytics sends them. The spike (see below) showed it on the wire. The Sentry spec treats fbclid as data to keep out: its end-to-end case 7 opens /?fbclid=probe123#frag (PR #191, line 697), and its unit test scrubs /play?fbclid=abc#x (line 609). (untested): the referrer on a client-side navigation, which is how Next.js moves from / to /play — the made-up ID cannot show those page views.",
+      "contradicts": "none — checked section 4's Addresses (209-212: Sentry still cuts at '?'), section 8, steps 3 and 6 (350-352, 359-362), and section 9's Privacy case (388-389). The end-to-end lane uses a fake ID, so redaction, which comes from the real property's settings, can be checked only at step 6.",
+      "spike": {
+        "ran": true,
+        "what": "In the R1 spike (Chromium, Google's real gtag.js for a made-up ID with no redaction set, every collect request answered locally), the page was opened as /?utm_source=probe&fbclid=probe123&gclid=probe456&msclkid=probe789, then a full-page navigation went to /play.",
+        "result": "The first page_view's `dl` (page address) held all four parameters. After the navigation, the next page_view's `dr` (referrer) held the full first address again, click IDs included. The fix itself (redaction) needs the real property, so it is (untested).",
+        "fix_holds": null
+      },
+      "scenario": "You tap a link to Notation Hero that a friend shared on Facebook. Facebook adds its own click code to the address, such as '?fbclid=IwAR…'. Google Analytics receives the full address with that code, and the next page's 'came from' address carries it again, although the site only wants to know that you came from Facebook.",
+      "whats_wrong": "Section 4 keeps the address's '?' part for campaign tags and says no address in web/ carries anything of the visitor's. But links from Facebook, Google Ads and Microsoft Ads carry click IDs (fbclid, gclid, msclkid) in that same part, and Google Analytics 4 sends them unless they are listed for redaction. The Sentry spec already treats fbclid as data to keep out.",
+      "before": [
+        {
+          "lines": "209-212",
+          "text": "- **Addresses:** Google Analytics receives the page address with its `?` part — the campaign tags\n  on a link you share, which is how it reports where a visitor came from — and never the `#` part.\n  Sentry cuts addresses at `?` on purpose; only Google Analytics needs to know the source. No\n  address in `web/` carries anything of the visitor's."
+        },
+        {
+          "lines": "350-352",
+          "text": "3. **Enhanced measurement:** keep page views, including \"page changes based on browser history\n   events\". Turn off scrolls, outbound clicks, site search, video, file downloads (their link text\n   can carry a title) and form interactions."
+        },
+        {
+          "lines": "359-362",
+          "text": "6. **After the first production deploy, in the Realtime report:** a page view on `/`; **a page view\n   after clicking Play** — the one thing the spike could not show (if it is missing, the fallback in\n   section 4); an `open_file` and a `score_loaded` with their fields; and, with the browser's time\n   zone set to Berlin, the popup, with nothing reaching Google until \"Yes\"."
+        }
+      ],
+      "after": [
+        {
+          "replaces_lines": "209-212",
+          "text": "- **Addresses:** Google Analytics receives the page address with its `?` part — the campaign tags\n  on a link you share, which is how it reports where a visitor came from — and never the `#` part.\n  Click IDs that other sites add (`fbclid`, `gclid`, `msclkid`) are redacted in the browser before\n  sending (section 8, step 3). Sentry cuts addresses at `?` on purpose; only Google Analytics needs\n  to know the source. No address in `web/` carries anything of the visitor's."
+        },
+        {
+          "replaces_lines": "350-352",
+          "text": "3. **Enhanced measurement:** keep page views, including \"page changes based on browser history\n   events\". Turn off scrolls, outbound clicks, site search, video, file downloads (their link text\n   can carry a title) and form interactions. In the same Events section, **Redact data**: email on,\n   and the query parameters `fbclid`, `gclid` and `msclkid`."
+        },
+        {
+          "replaces_lines": "359-362",
+          "text": "6. **After the first production deploy, in the Realtime report:** a page view on `/`; **a page view\n   after clicking Play** — the one thing the spike could not show (if it is missing, the fallback in\n   section 4); an `open_file` and a `score_loaded` with their fields; and, with the browser's time\n   zone set to Berlin, the popup, with nothing reaching Google until \"Yes\". In the browser's network\n   panel, `/?utm_source=probe&fbclid=probe123` sends a collect request that keeps `utm_source` and\n   has no `probe123`."
+        }
+      ],
+      "proposed_fix": "Turn on Google Analytics' 'Redact data' for fbclid, gclid and msclkid in section 8, step 3; say so in section 4's Addresses; check it at step 6.",
+      "why_it_works": "Redaction runs in the visitor's browser before anything is sent, so the click IDs never reach Google, while the campaign tags that show where visitors came from still arrive.",
+      "plain_terms": {
+        "fbclid, gclid, msclkid": "click codes that Facebook, Google Ads and Microsoft Ads add to a link, to recognise the click",
+        "Redact data": "a Google Analytics web-stream setting that replaces chosen address parts in the browser before sending",
+        "dl, dr": "the page address and the \"came from\" address in each Google Analytics request",
+        "campaign tags": "the utm_… parts of a shared link that name its source"
+      },
+      "severity_check": {
+        "agree": true,
+        "proposed": "P3",
+        "why": "Small and cheap: one setting and one check; it keeps a third-party identifier out of Google Analytics."
+      },
+      "cross_fix": [
+        "Seen in passing, for FYI-4 and F-5 (other groups): every hit in the spike was a fetch POST to www.google-analytics.com/g/collect, and the user_engagement hit sent when a page is left also went to www.google.com/g/collect. Section 6's breadcrumb list names www.google.com/ccm only (line 300), and the end-to-end fixture must answer www.google.com/g/collect too."
+      ]
+    },
+    {
+      "id": "R1",
+      "verdict": "CONFIRMED",
+      "section_heading": "## Extending later",
+      "section_lines": "410-418",
+      "quotes": [
+        {
+          "quote": "a consent update to denied",
+          "verbatim": true,
+          "line": 417,
+          "note": "inside 'Extending later', the NH-349 bullet"
+        },
+        {
+          "quote": "Google's \"advanced\" consent mode (a small site never reaches its modelling thresholds, and EU guidance says those pings need consent too)",
+          "verbatim": true,
+          "line": 58,
+          "note": "G3's rejected option"
+        }
+      ],
+      "central_claim_check": "True. Google's 'Consent mode on websites and mobile apps' (https://support.google.com/analytics/answer/9976101): with analytics_storage denied the tag 'Will not read or write first-party analytics cookies' and 'cookieless pings will be sent to Google Analytics'. Google's consent-mode concepts page (https://developers.google.com/tag-platform/security/concepts/consent-mode): 'While consent is denied, the Google tags send measurements without cookies.' Neither page describes an update from granted to denied after the tag has loaded; the spike did, and the tag kept sending. Google's switch to stop the tag (https://developers.google.com/tag-platform/security/guides/privacy, updated 2026-07-30): window['ga-disable-MEASUREMENT_ID'] = true 'turns off the Google tag from sending data', and it 'must be set before any calls to gtag() are made'.",
+      "contradicts": "none — checked G3 (58: the fix keeps out the cookieless pings G3 rejected), section 4 (track() sends nothing once stopped) and Known limits. NH-349 itself is out of scope here.",
+      "spike": {
+        "ran": true,
+        "what": "A scratch Node script drove Playwright 1.61.1's Chromium from web/node_modules. It loaded Google's real gtag.js for a made-up ID, fetched through Playwright's route.fetch() (the only network traffic: GET requests for the script), with the spec's consent default and settings. Every collect request was answered locally (204) and recorded; Chromium's resolver mapped every other host to NOTFOUND, and no other request was seen. Runs: (A) consent update to denied, then one gtag('event'); (B) consent update to denied, no more calls from our code, then the page is left; (C) consent update to denied plus window['ga-disable-G-…'] = true, set after the tag had loaded, then one gtag('event') and the page is left.",
+        "result": "(A) Before the update: page_view and an event, gcs=G101, the cookie's client ID. After it: the event was still sent, gcs=G100, with a new temporary client ID; leaving the page sent user_engagement (gcs=G100) to www.google-analytics.com/g/collect and www.google.com/g/collect. (B) With no call from our code, leaving the page still sent user_engagement (gcs=G100) to both hosts. (C) After ga-disable: no request at all — neither the event nor the hit on leaving. In every run the `_ga` and `_ga_<ID>` cookies stayed.",
+        "fix_holds": true
+      },
+      "scenario": "Later, a 'Privacy choices' link (NH-349) lets you change 'Yes' to 'No' while the player is open. This spec tells that ticket to send Google a 'consent: denied' update and stop sending events. You press 'No' and keep practising. When you close the tab, Google Analytics still sends one more report about your visit, only without its cookie — the kind of report this spec's G3 decided also needs consent.",
+      "whats_wrong": "'Extending later' tells NH-349 that changing to 'No' stops Google Analytics with 'a consent update to denied, and no more events'. A Google tag that is already loaded keeps sending cookieless pings after that update: in the spike, a user_engagement hit each time the page is left, with no call from our code. G3 rejected those pings because EU guidance says they need consent too.",
+      "before": [
+        {
+          "lines": "416-418",
+          "text": "- **NH-349's link** reuses `PrivacyChoices` and `saveChoice()`. Changing to \"No\" must stop Google\n  Analytics (a consent update to denied, and no more events) and close Sentry for the rest of the\n  visit."
+        }
+      ],
+      "after": [
+        {
+          "replaces_lines": "416-418",
+          "text": "- **NH-349's link** reuses `PrivacyChoices` and `saveChoice()`. Changing to \"No\" must stop Google\n  Analytics for the rest of the visit. A consent update to denied is not enough: the loaded tag\n  still sends a cookieless `user_engagement` hit when the page is left (spike, 2026-10-08). So the\n  link also sets `window['ga-disable-<ID>'] = true` and sends no more events. Google documents that\n  switch as set before any `gtag()` call, so NH-349's test must prove no hit follows a \"No\". The\n  link must also close Sentry for the rest of the visit."
+        }
+      ],
+      "proposed_fix": "Tell NH-349 to stop the tag, not only update consent: send the update, set window['ga-disable-<ID>'] = true, send no more events, and prove in a test that no hit follows a 'No'.",
+      "why_it_works": "In the spike, setting the switch after the tag had loaded stopped every later hit, including the automatic one sent when the page is left. A test is still needed, because Google documents the switch as set before any gtag() call. On later page loads, allowed() keeps Google Analytics from starting at all.",
+      "plain_terms": {
+        "cookieless ping": "a Google Analytics request sent without its cookie, with a temporary visitor ID; the spike saw it as gcs=G100",
+        "gcs": "the consent code in each Google Analytics request: G101 = ad storage denied, analytics granted; G100 = both denied",
+        "user_engagement": "an event the Google tag sends by itself when a page is left, with the time spent on it",
+        "ga-disable-<ID>": "Google's documented switch, window['ga-disable-<measurement ID>'] = true, that stops the tag sending data",
+        "G3": "decision G3: Europe is asked first; it rejected Google's 'advanced' consent mode because its cookieless pings need consent too",
+        "NH-349": "the Jira ticket for a \"Privacy choices\" link that lets any visitor, in or outside Europe, change their answer later; status To Do (Jira, read 2026-10-08)"
+      },
+      "severity_check": {
+        "agree": true,
+        "proposed": "P3",
+        "why": "Guidance for a later ticket; cheap to correct now, and as written it would mislead NH-349's implementer."
+      },
+      "cross_fix": [
+        "F-1 — F-1 makes a 'No' hold on the next page loads; this fix stops the tag on the page where the answer changes. NH-349 needs both.",
+        "The `_ga` cookies stay after a 'No' (spike). They are not read again once Google Analytics no longer starts; deleting them is a choice for NH-349's plan, not part of this fix.",
+        "Seen in passing (FYI-4, F-5): the hit sent when a page is left also goes to www.google.com/g/collect, a host section 6's breadcrumb list (line 300, 'www.google.com/ccm') does not cover.",
+        "Seen in passing (F-5, a committed copy of gtag.js): the copy saved on 2026-10-05, served offline for every script request, asked for a second script (/gtag/js?id=…&cx=c&gtm=…) and then sent no hit and set no cookie; Google's live script, fetched through route.fetch(), worked at once. A committed copy would need that second script too, and a 3-day-old copy already behaved differently."
+      ]
+    }
+  ]
+}

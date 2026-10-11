@@ -1,0 +1,101 @@
+{
+  "reviewer": "adversarial",
+  "findings": [
+    {
+      "title": "Saved 'No' ignored once the time zone leaves Europe",
+      "severity": "P2",
+      "section": "2. The privacy choice — the visitor table and allowed()",
+      "why_it_matters": "A visitor's explicit 'No, send nothing' stops being honoured once their browser reports a non-European time zone. An Australian who answers 'No' while in Berlin, or a German whose laptop switches to New York time, gets Google Analytics and Sentry again on their next visit. This happens because the table gives 'Outside Europe' everything, and allowed() is specified as that table (and unit-tested as its 15 cells), with no row for a saved answer. The same rule would make NH-349's link save answers that allowed() ignores, although its Jira text lets 'a visitor outside Europe ... turn things off' and 'Extending later' says it only reuses saveChoice(); G3 already says 'by default', so letting a saved answer win everywhere changes neither G3 nor G4.",
+      "finding_type": "omission",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "In section 2, state that a saved answer decides for every visitor and the time zone decides only when nothing is saved. Add the row 'Any visitor with a saved answer → that answer's row' to the table, and add unit cases such as Australia/Sydney with a saved 'none' allowing nothing.",
+      "confidence": 75,
+      "evidence": [
+        "/** The table above, for this visitor. */",
+        "`allowed()`: the 15 cells of section 2's table.",
+        "Visitors in Europe are asked first; everyone else gets everything by default, with no popup",
+        "NH-349's link reuses `PrivacyChoices` and `saveChoice()`."
+      ]
+    },
+    {
+      "title": "Go-live in Europe has no gate on NH-349",
+      "severity": "P2",
+      "section": "Known limits — 'Until NH-349 ships' (with G10, code after NH-124 merges)",
+      "why_it_matters": "Following G10 (merge after NH-124, then rebase) puts the popup live in Europe the moment this ticket merges, because the popup shows whenever Sentry's DSN or the Google Analytics ID is set and master deploys to production. At that point a visitor can withdraw consent only by clearing site data, which is the GDPR Article 7(3) gap this spec itself names. Nothing turns 'should land before or with' into a gate: NH-349 is in To Do and its only link is 'relates to NH-124' (Jira, checked 2026-10-08). NH-349 reuses this ticket's PrivacyChoices, so merging the two together is the one order that meets the recorded launch condition without reopening G7's rejection of 'NH-349 first'.",
+      "finding_type": "omission",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "Replace the Known-limits sentence 'NH-349 should land before or with this ticket's go-live' with a gate: this ticket's pull request merges only together with NH-349's link, which is a separate pull request stacked on this branch. In section 10's Jira bullet, add that NH-349 blocks NH-51.",
+      "confidence": 75,
+      "evidence": [
+        "Until NH-349 ships, a visitor in Europe can change their answer only by clearing the site's data. GDPR Article 7(3) requires withdrawing to be as easy as agreeing, so NH-349 should land before or with this ticket's go-live.",
+        "The popup and the rule apply only when `NEXT_PUBLIC_SENTRY_DSN` or `NEXT_PUBLIC_GA_ID` is set.",
+        "This spec now; the code after NH-124 merges, then a rebase"
+      ]
+    },
+    {
+      "title": "No privacy notice: consent lacks controller and withdrawal right",
+      "severity": "P2",
+      "section": "3. The popup — the approved words (with G9, the home-page disclosure)",
+      "why_it_matters": "A 'Yes' given in Europe may not be valid consent, and valid consent is the outcome G3 and G5 ('whatever is good by law') exist to secure. The EDPB's consent guidelines (05/2020) and the CNIL's cookie guidelines count consent as informed only when the visitor is told at least who is asking, each purpose, the data used, and that they can withdraw. The approved words name the purposes and tools but not who runs the site or the right to withdraw, and the site has no privacy page to hold that information; Google Analytics' terms (section 7) also require 'an appropriate Privacy Policy', not only the disclosure link G9 relies on. The words are leocaseiro's, and which name and contact to publish is leocaseiro's decision.",
+      "finding_type": "omission",
+      "autofix_class": "manual",
+      "suggested_fix": "Add a short privacy notice that says who runs Notation Hero and how to reach them, what each tool receives and for how long, and how to change the answer. Link it from the popup's Details and from the home note.",
+      "confidence": 75,
+      "evidence": [
+        "Can we count visits (with a cookie) and get error reports? Your scores stay on your device.",
+        "Error reports go to Sentry, a bug-tracking service. Visit counts go to Sentry and Google Analytics. Neither gets your file, its name, or the music in it. How Google uses data ↗",
+        "The home page names Google Analytics because its terms require the site to disclose it and link to Google's page (G9).",
+        "No way yet to change an answer."
+      ]
+    },
+    {
+      "title": "Existing e2e cases will send real hits to Google",
+      "severity": "P2",
+      "section": "9. Testing — End to end (the web/e2e/google-analytics.ts fixture)",
+      "why_it_matters": "About a hundred existing cases (player, accessibility, toast and the ten screenshots) will download Google's script and send real hits to Google from CI, which contradicts 'no test reaches Google'. The lane's one build gets the fake Google Analytics ID and every project runs as Sydney, so startAnalytics() runs on each page load. Only cases that install the new fixture get local answers, and the four existing files import test directly from @playwright/test. Sentry's fake DSN never had this gap because it is on .invalid, which cannot resolve, while Google's hosts do resolve; the spec also does not say where the fixture gets the real gtag.js that the gcs, npa and dt assertions need, and the spike answered only Google's collect requests locally.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "In web/playwright.e2e.config.ts, make Google's hosts (www.googletagmanager.com, *.google-analytics.com, analytics.google.com, www.google.com) unresolvable for both projects with Chromium's --host-resolver-rules launch argument, so a case without the fixture fails closed like Sentry's .invalid DSN. The fixture fetches the real gtag.js with route.fetch(), which runs in Node and so is not affected by that rule, and answers every hit locally. Change section 9's claim to 'no test sends Google a hit'.",
+      "confidence": 75,
+      "evidence": [
+        "`web/e2e/google-analytics.ts` answers Google's hosts locally, the way Sentry's fixture answers its fake DSN, so no test reaches Google.",
+        "`web/playwright.e2e.config.ts`: `timezoneId: 'Australia/Sydney'` for every project, and a fake Google Analytics ID.",
+        "afterLoad(() => addScript(`https://www.googletagmanager.com/gtag/js?id=${id}`));",
+        "Sydney: no popup; a page view with `gcs=G101` and `npa=1`"
+      ]
+    },
+    {
+      "title": "Privacy e2e case can pass before any hit arrives",
+      "severity": "P2",
+      "section": "9. Testing — End to end, the Privacy case",
+      "why_it_matters": "The only automated check that no title or track name reaches Google can pass while a name leaks. Google batches custom events and sends them a few seconds later (the spike's table), so a case that opens a fixture and then reads the recorded requests may find only the page view, and an empty match proves nothing. The case also never presses a control whose label holds a track name, such as Solo and Mute, which TrackRow labels with the track's name; that is the leak path G8 cites. Sentry's spec closes the same hole by making each 'nothing sent' case wait for a sentinel, because 'a recorder that captured nothing would pass'.",
+      "finding_type": "omission",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "In the privacy case, click one track's Solo and Mute. Wait until the fixture has recorded the score_loaded hit with the fixture's track_count and both mixer_change hits, and only then assert that no recorded Google request contains the title or any track name.",
+      "confidence": 75,
+      "evidence": [
+        "Privacy: open a fixture with a known title and track names. No Google request — address or body — contains any of them, and `dt` stays `Notation Hero`.",
+        "sent, batched a few seconds later",
+        "automatic click tracking (button labels hold track names — the reason Sentry turned click breadcrumbs off)"
+      ]
+    },
+    {
+      "title": "Safari keeps the _ga cookie 7 days; returning undercounts",
+      "severity": "P3",
+      "section": "Why this exists — goal 1, 'Who comes' (new and returning)",
+      "why_it_matters": "Goal 1's new-versus-returning split will count too few returning visitors on Safari and on iPhones. Apple's WebKit limits cookies written by scripts, such as Google Analytics' _ga, to 7 days after the last visit, so anyone who comes back after a week is counted as new. Section 7's premise that the cookie is 'a lasting ID' holds only for other browsers. One known-limit line stops a low returning share from being read as 'nobody comes back'.",
+      "finding_type": "omission",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "Add to Known limits: 'Safari and iPhone browsers keep Google Analytics' cookie for 7 days after the last visit, so a visitor who returns later counts as new.'",
+      "confidence": 50,
+      "evidence": [
+        "Who comes — visits, new and returning, country, device, and where they came from.",
+        "\"Anonymously\" goes: Google Analytics' cookie is a lasting ID."
+      ]
+    }
+  ],
+  "residual_risks": [
+    "'Extending later' tells NH-349 that 'a consent update to denied' stops Google Analytics. Google's consent-mode help page says a loaded tag with analytics_storage denied keeps sending cookieless pings, which are the pings G3 rejected as needing consent. NH-349 (out of scope here) will therefore need to stop the tag, not only update consent."
+  ],
+  "deferred_questions": []
+}

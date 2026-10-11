@@ -1,0 +1,705 @@
+{
+  "group": "C",
+  "items": [
+    {
+      "id": "F-10",
+      "verdict": "CONFIRMED_WITH_CORRECTION",
+      "correction": "The core holds and the fix works. One detail was wrong: the reviewer wrote that a plain .xml score 'replaces the player in the tab'. Chrome and Edge (since version 85) open a dropped file that no page code accepts in a NEW tab, so the player stays on screen but never receives the file. This review's own spike saw exactly that: the .xml file opened in a new tab, and Punk.gp gave a new blank tab. Firefox and Safari were not tested (untested); they may still open the file in place of the player. The other detail holds: 'Drop to open' disappeared the moment the drag crossed onto the card.",
+      "section_heading": "## 3. The popup",
+      "section_lines": "141-168",
+      "quotes": [
+        {
+          "quote": "On `/play` it sits 12 px above the 80 px transport row",
+          "verbatim": true,
+          "line": 151,
+          "note": "lines 151-152; matches after joining the line break"
+        },
+        {
+          "quote": "`web/app/layout.tsx`: renders `<PrivacyChoices />`.",
+          "verbatim": true,
+          "line": 90,
+          "note": "section 1, Changed files"
+        },
+        {
+          "quote": "The player works while the card waits, and nothing is sent meanwhile.",
+          "verbatim": true,
+          "line": 154,
+          "note": "lines 154-155; matches after joining the line break"
+        }
+      ],
+      "central_claim_check": "Read web/app/play/PlayerShell.tsx. The drop handlers sit on the drop-zone <section> only: onDragEnter (:1046), onDragLeave (:1051), onDragOver (:1055) and onDrop (:1064). The only window-level listeners are dragend and pointermove (:957-967), and they only end the 'dragging' state; nothing cancels dragover or drop at window or document level. A search of web/app, web/lib and client/src finds no other dragover or drop handler. web/app/layout.tsx:15-27 renders the page and then the Toaster inside <body>, so a card rendered there is a sibling of the player's <main>, outside the drop zone. The comment beside the drop overlay (PlayerShell.tsx:1109-1113) records the same trap: an overlay mounted outside the container broke the drag counter, because 'every dragleave's relatedTarget was the overlay, which is not a descendant'. MDN's File drag and drop guide (https://developer.mozilla.org/en-US/docs/Web/API/HTML_Drag_and_Drop_API/File_drag_and_drop) says the browser may open or download a dropped file that no drop target accepts. Chromium change 8bee828 (https://crrev.com/8bee82851b8e9bc7ab7f049194ad259743db2c97), shipped in Chrome 85, makes such a drop open in a new tab instead of replacing the page. The existing drop test (web/e2e/player.e2e.ts:348) will run in Sydney once the config sets that time zone (section 1), so it never meets the card.",
+      "contradicts": "none — checked section 3 (Where, Non-blocking, Answering), section 1 (layout.tsx renders the card), section 9 (the No overlap case) and G7. pointer-events: none during a file drag changes nothing for clicks or the keyboard, and the card stays visible.",
+      "spike": {
+        "ran": true,
+        "what": "A one-page copy of the player's drop-zone shape: a section with the same depth counter and the same dragenter, dragleave, dragover and drop handlers, an overlay inside it, and a fixed card rendered OUTSIDE it, the way layout.tsx would render the popup. Real file drags were driven through Chrome's own drag pipeline (the Chrome DevTools Protocol's Input.dispatchDragEvent, copy-only source), the way web/e2e/player.e2e.ts drives its drop test, in headless Chromium from the Playwright 1.61.1 already in web/node_modules. Five runs: today's design with 1-beat.musicxml and with Punk.gp; a control drop on the score; the fix with the drag entering over the score; the fix with the card as the drag's first contact. The After text was applied to a scratch copy of the spec together with Group C's other Afters; the repo's own Prettier (print width 100), markdownlint-cli2 and cspell all pass on it.",
+        "result": "Today's design: the drop-zone handler never ran (events seen: zone dragenter, card dragenter, zone dragleave; no drop). 'Drop to open' went from shown to hidden as the drag crossed onto the card. Chromium opened 1-beat.musicxml in a new tab and gave Punk.gp a new blank tab; the player's own page did not change. Control: a drop on the score reached the handler. With the fix, both runs reached the handler (Punk.gp received), 'Drop to open' stayed visible over the card, no new tab opened, and the fix switched itself off on the drop. A real file drop in Firefox or Safari was not tested (untested).",
+        "fix_holds": true
+      },
+      "scenario": "You open the player in Berlin. The privacy question waits at the bottom of the screen, over the lower part of the score. You drag your song 'Punk.gp' from the desktop towards the score. As you pass over the question box, 'Drop to open' disappears. You let go there anyway. The player does not open your song: Chrome opens a new tab with nothing useful in it, and the player still shows the old beat. Other browsers may replace the player with the file (not tested).",
+      "whats_wrong": "The popup is rendered by web/app/layout.tsx, so it is not inside the player's drop zone. The drop zone accepts a drop only on itself and on the elements inside it, and nothing else on the page accepts one. A file dropped on the card therefore never reaches the player, and the browser handles the file itself (it opens or downloads it). Section 3 promises 'The player works while the card waits', and no case in section 9 drops a file on the card. The existing drop test runs in Sydney, where the card never shows.",
+      "before": [
+        {
+          "lines": "155-156",
+          "text": "(absent — a new bullet goes between the Non-blocking bullet, which ends on line 155, and the Equal buttons bullet on line 156)"
+        },
+        {
+          "lines": "391-392",
+          "text": "(absent — a new end-to-end case goes after the No overlap case, which ends on line 391)"
+        },
+        {
+          "lines": "82",
+          "text": "| `web/e2e/privacy-choice.e2e.ts` | the consent, privacy and no-overlap cases (section 9)                                                   |"
+        }
+      ],
+      "after": [
+        {
+          "replaces_lines": "insert after 155",
+          "text": "- **Files pass through it:** the card floats over the player's drop zone but is not part of it.\n  While a file is dragged over the page, the card has `pointer-events: none`, so a file dropped on\n  it lands in the drop zone and opens, and \"Drop to open\" stays visible. A `dragenter` on the window\n  that carries files starts this; the drop, `dragend` or the next `pointermove` ends it, the signals\n  `PlayerShell.tsx` already uses to tell that a drag has ended. Clicks and the keyboard are\n  unaffected."
+        },
+        {
+          "replaces_lines": "insert after 391",
+          "text": "- **Drop through the card:** in Berlin, with the card showing, drop `Punk.gp` on the card's centre\n  through Chrome's own drag pipeline, as `web/e2e/player.e2e.ts` does. The file opens, and no new\n  tab opens."
+        },
+        {
+          "replaces_lines": "82",
+          "text": "| `web/e2e/privacy-choice.e2e.ts` | the consent, privacy, no-overlap and drop-through cases (section 9)                                     |"
+        }
+      ],
+      "proposed_fix": "Add one bullet to section 3: while a file is dragged over the page, the card has pointer-events: none, so a drop on the card lands in the player's drop zone. A dragenter on the window that carries files starts it; the drop, dragend or the next pointermove ends it. Add one end-to-end case in Berlin that drops a real file on the card and expects it to open, with no new tab, and name that case in section 1's row for privacy-choice.e2e.ts.",
+      "why_it_works": "With pointer-events: none the browser looks straight through the card, so every drag event lands on the score or the transport row underneath. Both are inside the drop zone, and its existing handlers accept the drop. The switch listens on the window, not on the drop zone, so it also works when the card is the first thing the drag touches (spiked). A switch tied to the drop zone's own 'dragging' state would never start in that case, because the drop zone never sees the drag. The end-of-drag signals PlayerShell already trusts switch it back, so the card can be clicked again at once.",
+      "plain_terms": {
+        "drop zone": "the part of the player that accepts a dropped file: the score area, the left rail and the transport row",
+        "pointer-events: none": "a CSS setting that makes the mouse, and a drag, pass through an element to whatever is underneath",
+        "dragenter / dragend / pointermove": "browser events: a drag reaches an element; a drag ends; the mouse moves (it does not fire during a drag)",
+        "Chrome DevTools Protocol": "the control channel the end-to-end tests use to drive a real drag inside Chrome",
+        "G7": "decision G7: the popup is built in this ticket, as a floating card above the player's controls"
+      },
+      "severity_check": {
+        "agree": true,
+        "proposed": "P2",
+        "why": "The Open file button, and a drop anywhere else, still work, and only visitors in Europe who have not answered see the card. But the spec's promise that the player works while the card waits is false for a drop on the card, and no planned test would notice."
+      },
+      "cross_fix": [
+        "F-6 and F-7 (Group B) also edit section 9's end-to-end list (the Privacy and Berlin cases). This fix adds its own bullet after 'No overlap', so the texts do not overlap.",
+        "Q1 (where the card sits in the page): any place inside layout.tsx keeps the card outside the drop zone, so this fix is needed whichever way Q1 goes. Q1's Keyboard bullets go right after this fix's bullets in sections 3 and 9.",
+        "F-9 (Group B, fewer screenshots): no effect."
+      ]
+    },
+    {
+      "id": "F-11",
+      "verdict": "CONFIRMED_WITH_CORRECTION",
+      "correction": "One reason was overstated. An element can be a labelled region and also carry aria-live; nothing forbids both. The real problem is timing: the card arrives together with its text, and MDN's live-region guide says screen readers generally announce only changes to a live region that already exists (and that this varies between browsers and screen readers). So if the card itself is the live region, 'announced politely when it appears' will usually not happen. The fix is unchanged.",
+      "section_heading": "## 3. The popup",
+      "section_lines": "141-168",
+      "quotes": [
+        {
+          "quote": "**Screen readers:** the card is a labelled region (\"Privacy choice\"), announced politely when it appears.",
+          "verbatim": true,
+          "line": 162,
+          "note": "lines 162-163; matches after joining the line break"
+        },
+        {
+          "quote": "The popup, which appears after hydration, causes no layout shift (it is fixed-position).",
+          "verbatim": true,
+          "line": 445,
+          "note": "'To verify at plan time'"
+        }
+      ],
+      "central_claim_check": "web/app/play/PlayerShell.tsx:1235-1242 keeps an always-mounted, visually hidden paragraph with aria-live=\"polite\". Its comment says: 'a live region added to the DOM at the same moment its text appears is not announced at all — the region has to be there first.' MDN's ARIA live regions guide (https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Guides/Live_regions) gives the same advice: create the region empty first, change its text later, and put it in the page's first HTML for the most reliable result. The card can only appear after hydration (spec line 445), because the time zone and the saved answer are known only in the browser. MDN notes one exception: role=\"alert\" is usually announced even when it is inserted with its text, but it interrupts the screen reader, is often read with the word 'Alert' first, and is meant for urgent messages, so it does not fit a polite question.",
+      "contradicts": "none — checked section 3 (Screen readers, Non-blocking), section 9 (the PrivacyChoices unit tests and the axe scan with the popup open), 'To verify at plan time' (no layout shift: a visually hidden region takes no space) and section 2's rule that nothing shows when neither key is set (an empty, silent region shows nothing).",
+      "spike": {
+        "ran": false,
+        "why": "Whether speech happens needs a real screen reader (VoiceOver or NVDA) and a person listening; a headless browser cannot tell. The behaviour is stated by the repo's own comment and by MDN. The After text was applied to a scratch copy of the spec together with Group C's other Afters; the repo's own Prettier (print width 100), markdownlint-cli2 and cspell all pass on it.",
+        "mark": "(untested)"
+      },
+      "scenario": "You use a screen reader and open Notation Hero in Berlin. A moment after the page loads, a privacy question appears at the bottom of the screen. Your screen reader says nothing about it. Unless you happen to find it, you never learn that the site is asking for your consent, and the question comes back on every visit.",
+      "whats_wrong": "Section 3 says the card is 'announced politely when it appears'. The obvious way to build that is aria-live on the card itself. But the card is added to the page together with its text, after hydration, and a live region that arrives with its text is generally not announced. The repo met this before in PlayerShell.tsx and solved it with an empty live region that stays on the page. Neither the unit tests nor the axe scan in section 9 would notice the silence.",
+      "before": [
+        {
+          "lines": "162-163",
+          "text": "- **Screen readers:** the card is a labelled region (\"Privacy choice\"), announced politely when it\n  appears."
+        },
+        {
+          "lines": "377-378",
+          "text": "- `PrivacyChoices`: each button saves its answer; Details opens and closes; the card is hidden\n  outside Europe, once answered, and when neither key is set."
+        }
+      ],
+      "after": [
+        {
+          "replaces_lines": "162-163",
+          "text": "- **Screen readers:** the card is a labelled region (\"Privacy choice\") with no `aria-live` of its\n  own: it arrives with its text, and a live region that arrives with its text is generally not\n  announced. `PrivacyChoices` renders an empty polite live region in the HTML the server sends and\n  keeps it for the life of the page, the way `PlayerShell.tsx` keeps its `announcement` paragraph;\n  when the card appears, the region receives the question."
+        },
+        {
+          "replaces_lines": "377-378",
+          "text": "- `PrivacyChoices`: each button saves its answer; Details opens and closes; the card is hidden\n  outside Europe, once answered, and when neither key is set; the live region is in the page before\n  the card appears, and receives the question when it does."
+        }
+      ],
+      "proposed_fix": "Replace the Screen readers bullet: the card stays a labelled region with no aria-live of its own; PrivacyChoices renders an empty, visually hidden polite live region in the HTML the server sends and keeps it; when the card appears, the region receives the question. Add to the PrivacyChoices unit test that the region exists before the card appears and receives the question when it does.",
+      "why_it_works": "The region is on the page, empty, from the first paint. When the card appears, its question arrives as a change to a live region that already exists, which is the case screen readers announce. It is the pattern PlayerShell.tsx already uses for 'Opened …' and for a failed open, so there is nothing new to invent.",
+      "plain_terms": {
+        "live region": "a part of the page that a screen reader reads out when its text changes, without the person moving to it",
+        "polite": "the screen reader waits for a pause instead of interrupting",
+        "hydration": "the moment the page's code starts running in the browser, after the first HTML has arrived",
+        "labelled region": "a named area of the page ('Privacy choice') that screen-reader users can jump to",
+        "axe": "the automated accessibility checker used in the web job",
+        "role=\"alert\"": "a live region for urgent messages, read out at once, interrupting the screen reader"
+      },
+      "severity_check": {
+        "agree": true,
+        "proposed": "P2",
+        "why": "Nothing crashes, but the spec's own promise ('announced politely') would be false in the obvious build, and only people who use screen readers pay for it."
+      },
+      "cross_fix": [
+        "F-8 (Group B) rewrites the Themes bullet on line 164, right after this one; different lines, no conflict.",
+        "Q1: if the card comes first in the page (its option 1), screen-reader users also meet it first in reading order, but the live region is still needed, because the card arrives after the screen reader has started reading the page."
+      ]
+    },
+    {
+      "id": "F-12",
+      "verdict": "CONFIRMED",
+      "section_heading": "## 4. Google Analytics in code",
+      "section_lines": "170-215",
+      "quotes": [
+        {
+          "quote": "**The order is verified** by the 2026-10-05 spike: consent, settings, then `js` and `config`.",
+          "verbatim": true,
+          "line": 198,
+          "note": ""
+        },
+        {
+          "quote": "gtag('js', new Date());\n  gtag('config', id, {\n    allow_google_signals: false,\n    allow_ad_personalization_signals: false,\n    release: APP_VERSION,\n  });",
+          "verbatim": true,
+          "line": 188,
+          "note": "lines 188-193"
+        },
+        {
+          "quote": "Our settings ran first | consent → settings → `js` → `config`",
+          "verbatim": true,
+          "line": 457,
+          "note": "the spike table in 'The spike (2026-10-05, throwaway)'; matches after collapsing the table's padding"
+        }
+      ],
+      "central_claim_check": "Read the 2026-10-05 spike (throwaway, not in the repo). Its instrumentation-client.ts queued gtag('consent', 'default', {…}) and then gtag('set', { allow_google_signals: false, allow_ad_personalization_signals: false }): a separate settings step. Its js and config calls came from @next/third-parties 16.3.6's GoogleAnalytics component, whose inline script calls gtag('js', new Date()) and then gtag('config', <ID>) with no settings object (checked in the published package, https://unpkg.com/@next/third-parties@16.3.6/dist/google/ga.js). So the queue the spike ran was consent, set, js, then config with only the ID. The spec's sketch (lines 182-193) has no set step and puts the two settings inside config, a shape the spike never ran. Google's privacy-controls guide (https://developers.google.com/tag-platform/security/guides/privacy) documents both places for these two settings (set for every tag on the page, config for one property), so the sketch is not wrong, only unverified while the spec calls it verified.",
+      "contradicts": "none — checked section 4's 'order is verified' bullet (198-200), section 9's startAnalytics() unit test ('the queue's order') and the Sydney case (gcs=G101 and npa=1), 'To verify at plan time' (release in config stays listed there, line 439), the spike table (line 457) and the Non-goals ('Google signals off').",
+      "spike": {
+        "ran": false,
+        "why": "Read, not run: the After copies the spike's own set line exactly, so it is the verified shape. The other form (settings inside config) was not run against Google's real script here (untested); Group B's end-to-end spike loads the real gtag.js. The After text was applied to a scratch copy of the spec together with Group C's other Afters; the repo's own Prettier (print width 100), markdownlint-cli2 and cspell all pass on it.",
+        "mark": "(untested)"
+      },
+      "scenario": "You open Notation Hero in Sydney and press play. Google Analytics counts your visit. The spec promises that Google is told 'no ad personalisation' and 'no Google signals' for you, and that the order of these instructions was tested. It was tested, but with those two settings sent as their own step. The code drawn in the spec sends them another way, which nobody has run.",
+      "whats_wrong": "Section 4 says the order 'consent, settings, then js and config' was verified by the spike, and the spike table repeats it. The sketch right above has no settings step: it puts the two settings inside the config call. The spike's own file sent them with a separate gtag('set', …) call, and its config call carried no settings at all. An implementer copies the sketch, so the unit test on 'the queue's order' and the Sydney check would rest on a shape nobody ran.",
+      "before": [
+        {
+          "lines": "182-193",
+          "text": "  gtag('consent', 'default', {\n    ad_storage: 'denied',\n    ad_user_data: 'denied',\n    ad_personalization: 'denied',\n    analytics_storage: 'granted',\n  });\n  gtag('js', new Date());\n  gtag('config', id, {\n    allow_google_signals: false,\n    allow_ad_personalization_signals: false,\n    release: APP_VERSION,\n  });"
+        }
+      ],
+      "after": [
+        {
+          "replaces_lines": "182-193",
+          "text": "  gtag('consent', 'default', {\n    ad_storage: 'denied',\n    ad_user_data: 'denied',\n    ad_personalization: 'denied',\n    analytics_storage: 'granted',\n  });\n  gtag('set', { allow_google_signals: false, allow_ad_personalization_signals: false });\n  gtag('js', new Date());\n  gtag('config', id, { release: APP_VERSION });"
+        }
+      ],
+      "proposed_fix": "In the section 4 sketch, add the spike's own line gtag('set', { allow_google_signals: false, allow_ad_personalization_signals: false }) between the consent call and gtag('js', new Date()), and leave only release: APP_VERSION in the config call.",
+      "why_it_works": "The sketch then matches, call for call, the queue the spike ran and saw produce gcs=G101 and npa=1, so the word 'verified' becomes true. The one piece nobody has run, release inside config, is already on the 'To verify at plan time' list, so nothing unverified is hidden.",
+      "plain_terms": {
+        "gtag": "Google's small command function; each call waits in a queue until Google's script loads",
+        "gcs=G101": "the code in Google's request for 'ad storage denied, analytics allowed'",
+        "npa=1": "the flag in Google's request for 'no ad personalisation'",
+        "Google signals": "Google's cross-device advertising data, turned off in this design",
+        "the 2026-10-05 spike": "a throwaway trial build run on 2026-10-05, not kept in the repo"
+      },
+      "severity_check": {
+        "agree": true,
+        "proposed": "P2",
+        "why": "The spec calls 'verified' a shape that was never run, and the plan's unit test on the queue's order would be written from it. The runtime risk is low, because Google documents both forms."
+      },
+      "cross_fix": [
+        "F-5 (Group B, how the tests get Google's script): if the tests never load the real gtag.js (its option 3), the only check of npa=1 on the wire is the hand check at launch (section 8, step 6), so the sketch should be exactly the verified shape, which this fix gives."
+      ]
+    },
+    {
+      "id": "F-13",
+      "verdict": "CONFIRMED",
+      "section_heading": "## 5. Events",
+      "section_lines": "217-287",
+      "quotes": [
+        {
+          "quote": "mixer_change: { control: MixerControl; on: boolean; instrument: Instrument };",
+          "verbatim": true,
+          "line": 266,
+          "note": ""
+        },
+        {
+          "quote": "`instrument` | `drums` or a three-digit program, for the one track a change applies to; absent for solo all, mute all and the layout switch",
+          "verbatim": true,
+          "line": 251,
+          "note": "matches after collapsing the table's padding"
+        },
+        {
+          "quote": "track('mixer_change', { control: 'solo', on: true, instrument: '025' }); // ✅",
+          "verbatim": true,
+          "line": 271,
+          "note": ""
+        },
+        {
+          "quote": "`Instruments` and `Instrument` are branded strings that only `instrumentsValue()` and its one-track twin can make, so a free string never type-checks.",
+          "verbatim": true,
+          "line": 275,
+          "note": "lines 275-276; matches after joining the line break"
+        }
+      ],
+      "central_claim_check": "Spiked with TypeScript 5.9.3 from web/node_modules (tsc --noEmit --strict). With Instrument as a branded string, the spec's ✅ example fails (a plain string is not an Instrument), and solo_all or layout without instrument fail (the key is required). The field table (line 251) says instrument is absent for solo all, mute all and the layout switch, so the type and the table disagree. The function that would make an Instrument ('its one-track twin', lines 275-276) has no name, and section 1 lists no such function. In the Sentry spec (PR #191), instrumentsValue() takes a list of tracks shaped { program: number; isPercussion: boolean } and returns a plain string, so the twin naturally takes one such track. web/app/play/TracksPopover.tsx confirms the controls: per-row render, solo, mute, the two transposes and the staff options, plus Solo all, Mute all and the layout switch in the footer.",
+      "contradicts": "none — checked section 5 (the control and instrument rows, the branded-string paragraph), section 1 (the score-facts.ts row), section 6 ('report.ts imports it from there; nothing else changes' stays true: a branded string is still a string to report.ts), section 8 step 4 (instrument is already a custom dimension) and section 9 (the Types test).",
+      "spike": {
+        "ran": true,
+        "what": "Type-checked scratch files with TypeScript 5.9.3 from web/node_modules (tsc --noEmit --strict). (a) The spec's sketch as written, with Instrument and Instruments as branded strings. (b) The proposed union on control, with trackInstrument() as the only maker of an Instrument: 5 calls that must compile and 8 that must fail, each failing one marked with @ts-expect-error so tsc itself reports any bad call that compiles. (c) The exact After block, taken from a scratch copy of the spec with all of Group C's Afters applied. The After text was applied to a scratch copy of the spec together with Group C's other Afters; the repo's own Prettier (print width 100), markdownlint-cli2 and cspell all pass on it.",
+        "result": "(a) The ✅ example fails: a plain string is not an Instrument. The ❌ example fails as intended (track is not a known key). Solo all and the layout switch without instrument fail: instrument is required. (b) tsc exits 0: the 5 good calls compile (solo and transpose_full with trackInstrument(), solo_all and layout without it, score_loaded with instrumentsValue()), and all 8 bad calls are errors: a plain string as the instrument; a one-track control without one; solo_all with one; the extra track key; the track's name as the instrument; an Instruments value as an Instrument; an unknown control; a plain string as instruments. (c) In the After block both ✅ lines compile, and only the ❌ line fails.",
+        "fix_holds": true
+      },
+      "scenario": "You open a song in Sydney, open the Tracks panel and press 'Solo all'. Google Analytics should count one 'Solo all'. A developer who copies the spec's event list cannot send it: the list demands an instrument for every mixer change, and 'Solo all' has none. The spec's own example of a correct call does not compile either.",
+      "whats_wrong": "The sketch gives every mixer_change a required instrument, but the field table says solo all, mute all and the layout switch have none. The ✅ example passes the plain text '025', which the paragraph below says can never type-check, because Instrument is a branded string. And the one function allowed to make an Instrument is mentioned ('its one-track twin') but never named or placed in a file.",
+      "before": [
+        {
+          "lines": "266",
+          "text": "  mixer_change: { control: MixerControl; on: boolean; instrument: Instrument };"
+        },
+        {
+          "lines": "271",
+          "text": "track('mixer_change', { control: 'solo', on: true, instrument: '025' }); // ✅"
+        },
+        {
+          "lines": "275-276",
+          "text": "`Instruments` and `Instrument` are branded strings that only `instrumentsValue()` and its one-track\ntwin can make, so a free string never type-checks."
+        },
+        {
+          "lines": "79",
+          "text": "| `web/lib/score-facts.ts`        | `instrumentsValue()`, moved out of Sentry's `report.ts` (section 6)                                     |"
+        }
+      ],
+      "after": [
+        {
+          "replaces_lines": "266",
+          "text": "  mixer_change:\n    | { control: OneTrackControl; on: boolean; instrument: Instrument } // one track\n    | { control: 'solo_all' | 'mute_all' | 'layout'; on: boolean }; // the whole mixer"
+        },
+        {
+          "replaces_lines": "271 (inside F-15's After, where it sits under the call-site comment)",
+          "text": "track('mixer_change', { control: 'solo', on: true, instrument: trackInstrument(leadGuitar) }); // ✅\ntrack('mixer_change', { control: 'solo_all', on: true }); // ✅"
+        },
+        {
+          "replaces_lines": "275-276",
+          "text": "`Instruments` and `Instrument` are branded strings that only `instrumentsValue()` and its one-track\ntwin `trackInstrument()` can make, so a free string never type-checks. A `mixer_change` for one\ntrack (render, solo, mute, either transpose, staff) names that track's instrument; solo all, mute\nall and the layout switch act on the whole mixer and carry none."
+        },
+        {
+          "replaces_lines": "79",
+          "text": "| `web/lib/score-facts.ts`        | `instrumentsValue()`, moved out of Sentry's `report.ts` (section 6), and `trackInstrument()`            |"
+        }
+      ],
+      "proposed_fix": "Make mixer_change a union on control: the six one-track controls (render, solo, mute, transpose_audio, transpose_full, staff) carry instrument; solo_all, mute_all and layout carry only on. Name the one-track twin trackInstrument(), make the ✅ example call it, add a ✅ example for Solo all, say in the paragraph which controls carry no instrument, and add trackInstrument() to section 1's score-facts.ts row. In the example the track is called leadGuitar, not track: at a real call site, a variable named track would hide the track() function.",
+      "why_it_works": "The type then says exactly what the field table says, so every control can be sent and none can carry the wrong fields: tsc proved each good call compiles and each bad call fails. Naming trackInstrument() gives the brand its one legal maker, so 'a free string never type-checks' holds and the ✅ example is a real call.",
+      "plain_terms": {
+        "branded string": "a text type that only one function may create, so ordinary text cannot be passed where it is expected",
+        "union on control": "the event has two allowed shapes, and the value of control decides which one applies",
+        "tsc": "the TypeScript compiler, run here only to check types",
+        "instrumentsValue()": "the function from the Sentry spec (PR #191) that turns a score's tracks into a value such as drums,025,033",
+        "trackInstrument()": "the proposed one-track version: drums, or one track's General MIDI program in three digits, such as 025",
+        "@ts-expect-error": "a comment that tells TypeScript the next line must fail to compile; if it compiles, the check fails"
+      },
+      "severity_check": {
+        "agree": true,
+        "proposed": "P2",
+        "why": "The first type test written from the sketch fails, and an implementer must redesign the type before any whole-mixer event can be sent."
+      },
+      "cross_fix": [
+        "F-15 rewrites the same code block. This item's Afters are written on top of F-15's (the track() signature and the calls under their own comments); apply F-15 first.",
+        "F-6 (Group B) adds Solo and Mute clicks to the privacy test; with this fix those events carry instrument (drums for the fixture's drum tracks), which is what the test should expect.",
+        "FYI-2: if taken, its key list for mixer_change must cover both shapes of the union (control, on, instrument); the spike did that.",
+        "Plan note, from web/app/play/TracksPopover.tsx: Solo all and Mute all call the per-row applySolo and applyMute for every track (:422-429), and the playerReady handler calls them again after every reload (:271-279). The track() call must sit in the row's onSoloChange and onMuteChange and in the Solo all and Mute all handlers, not inside applySolo or applyMute; otherwise one Solo all press sends one 'solo' event per track, and a reload sends events nobody clicked."
+      ]
+    },
+    {
+      "id": "F-14",
+      "verdict": "CONFIRMED_WITH_CORRECTION",
+      "correction": "The proposed After keeps a sentence the table still breaks once: page_view, listed in the same table, is itself on Google's reserved list for web streams, next to click, error and file_download (Google Analytics help, 'Event naming rules'). It is Google's own automatic event, so the corrected sentence names it as the one exception.",
+      "section_heading": "## 5. Events",
+      "section_lines": "217-287",
+      "quotes": [
+        {
+          "quote": "Every name starts with a verb and avoids Google's reserved names (`click`, `error`, `file_download`, …).",
+          "verbatim": true,
+          "line": 219,
+          "note": "lines 219-220; matches after joining the line break"
+        },
+        {
+          "quote": "`score_loaded` | a score becomes the one on screen",
+          "verbatim": true,
+          "line": 227,
+          "note": "matches after collapsing the table's padding"
+        },
+        {
+          "quote": "`tempo_change` | the speed is set",
+          "verbatim": true,
+          "line": 233,
+          "note": "matches after collapsing the table's padding"
+        }
+      ],
+      "central_claim_check": "The event table (lines 225-236) lists twelve names. Three start with a verb: open_file, play, export_score. Nine start with a noun: page_view, score_loaded, score_failed, loop_toggle, metronome_toggle, count_in_toggle, tempo_change, mixer_change, setting_change. (Some of those words can be verbs in English, such as 'score' or 'loop', but here they name a thing: 'the score was loaded', 'the loop toggle'.) The names are fixed elsewhere too: G8 approves a typed list of twelve events, the funnel (lines 283-284) uses open_file and score_loaded, and section 8 step 4 registers their fields. Google's 'Event naming rules' help page (https://support.google.com/analytics/answer/13316687) lists click, error, file_download and page_view among the reserved names for web streams.",
+      "contradicts": "none — checked the event table, G8, the funnel paragraph, section 8 step 4, section 9 and 'Extending later'.",
+      "spike": {
+        "ran": true,
+        "what": "Checked Google's reserved-name list on its help page. The After text was applied to a scratch copy of the spec together with Group C's other Afters; the repo's own Prettier (print width 100), markdownlint-cli2 and cspell all pass on it.",
+        "result": "Google's list for web streams includes click, error, file_download and page_view; none of the eleven names this design sends itself is on it. The three linters pass.",
+        "fix_holds": true
+      },
+      "scenario": "You add a 'Share' button and need a thirteenth event. The spec's rule says every name starts with a verb, so you call it share_score. Then you notice that score_loaded, loop_toggle and tempo_change break that rule. You cannot tell whether the rule or the list is wrong, or whether a naming check in the plan will reject your name.",
+      "whats_wrong": "Line 219 says every event name starts with a verb. Only three of the twelve do. The twelve names are the approved ones (decision G8), and the funnel and the setup steps use them, so the sentence is the stale part.",
+      "before": [
+        {
+          "lines": "219-221",
+          "text": "Every name starts with a verb and avoids Google's reserved names (`click`, `error`,\n`file_download`, …). Every field comes from a fixed list or is a number, so text from the file\ncannot reach Google. Sliders send their final value only; seeking and volume are not tracked."
+        }
+      ],
+      "after": [
+        {
+          "replaces_lines": "219-221",
+          "text": "Every name except Google's own `page_view` avoids Google's reserved names (`click`, `error`,\n`file_download`, …). Every field comes from a fixed list or is a number, so text from the file\ncannot reach Google. Sliders send their final value only; seeking and volume are not tracked."
+        }
+      ],
+      "proposed_fix": "Delete 'starts with a verb and', and name page_view as the one exception, because it is Google's own event and is on Google's reserved list.",
+      "why_it_works": "The sentence then states only the rule the names really follow, so neither a contributor nor a naming check in the plan is misled, and the twelve approved names stay as they are.",
+      "plain_terms": {
+        "reserved names": "event names Google keeps for its own events; a site must not send its own event under them",
+        "G8": "decision G8: a typed list of twelve events, every field from a fixed list or a number, release on every event",
+        "page_view": "the page-view event that Google's script sends by itself"
+      },
+      "severity_check": {
+        "agree": true,
+        "proposed": "P3",
+        "why": "Wording only; nothing breaks, but it would mislead the next contributor."
+      },
+      "cross_fix": [
+        "FYI-2 (if taken) leaves this paragraph alone: its After edits section 4's track() bullet and section 9's track() test instead, so the two do not overlap."
+      ]
+    },
+    {
+      "id": "F-15",
+      "verdict": "CONFIRMED_WITH_CORRECTION",
+      "correction": "The claim holds. The proposed fix moved the two example calls under the new track.ts header, which would suggest that track.ts calls itself. The After puts them under their own comment, '// a call site, such as TracksPopover.tsx'.",
+      "section_heading": "## 5. Events (against ## 1. Packages and files)",
+      "section_lines": "256-273, against 73-84",
+      "quotes": [
+        {
+          "quote": "// web/lib/analytics/events.ts (sketch)",
+          "verbatim": true,
+          "line": 257,
+          "note": ""
+        },
+        {
+          "quote": "export function track<E extends keyof AnalyticsEvents>(event: E, fields: AnalyticsEvents[E]): void;",
+          "verbatim": true,
+          "line": 269,
+          "note": ""
+        },
+        {
+          "quote": "`track()`: sends one event, or nothing until Google Analytics has started",
+          "verbatim": true,
+          "line": 78,
+          "note": "section 1, New files table"
+        }
+      ],
+      "central_claim_check": "Section 1's New files table gives track() its own file: line 76, web/lib/analytics/events.ts, 'the typed event list (section 5)'; line 78, web/lib/analytics/track.ts, 'track(): sends one event, or nothing until Google Analytics has started'; and line 84 puts each lib file's unit test beside it. 'Extending later' agrees (line 412: a second sender inside track(); line 413: a new field is one line in events.ts). Only the sketch's single header (line 257) puts the track() signature (line 269) under events.ts.",
+      "contradicts": "none — checked section 1 (New files), section 4 (the track() bullet), section 9 (the track() unit test) and 'Extending later'.",
+      "spike": {
+        "ran": true,
+        "what": "Applied the After, alone and together with F-13's, to scratch copies of the spec, and ran the repo's Prettier (print width 100), markdownlint-cli2 and cspell on them.",
+        "result": "All three tools pass on both copies.",
+        "fix_holds": true
+      },
+      "scenario": "You build the analytics files from the spec. The file list says track() lives in track.ts, with its own test beside it. The code drawing in section 5 puts it under events.ts. You pick one; whoever reviews your plan expected the other, and the unit test lands in the wrong file.",
+      "whats_wrong": "The code block headed '// web/lib/analytics/events.ts (sketch)' also declares track(), while section 1 gives track() its own file, track.ts. A plan built from section 1 and code copied from section 5 disagree about where track() and its test live.",
+      "before": [
+        {
+          "lines": "268-271",
+          "text": "}\nexport function track<E extends keyof AnalyticsEvents>(event: E, fields: AnalyticsEvents[E]): void;\n\ntrack('mixer_change', { control: 'solo', on: true, instrument: '025' }); // ✅"
+        }
+      ],
+      "after": [
+        {
+          "replaces_lines": "268-271",
+          "text": "}\n\n// web/lib/analytics/track.ts (sketch)\nexport function track<E extends keyof AnalyticsEvents>(event: E, fields: AnalyticsEvents[E]): void;\n\n// a call site, such as TracksPopover.tsx\ntrack('mixer_change', { control: 'solo', on: true, instrument: '025' }); // ✅"
+        }
+      ],
+      "proposed_fix": "Keep only the AnalyticsEvents interface under the events.ts header. Put the track() signature under its own '// web/lib/analytics/track.ts (sketch)' header, and the two example calls under '// a call site, such as TracksPopover.tsx'. Line 272 (the ❌ example) stays as it is.",
+      "why_it_works": "Each piece of the sketch then sits under the file section 1 gives it, so the plan, the code and the unit tests agree on one place for track(), and section 1, the more detailed passage, stays the source.",
+      "plain_terms": {
+        "sketch": "a code outline in the spec, not the final code"
+      },
+      "severity_check": {
+        "agree": true,
+        "proposed": "P3",
+        "why": "A label fix; cheap, but it settles where a file and its test go."
+      },
+      "cross_fix": [
+        "F-13 rewrites the same block; its Afters are written on top of this one. Apply F-15 first, then F-13.",
+        "FYI-2 (if taken) changes what track.ts does, not where it lives; no conflict."
+      ]
+    },
+    {
+      "id": "FYI-2",
+      "verdict": "CONFIRMED",
+      "section_heading": "## 5. Events (with ## 4. Google Analytics in code, where track() is described)",
+      "section_lines": "217-287 and 203-204",
+      "quotes": [
+        {
+          "quote": "Every field comes from a fixed list or is a number, so text from the file cannot reach Google.",
+          "verbatim": true,
+          "line": 220,
+          "note": "lines 220-221; matches after joining the line break"
+        },
+        {
+          "quote": "**`track(name, fields)`** sends `gtag('event', name, fields)` once started, and nothing before",
+          "verbatim": true,
+          "line": 203,
+          "note": "section 4"
+        },
+        {
+          "quote": "track('mixer_change', { control: 'solo', on: true, track: 'Lead Guitar' });",
+          "verbatim": true,
+          "line": 272,
+          "note": ""
+        }
+      ],
+      "central_claim_check": "Spiked with TypeScript 5.9.3 (tsc --strict). TypeScript checks for extra keys only on an object written directly inside the call. A fields object built first, merged in with a spread, or returned by a helper, each also carrying a track name, compiled with no error. Section 4 (line 203) says track() sends gtag('event', name, fields), and section 9 (line 375) tests for ['event', name, fields], so the object goes to Google as given. The privacy end-to-end case (lines 388-389) opens a file and checks Google's requests, but presses no mixer control, so it cannot see a name sent by a control.",
+      "contradicts": "none — checked section 4 (the track() bullet), section 5 (the promise on lines 220-221), section 9 (the track() unit test, the Types test, the Privacy case) and 'Extending later' (a second sender inside track(): the copy happens before any sender, so a second sender gets the same clean fields).",
+      "spike": {
+        "ran": true,
+        "what": "(c) A scratch .ts file type-checked with tsc --strict: the same track() signature, and mixer_change calls whose fields carry a track name in five ways. Then the proposed fix in a second file: a per-event key list that tsc checks against AnalyticsEvents in both directions, and a track() that copies only the listed keys. It was type-checked, run with Node 24, and type-checked again with two broken key lists. The After text was applied to a scratch copy of the spec together with Group C's other Afters; the repo's own Prettier (print width 100), markdownlint-cli2 and cspell all pass on it.",
+        "result": "Only the object written inside the call is rejected. Built first, spread in, returned by a helper, and the whole-mixer shape built first with an extra key: all four compile. With the fix, the built-first object still compiles, but what reaches the queue is control, on and instrument only; the track name is gone. tsc rejects a key list that misses a declared field, and one that names a key the event does not declare.",
+        "fix_holds": true
+      },
+      "scenario": "You open your own song file in Sydney and solo the track called 'Lead Guitar'. Months later, a change builds that event's fields in a small helper that also keeps the track's name for another use. It still compiles, and 'Lead Guitar' goes to Google with your click: exactly what the site promises never to send.",
+      "whats_wrong": "Section 5 promises that text from the file cannot reach Google, because every field is typed. TypeScript checks extra keys only on an object written inside the call. An object built first, spread in or returned by a helper can carry an extra key, such as a track name, and track() as specified forwards the whole object to Google. The privacy end-to-end case opens a file but presses no mixer control, so it would not catch this.",
+      "before": [
+        {
+          "lines": "203-204",
+          "text": "- **`track(name, fields)`** sends `gtag('event', name, fields)` once started, and nothing before —\n  no console warning, unlike `sendGAEvent`."
+        },
+        {
+          "lines": "375",
+          "text": "- `track()`: nothing before the start; `['event', name, fields]` after it."
+        }
+      ],
+      "after": [
+        {
+          "replaces_lines": "203-204",
+          "text": "- **`track(name, fields)`** calls `gtag('event', name, …)` once started, and nothing before — no\n  console warning, unlike `sendGAEvent`. It sends only the fields its event declares, copied by name\n  from a key list beside `AnalyticsEvents` that `typecheck` checks against it. An object built\n  elsewhere with an extra key, such as a track name, therefore sends nothing more."
+        },
+        {
+          "replaces_lines": "375",
+          "text": "- `track()`: nothing before the start; `['event', name, fields]` after it, without any key the event\n  does not declare."
+        }
+      ],
+      "proposed_fix": "track() copies only the keys its event declares, from a per-event key list kept beside AnalyticsEvents. tsc checks each list against the interface both ways (no declared field missing, no unknown key). The track() unit test checks that an extra key is not sent.",
+      "why_it_works": "The promise no longer depends on how each call site writes its object: whatever object arrives, only declared, typed fields leave. The cost is one short key list for each of the eleven events our code sends and about ten lines in track.ts, and the type check stops the lists drifting away from the interface.",
+      "plain_terms": {
+        "excess-property check": "TypeScript's error for a key the type does not declare; it runs only on an object written directly inside the call",
+        "spread": "copying all keys of one object into another, written ...object",
+        "key list": "a fixed list of the field names one event may send"
+      },
+      "severity_check": {
+        "agree": true,
+        "proposed": "P3",
+        "why": "Today's call sites will likely pass objects written inside the call, so nothing leaks at launch; the risk is a later change. Cheap to close."
+      },
+      "cross_fix": [
+        "F-6 (Group B) adds Solo and Mute clicks to the privacy test. That catches a name sent by those two controls today, but not by a later change elsewhere; this fix closes it inside track() itself.",
+        "F-13: the key list for mixer_change must cover both shapes of the union (control, on, instrument); the spike did that.",
+        "F-14 edits the paragraph on lines 219-221; this item's After leaves that paragraph alone, so the two do not overlap.",
+        "F-15 moves track() under its own track.ts header; no conflict."
+      ]
+    },
+    {
+      "id": "FYI-4",
+      "verdict": "CONFIRMED",
+      "section_heading": "## 6. Changes to Sentry's design",
+      "section_lines": "289-307",
+      "quotes": [
+        {
+          "quote": "Sentry's scrub already cuts their `?`, so this removes noise, not",
+          "verbatim": true,
+          "line": 300,
+          "note": ""
+        },
+        {
+          "quote": "Errors thrown inside Google's script are not ours:",
+          "verbatim": true,
+          "line": 302,
+          "note": ""
+        }
+      ],
+      "central_claim_check": "The two bullets exist (lines 298-302), and the first one calls itself noise removal. The Sentry spec (PR #191) confirms that its scrub already cuts fetch and xhr breadcrumb addresses at the first ? or # (its line 387 and lines 423-425). The same spec's setup creates one issue alert that emails leocaseiro for each new kind of error (its lines 564-569), and its interim health number is the share of visits that ended without an unhandled error (its lines 24-27). So an error from gtag.js that reached Sentry would open an issue, send one email and lower that number. Two details narrow the second bullet further. (1) gtag.js comes from another site. If the loader adds it without a crossorigin attribute, as Google's usual snippet does, the browser reports the script's own errors only as 'Script error.', and Sentry's default filter already drops that message (Sentry's eventFilters source, https://github.com/getsentry/sentry-javascript/blob/develop/packages/core/src/integrations/eventFilters.ts). denyUrls then matters only for an error with a real stack whose newest frame is in gtag.js, for example one thrown while our own code calls into it (reasoned, untested). (2) Whether gtag.js sends its hits with fetch or xhr, which Sentry records as breadcrumbs, or with navigator.sendBeacon, which it does not record, was not checked (untested); if it is sendBeacon, the first bullet has almost nothing to drop.",
+      "contradicts": "none — checked section 6's other bullets, section 4 'Addresses' (Sentry cuts addresses at ? on purpose), the Non-goals, section 10 and 'Known limits'. Nothing else in the spec refers to the Google host list or to denyUrls.",
+      "spike": {
+        "ran": false,
+        "why": "Needs Sentry 11 and Google's real script running together; neither is installed on this branch, because the Sentry code is not merged. The After text was applied to a scratch copy of the spec together with Group C's other Afters; the repo's own Prettier (print width 100), markdownlint-cli2 and cspell all pass on it.",
+        "mark": "(untested)"
+      },
+      "scenario": "Google's script throws an error on a visitor's phone in Sydney. With the spec as written, Sentry ignores it and you never hear of it. Without the two filters, you get one email from Sentry about an error inside Google's code, and that visit counts as a broken one in the health number. Error reports also show a few lines about Google's network calls, with their addresses already cut short.",
+      "whats_wrong": "Section 6 adds two Google-specific filters to Sentry's settings, which are not merged yet: one drops Google's network calls from the error trail, the other ignores errors thrown inside Google's script. By the spec's own words the first removes only noise. Each is a small change to make later, if the noise ever appears, while adding them now widens this ticket's edits to NH-124's settings and adds a list of Google addresses to keep up to date.",
+      "before": [
+        {
+          "lines": "298-302",
+          "text": "- **Google's requests leave Sentry's breadcrumb trail.** `beforeBreadcrumb` drops fetch and xhr\n  breadcrumbs to `google-analytics.com`, `analytics.google.com`, `googletagmanager.com` and\n  `www.google.com/ccm`. Sentry's scrub already cuts their `?`, so this removes noise, not\n  identifiers.\n- **Errors thrown inside Google's script are not ours:** `denyUrls: [/googletagmanager\\.com/]`."
+        },
+        {
+          "lines": "31-32",
+          "text": "(absent — a new last Non-goals item goes after line 31)"
+        }
+      ],
+      "after": [
+        {
+          "replaces_lines": "298-302",
+          "text": "(removed)"
+        },
+        {
+          "replaces_lines": "insert after 31",
+          "text": "- **No Google filters in Sentry yet.** Sentry keeps Google's fetch and xhr breadcrumbs and any error\n  thrown inside Google's script. A `beforeBreadcrumb` host drop or a `denyUrls` entry is added only\n  if either appears as noise in Sentry."
+        }
+      ],
+      "proposed_fix": "Remove the two bullets from section 6 and add one Non-goals item: Sentry keeps Google's fetch and xhr breadcrumbs and any error thrown inside Google's script, and a filter is added only if either appears as noise in Sentry.",
+      "why_it_works": "It keeps this ticket's changes to NH-124's Sentry setup to what the privacy choice needs, and removes a list of Google addresses nobody has to maintain yet. It costs little that anyone would see: the breadcrumbs are already cut at ?, and an error inside Google's script is rare, mostly filtered already, and would arrive as one email.",
+      "plain_terms": {
+        "breadcrumb": "a short note about an earlier event (a click, a network call) that travels inside the next error report",
+        "beforeBreadcrumb": "Sentry's hook that can drop a breadcrumb before it is kept",
+        "denyUrls": "a Sentry setting that ignores errors whose code comes from the listed addresses",
+        "NH-124": "the Sentry error-monitoring ticket; its spec is on PR #191, not merged yet",
+        "health number": "Sentry Release Health's share of visits that ended without an unhandled error, the interim health number in the Sentry spec",
+        "S4": "decision S4 in the Sentry spec: Release Health on, as the interim health number",
+        "'Script error.'": "what a browser reports instead of the real error when a script from another site fails"
+      },
+      "severity_check": {
+        "agree": true,
+        "proposed": "P3",
+        "why": "Scope only; either choice is safe."
+      },
+      "cross_fix": [
+        "F-3 (Group A) also touches Sentry's setup (when its DSN goes live), but it edits section 8 and 'Known limits', not lines 298-302; no overlap."
+      ]
+    },
+    {
+      "id": "Q1",
+      "verdict": "CONFIRMED",
+      "section_heading": "## 1. Packages and files (with ## 3. The popup)",
+      "section_lines": "86-97 (Changed files) and 141-168",
+      "quotes": [
+        {
+          "quote": "`web/app/layout.tsx`: renders `<PrivacyChoices />`.",
+          "verbatim": true,
+          "line": 90,
+          "note": "the only place the spec says where the card is rendered"
+        }
+      ],
+      "central_claim_check": "web/app/layout.tsx:15-27 renders the page and then the Toaster inside <body>. client/src/components/ui/Sonner/Sonner.tsx:198-201 says the Toaster mounts last in the root layout, so plain Tab reaches a close button only after every page control, which is why it keeps the Alt+T hotkey. web/e2e/a11y.e2e.ts:270 sets the floor for /play at 12 controls; that counts controls with a hit area, close to, but not exactly, the number of Tab stops. Section 3 gives the card three answer buttons and Details: four Tab stops, five with Details open (its link). web/ has no skip link. The GOV.UK Design System places its cookie banner right after the opening body tag, before the skip link (https://design-system.service.gov.uk/components/cookie-banner/); its banner sits in the page flow at the top, not floating, so it guides the order only. Related, not part of the question (estimated, untested): the card is fixed at the bottom, and on a phone its stacked buttons make it roughly 300 px tall, so on / it may cover part of the Play link or the home note on a short screen; section 9's No overlap case measures only ▶ and the transport row on /play.",
+      "contradicts": "Neither option contradicts the spec: section 3 asks for no focus trap and no backdrop, and both keep that. Checked section 1, section 3, section 9 and G7.",
+      "spike": {
+        "ran": false,
+        "why": "A real Tab count needs the built card. The facts come from reading layout.tsx, Sonner.tsx and the accessibility test. Each option's After was applied to its own scratch copy of the spec; the repo's Prettier, markdownlint-cli2 and cspell pass on both.",
+        "mark": "(untested)"
+      },
+      "scenario": "You use only a keyboard and open the player in Berlin. The privacy question waits at the bottom of the screen. Does your first press of Tab land on its first answer? Or do you press Tab about a dozen times, through the header, the speed control, Settings, Open file and the play controls, before you reach it?",
+      "whats_wrong": "Section 1 says only that layout.tsx renders the card, not where in the page. That place decides the Tab order. First in the page: keyboard users reach it at once, but pass four extra stops on every page until they answer. Last, as the Toaster is: they pass a dozen or more controls first, which is the reason Sonner.tsx gave the Toaster an Alt+T hotkey. The plan has to pick one and test it.",
+      "before": [
+        {
+          "lines": "90",
+          "text": "- `web/app/layout.tsx`: renders `<PrivacyChoices />`."
+        },
+        {
+          "lines": "155-156",
+          "text": "(absent — section 3 says nothing about Tab order)"
+        },
+        {
+          "lines": "391-392",
+          "text": "(absent — section 9 has no keyboard case)"
+        }
+      ],
+      "options": [
+        {
+          "label": "First in the page (Recommended)",
+          "what": "layout.tsx renders <PrivacyChoices /> first inside <body>, before the page. It still floats at the bottom of the screen.",
+          "pros": [
+            "One Tab press reaches the question, and screen-reader users also meet it first when they read the page",
+            "The order the GOV.UK cookie banner uses",
+            "The extra stops last only until the visitor answers, and only visitors in Europe ever see them"
+          ],
+          "cons": [
+            "Four extra Tab stops (five with Details open) before the page's own controls, on every page load until the visitor answers",
+            "The Tab order (first) differs from where the card sits on screen (the bottom)"
+          ],
+          "cost": "One line in layout.tsx, one bullet in section 3, one end-to-end assertion",
+          "after": [
+            {
+              "replaces_lines": "90",
+              "text": "- `web/app/layout.tsx`: renders `<PrivacyChoices />` first inside `<body>`, before the page\n  (section 3)."
+            },
+            {
+              "replaces_lines": "insert after 155 (after F-10's bullet, if F-10 is applied)",
+              "text": "- **Keyboard:** the card is the first thing in the page's order, so the first Tab press reaches\n  its first answer. Until the visitor answers, it adds four Tab stops in front of the page's own\n  controls."
+            },
+            {
+              "replaces_lines": "insert after 391 (after F-10's bullet, if F-10 is applied)",
+              "text": "- **Keyboard:** in Berlin, on `/` and on `/play`, the first Tab press focuses \"Yes, count visits and\n  report errors\"."
+            }
+          ]
+        },
+        {
+          "label": "Last in the page, as the Toaster",
+          "what": "layout.tsx renders <PrivacyChoices /> after the page, before the Toaster.",
+          "pros": [
+            "Keyboard users reach the page's own controls first; nothing changes for them on /play",
+            "The Tab order matches the screen: the card is at the bottom"
+          ],
+          "cons": [
+            "About a dozen Tab presses (the accessibility test's floor for /play is 12 controls) before the question",
+            "Screen-reader users depend on the announcement (F-11) to learn that it is there",
+            "To make it quick to reach, it would need its own shortcut, like the Toaster's Alt+T: one more key nobody knows about"
+          ],
+          "cost": "One line in layout.tsx, one bullet in section 3, one end-to-end assertion; a shortcut would add a key binding, a way to tell people about it, and a test",
+          "after": [
+            {
+              "replaces_lines": "90",
+              "text": "- `web/app/layout.tsx`: renders `<PrivacyChoices />` after the page, before the Toaster\n  (section 3)."
+            },
+            {
+              "replaces_lines": "insert after 155 (after F-10's bullet, if F-10 is applied)",
+              "text": "- **Keyboard:** the card comes after the page in Tab order, as the Toaster does, so on `/play` a\n  keyboard user passes about a dozen controls first; a screen reader announces it when it appears."
+            },
+            {
+              "replaces_lines": "insert after 391 (after F-10's bullet, if F-10 is applied)",
+              "text": "- **Keyboard:** in Berlin, on `/play`, \"Yes, count visits and report errors\" comes right after the\n  last transport control in Tab order."
+            }
+          ]
+        }
+      ],
+      "recommendation": "Option 1, first in the page. The question decides what the site may send, so it should be the first thing a keyboard or screen-reader user meets, as on GOV.UK. The four extra stops end with the answer and touch only visitors in Europe.",
+      "flip_condition": "Choose option 2 if the demo or a user test is run by keyboard from Europe and the four extra stops get in the way, or if an accessibility review asks for the Tab order to follow the screen order.",
+      "proposed_fix": "Pick one place in the page, write it into section 1's layout.tsx line and a Keyboard bullet in section 3, and add one keyboard case to section 9 that proves it.",
+      "why_it_works": "The plan then has one answer and one test, so the place cannot drift during building, and the cost to keyboard users is stated where a reader looks for it.",
+      "plain_terms": {
+        "Tab stop": "a control that the Tab key moves to",
+        "Toaster": "the area that shows the app's short pop-up messages (toasts)",
+        "skip link": "a hidden link at the top of a page that lets keyboard users jump to the main content",
+        "floor for /play": "the smallest number of controls the accessibility test expects to find on /play (12)",
+        "G7": "decision G7: the popup is built in this ticket, as a floating card above the player's controls"
+      },
+      "severity_check": {
+        "agree": true,
+        "proposed": "P3",
+        "why": "Not rated in the merged findings. P3 fits: small and cheap either way, but the plan must choose it and test it."
+      },
+      "cross_fix": [
+        "F-11: compatible with both options; the announcement is needed either way, and more so with option 2.",
+        "F-10: both options keep the card outside the drop zone, so F-10's fix is needed either way. The Keyboard bullets go right after F-10's bullets in sections 3 and 9."
+      ]
+    }
+  ]
+}

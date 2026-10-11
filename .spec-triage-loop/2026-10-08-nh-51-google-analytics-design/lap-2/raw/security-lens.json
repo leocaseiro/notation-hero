@@ -1,0 +1,56 @@
+{
+  "reviewer": "security-lens",
+  "findings": [
+    {
+      "title": "Switching to 'Report errors only' leaves Google Analytics running",
+      "severity": "P2",
+      "section": "Extending later - the NH-349 bullet (what the 'Privacy choices' link must stop)",
+      "why_it_matters": "A visitor who changes from 'Yes' to 'Report errors only' through NH-349's 'Privacy choices' link keeps reporting to Google Analytics for the rest of the visit: a page view on each client-side page change, every `track()` event (it checks only that Google Analytics has started), and the hit sent when the page is left. The bullet stops Google only on a change to 'No', yet section 2's table turns Google Analytics off for 'Report errors only' too, and section 8 step 7 tells leocaseiro to make exactly this change on a phone where Google Analytics already runs by default. Handled with a consent update alone, the change sends the cookieless pings G3 (ask first in Europe; Google's 'advanced' consent mode rejected) ruled out, so the same stop must cover every answer that turns Google Analytics off.",
+      "finding_type": "omission",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "In 'Extending later', replace the NH-349 bullet's sentence 'Changing to \"No\" must stop Google Analytics for the rest of the visit.' with 'Any change that turns Google Analytics off, to \"No\" or to \"Report errors only\", must stop it for the rest of the visit.', and make NH-349's test prove that no hit follows either answer. Keep the bullet's last sentence (close Sentry) for \"No\" only.",
+      "confidence": 75,
+      "evidence": [
+        "Changing to \"No\" must stop Google Analytics for the rest of the visit.",
+        "Answered \"Report errors only\"",
+        "On a phone, whose IP address changes, choose \"Report errors only\" through NH-349's \"Privacy choices\" link instead.",
+        "calls `gtag('event', name, …)` once started, and nothing before"
+      ]
+    },
+    {
+      "title": "A version bump turns saved refusals outside Europe into tracking",
+      "severity": "P2",
+      "section": "2. The privacy choice - 'Kept in this browser' (the saved answer's `version`)",
+      "why_it_matters": "The first time the question changes and `version` is bumped - foreseeable, since 'Extending later' plans a second destination (NH-54's pipeline) and a Google Analytics user ID 'only with consent' - every refusal in a browser outside Europe silently becomes full tracking. To ask again, the sketched `savedChoice()` (an answer or null) must return null for an outdated answer, and null outside Europe means everything runs with no popup to ask, so a 'No' or 'Report errors only' given through NH-349's 'Privacy choices' link is dropped; round 1's rule that an answer holds in every time zone is undone on this path. Keeping an outdated answer's refusals until a new answer arrives closes it, while Europe still sees the popup again.",
+      "finding_type": "omission",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "In section 2's 'Kept in this browser' bullet, after the `version` sentence, add: \"An answer saved under an older `version` counts as no answer - in Europe the popup asks again - except that what it refused stays refused: an old `none` or `errors` keeps those purposes off, in every time zone, until the visitor answers again.\" In section 9, add an `allowed()` unit case: a saved `{\"choice\":\"none\",\"version\":0}` allows nothing in `Australia/Sydney`, and in `Europe/Berlin` allows nothing while the popup shows.",
+      "confidence": 75,
+      "evidence": [
+        "`version` lets a later change to the question ask again.",
+        "/** The saved answer; null when there is none, the value is corrupt, or storage is blocked. */",
+        "An answer holds in every time zone once it is given; the time zone decides only while there is none.",
+        "Outside Europe, no answer given",
+        "a Google Analytics user ID only with consent, never an email."
+      ]
+    },
+    {
+      "title": "A 'No' stops Google Analytics only in its own tab",
+      "severity": "P3",
+      "section": "Extending later - the NH-349 bullet (what the 'Privacy choices' link must stop)",
+      "why_it_matters": "A visitor with the site open in two tabs who withdraws in one keeps reporting to Google Analytics - and, after a 'No', to Sentry - from the other until it is closed or reloaded, although the bullet requires the stop 'for the rest of the visit'. The stop it prescribes, `window['ga-disable-<ID>']` and no more `track()` events, exists only in the tab where the answer changed, and the popup's Details already opens the privacy notice, the page that carries 'Change your answer at any time', in a new tab beside the player. Running the same stop in every open tab when the saved answer changes, through the browser's `storage` event on `notation-hero.privacy-choice`, lets a withdrawal reach the whole visit.",
+      "finding_type": "omission",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "In 'Extending later', add to the NH-349 bullet: The stop also runs in every other open tab of the site: each tab listens for the `storage` event on `notation-hero.privacy-choice` and, when the saved answer turns a tool off, stops it there the same way. NH-349's test opens two tabs, answers \"No\" in one, and proves no hit follows from the other.",
+      "confidence": 50,
+      "evidence": [
+        "So the link also sets `window['ga-disable-<ID>'] = true` and sends no more events.",
+        "Changing to \"No\" must stop Google Analytics for the rest of the visit.",
+        "Both open in a new tab, so an open score is not lost,",
+        "Change your answer at any time: <the Privacy choices link (NH-349)>."
+      ]
+    }
+  ],
+  "residual_risks": [],
+  "deferred_questions": []
+}

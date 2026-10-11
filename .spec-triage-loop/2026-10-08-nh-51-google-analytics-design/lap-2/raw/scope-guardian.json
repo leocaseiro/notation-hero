@@ -1,0 +1,23 @@
+{
+  "reviewer": "scope-guardian",
+  "findings": [
+    {
+      "title": "Global gtag leaves a path around the typed track() funnel",
+      "severity": "P3",
+      "section": "4. Google Analytics in code, the startAnalytics() loader sketch (line 211 at b0bde201)",
+      "why_it_matters": "Any file can call the global `window.gtag('event', …)` directly and send a file name or track name to Google, skipping `track()` (the typed wrapper whose fixed field lists carry the spec's privacy promise). The privacy test reads `window.dataLayer` only on the flows it drives, and a parameter that is not registered as a custom dimension in setup step 4 never shows as a dimension in Google Analytics' reports, so a stray call could stay unseen while the data sits at Google. The sketch assigns `window.gtag` although nothing needs it: gtag.js reads `window.dataLayer`, and the Next.js docs bundled in `web/` say `sendGAEvent` works 'using the `dataLayer` object'. Keeping the function out of the global closes that path with less code, where the layers already built around `track()` (branded strings, the typed event map, the runtime key list, the privacy e2e scan) all assume it is the only path.",
+      "finding_type": "omission",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "In the section 4 sketch, define `gtag` as a plain function exported from `web/lib/analytics/start.ts` that pushes its `arguments` onto `window.dataLayer`, for `track.ts` to import, and do not assign it to `window.gtag`. Add one sentence to the `track()` bullet: no global `gtag` exists, so `track()` is the only way to send an event.",
+      "confidence": 50,
+      "evidence": [
+        "window.gtag = function gtag() {",
+        "Every field comes from a fixed list or is a number, so text from the file cannot reach Google."
+      ]
+    }
+  ],
+  "residual_risks": [
+    "Section 9 and setup step 6 name no check for seven of the eleven typed events (`score_failed`, `loop_toggle`, `metronome_toggle`, `count_in_toggle`, `tempo_change`, `setting_change`, `export_score`), though the goal names loop and tempo; a call site wired to the wrong place would read in Google Analytics as 'nobody uses it'. The trap is real in the code: `TracksPopover.tsx` re-applies every row's mute and solo on each `playerReady`, so a `track()` placed inside `applyMute` or `applySolo` instead of the click handler would report changes nobody made."
+  ],
+  "deferred_questions": []
+}

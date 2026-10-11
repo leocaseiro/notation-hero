@@ -537,6 +537,15 @@
     "valuenow",
     "fontconfig",
     "buildx",
-    "imagetools"
+    "imagetools",
+    "remarketing",
+    "CNIL",
+    "EDPB",
+    "OAIC",
+    "googletagmanager",
+    "fbclid",
+    "gclid",
+    "msclkid",
+    "cookieless"
   ]
 }

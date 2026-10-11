@@ -1,0 +1,490 @@
+{
+  "group": "B",
+  "items": [
+    {
+      "id": "F-5",
+      "verdict": "CONFIRMED_WITH_CORRECTION",
+      "correction": "Two changes to the reviewers' fixes. (1) The committed snapshot of gtag.js (Google's tracking script) is not a workable option: Google Analytics' terms, section 4, forbid copying the 'Software', which they define to include the Google Analytics Measurement Code, and the script itself opens with 'Copyright 2012 Google Inc. All rights reserved.' So only two options remain. (2) The leak is closed in the config, by Chromium's resolver rule, in both options, instead of a call added to each of the four existing test files: the rule also covers every future test file, and the spike shows it fails no existing case. The rule must also list www.google.com, because Google's script sent an event there when the page closed.",
+      "section_heading": "## 9. Testing",
+      "section_lines": "364-398 (the end-to-end paragraph is 380-391; also ## 1. Packages and files, lines 81 and 94-95, and ## The spike, line 451)",
+      "quotes": [
+        {
+          "quote": "`web/playwright.e2e.config.ts`: `timezoneId: 'Australia/Sydney'` for every project, and a fake Google Analytics ID.",
+          "verbatim": true,
+          "line": 94,
+          "note": "lines 94-95"
+        },
+        {
+          "quote": "the shared fixture: answers Google's hosts locally and records every request",
+          "verbatim": true,
+          "line": 81,
+          "note": ""
+        },
+        {
+          "quote": "`web/e2e/google-analytics.ts` answers Google's hosts locally, the way Sentry's fixture answers its fake DSN, so no test reaches Google.",
+          "verbatim": true,
+          "line": 380,
+          "note": "lines 380-381"
+        },
+        {
+          "quote": "afterLoad(() => addScript(`https://www.googletagmanager.com/gtag/js?id=${id}`));",
+          "verbatim": true,
+          "line": 194,
+          "note": ""
+        },
+        {
+          "quote": "Sydney: no popup; a page view with `gcs=G101` and `npa=1`",
+          "verbatim": false,
+          "line": 383,
+          "note": "The words are exact; only the Markdown bold markers are missing (the spec has **Sydney:**). Not a misquote."
+        },
+        {
+          "quote": "**Sydney:** no popup; a page view with `gcs=G101` and `npa=1`",
+          "verbatim": true,
+          "line": 383,
+          "note": ""
+        },
+        {
+          "quote": "No Google request — address or body — contains any of them, and `dt` stays `Notation Hero`.",
+          "verbatim": true,
+          "line": 388,
+          "note": "lines 388-389"
+        },
+        {
+          "quote": "Google's collect requests answered locally, so nothing reached Google.",
+          "verbatim": true,
+          "line": 451,
+          "note": ""
+        }
+      ],
+      "central_claim_check": "Confirmed. (a) The lane is one build for two projects: web/playwright.e2e.config.ts:24-53 (projects `e2e` for *.e2e.ts and `chromium` for *.vr.ts) over one webServer whose env is inlined at build time (lines 55-68). With the spec's fake ID and Sydney for every project, every page of every case starts Google Analytics. (b) Four files import `test` straight from @playwright/test and never install a Google fixture: web/e2e/player.e2e.ts:3, web/e2e/a11y.e2e.ts:2, web/e2e/pages.vr.ts:3 and web/e2e/toast-occlusion.e2e.ts:14. They hold 98 cases today (76 + 9 + 10 + 3; the last file loops over three widths at line 37). None is named in section 1's changed files. (c) failOnUnexpectedPageErrors() (web/e2e/page-errors.ts:90-123) listens to 'pageerror' only (line 97): not console errors, not failed requests. player.e2e.ts:10, a11y.e2e.ts:16 and pages.vr.ts:65 call it; toast-occlusion.e2e.ts does not. The lane's only console listener (player.e2e.ts:25) filters for AlphaTab lines. No lane test installs a catch-all route (all routes in player-states.ts and player.e2e.ts target the app's own paths). (d) The Sentry spec (PR #191), section 6: every build gets the fake DSN https://public@sentry.invalid/1 and 'One shared fixture routes every request to that host'; a case without that fixture is harmless only because a .invalid host never resolves (this review's spike: an unrouted POST to sentry.invalid is rejected). Google's hosts do resolve. (e) The 2026-10-05 spike (throwaway, not in the repo) routed only Google's collect hosts, so its gtag.js came live from Google: line 451's 'so nothing reached Google' is not exact. (f) A made-up ID gets a working script: about 440 KB, served with cache-control 'private, max-age=900', and it sends a page view (spike case 2). (g) Google Analytics terms, sections 1 and 4 (https://marketingplatform.google.com/about/analytics/terms/us/): the 'Software' includes the GAMC (the Google Analytics Measurement Code, which is gtag.js), and section 4 forbids copying it, changing it or making derivative works of it. (h) The `web` job runs in a Playwright container pinned by sha256 digest (.github/workflows/ci.yml:436-458) and blocks merge (AGENTS.md, 'VR & a11y testing'); CI retries a failing case twice (playwright.e2e.config.ts:18).",
+      "contradicts": "none — checked section 1 (line 81 and lines 94-95), section 4 (lines 172-215: the loader sketch, 'The order is verified', 'The tab title'), section 6 (the Google hosts, lines 298-300), section 8 step 6 (lines 359-362), section 9 (lines 380-391), Non-goals 'No ad-blocker bypass' (line 28), Known limits 'Ad blockers' (line 427) and 'The spike' (line 451). One wording fix is folded into both options: line 451 says 'nothing reached Google', but that spike downloaded Google's script live; 'no hit reached Google' is exact.",
+      "spike": {
+        "ran": true,
+        "what": "A local page that runs section 4's startAnalytics() sketch as written (a made-up ID, the spec's consent default, `config` with Google signals and ad personalisation off and `release`, the script added after `load`), driven by the installed Playwright 1.61.1 and its Chromium 149 as Sydney. Chromium started with --host-resolver-rules making www.googletagmanager.com and *.google-analytics.com unresolvable (and once with a wider set adding analytics.google.com, www.google.com and *.doubleclick.net). Case 1: no route. Case 2: a context route that downloads gtag.js with route.fetch() and answers every other Google request locally with 204. Case 3: a route that answers gtag.js with an empty script. Then four script-loader shapes under the rule, to see which raise a Playwright page error. Nothing left the machine but downloads of gtag.js (case 2, and two direct downloads to read its header); no hit was sent.",
+        "result": "Case 1: the script request fails (net::ERR_NAME_NOT_RESOLVED); no page error; one console error ('Failed to load resource'); no hit; no cookie. Case 2: route.fetch() returns the real script (status 200, 440,795 bytes) although the browser cannot resolve the host; requests to the unresolvable hosts are still routed and recorded. The page view arrives about 0.9 s after the page starts loading, with gcs=G101, npa=1, dt=Notation Hero and ep.release. Two custom events sent together arrive in one batched request 5,010 ms later (5,006 ms on the rerun with the wide rules). Leaving the page sends user_engagement to both www.google-analytics.com and www.google.com/g/collect. Cookies _ga and _ga_<ID> are set. Case 3: no request besides the script, no cookie; window.dataLayer holds exactly the consent default, js, config and the two events. Loader shapes: appending the script, or an onerror that reports and returns, raise no page error; an uncaught promise rejection or a throwing onerror each raise one, which would fail every case in the three gated files.",
+        "fix_holds": true
+      },
+      "scenario": "You push a one-line fix to the player. While the merge check runs, its test browser opens Notation Hero's pages about a hundred times, each time as a visitor in Sydney. Each time, Google's tracking script downloads from Google and sends a page view under the tests' made-up ID — from a test, to Google. The spec says no test reaches Google. Nearly every test does.",
+      "whats_wrong": "Section 9 says the new fixture keeps every test away from Google, but only privacy-choice.e2e.ts uses it. The lane's one build gets the fake ID and every project runs as Sydney, so Google Analytics starts on every page of the 98 existing cases, in four files that never install the fixture. Sentry's fake address can never resolve; Google's addresses do, so those pages download Google's script and send real hits. Also, the spec never says where the fixture gets Google's script: the gcs, npa and dt checks need the real one, while 'answers Google's hosts locally' rules it out. A copy kept in the repository is not possible: Google Analytics' terms forbid copying its measurement code.",
+      "before": [
+        {
+          "lines": "81",
+          "text": "| `web/e2e/google-analytics.ts`   | the shared fixture: answers Google's hosts locally and records every request                            |"
+        },
+        {
+          "lines": "94-95",
+          "text": "- `web/playwright.e2e.config.ts`: `timezoneId: 'Australia/Sydney'` for every project, and a fake\n  Google Analytics ID."
+        },
+        {
+          "lines": "359-362",
+          "text": "6. **After the first production deploy, in the Realtime report:** a page view on `/`; **a page view\n   after clicking Play** — the one thing the spike could not show (if it is missing, the fallback in\n   section 4); an `open_file` and a `score_loaded` with their fields; and, with the browser's time\n   zone set to Berlin, the popup, with nothing reaching Google until \"Yes\"."
+        },
+        {
+          "lines": "380-384",
+          "text": "**End to end (Playwright).** `web/e2e/google-analytics.ts` answers Google's hosts locally, the way\nSentry's fixture answers its fake DSN, so no test reaches Google.\n\n- **Sydney:** no popup; a page view with `gcs=G101` and `npa=1`; `open_file` and `score_loaded` with\n  the right fields after opening a fixture; `play` after pressing ▶."
+        },
+        {
+          "lines": "388-389",
+          "text": "- **Privacy:** open a fixture with a known title and track names. No Google request — address or\n  body — contains any of them, and `dt` stays `Notation Hero`."
+        },
+        {
+          "lines": "451",
+          "text": "Sydney and as Berlin; Google's collect requests answered locally, so nothing reached Google."
+        }
+      ],
+      "options": [
+        {
+          "label": "Live script, hits kept local",
+          "what": "Tests run Google's real script. The fixture downloads it and answers everything else locally: `if (url.pathname === '/gtag/js') return route.fulfill({ response: await route.fetch() }); record(request); return route.fulfill({ status: 204 });`. The config adds `launchOptions: { args: ['--host-resolver-rules=MAP www.googletagmanager.com ~NOTFOUND, MAP *.google-analytics.com ~NOTFOUND, …'] }` so any case without the fixture reaches nothing. Section 9's claim becomes 'no test sends Google a hit'.",
+          "pros": [
+            "CI checks Google's real output on every run: gcs=G101, npa=1 and dt on the wire, as section 9 asks today.",
+            "The privacy case checks the requests Google would really receive, address and body.",
+            "Proven in this review's spike (cases 2 and 4)."
+          ],
+          "cons": [
+            "The merge-blocking `web` job depends on www.googletagmanager.com for the fixture cases. When Google is slow or unavailable, or changes its script (its cache lifetime is 15 minutes), a pull request fails for a reason it cannot fix.",
+            "Each fixture case downloads a 440 KB script and waits about 5 s for each batch of events.",
+            "'No test reaches Google' stops being true: Google sees a script download from the CI machine on every run."
+          ],
+          "cost": "One config line; about 15 lines of fixture (route, script download, local answers, reading batched bodies); waits of about 5 s in the Sydney and Privacy cases.",
+          "after": [
+            {
+              "replaces_lines": "81",
+              "text": "| `web/e2e/google-analytics.ts`   | the shared fixture: fetches Google's real script, answers every other Google request locally and records it |"
+            },
+            {
+              "replaces_lines": "94-95",
+              "text": "- `web/playwright.e2e.config.ts`: `timezoneId: 'Australia/Sydney'` for every project, a fake Google\n  Analytics ID, and Chromium's `--host-resolver-rules` launch argument, which makes Google's hosts\n  unresolvable in the test browser."
+            },
+            {
+              "replaces_lines": "380-381",
+              "text": "**End to end (Playwright).** The lane's one build carries the fake Google Analytics ID and every\nproject runs as Sydney, so every page in every case starts Google Analytics. The config makes\n`www.googletagmanager.com`, `*.google-analytics.com`, `analytics.google.com` and `www.google.com`\nunresolvable in the test browser: in a case without the fixture, Google's script fails to load and\nnothing is sent, as for a visitor with an ad blocker. The loader must accept that without an error\n— no throw and no uncaught rejection — or `failOnUnexpectedPageErrors()` fails the case.\n`web/e2e/google-analytics.ts` routes Google's hosts before any lookup. It fetches the real\n`gtag.js` with `route.fetch()`, which runs in Node and ignores the rule, and answers every other\nrequest locally and records it. Google sends events in batches about 5 s later, so a case waits\nfor each event it checks. No test sends Google a hit; the cases that use the fixture download\nGoogle's script."
+            },
+            {
+              "replaces_lines": "451",
+              "text": "Sydney and as Berlin; Google's collect requests answered locally, so no hit reached Google."
+            }
+          ]
+        },
+        {
+          "label": "No Google script in tests",
+          "what": "The fixture answers Google's script with an empty one — `route.fulfill({ contentType: 'application/javascript', body: '' })` — and records every request. The cases read `window.dataLayer`, the queue our own code fills and Google's script reads. The same resolver rule in the config covers cases without the fixture. Google's output (gcs=G101, npa=1, dt) is checked by hand at launch, in section 8 step 6.",
+          "pros": [
+            "Nothing in tests reaches Google; section 9's promise stays true as written.",
+            "No network dependency in the merge-blocking `web` job, whose container is pinned by digest.",
+            "No waits: our queue fills at once, so each check runs immediately.",
+            "It checks exactly what this repository controls: every field our code hands Google."
+          ],
+          "cons": [
+            "CI never sees Google's real output. If Google changes how its script encodes consent or the title, nothing fails until a person looks.",
+            "The privacy case checks what we hand Google plus the two things Google's script reads from the page (the title and the address), not the final requests.",
+            "Google's cookies and its automatic events cannot be seen in tests."
+          ],
+          "cost": "One config line; about 10 lines of fixture; one more sentence in section 8 step 6, a by-hand check at launch.",
+          "after": [
+            {
+              "replaces_lines": "81",
+              "text": "| `web/e2e/google-analytics.ts`   | the shared fixture: answers Google's hosts locally (an empty script for `gtag.js`) and records every request |"
+            },
+            {
+              "replaces_lines": "94-95",
+              "text": "- `web/playwright.e2e.config.ts`: `timezoneId: 'Australia/Sydney'` for every project, a fake Google\n  Analytics ID, and Chromium's `--host-resolver-rules` launch argument, which makes Google's hosts\n  unresolvable in the test browser."
+            },
+            {
+              "replaces_lines": "359-362",
+              "text": "6. **After the first production deploy, in the Realtime report:** a page view on `/`; **a page view\n   after clicking Play** — the one thing the spike could not show (if it is missing, the fallback in\n   section 4); an `open_file` and a `score_loaded` with their fields; and, with the browser's time\n   zone set to Berlin, the popup, with nothing reaching Google until \"Yes\". **In the browser's\n   Network panel:** the first `collect` request carries `gcs=G101`, `npa=1` and `dt=Notation Hero`.\n   The tests answer Google's script with an empty one, so this is the only check of what it sends."
+            },
+            {
+              "replaces_lines": "380-381",
+              "text": "**End to end (Playwright).** The lane's one build carries the fake Google Analytics ID and every\nproject runs as Sydney, so every page in every case starts Google Analytics. The config makes\n`www.googletagmanager.com`, `*.google-analytics.com`, `analytics.google.com` and `www.google.com`\nunresolvable in the test browser: in a case without the fixture, Google's script fails to load and\nnothing is sent, as for a visitor with an ad blocker. The loader must accept that without an error\n— no throw and no uncaught rejection — or `failOnUnexpectedPageErrors()` fails the case.\n`web/e2e/google-analytics.ts` routes Google's hosts before any lookup, answers `gtag.js` with an\nempty script and records every request. No test reaches Google. The cases check what our code\nhands Google, in `window.dataLayer`; what Google's script sends is checked by hand at launch\n(section 8, step 6)."
+            },
+            {
+              "replaces_lines": "383-384",
+              "text": "- **Sydney:** no popup; one request for `gtag.js`, after `load`; the queue matches section 4 — the\n  consent default first (ad signals denied, analytics granted), Google signals and ad\n  personalisation off, `release` set; `open_file` and `score_loaded` with the right fields after\n  opening a fixture; `play` after pressing ▶."
+            },
+            {
+              "replaces_lines": "388-389",
+              "text": "- **Privacy:** open a fixture with a known title and track names. No entry in `window.dataLayer`\n  contains any of them, `document.title` stays `Notation Hero` (Google's script sends it as `dt`),\n  and the page address holds none of them."
+            },
+            {
+              "replaces_lines": "451",
+              "text": "Sydney and as Berlin; Google's collect requests answered locally, so no hit reached Google."
+            }
+          ]
+        }
+      ],
+      "recommendation": "'No Google script in tests'. The `web` job blocks every merge and pins even its container by digest. A live script, which Google can change at any time (its cache lifetime is 15 minutes), would let Google's uptime and Google's own changes fail pull requests that cannot fix them. The privacy promise is about what our code hands Google, and this option checks all of it, at once, with no 5-second waits. Google's encoding has been seen twice (the 2026-10-05 spike and this review's spike: gcs=G101, npa=1, dt=Notation Hero), and section 8 step 6 checks it again on the real property, which no test with a made-up ID can show.",
+      "flip_condition": "Choose 'Live script, hits kept local' if you want CI to notice by itself when Google changes how its script encodes consent or the title, and you accept that the privacy cases fail when www.googletagmanager.com is slow or unavailable (CI retries each failure twice).",
+      "proposed_fix": "Close the leak in the config, for every case at once: Chromium's --host-resolver-rules launch argument makes Google's hosts unresolvable inside the test browser, so a case without the fixture cannot reach Google and fails nothing. Then decide where the fixture's gtag.js comes from: the live script through route.fetch(), with every other request answered locally, or an empty script, with the checks moved to what our code queues and Google's output checked by hand at launch.",
+      "why_it_works": "The resolver rule is the same idea as Sentry's .invalid address: inside the test browser the hosts cannot be found, so a case that forgets the fixture sends nothing, and a new test file is covered without any edit. Playwright's routes act before the address lookup, so the fixture still sees and answers every request (spike case 2). route.fetch() runs in Node, not in the browser, so the live script still arrives when that option is chosen.",
+      "plain_terms": {
+        "the lane / the web job": "the merge-blocking browser tests for web/: behaviour, accessibility and screenshots, all from one build",
+        "gtag.js": "Google's tracking script, downloaded from www.googletagmanager.com",
+        "hit / collect request": "one message from Google's script to Google that counts a page view or an event",
+        "fixture (test code)": "shared test code a test file uses; here web/e2e/google-analytics.ts, which records Google's requests",
+        "fixture (score file)": "a test score in web/e2e/fixtures/; 'open a fixture' in section 9 means opening one",
+        "resolver rule": "a Chromium start-up setting (--host-resolver-rules) that makes chosen web addresses impossible to look up, inside the test browser only",
+        "route.fetch()": "a Playwright call that downloads a request from the test program (Node) instead of the browser",
+        "failOnUnexpectedPageErrors()": "the lane's helper (web/e2e/page-errors.ts) that fails a test when the page throws an uncaught error",
+        "gcs=G101": "Google's consent value: ad storage denied, analytics storage granted",
+        "npa=1": "Google's flag for 'no ad personalisation'",
+        "dt": "the page title Google records with every hit",
+        "window.dataLayer": "the queue our code fills and Google's script reads",
+        "Sydney / Berlin": "the time zones the tests pretend to be in; Berlin counts as Europe, where the popup asks first",
+        "GAMC": "the Google Analytics Measurement Code, which Google's terms count as its 'Software'"
+      },
+      "severity_check": {
+        "agree": true,
+        "proposed": "P2",
+        "why": "Nothing a visitor sees changes, but section 9's claim would be false on the first run: about a hundred cases would send real hits to Google from CI, and the gcs/npa/dt checks have no script to run."
+      },
+      "cross_fix": [
+        "F-6 — its After replaces the privacy bullet (lines 388-389) with one text per option here, and each already includes this option's change. Apply F-6's text, not both.",
+        "F-12 (group C) — this spike ran section 4's sketch as written (both ad settings inside `config`, no separate `set` call) and still saw gcs=G101 and npa=1 on the first page view, and no Google-signals request. The 'No Google script' Sydney text says 'the queue matches section 4', so it holds whichever way F-12 goes.",
+        "FYI-4 (group C) — Google's script also sent user_engagement to www.google.com/g/collect when the page closed; section 6's breadcrumb filter names only the www.google.com/ccm path.",
+        "FYI-5 (group A) — it also adds a by-hand check to section 8 step 6. With 'No Google script', merge both additions into one step text.",
+        "Side results for 'To verify at plan time' (lines 439-440), with a made-up ID: `release` set in `config` arrived as ep.release on the page view, on each custom event and on user_engagement; the boolean `on: true` arrived as the text ep.on=true.",
+        "The Sentry spec's 'To verify' item 'That Playwright can route a request to the .invalid host before any DNS lookup' holds: this review's spike routed and recorded a POST to sentry.invalid."
+      ]
+    },
+    {
+      "id": "F-6",
+      "verdict": "CONFIRMED_WITH_CORRECTION",
+      "correction": "The fix is right for F-5's 'Live script' option. Under F-5's 'No Google script' option there is no batch to wait for: the same idea reads window.dataLayer, which fills at once, and also checks the two things Google's script reads from the page. Both texts are given. The measured delay is about 5 s (5,010 ms and 5,006 ms), not only 'a few seconds'.",
+      "section_heading": "## 9. Testing",
+      "section_lines": "364-398 (the Privacy bullet is 388-389)",
+      "quotes": [
+        {
+          "quote": "Privacy: open a fixture with a known title and track names. No Google request — address or body — contains any of them, and `dt` stays `Notation Hero`.",
+          "verbatim": false,
+          "line": 388,
+          "note": "lines 388-389. The words are exact; only the Markdown bold markers are missing (the spec has **Privacy:**). Not a misquote."
+        },
+        {
+          "quote": "sent, batched a few seconds later",
+          "verbatim": true,
+          "line": 458,
+          "note": ""
+        },
+        {
+          "quote": "automatic click tracking (button labels hold track names — the reason Sentry turned click breadcrumbs off)",
+          "verbatim": true,
+          "line": 63,
+          "note": ""
+        }
+      ],
+      "central_claim_check": "Confirmed. Batching: this review's spike, running the spec's own loader sketch, sent two mixer_change events back to back; both arrived in one batched request 5,010 ms later (5,006 ms on a rerun), while the page view arrived about 0.9 s after the page started loading. A check made right after a file opens therefore sees only the page view. The spec's own spike table says the same (line 458). Labels: the Tracks popover passes `name={track.name}` to the design system's TrackRow (web/app/play/TracksPopover.tsx:348), which labels the toggles `Solo ${name}` and `Mute ${name}` (client/src/components/ui/TrackRow/TrackRow.tsx:247 and :257), and TransportToggle makes that the aria-label (client/src/components/ui/TransportToggle/TransportToggle.tsx:71). So Solo and Mute are named after the track. The Sentry spec (PR #191), section 6, ends every 'nothing sent' case with a sentinel because 'Without the sentinel, a recorder that captured nothing would pass.'",
+      "contradicts": "none — checked section 4 'The tab title' (lines 213-215: the privacy test must fail if a title reaches Google; the wait makes that true), section 5 (the score_loaded and mixer_change fields), G8 (line 63), section 9's Sydney and Berlin bullets, and the spike table (line 458).",
+      "spike": {
+        "ran": true,
+        "what": "F-5's spike case 2 measured how long Google's script holds custom events before sending them, and that waiting for a named event in the recorded requests works.",
+        "result": "Two events were held and sent together 5.0 s after the calls; polling the recorder for them succeeded. The Solo and Mute presses were checked in source only (untested): the player was not built, because a read-only review runs no next build.",
+        "fix_holds": true
+      },
+      "scenario": "A later change makes the Solo button send the track's name to Google. You open your song 'Moonlight Practice' and press Solo on 'Lead Guitar'. Five seconds later, Google receives 'Lead Guitar'. The privacy test was there to stop this, but it never presses Solo, and it reads the requests before Google's batch leaves — so it passes.",
+      "whats_wrong": "The privacy case opens a fixture and checks what was recorded, with nothing to wait for. Google sends events in batches about 5 s later, so the check can run when only the page view has arrived; it then proves nothing about the events, and passes. The case also never presses a control named after a track, although Solo and Mute are named 'Solo <track>' and 'Mute <track>' — the risk G8 names as the reason for typed events.",
+      "before": [
+        {
+          "lines": "388-389",
+          "text": "- **Privacy:** open a fixture with a known title and track names. No Google request — address or\n  body — contains any of them, and `dt` stays `Notation Hero`."
+        }
+      ],
+      "after": [
+        {
+          "replaces_lines": "388-389",
+          "variant": "if F-5 picks 'No Google script in tests' (the F-5 recommendation)",
+          "text": "- **Privacy:** open a fixture with a known title and track names, and press Solo and Mute on one of\n  its tracks (both buttons are named after the track). Wait until `window.dataLayer` holds the\n  `score_loaded` event, with the score's `track_count`, and both `mixer_change` events. Only then\n  check that no entry contains the title or a track name, that `document.title` stays\n  `Notation Hero` (Google's script sends it as `dt`), and that the page address holds neither.\n  Without the wait, an empty queue would pass."
+        },
+        {
+          "replaces_lines": "388-389",
+          "variant": "if F-5 picks 'Live script, hits kept local'",
+          "text": "- **Privacy:** open a fixture with a known title and track names, and press Solo and Mute on one of\n  its tracks (both buttons are named after the track). Wait until `web/e2e/google-analytics.ts`\n  has recorded the `score_loaded` event, with the score's `track_count`, and both `mixer_change`\n  events — Google sends events in batches about 5 s later. Only then check that no recorded Google\n  request — address or body — contains the title or a track name, and that `dt` stays\n  `Notation Hero`. Without the wait, a recorder that has caught only the page view would pass."
+        }
+      ],
+      "proposed_fix": "In the privacy case, press Solo and Mute on one track. Wait until the score_loaded event (with the score's track count) and both mixer_change events have been recorded. Only then check that nothing recorded holds the title or a track name.",
+      "why_it_works": "Waiting for three known events proves the recorder caught the events, not only the page view — the same reason the Sentry spec ends each 'nothing sent' case with a sentinel. Pressing Solo and Mute sends the one event that is built next to a track's name, so a change that puts the name into it fails the case.",
+      "plain_terms": {
+        "G8": "decision G8: a typed list of twelve events, every field from a fixed list or a number, because button labels hold track names",
+        "score_loaded / mixer_change": "two of the twelve events: a score reaches the screen; a mixer control changes",
+        "track_count": "the number of tracks, a field of score_loaded",
+        "dt": "the page title Google records with every hit",
+        "sentinel": "a known event a test waits for, to prove its recorder works before it checks for absence",
+        "fixture (score file)": "a test score in web/e2e/fixtures/; 'open a fixture' in section 9 means opening one",
+        "window.dataLayer": "the queue our code fills and Google's script reads"
+      },
+      "severity_check": {
+        "agree": true,
+        "proposed": "P2",
+        "why": "The only automated check that no title or track name reaches Google can pass while one does; an implementer who follows the text writes exactly that test."
+      },
+      "cross_fix": [
+        "F-5 — pick the After that matches F-5's choice. Each variant already includes F-5's own change to lines 388-389, so apply one text only.",
+        "F-13 (group C) — if mixer_change becomes a union on `control`, Solo and Mute still carry `instrument`; no change here."
+      ]
+    },
+    {
+      "id": "F-7",
+      "verdict": "CONFIRMED",
+      "section_heading": "## 9. Testing",
+      "section_lines": "364-398 (the Berlin bullet is 385-387; the promise is in ## 6. Changes to Sentry's design, lines 296-297)",
+      "quotes": [
+        {
+          "quote": "\"Report errors only\": a forced error reaches Sentry, and nothing reaches Google.",
+          "verbatim": true,
+          "line": 386,
+          "note": "lines 386-387"
+        },
+        {
+          "quote": "With \"Report errors only\", Sentry starts without its Release Health session integration, so no visit ping is sent.",
+          "verbatim": true,
+          "line": 296,
+          "note": "lines 296-297"
+        },
+        {
+          "quote": "Sentry 11 can start after the page has loaded, and the name of its Release Health integration.",
+          "verbatim": true,
+          "line": 441,
+          "note": ""
+        }
+      ],
+      "central_claim_check": "Confirmed. The Sentry spec (PR #191), section 6: its fixture 'routes every request to that host, answers it, and records the envelope', and its cases 'read event envelopes only, never the session envelope that Release Health (S4) sends on every visit'. So the fixture can see session envelopes; NH-124's cases ignore them on purpose, and no case checks that one is absent. Sentry's docs list browserSessionIntegration as enabled by default for Next.js, and a default integration is removed by its name (https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/integrations/). The SDK source names it 'BrowserSession' (https://github.com/getsentry/sentry-javascript/blob/develop/packages/browser/src/integrations/browsersession.ts). The Sentry spec's own filter removes default integrations by name (its section 3.3), so a wrong or renamed name leaves the visit ping on with no error. In the SDK core, an error captured during an active session sends a session update before the error itself (packages/core/src/client.ts, _updateSessionFromEvent and _processEvent), and the item type is 'session' (packages/core/src/envelope.ts). Sentry SDK major version 11 exists (the BrowserSession docs page notes a default that changed in version 11). The spec's 'To verify at plan time' still lists the integration's name (line 441).",
+      "contradicts": "none — checked section 2's table (lines 101-107: 'Report errors only' sends error reports and no visit count), section 6 (lines 296-297), 'To verify at plan time' (line 441), and the Sentry spec's section 6 (its own cases ignore session envelopes; these cases would read them, which its fixture allows).",
+      "spike": {
+        "ran": true,
+        "what": "From a local page, two POSTs to https://sentry.invalid/api/1/envelope/ (the shape Sentry's fake DSN produces), one carrying an item of type event and one of type session, through a Playwright 1.61.1 route that records each body; then the same POST with the route removed.",
+        "result": "Both were routed before any address lookup and recorded, and the item type was readable from the body; with no route, the POST was rejected ('Failed to fetch'). Sentry itself was not run (untested): @sentry/nextjs is not installed on this branch and installs are not allowed here, so its session behaviour comes from the SDK source.",
+        "fix_holds": true
+      },
+      "scenario": "You open Notation Hero in Berlin and press 'Report errors only'. You expect Sentry to hear from you only when something breaks. Months later, a Sentry upgrade renames the part that counts visits, the filter no longer removes it, and every page you open sends a visit ping. No test notices: the Berlin test checks only that an error arrives.",
+      "whats_wrong": "Section 6 promises that 'Report errors only' starts Sentry without its visit-counting part, so no visit ping is sent. The Berlin test for that answer checks only that a forced error reaches Sentry and that nothing reaches Google. The part's name is still unverified (the spec's own 'To verify at plan time' list), and Sentry removes parts by name, so a wrong or renamed name keeps the ping on without any error.",
+      "before": [
+        {
+          "lines": "385-387",
+          "text": "- **Berlin:** the popup shows, and **no** request reaches Google or Sentry before an answer. \"No,\n  send nothing\": still none, also after a reload. \"Report errors only\": a forced error reaches\n  Sentry, and nothing reaches Google. \"Yes, …\": both. The answer survives a reload."
+        }
+      ],
+      "after": [
+        {
+          "replaces_lines": "385-387",
+          "text": "- **Berlin:** the popup shows, and **no** request reaches Google or Sentry before an answer. \"No,\n  send nothing\": still none, also after a reload. \"Report errors only\": a forced error reaches\n  Sentry; when it arrives, Sentry's fixture has recorded no `session` envelope (the visit ping), and\n  nothing reaches Google. \"Yes, …\": both, and a `session` envelope arrives. The answer survives a\n  reload. Unlike NH-124's cases, these read session envelopes on purpose: the visit ping is the one\n  thing \"Report errors only\" withholds from Sentry."
+        }
+      ],
+      "proposed_fix": "In the Berlin 'Report errors only' case, also read Sentry's session envelopes: when the forced error arrives, none has been recorded. In the 'Yes' case, a session envelope arrives.",
+      "why_it_works": "The visit ping is the only thing 'Report errors only' withholds from Sentry, so its absence is the one check that proves the answer works. NH-124's fixture already records every envelope, session ones included; the case only stops ignoring them. The forced error is a fair moment to check: if the visit-counting part were still running, Sentry would send a session update before the error itself. The 'Yes' check proves the recorder can see session envelopes at all, so an empty result means something.",
+      "plain_terms": {
+        "Release Health": "Sentry's count of visits, sent as a small 'session' message on every page load",
+        "session envelope": "that visit message, as Sentry's test fixture records it",
+        "envelope": "one message from Sentry's browser code to Sentry",
+        "G6": "decision G6: three answers, one purpose behind each button",
+        "S4": "NH-124's decision to enable Release Health as the interim health number",
+        "NH-124": "the Sentry error-monitoring ticket (PR #191)",
+        "BrowserSession": "the name of the Sentry part that sends the visit ping (browserSessionIntegration), which the filter must match"
+      },
+      "severity_check": {
+        "agree": true,
+        "proposed": "P2",
+        "why": "A promise in section 6 has no test, and the one setting it depends on is still unverified; the fix is one assertion in a case the spec already plans."
+      },
+      "cross_fix": [
+        "none with other findings. Its line range (385-387) does not overlap F-6's (388-389)."
+      ]
+    },
+    {
+      "id": "F-8",
+      "verdict": "CONFIRMED",
+      "section_heading": "## 9. Testing (Screenshots and accessibility) and ## 3. The popup",
+      "section_lines": "393-398 and 141-168 (the axe bullet is line 398; the Themes bullet is line 164)",
+      "quotes": [
+        {
+          "quote": "An axe scan with the popup open, in both themes.",
+          "verbatim": true,
+          "line": 398,
+          "note": ""
+        },
+        {
+          "quote": "light and dark from the design tokens; no new colour.",
+          "verbatim": true,
+          "line": 164,
+          "note": ""
+        },
+        {
+          "quote": "**Themes:** light and dark from the design tokens; no new colour.",
+          "verbatim": true,
+          "line": 164,
+          "note": ""
+        }
+      ],
+      "central_claim_check": "Confirmed. docs/specs/2026-09-21-web-visual-regression-gate.md:174-181 ('### Light only'): dark mode cannot be reached in web/; the variant is class-based (`@custom-variant dark (&:is(.dark *))`, client/src/styles.css:27); web/app/layout.tsx renders a bare `<html lang=\"en\">` (line 14) with no theme control; injecting `.dark` from a test is 'a state no visitor can reach, and test-only instrumentation of exactly the kind this project bans'. The same spec's Non-goals (line 38): 'No dark-mode baselines.' docs/decisions/decision-changelog.md:676-679: 'Dark mode stays unreachable for now. Nothing sets `.dark`', deferred behind NH-302. A search of web/app, web/lib and web/e2e finds no code that sets `.dark`, emulates a colour scheme or imports next-themes; all nine axe cases in web/e2e/a11y.e2e.ts run in light.",
+      "contradicts": "none — checked section 3 (Equal buttons use the design system's Button; tokens only), section 9's screenshot bullets (lines 395-397) and Non-goals ('Not client/').",
+      "spike": {
+        "ran": false,
+        "why": "Nothing to run: the claim is a fact about the repository (no theme control), confirmed by reading and searching.",
+        "mark": "(untested)"
+      },
+      "scenario": "You build the popup and write its accessibility test as the spec says: 'in both themes'. But no visitor can ever see Notation Hero in dark mode — nothing enables it. To scan the dark theme, your test must force it, which this project forbids, and the scan then reports problems in a dark page no visitor will ever see.",
+      "whats_wrong": "Section 9 asks for an axe scan of the popup 'in both themes', and section 3 says 'light and dark'. web/ can only show light: dark mode needs a `.dark` class that nothing sets, and the visual-regression spec's 'Light only' section rules out adding it from a test. Every other axe case in the lane runs in light.",
+      "before": [
+        {
+          "lines": "398",
+          "text": "- An axe scan with the popup open, in both themes."
+        },
+        {
+          "lines": "164",
+          "text": "- **Themes:** light and dark from the design tokens; no new colour."
+        }
+      ],
+      "after": [
+        {
+          "replaces_lines": "398",
+          "text": "- An axe scan with the popup open, in light only, like every other axe case in the lane: `web/`\n  cannot show dark mode until NH-302 (see \"Light only\" in\n  `docs/specs/2026-09-21-web-visual-regression-gate.md`)."
+        },
+        {
+          "replaces_lines": "164",
+          "text": "- **Themes:** colours from the design tokens only, so the card follows dark mode on the day `web/`\n  can show it (NH-302); no new colour."
+        }
+      ],
+      "proposed_fix": "Scan in light only, like the rest of the lane, and say why. Describe the card's colours as design tokens only, so dark mode follows when web/ gets it.",
+      "why_it_works": "It matches what a visitor can see today and the lane's existing rule. The card still uses only tokens, so the day NH-302 enables dark mode the card is ready, and a dark scan can then be added against real dark mode.",
+      "plain_terms": {
+        "axe": "the automatic accessibility checker the lane runs",
+        "NH-302": "the ticket that dark mode in web/ waits for (the notation's colours in dark)",
+        "design tokens": "the shared colour names of the design system, which change with the theme",
+        "'Light only'": "a section of docs/specs/2026-09-21-web-visual-regression-gate.md"
+      },
+      "severity_check": {
+        "agree": true,
+        "proposed": "P2",
+        "why": "An implementer cannot do what the line asks without breaking a project rule; the fix is two short lines."
+      },
+      "cross_fix": ["F-9 — edits the line just above (397); no overlap."]
+    },
+    {
+      "id": "F-9",
+      "verdict": "CONFIRMED",
+      "section_heading": "## 9. Testing (Screenshots and accessibility) and ## 1. Packages and files",
+      "section_lines": "393-398 and 86-97 (the shots are line 397; the changed-files line is 96)",
+      "quotes": [
+        {
+          "quote": "New shots, in `Europe/Berlin`: `/` and `/play` with the popup, and `/play` at phone width.",
+          "verbatim": true,
+          "line": 397,
+          "note": ""
+        },
+        {
+          "quote": "Screenshot baselines: `/` (the new note) and three new shots with the popup (section 9).",
+          "verbatim": true,
+          "line": 96,
+          "note": ""
+        }
+      ],
+      "central_claim_check": "Confirmed. web/e2e/pages.vr.ts:23-24: 'Ten shots, and the count is deliberate: every shot is a file that moves whenever client/ changes or AlphaTab is upgraded. An eleventh should have to justify itself.' pages.vr.ts:348-360: one narrow shot at 900 px; 'Two breakpoints are deliberately NOT covered, both below these two widths … Desktop web is the v0 target and ten shots is settled.' web/e2e/a11y.e2e.ts:338: 'narrower phone-portrait widths are a known gap tracked in NH-321'. The `chromium` project is 1280 × 900 (web/playwright.e2e.config.ts:51). The spec's no-overlap case (lines 390-391) already measures the card's box against ▶ and the transport row at desktop and phone width. On `/`, the content is centred in a full-height column (web/app/page.tsx:6), so at 1280 × 900 a card 24 px from the bottom sits below it, over empty page — from reading the layout, not from a rendered page.",
+      "contradicts": "none — checked section 3 'Where' (lines 151-153: the phone layout stays specified; only its picture is dropped), section 9 'No overlap' (lines 390-391: still measures desktop and phone width) and section 1 line 96 (changed in the same fix).",
+      "spike": {
+        "ran": false,
+        "why": "A question of test scope; nothing to run.",
+        "mark": "(untested)"
+      },
+      "scenario": "You change the colour of the design system's buttons. Three new popup pictures in the test lane now fail and must be redrawn and committed, on top of the ten the lane already keeps. Two of them show nothing that the third picture and the overlap test do not already check: one shows the card over an empty home page, the other a phone width the lane omits on purpose.",
+      "whats_wrong": "Section 9 adds three screenshots with the popup, but the lane's own header says its count of ten is deliberate and 'An eleventh should have to justify itself', and none of the three says what only it covers. The phone-width shot would be the lane's first picture below 900 px, a width it leaves uncovered by design; the `/` shot shows the card over empty page. The no-overlap case already measures the card's position at desktop and phone width.",
+      "before": [
+        {
+          "lines": "397",
+          "text": "- New shots, in `Europe/Berlin`: `/` and `/play` with the popup, and `/play` at phone width."
+        },
+        {
+          "lines": "96",
+          "text": "- Screenshot baselines: `/` (the new note) and three new shots with the popup (section 9)."
+        }
+      ],
+      "after": [
+        {
+          "replaces_lines": "397",
+          "text": "- One new shot, in `Europe/Berlin`: `/play` with the popup, at the lane's 1280 × 900. It is the\n  only check that sees the card itself: its colours and its three buttons over the transport row,\n  as `web/`'s own CSS build draws them. The no-overlap case measures the card's box but cannot see\n  it. No `/` shot (there the card sits over empty page) and no phone-width shot (the lane covers\n  no width under 900 px, by design; the no-overlap case measures the phone placement)."
+        },
+        {
+          "replaces_lines": "96",
+          "text": "- Screenshot baselines: `/` (the new note) and one new shot with the popup (section 9)."
+        }
+      ],
+      "proposed_fix": "Keep one shot: /play with the popup at the lane's 1280 × 900, and say what only it covers. Change section 1's 'three new shots' to 'one new shot'.",
+      "why_it_works": "One shot is the only check that sees the card as web/'s own CSS build draws it — the kind of fault this lane exists for (the seek rail that shipped 0 px wide). The no-overlap case covers the position at both widths. The cost: the card's stacked phone layout gets no picture; it shares the lane's existing phone-width gap (NH-321).",
+      "plain_terms": {
+        "shot / baseline": "a saved picture of a page that the lane compares each run against",
+        "the lane": "the merge-blocking browser tests for web/",
+        "no-overlap case": "the planned test that measures that the card never covers ▶ or the transport row",
+        "NH-321": "the ticket for phone-portrait widths, a known gap in the lane",
+        "v0": "the first release: a drum player for desktop web"
+      },
+      "severity_check": {
+        "agree": false,
+        "proposed": "P3",
+        "why": "Nothing would ship broken and no promise would be false; the cost is two extra pictures that move with every client/ change or AlphaTab upgrade. A cheap two-line cut."
+      },
+      "cross_fix": [
+        "F-8 — edits the line just below (398); no overlap.",
+        "F-10 (group C) — adds a Berlin drop case to privacy-choice.e2e.ts with no screenshot; no conflict."
+      ]
+    }
+  ]
+}

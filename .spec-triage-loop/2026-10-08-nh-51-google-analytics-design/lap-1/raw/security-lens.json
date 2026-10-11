@@ -1,0 +1,52 @@
+{
+  "reviewer": "security-lens",
+  "findings": [
+    {
+      "title": "A saved 'No' is ignored outside a European time zone",
+      "severity": "P2",
+      "section": "2. The privacy choice — the allowed() table",
+      "why_it_matters": "A visitor who chose 'No, send nothing' is tracked by Google Analytics and Sentry on any later page load where the browser's time zone is not European. A phone or laptop that updates its time zone while travelling is enough. This happens because `allowed()` is defined as the section 2 table, whose 'Outside Europe' row is all ✅ whatever was saved, and its unit test checks exactly those 15 cells. The same rule breaks NH-349 (the 'Privacy choices' link planned for every visitor): a non-European visitor's 'No' would be saved and then ignored on the next page load. If a saved answer wins, and the time zone only picks the default when there is no answer, G3's 'everything by default' and the Goal's 'one answer governs both' both still hold.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "In section 2, make a saved answer win in every time zone: `allowed()` first reads the saved (or in-memory) answer and returns that answer's row. Only when there is no answer does `asksFirst()` decide: in Europe nothing runs until the visitor answers, and elsewhere everything runs. Rename the first table row 'Outside Europe, no saved answer'. Add 'Outside Europe' rows for a saved 'Report errors only' and a saved 'No, send nothing', with the same cells as their Europe rows. Extend the `allowed()` unit test to cover the new rows.",
+      "confidence": 75,
+      "evidence": [
+        "/** The table above, for this visitor. */",
+        "`allowed()`: the 15 cells of section 2's table.",
+        "Visitors in Europe are asked first; everyone else gets everything by default, with no popup",
+        "narrowed on 2026-10-05 to a \"Privacy choices\" link for every visitor"
+      ]
+    },
+    {
+      "title": "Errors-only answer never checked for an absent visit ping",
+      "severity": "P2",
+      "section": "9. Testing — End to end, the Berlin cases",
+      "why_it_matters": "Suppose 'Report errors only' still starts Sentry's Release Health, the per-visit ping. Every European who turned down visit counting would then send a visit ping on every page load, and no test would fail. The risk is real: the integration's name is still unverified (it is on the spec's 'To verify at plan time' list), and a future Sentry major version can change it. The Berlin case checks only that an error reaches Sentry and nothing reaches Google, and NH-124's end-to-end cases read event envelopes only, never the session envelope. One assertion in that case would guard G6 (one purpose per button) on Sentry's side, where the visit count is the only difference between 'errors only' and 'everything'.",
+      "finding_type": "omission",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "In section 9's Berlin cases, also read Sentry's session envelopes. After 'Report errors only', the forced error arrives and no session envelope is sent. After 'Yes, …', a session envelope is sent.",
+      "confidence": 75,
+      "evidence": [
+        "\"Report errors only\": a forced error reaches Sentry, and nothing reaches Google.",
+        "With \"Report errors only\", Sentry starts without its Release Health session integration, so no visit ping is sent.",
+        "Sentry 11 can start after the page has loaded, and the name of its Release Health integration."
+      ]
+    },
+    {
+      "title": "Page address sends third-party click IDs to Google",
+      "severity": "P3",
+      "section": "4. Google Analytics in code — Addresses",
+      "why_it_matters": "A visitor who arrives from a Facebook link brings an `fbclid` (Meta's identifier for that click) in the `?` part. Google Analytics stores it in the page address and in the next page view's referrer, and Google Analytics 4 does not remove it by default. The spec does not need it: it keeps the `?` part only for campaign tags. The project already treats this value as visitor data, since NH-124's end-to-end case 7 opens `/?fbclid=probe123` to prove Sentry never sends it. Google Analytics' own 'Redact data' setting replaces named query parameters in the browser before anything is sent, so campaign tags keep working and no code changes.",
+      "finding_type": "omission",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "In section 8 step 3, add 'Redact data: email on, and the query parameters fbclid, gclid and msclkid'. In step 6, open `/?utm_source=probe&fbclid=probe123` and confirm that the collect request keeps `utm_source` and does not contain `probe123`. Change the Addresses sentence in section 4 to say the `?` part reaches Google with those identifiers redacted.",
+      "confidence": 50,
+      "evidence": [
+        "Google Analytics receives the page address with its `?` part — the campaign tags on a link you share",
+        "No address in `web/` carries anything of the visitor's."
+      ]
+    }
+  ],
+  "residual_risks": [],
+  "deferred_questions": []
+}

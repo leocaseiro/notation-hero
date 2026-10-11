@@ -1,0 +1,64 @@
+{
+  "reviewer": "scope-guardian",
+  "findings": [
+    {
+      "title": "Setup step 5 can start Analytics before NH-349 ships",
+      "severity": "P2",
+      "section": "8. Setup (done by hand), step 5 (Vercel environment variable), with Known limits",
+      "why_it_matters": "Following section 8 as written starts Google Analytics collection in Europe while a visitor there still has no way to withdraw consent. Known limits says GDPR Article 7(3) requires withdrawal and that NH-349 (the 'Privacy choices' link, kept as its own ticket by G7, the decision to build the popup here and narrow NH-349) should land before or with go-live, but step 5 - setting NEXT_PUBLIC_GA_ID, the one action that starts collection - carries no such gate. Nothing in section 8, section 10 or the registry row L11-analytics ties the two, so the condition depends on someone remembering it on launch day. One sentence at step 5 makes it part of the launch steps and leaves G7 intact, because NH-349 stays a separate ticket.",
+      "finding_type": "omission",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "Add to section 8, step 5: 'Set this only after NH-349 (the Privacy choices link) is live or ships in the same release; Known limits explains why. While the variable is unset, Google Analytics never starts.'",
+      "confidence": 75,
+      "evidence": [
+        "GDPR Article 7(3) requires withdrawing to be as easy as agreeing, so NH-349 should land",
+        "ships inside the page. Then redeploy: variables reach new deployments only.",
+        "No way yet to change an answer."
+      ]
+    },
+    {
+      "title": "Dark-theme axe scan targets a state web/ cannot reach",
+      "severity": "P2",
+      "section": "9. Testing - Screenshots and accessibility (axe scan), and 3. The popup - Themes",
+      "why_it_matters": "An implementer following section 9 has to inject a .dark class from the test to scan a theme no visitor can reach: web/app/layout.tsx renders a bare html element with no theme control, and every existing web axe case is light-only. The repo's web visual-regression spec (docs/specs/2026-09-21-web-visual-regression-gate.md, 'Light only') rules this out, calling dark mode unreachable in web/ and a test-injected .dark 'test-only instrumentation of exactly the kind this project bans'. The dark scan would also audit the rest of /play in a theme nobody has audited, so unrelated findings could land on this ticket. Scanning in light only matches the other axe cases and removes the problem.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "In section 9, change the accessibility bullet to: 'An axe scan with the popup open, in the light theme like the rest of the web lane.' In section 3, change the Themes bullet to: 'Themes: colours come from the design tokens; no new colour.'",
+      "confidence": 75,
+      "evidence": [
+        "An axe scan with the popup open, in both themes.",
+        "light and dark from the design tokens; no new colour."
+      ]
+    },
+    {
+      "title": "Three new popup baselines against the lane's shot-count rule",
+      "severity": "P2",
+      "section": "9. Testing - Screenshots and accessibility (new shots), and 1. Packages and files - Changed files",
+      "why_it_matters": "Implementers will add three baselines to a lane whose own header says the shot count is deliberate ('An eleventh should have to justify itself', web/e2e/pages.vr.ts) and which leaves everything narrower than its 900 px shot uncovered on purpose, because desktop web is the v0 target. The spec gives no 'what only this shot covers' for any of them: its no-overlap case already measures the /play placement at desktop and phone width, and on / the card sits over empty page. Every added shot moves whenever client/ changes or AlphaTab is upgraded, so the phone-width and / shots add churn without coverage. One /play shot at desktop width, the placement with the 12 px-over-80 px stacking, is what the lane's rule would accept.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "Cut section 9's new shots to one, /play with the popup at desktop width, and add a sentence saying what only that shot covers (the card's look over the transport row, which the no-overlap case measures but cannot show). Change the 'three new shots' wording in section 1 to match.",
+      "confidence": 75,
+      "evidence": [
+        "New shots, in `Europe/Berlin`: `/` and `/play` with the popup, and `/play` at phone width.",
+        "Screenshot baselines: `/` (the new note) and three new shots with the popup (section 9)."
+      ]
+    },
+    {
+      "title": "Two Sentry filters for Google traffic remove only noise",
+      "severity": "P3",
+      "section": "6. Changes to Sentry's design - Google's breadcrumbs and denyUrls",
+      "why_it_matters": "The PR would add two Sentry-side Google filters whose stated purpose is cosmetic: a beforeBreadcrumb drop of Google's fetch and xhr breadcrumbs ('removes noise, not identifiers') and a denyUrls entry for errors thrown inside Google's script. Neither follows from an existing contract or guards against harm that would go unseen: an error from gtag.js opens a new issue and sends the alert email that NH-124's setup (the Sentry spec) defines, though the visit also counts against its interim health number, and breadcrumb clutter shows in the first report that carries it. Each is a one-line addition at that point, while shipping both now widens this PR's edits to NH-124's unmerged SDK settings and adds a Google host list to keep in step.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "Remove both bullets from section 6 and add one item under Non-goals: 'Sentry keeps Google's fetch and xhr breadcrumbs and any error thrown inside gtag.js; a beforeBreadcrumb host drop or a denyUrls entry is added only if either shows up as noise in Sentry.'",
+      "confidence": 50,
+      "evidence": [
+        "Sentry's scrub already cuts their `?`, so this removes noise, not",
+        "Errors thrown inside Google's script are not ours:"
+      ]
+    }
+  ],
+  "residual_risks": [],
+  "deferred_questions": []
+}
