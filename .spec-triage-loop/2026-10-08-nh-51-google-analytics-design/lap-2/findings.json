@@ -177,14 +177,27 @@
     "2026-10-12, triage invocation 2: the R4 mock (four scenes of /play, checked with elementFromPoint) was a throwaway in the session's scratchpad, not in the repository. It confirmed the review's measurement: with no z-index the white score box is on top at the card's centre and at 'No, send nothing'."
   ],
   "resume": {
-    "next_step": "Write the implementation plan for NH-51 (superpowers:writing-plans) from the spec, on the same branch and draft PR #193, then run the doc-review loop on the plan. This spec review is finished (stopped after lap 2); do not start lap 3.",
-    "command": "Write the implementation plan for NH-51 from .claude/worktrees/pr-162-code-review-5c2901/docs/specs/2026-10-08-nh-51-google-analytics-design.md (draft PR #193), then run the doc-review loop on it",
+    "next_step": "Wait until the Sentry pull request (#191, NH-124) has finished its Task 17, the last task of its implementation plan; #191's description ticks it. Then write the implementation plan for NH-51 (superpowers:writing-plans) from the spec, against #191's code at the commit that finishes Task 17, while #191's code review runs; on the same branch and draft PR #193; then run the doc-review loop on the plan. This spec review is finished (stopped after lap 2); do not start lap 3.",
+    "command": "Write the implementation plan for NH-51 from .claude/worktrees/pr-162-code-review-5c2901/docs/specs/2026-10-08-nh-51-google-analytics-design.md (draft PR #193), against the Sentry code of #191 at the commit that finishes its Task 17. First read resume in .claude/worktrees/pr-162-code-review-5c2901/.spec-triage-loop/2026-10-08-nh-51-google-analytics-design/lap-2/findings.json, then run the doc-review loop on the plan",
     "for_the_plan": [
       "The spec's 'To verify at plan time' list, which now includes F-24's check of how Google's script orders the landing and current page views, and whether its click-ID redaction covers an address our code sets.",
       "F-24's folded residual, unchecked and not in the spec: outside Europe, Google's script is added after `load`, so a click on Play before then may also lose the landing page.",
-      "lap_decision.caveat_for_the_plan: lap 2's new text is unreviewed."
+      "lap_decision.caveat_for_the_plan: lap 2's new text is unreviewed.",
+      "Every line reference into a file #191 adds or changes (instrumentation-client.ts, lib/monitoring/, app/page.tsx, the error pages, app/play/PlayerShell.tsx and OpenFileControl.tsx, e2e helpers) is read at #191's Task 17 commit. #191's code review can still move them, so the plan's first task re-checks every one against master after #191 merges and this branch is rebased on it.",
+      "At #191's f25daa41 (its Task 12, 2026-10-12) the spec's section 6 still matched Sentry's code: init() runs at the top level of web/instrumentation-client.ts; roundedSize() is private (report.ts:57); instrumentsValue() is exported (report.ts:135). Check again at the Task 17 commit."
     ],
-    "written_at": "2026-10-12, the end of lap 2's second triage invocation"
+    "written_at": "2026-10-12, after leocaseiro chose to wait for #191's Task 17 before the plan",
+    "wait_for_sentry": {
+      "decided_by": "leocaseiro, 2026-10-12, in a picker",
+      "choice": "Option 2 of 3: write the plan once #191's Task 17 is done, while #191's code review runs.",
+      "not_chosen": [
+        "Option 1 (recommended): wait for #191 to merge, rebase, then write the plan against master.",
+        "Option 3: write the plan now, against #191 as it stood at Task 12, and re-map after the merge."
+      ],
+      "why_wait_at_all": "Sentry's Task 13 ('the instruments tag follows the score on screen') changes web/app/play/PlayerShell.tsx and web/app/play/OpenFileControl.tsx, where most of the twelve events get their track() call; Task 16 changes web/README.md, cspell.json and both decision files, which the plan also changes. PlayerShell.tsx was 755 lines on master and 1,346 on #191's branch at f25daa41 (Task 12).",
+      "accepted_cost": "#191's code review can still move the code the plan points at, and its review loop runs at the same time as the plan's, so leocaseiro answers two sets of pickers.",
+      "how_to_read_191": "Read #191's files from its branch (claude/sentry-error-monitoring-89abc2) at the Task 17 commit. This branch is still rebased only after #191 merges, as the spec and PR #193 already say."
+    }
   },
   "decided_findings": [
     {
