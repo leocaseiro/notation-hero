@@ -227,6 +227,12 @@ follow-up line above keeps the wording of its day.
 
 **A thrown object's copy is dropped** (leocaseiro, 2026-10-11). Sentry 11 copies a thrown non-`Error` object — a plain object or a browser `Event` — whole into `extra.__serialized__`, which the names filter never read, so a name or the file's contents inside it would have left. The privacy filter's task review found it; leocaseiro chose to delete the field in `beforeSend`, over filtering the strings inside it (the file's contents would still leave) and over wrapping non-errors in `reportError` (an unhandled rejection never passes through it). Spec section 3.2 now says so.
 
+**The crash pages name the site and say what E901 means** (leocaseiro, 2026-10-12). Looking at the
+three crash pages, leocaseiro asked that each show "Notation Hero" as its heading, with the crash
+title below it, and that the code line read "Error E901 — the page crashed unexpectedly." rather
+than the bare code. This replaces the headings and the "Error E901" line that spec section 3.4
+describes; the home page's new paragraph keeps its width.
+
 **Registry:** L11-sentry points at the spec; L11-srcmap reworded (D4); L11-envsecret ⛔ superseded
 and F7-sentry rewritten, because the source-map upload runs inside Vercel's build rather than a
 GitHub Actions job.
