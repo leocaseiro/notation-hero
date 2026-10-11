@@ -1,15 +1,23 @@
 'use client';
 
 import { Button } from '@notation-hero/client';
-
 import { ERROR } from '@notation-hero/shared/error-codes';
+import { useEffect } from 'react';
 
-export default function PlayerError({ reset }: Readonly<{ error: Error; reset: () => void }>) {
+import { reportError } from '../../lib/monitoring/report';
+
+export default function PlayerError({
+  error,
+  reset,
+}: Readonly<{ error: Error; reset: () => void }>) {
+  useEffect(() => reportError(error, { code: ERROR.unexpectedCrash, handled: false }), [error]);
   return (
     <main className="mx-auto flex min-h-dvh max-w-3xl flex-col items-center justify-center gap-6 p-8 text-center">
       <h1 className="text-2xl font-bold">The player stopped unexpectedly</h1>
+      {/* Not "a report was sent": an ad blocker may have stopped it, and this page cannot know. */}
       <p className="max-w-prose text-muted-foreground">
-        Nothing you opened was sent anywhere. Try again, or reload the page.
+        Errors are reported automatically — without your file, its name, or the music in it. Try
+        again, or reload the page.
       </p>
       <p className="text-sm text-muted-foreground">Error {ERROR.unexpectedCrash}</p>
       <Button className="min-h-11 px-8" onClick={reset}>
