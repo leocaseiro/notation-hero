@@ -80,9 +80,11 @@ vi.mock('../../lib/monitoring/scrub', async (importOriginal) => {
 // Imported after the vi.mock calls on purpose: Vitest hoists them, and keeping the import below
 // them makes the dependency order readable rather than surprising.
 import { dropPlaybackSelection } from '../../lib/alphatab/playback-selection';
+import { addInstrumentsTag } from '../../lib/monitoring/report';
 import { rememberOpenFile, rememberScore, scrubEvent } from '../../lib/monitoring/scrub';
 import { PlayerShell } from './PlayerShell';
 
+import type * as Sentry from '@sentry/nextjs';
 import type { ReactNode } from 'react';
 
 /** Delivers one AlphaTab event to every component subscribed to it. */
@@ -135,6 +137,24 @@ const loadingBarGone = () =>
     () => expect(screen.queryByRole('progressbar', { name: 'Loading the player' })).toBeNull(),
     { timeout: 3000 },
   );
+
+/** The instruments tag a report captured on `pathname` would carry right now. */
+function tagNow(pathname = '/play'): unknown {
+  history.replaceState(null, '', pathname);
+  const event: Sentry.Event = {};
+  addInstrumentsTag(event);
+  return event.tags?.instruments;
+}
+
+/** Each report's tag, read at the moment it was captured, as Sentry's hook reads it. */
+let atCapture: unknown[] = [];
+function readTagAtCapture(): void {
+  atCapture = [];
+  vi.mocked(captureException).mockImplementation(() => {
+    atCapture.push(tagNow());
+    return 'event-id';
+  });
+}
 
 beforeEach(() => {
   handlers.clear();
@@ -333,4 +353,134 @@ test('a dropped file is remembered by name before it is read, even when the read
   const [remembered] = vi.mocked(rememberOpenFile).mock.invocationCallOrder;
   const [tried] = read.mock.invocationCallOrder;
   expect(remembered).toBeLessThan(tried ?? 0);
+});
+
+test('the tag is sample once the player mounts', () => {
+  render(<PlayerShell />);
+  expect(tagNow()).toBe('sample');
+});
+
+test('opening Punk.gp sets drums,030', async () => {
+  currentApi = standInApi();
+  render(<PlayerShell />);
+  pick(fixture('Punk.gp'));
+  await waitFor(() => expect(tagNow()).toBe('drums,030'), { timeout: 5000 });
+});
+
+test('after an unmount, /play keeps the last score and / has none; a new player says sample', async () => {
+  currentApi = standInApi();
+  const first = render(<PlayerShell />);
+  pick(fixture('Punk.gp'));
+  await waitFor(() => expect(tagNow()).toBe('drums,030'), { timeout: 5000 });
+
+  first.unmount();
+  // The E901 that /play's error page sends after a crash: React has already unmounted the player.
+  expect(tagNow('/play')).toBe('drums,030');
+  expect(tagNow('/')).toBeUndefined();
+
+  render(<PlayerShell />);
+  expect(tagNow('/play')).toBe('sample');
+});
+
+test('an open left running across an unmount sets nothing when it ends', async () => {
+  currentApi = standInApi();
+  const file = fixture('Punk.gp');
+  const bytes = await file.arrayBuffer();
+  // Set as soon as the read starts: picking the file calls arrayBuffer() at once.
+  let release!: (value: ArrayBuffer) => void;
+  file.arrayBuffer = () =>
+    new Promise((resolve) => {
+      release = resolve;
+    });
+
+  const first = render(<PlayerShell />);
+  pick(file);
+  first.unmount();
+  render(<PlayerShell />);
+  release(bytes);
+
+  // The count returns to zero once the old open ends, and the old player set nothing.
+  await waitFor(() => expect(tagNow()).toBe('sample'), { timeout: 5000 });
+});
+
+test('with Punk.gp open, a non-score and a Cancel each leave drums,030, and the E103 is untagged', async () => {
+  currentApi = standInApi();
+  const confirm = vi.spyOn(globalThis, 'confirm').mockReturnValue(true);
+  render(<PlayerShell />);
+  pick(fixture('Punk.gp'));
+  await waitFor(() => expect(tagNow()).toBe('drums,030'), { timeout: 5000 });
+
+  readTagAtCapture();
+  pick(new File(['this is not a guitar pro file'], 'not-a-score.gp'));
+  await waitFor(() => expect(reported('E103')).toHaveLength(1), { timeout: 5000 });
+  expect(atCapture).toEqual([undefined]);
+  await waitFor(() => expect(tagNow()).toBe('drums,030'));
+
+  confirm.mockReturnValue(false);
+  pick(fixture('guitar-no-percussion.gp'));
+  expect(tagNow()).toBeUndefined(); // the open runs
+  await waitFor(() => expect(confirm).toHaveBeenCalledTimes(2));
+  await waitFor(() => expect(tagNow()).toBe('drums,030'));
+});
+
+test('an E105 before the swap leaves the old value; one just after it, the new one', async () => {
+  currentApi = standInApi();
+  render(<PlayerShell />);
+  readTagAtCapture();
+
+  vi.mocked(dropPlaybackSelection).mockImplementationOnce(() => {
+    throw new Error('a bug of ours, before the swap');
+  });
+  pick(fixture('Punk.gp'));
+  await waitFor(() => expect(reported('E105')).toHaveLength(1), { timeout: 5000 });
+  await waitFor(() => expect(tagNow()).toBe('sample'));
+
+  vi.spyOn(toast, 'success').mockImplementationOnce(() => {
+    throw new Error('a bug of ours, just after the swap');
+  });
+  pick(fixture('Punk.gp'));
+  await waitFor(() => expect(reported('E105')).toHaveLength(2), { timeout: 5000 });
+  await waitFor(() => expect(tagNow()).toBe('drums,030'));
+  expect(atCapture).toEqual([undefined, undefined]);
+});
+
+test("a late score-loaded event for the bundled beat keeps the file's value", async () => {
+  currentApi = standInApi();
+  render(<PlayerShell />);
+  pick(fixture('Punk.gp'));
+  await waitFor(() => expect(tagNow()).toBe('drums,030'), { timeout: 5000 });
+
+  const sample = engine.importer.ScoreLoader.loadScoreFromBytes(
+    new Uint8Array(readFileSync(path.join(process.cwd(), 'public/notation/1-beat.gp'))),
+  );
+  act(() => deliver('scoreLoaded', sample));
+  expect(tagNow()).toBe('drums,030');
+});
+
+test('two opens at once: the one that returns early still puts the tag back', async () => {
+  currentApi = standInApi();
+  const loading = vi.spyOn(toast, 'loading');
+  render(<PlayerShell />);
+
+  // A picked file still being read…
+  const picked = fixture('Punk.gp');
+  const bytes = await picked.arrayBuffer();
+  // Set as soon as the read starts: picking the file calls arrayBuffer() at once.
+  let release!: (value: ArrayBuffer) => void;
+  picked.arrayBuffer = () =>
+    new Promise((resolve) => {
+      release = resolve;
+    });
+  pick(picked);
+
+  // …while a dropped file opens. Once the drop is in flight, the pick's read finishes, and its
+  // open returns early (one open at a time).
+  fireEvent.drop(screen.getByTestId('drop-zone'), {
+    dataTransfer: { files: [fixture('guitar-no-percussion.gp')] },
+  });
+  await waitFor(() => expect(loading).toHaveBeenCalled());
+  release(bytes);
+
+  // Both ended: the count is back to zero, and the tag names the dropped file's one guitar.
+  await waitFor(() => expect(tagNow()).toBe('025'), { timeout: 5000 });
 });

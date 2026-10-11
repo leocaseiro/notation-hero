@@ -198,3 +198,77 @@ test('an engine that never loads sends one unhandled E201', async ({ page }) => 
   expect(reports[0]?.level).toBe('error');
   expect(reports[0]?.exception?.values?.[0]?.mechanism?.handled).toBe(false);
 });
+
+// Case 1. Before any file is opened, an error on /play carries the bundled beat's value.
+test('on /play, before any file opens, an error carries instruments: sample', async ({ page }) => {
+  const sentry = await recordSentry(page);
+  await page.goto('/play');
+  await expect(page.getByTestId('notation-surface').locator('svg').first()).toBeVisible({
+    timeout: 30_000,
+  });
+  const sentinel = await throwSentinel(page, sentry, 'sentinel: on the bundled beat');
+  expect(sentinel.level).toBe('error');
+  expect(sentinel.tags?.instruments).toBe('sample');
+});
+
+// Case 4, first half. guitar-no-percussion.gp reaches NH-335 when the bundled beat arrives while
+// the file opens — a race, so the file is opened again until the throw is seen (measured: it never
+// happens when the beat is held back, so the late-beat half below cannot wait for it). None of
+// those throws may be sent, and the next report carries the file's one track — an acoustic guitar,
+// program 25 — not the bundled beat's value. When NH-335 is fixed, delete the loop and what waits
+// for it; keep the sentinel and its checks.
+test("NH-335 is never sent, and the next report carries the opened file's instruments", async ({
+  page,
+}) => {
+  const nh335 = KNOWN_ENGINE_NOISE.find((noise) => noise.ticket === 'NH-335')?.message ?? '';
+  const sentry = await recordSentry(page);
+  let nh335Seen = false;
+  page.on('pageerror', (error) => {
+    if (error.message.includes(nh335)) nh335Seen = true;
+  });
+
+  for (let attempt = 0; attempt < 10 && !nh335Seen; attempt += 1) {
+    await page.goto('/play');
+    await page.getByTestId('open-file-input').setInputFiles('e2e/fixtures/guitar-no-percussion.gp');
+    await expect(page.getByTestId('loaded-notation-name')).toHaveAttribute(
+      'data-file',
+      'guitar-no-percussion.gp',
+      { timeout: 30_000 },
+    );
+    await page.waitForTimeout(1000);
+  }
+  // Without the throw this case proves nothing about it.
+  expect(nh335Seen, 'NH-335 never fired in 10 tries').toBe(true);
+
+  const sentinel = await throwSentinel(page, sentry, 'sentinel: after NH-335');
+  expect(sentinel.tags?.instruments).toBe('025');
+  expect(sentry.events()).toHaveLength(1);
+});
+
+// Case 4, second half. The bundled beat arrives after the file (the hold-back the late-sample case
+// in player.e2e.ts uses), and its score-loaded event must not put `sample` back.
+test("a bundled beat that arrives after the file leaves the file's instruments in place", async ({
+  page,
+}) => {
+  const sentry = await recordSentry(page);
+  await page.route('**/notation/1-beat.gp', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 4000));
+    await route.continue();
+  });
+  const lateBeat = page.waitForResponse('**/notation/1-beat.gp');
+
+  await page.goto('/play');
+  await page.getByTestId('open-file-input').setInputFiles('e2e/fixtures/guitar-no-percussion.gp');
+  await expect(page.getByTestId('loaded-notation-name')).toHaveAttribute(
+    'data-file',
+    'guitar-no-percussion.gp',
+    { timeout: 30_000 },
+  );
+  await lateBeat;
+  // Let the late beat's score-loaded event run, and the re-assert of the file that follows it.
+  await page.waitForTimeout(2000);
+
+  const sentinel = await throwSentinel(page, sentry, 'sentinel: after the late beat');
+  expect(sentinel.tags?.instruments).toBe('025');
+  expect(sentry.events()).toHaveLength(1);
+});

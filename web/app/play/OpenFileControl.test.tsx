@@ -3,7 +3,9 @@ import { captureException } from '@sentry/nextjs';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { addInstrumentsTag, tagInstruments } from '../../lib/monitoring/report';
 import { OpenFileControl, fileType } from './OpenFileControl';
+import type * as Sentry from '@sentry/nextjs';
 
 describe('fileType', () => {
   it('names an extension the picker accepts, in lower case', () => {
@@ -33,6 +35,13 @@ function unreadable(name: string): File {
     Promise.reject(new DOMException('The file could not be read.', 'NotReadableError'));
   return file;
 }
+
+/** The instruments tag Sentry's hook would add to a report captured right now. */
+const tagNow = () => {
+  const event: Sentry.Event = {};
+  addInstrumentsTag(event);
+  return event.tags?.instruments;
+};
 
 describe('the open-file catch', () => {
   beforeEach(() => {
@@ -86,5 +95,28 @@ describe('the open-file catch', () => {
       'song.gp could not be opened. Something went wrong on our side, not with your file. Try again, or reload the page. (Error E105)',
       { id: 'E105:song.gp' },
     );
+  });
+
+  it('carries no instruments tag on either failure, and puts it back once the open ends', async () => {
+    // What Sentry's hook reads at the moment of each report, on /play.
+    history.replaceState(null, '', '/play');
+    const atCapture: unknown[] = [];
+    vi.mocked(captureException).mockImplementation(() => {
+      atCapture.push(tagNow());
+      return 'event-id';
+    });
+    tagInstruments('drums,030');
+
+    const { unmount } = render(
+      <OpenFileControl onNotation={() => Promise.reject(new Error('our bug'))} />,
+    );
+    pick(unreadable('first.gp'));
+    await waitFor(() => expect(atCapture).toHaveLength(1));
+    pick(new File(['bytes'], 'second.gp'));
+    await waitFor(() => expect(atCapture).toHaveLength(2));
+
+    expect(atCapture).toEqual([undefined, undefined]);
+    expect(tagNow()).toBe('drums,030');
+    unmount();
   });
 });

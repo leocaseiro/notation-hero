@@ -37,7 +37,15 @@ import {
 } from '../../lib/alphatab/settings-storage';
 import { persistTransport, TRANSPORT_LABELS } from '../../lib/alphatab/transport-storage';
 import { setAlphaTabValue, useAlphaTab, useAlphaTabEvent } from '../../lib/alphatab/useAlphaTab';
-import { isStorageRefusal, noteError, reportError } from '../../lib/monitoring/report';
+import {
+  instrumentsValue,
+  isStorageRefusal,
+  noteError,
+  reportError,
+  restoreInstruments,
+  suspendInstruments,
+  tagInstruments,
+} from '../../lib/monitoring/report';
 import { rememberOpenFile, rememberScore } from '../../lib/monitoring/scrub';
 import { NotationSurface } from './NotationSurface';
 import {
@@ -132,6 +140,18 @@ function Player() {
   // because the shell is what knows an open finished; the picker only hands over bytes.
   const [announcement, setAnnouncement] = useState('');
   const playRef = useRef<HTMLButtonElement | null>(null);
+  // Whether this player is still mounted. An open that outlives its player must not set the tag
+  // for a page that has moved on; a ref, because the open's closure outlives the render.
+  const mounted = useRef(false);
+  useEffect(() => {
+    mounted.current = true;
+    // The bundled one-track beat AlphaTab loads on every visit is on screen first, and has its own
+    // value, so its errors are found apart from a visitor's own drum chart.
+    tagInstruments('sample');
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   // The playhead. This IS product state — the Scrubber is a controlled component over it — which is
   // why it may live here when a `data-position` DOM hook may not: the rule bans test-only
@@ -944,6 +964,19 @@ function Player() {
       // Opening a file is a deliberate new attempt, so a crash reported against the PREVIOUS
       // score must not keep the player marked failed forever — nothing else ever sets this back.
       setLoadFailed(false);
+      // The tag follows the score on screen: set just before the swap, from the parsed score —
+      // never from AlphaTab's score-loaded event, which also fires for the bundled beat, sometimes
+      // after the visitor's file. A throw while computing it counts as before the swap.
+      if (mounted.current) {
+        tagInstruments(
+          instrumentsValue(
+            score.tracks.map((track) => ({
+              program: track.playbackInfo.program,
+              isPercussion: track.staves.some((staff) => staff.isPercussion),
+            })),
+          ),
+        );
+      }
       setNotation({ name: next.name, score });
       setOpening(false);
       // The new score is on screen from here, so a bug of ours in the steps left must not say the
@@ -1019,6 +1052,7 @@ function Player() {
     async (file: File | undefined) => {
       if (!file) return;
       rememberOpenFile(file.name);
+      suspendInstruments();
       // Set between the two steps, as in OpenFileControl's `accept`: before it, the visitor's file
       // (E101 or E102, a warning); after it, our own code (E105, an error).
       let read = false;
@@ -1037,6 +1071,8 @@ function Player() {
           id: `${code}:${file.name}`,
         });
         setAnnouncement(`${file.name} could not be opened. Error ${code}.`);
+      } finally {
+        restoreInstruments();
       }
     },
     [requestNotation],
