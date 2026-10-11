@@ -171,7 +171,9 @@ Details ▾
 
 - **Where:** a floating card, centred at the bottom. On `/play` it sits 12 px above the 80 px
   transport row, so it never covers ▶; on `/`, 24 px from the bottom. At most 560 px wide; on a
-  phone, the full width less the 16 px gutters, with the buttons stacked.
+  phone, the full width less the 16 px gutters, with the buttons stacked. At most as tall as the
+  window less its bottom offset and 16 px; past that, the card scrolls inside itself, so its
+  question and every answer stay reachable at 400% zoom.
 - **Non-blocking:** no backdrop and no focus trap. The player works while the card waits, and
   nothing is sent meanwhile. It returns on every page load until answered.
 - **Files pass through it:** the card floats over the player's drop zone but is not part of it.
@@ -479,6 +481,8 @@ hands Google, in `window.dataLayer`; what Google's script sends is checked by ha
   Without the wait, an empty queue would pass.
 - **No overlap:** the popup's box never intersects ▶ or the transport row, at desktop and phone
   width, measured the way `web/e2e/toast-occlusion.e2e.ts` measures the toaster.
+- **Zoomed in:** in Berlin, on `/` at 320 × 256 (a 1280 × 1024 screen at 400% zoom), with Details
+  open: the card stays inside the window, and each answer scrolls fully into view inside it.
 - **Drop through the card:** in Berlin, with the card showing, drop `Punk.gp` on the card's centre
   through Chrome's own drag pipeline, as `web/e2e/player.e2e.ts` does. The file opens, and no new
   tab opens.
