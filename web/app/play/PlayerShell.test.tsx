@@ -64,9 +64,17 @@ vi.mock('../../lib/alphatab/useAlphaTab', async () => {
 // ours there.
 vi.mock('../../lib/alphatab/playback-selection', () => ({ dropPlaybackSelection: vi.fn() }));
 
+// Wrapped so a case can see WHEN the score's names were remembered. Its behaviour is unchanged.
+vi.mock('../../lib/monitoring/scrub', async (importOriginal) => {
+  const real = (await importOriginal()) as Record<string, unknown>;
+  const rememberScore = real.rememberScore as (score: unknown) => void;
+  return { ...real, rememberScore: vi.fn(rememberScore) };
+});
+
 // Imported after the vi.mock calls on purpose: Vitest hoists them, and keeping the import below
 // them makes the dependency order readable rather than surprising.
 import { dropPlaybackSelection } from '../../lib/alphatab/playback-selection';
+import { rememberScore, scrubEvent } from '../../lib/monitoring/scrub';
 import { PlayerShell } from './PlayerShell';
 
 import type { ReactNode } from 'react';
@@ -273,4 +281,32 @@ test('a dropped file whose open fails after the swap says it opened, not that it
     { id: 'E105:Punk.gp' },
   );
   expect(screen.queryByText('Punk.gp could not be opened. Error E105.')).toBeNull();
+});
+
+test("the score's names are remembered before the swap, so an E105 quoting one is filtered", async () => {
+  currentApi = standInApi();
+  // Earlier cases opened files too; only this case's call may count.
+  vi.mocked(rememberScore).mockClear();
+  vi.mocked(dropPlaybackSelection).mockImplementation(() => {
+    throw new Error("Cannot read properties of undefined (reading 'Distortion Guitar')");
+  });
+  render(<PlayerShell />);
+  pick(fixture('Punk.gp'));
+  await waitFor(() => expect(reported('E105')).toHaveLength(1), { timeout: 5000 });
+
+  // The names arrived before the step that threw. The list lasts the whole tab, so the order of
+  // the two calls is the proof, whatever an earlier case in this file has already remembered.
+  const [remembered] = vi.mocked(rememberScore).mock.invocationCallOrder;
+  const [threw] = vi.mocked(dropPlaybackSelection).mock.invocationCallOrder;
+  expect(remembered).toBeLessThan(threw ?? 0);
+
+  // And once filtered, the report's message holds no name.
+  const [[bug]] = reported('E105');
+  const event = scrubEvent({
+    type: undefined,
+    exception: { values: [{ value: (bug as Error).message }] },
+  });
+  expect(event.exception?.values?.[0]?.value).toBe(
+    "Cannot read properties of undefined (reading '[file]')",
+  );
 });

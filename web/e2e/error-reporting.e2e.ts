@@ -67,6 +67,48 @@ test('a file that is not a score sends an E103 warning with its type and size, n
   expect(sentry.raw().join('\n')).not.toContain('secret-song-name');
 });
 
+// Case 3. `transposed.alphatex` has a title ("Transposed") and two named tracks ("Lead",
+// "Rhythm"), so every kind of name the filter knows is present.
+test('a report holds no click, no console line, and no name from the file', async ({ page }) => {
+  const sentry = await recordSentry(page);
+  await page.goto('/play');
+  await page.getByTestId('open-file-input').setInputFiles('e2e/fixtures/transposed.alphatex');
+  await expect(page.getByTestId('loaded-notation-name')).toHaveAttribute(
+    'data-file',
+    'transposed.alphatex',
+    { timeout: 30_000 },
+  );
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+
+  // Solo a track from the keyboard, ON the button itself: a click lands on the icon inside it,
+  // which can leave the button beyond Sentry's 80-character limit for a click's ancestors — and
+  // then no label is recorded even with click breadcrumbs on, so the case would test nothing.
+  await page.getByTestId('tracks-trigger').click();
+  await page.getByRole('button', { name: 'Solo Rhythm' }).focus();
+  await page.keyboard.press('Enter');
+  await page.evaluate(() => {
+    console.error('console-marker-7f3a');
+  });
+
+  const report = await throwSentinel(
+    page,
+    sentry,
+    "privacy probe: (reading 'Rhythm')",
+    "privacy probe: (reading '[file]')",
+  );
+  expect(report.breadcrumbs?.some((crumb) => crumb.category?.startsWith('ui.'))).toBe(false);
+  const raw = sentry.raw().join('\n');
+  for (const text of [
+    'transposed.alphatex',
+    'Transposed',
+    'Rhythm',
+    'Lead',
+    'console-marker-7f3a',
+  ]) {
+    expect(raw, `the envelope holds "${text}"`).not.toContain(text);
+  }
+});
+
 // Case 6. NH-338's throw breaks nothing a person can see; sent as it is, it would use the monthly
 // quota on a bug that is already known.
 test('known engine noise never reaches Sentry (NH-338)', async ({ page }) => {

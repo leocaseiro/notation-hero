@@ -38,6 +38,7 @@ import {
 import { persistTransport, TRANSPORT_LABELS } from '../../lib/alphatab/transport-storage';
 import { setAlphaTabValue, useAlphaTab, useAlphaTabEvent } from '../../lib/alphatab/useAlphaTab';
 import { isStorageRefusal, noteError, reportError } from '../../lib/monitoring/report';
+import { rememberOpenFile, rememberScore } from '../../lib/monitoring/scrub';
 import { NotationSurface } from './NotationSurface';
 import {
   OpenFileControl,
@@ -917,6 +918,11 @@ function Player() {
         return;
       }
 
+      // Remembered now, before anything else can fail: an E105 thrown below, or a crash while the
+      // header draws the new title, keeps its message and is sent before AlphaTab's score-loaded
+      // event. The names filter removes only names it has seen.
+      rememberScore(score);
+
       // Pause only on the confirm path, to stop the synth before renderScore swaps the score.
       if (wasPlaying) api?.pause();
       // A bar range selected in the OLD score must not outlive it. AlphaTab keeps the main-thread
@@ -1012,6 +1018,7 @@ function Player() {
   const acceptDropped = useCallback(
     async (file: File | undefined) => {
       if (!file) return;
+      rememberOpenFile(file.name);
       // Set between the two steps, as in OpenFileControl's `accept`: before it, the visitor's file
       // (E101 or E102, a warning); after it, our own code (E105, an error).
       let read = false;

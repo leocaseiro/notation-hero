@@ -5,6 +5,7 @@ import { ERROR } from '@notation-hero/shared/error-codes';
 import { useId, useRef } from 'react';
 
 import { reportError } from '../../lib/monitoring/report';
+import { rememberOpenFile } from '../../lib/monitoring/scrub';
 import type { LoadedNotation } from './PlayerShell';
 import type { ErrorCode } from '@notation-hero/shared/error-codes';
 
@@ -91,6 +92,7 @@ export function OpenFileControl({ onNotation }: Readonly<OpenFileControlProps>) 
   // would produce nothing at all: no toast, no error state, just a control the user keeps pressing.
   const accept = async (file: File | undefined) => {
     if (!file) return;
+    rememberOpenFile(file.name);
     // Set between the two steps. Before it, a failure is the visitor's file: E101 or E102, a
     // warning. After it, our own code failed loading a file that was read fine: E105, an error.
     let read = false;
