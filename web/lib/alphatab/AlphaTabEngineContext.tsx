@@ -1,7 +1,9 @@
 'use client';
 
+import { ERROR } from '@notation-hero/shared/error-codes';
 import { createContext, useContext, useEffect, useState } from 'react';
 
+import { reportError } from '../monitoring/report';
 import { loadAlphaTabEngine } from './engine';
 import type { AlphaTabEngine } from './engine';
 import type { ReactNode } from 'react';
@@ -34,6 +36,10 @@ export function AlphaTabEngineProvider({ children }: Readonly<{ children: ReactN
       })
       .catch((error: unknown) => {
         if (!disposed) {
+          // E201: the player never started. Unhandled, so the visit counts against the health
+          // number. Reported where the message is shown, so React's development double-mount —
+          // which disposes the first provider — cannot send it twice.
+          reportError(error, { code: ERROR.engineImport, handled: false });
           setState({
             engine: null,
             error: error instanceof Error ? error : new Error(String(error)),

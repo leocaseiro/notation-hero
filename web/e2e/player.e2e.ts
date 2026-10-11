@@ -3,6 +3,7 @@ import path from 'node:path';
 import { expect, test } from '@playwright/test';
 
 import { failOnUnexpectedPageErrors } from './page-errors';
+import { recordSentry, withCode } from './sentry-envelopes';
 
 import type { Locator, Page } from '@playwright/test';
 
@@ -1853,6 +1854,7 @@ test('a changed setting survives a reload', async ({ page }) => {
 // outside Zoom's 0.25-3 range, and the field clamps only on blur/Enter, so closing a tab mid-edit
 // is a real way to store it.
 test('a single out-of-range setting is corrected and the warning NAMES it', async ({ page }) => {
+  const sentry = await recordSentry(page);
   await page.addInitScript(() => {
     globalThis.localStorage.setItem(
       'notation-hero.player-settings',
@@ -1867,6 +1869,9 @@ test('a single out-of-range setting is corrected and the warning NAMES it', asyn
   // It must NOT claim a reset: the other settings were untouched, and Zoom landed on its maximum
   // rather than its default.
   await expect(toast).not.toContainText('reset to the defaults');
+  await expect
+    .poll(() => withCode(sentry, 'E601').map((event) => event.level))
+    .toEqual(['warning']);
   await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
   // Clamped to the maximum, not dropped to the default of 1.
   await expect
@@ -1882,6 +1887,7 @@ test('a single out-of-range setting is corrected and the warning NAMES it', asyn
 test('a corrupt stored value resets with a toast, and the player still starts', async ({
   page,
 }) => {
+  const sentry = await recordSentry(page);
   await page.addInitScript(() => {
     globalThis.localStorage.setItem('notation-hero.player-settings', '{broken');
   });
@@ -1889,6 +1895,9 @@ test('a corrupt stored value resets with a toast, and the player still starts', 
 
   await expect(page.locator('[data-sonner-toast]')).toContainText('reset to the defaults');
   await expect(page.locator('[data-sonner-toast]')).toContainText('Error E603');
+  await expect
+    .poll(() => withCode(sentry, 'E603').map((event) => event.level))
+    .toEqual(['warning']);
   await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
   await expect
     .poll(async () => {
@@ -1911,6 +1920,7 @@ test('a corrupt stored value resets with a toast, and the player still starts', 
 test('a single out-of-range transport value is corrected and the warning NAMES it', async ({
   page,
 }) => {
+  const sentry = await recordSentry(page);
   await page.addInitScript(() => {
     globalThis.localStorage.setItem(
       'notation-hero.transport',
@@ -1925,6 +1935,9 @@ test('a single out-of-range transport value is corrected and the warning NAMES i
   // It must NOT claim a reset: Loop was untouched, and the metronome landed on its maximum rather
   // than on its default of off.
   await expect(toast).not.toContainText('reset to the defaults');
+  await expect
+    .poll(() => withCode(sentry, 'E601').map((event) => event.level))
+    .toEqual(['warning']);
   await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
 
   // Clamped to the top of its range — 1, where the shipped default is 0 — and Loop survived intact.
@@ -1945,6 +1958,7 @@ test('a single out-of-range transport value is corrected and the warning NAMES i
 test('a corrupt stored transport resets with a toast, and the player still starts', async ({
   page,
 }) => {
+  const sentry = await recordSentry(page);
   await page.addInitScript(() => {
     globalThis.localStorage.setItem('notation-hero.transport', '{broken');
   });
@@ -1952,6 +1966,9 @@ test('a corrupt stored transport resets with a toast, and the player still start
 
   await expect(page.locator('[data-sonner-toast]')).toContainText('reset to the defaults');
   await expect(page.locator('[data-sonner-toast]')).toContainText('Error E603');
+  await expect
+    .poll(() => withCode(sentry, 'E603').map((event) => event.level))
+    .toEqual(['warning']);
   await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
 
   await expect(page.getByTestId('toggle-loop')).toHaveAttribute('aria-pressed', 'false');

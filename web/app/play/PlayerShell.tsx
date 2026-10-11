@@ -256,6 +256,20 @@ function Player() {
           ? `Some settings were not valid and have been corrected: ${named.join(', ')}. (Error ${ERROR.settingsRepaired})`
           : `Your saved settings could not be read, so they were reset to the defaults. (Error ${ERROR.settingsUnreadable})`,
       );
+      // A corrupt stored document means our own code wrote something bad, or an update changed
+      // which values are valid: a bug signal, so a warning. The repaired keys go as dot-paths —
+      // the schema's names, never a stored value.
+      if (named.length > 0) {
+        reportError(new Error(`Player settings repaired: ${restored.repaired.join(', ')}`), {
+          code: ERROR.settingsRepaired,
+          level: 'warning',
+        });
+      } else {
+        reportError(new Error('Player settings could not be read'), {
+          code: ERROR.settingsUnreadable,
+          level: 'warning',
+        });
+      }
     }, 0);
     return () => clearTimeout(id);
   }, [restored]);
@@ -308,8 +322,10 @@ function Player() {
     // practice, but the cost of being wrong is a page with no player.
     try {
       engineSettings.fillFromJson(settings as AlphaTab.json.SettingsJson);
-    } catch {
-      // Keep the defaults already on `engineSettings`.
+    } catch (error) {
+      // Keep the defaults already on `engineSettings`. The per-key merge makes this unreachable in
+      // practice, so a throw here is a bug of ours.
+      reportError(error);
     }
   });
 
@@ -569,6 +585,17 @@ function Player() {
           ? `Some settings were not valid and have been corrected: ${named.join(', ')}. (Error ${ERROR.settingsRepaired})`
           : `Your saved playback settings could not be read, so they were reset to the defaults. (Error ${ERROR.settingsUnreadable})`,
       );
+      if (named.length > 0) {
+        reportError(new Error(`Transport values repaired: ${transportRepaired.join(', ')}`), {
+          code: ERROR.settingsRepaired,
+          level: 'warning',
+        });
+      } else {
+        reportError(new Error('Transport values could not be read'), {
+          code: ERROR.settingsUnreadable,
+          level: 'warning',
+        });
+      }
     }, 0);
     return () => clearTimeout(id);
   }, [transportRepaired]);
@@ -724,7 +751,8 @@ function Player() {
       if (action === 'export-midi') {
         try {
           api.downloadMidi();
-        } catch {
+        } catch (error) {
+          reportError(error, { code: ERROR.exportFailed });
           toast.error(`That file could not be exported. (Error ${ERROR.exportFailed})`);
         }
         return;
@@ -742,7 +770,8 @@ function Player() {
         link.download = `${api.score.title || 'score'}.gp`;
         link.click();
         URL.revokeObjectURL(url);
-      } catch {
+      } catch (error) {
+        reportError(error, { code: ERROR.exportFailed });
         toast.error(`That file could not be exported. (Error ${ERROR.exportFailed})`);
       }
     },
@@ -786,7 +815,11 @@ function Player() {
         // Opened before the engine arrived — a very fast pick, or a stalled engine import. Wait on
         // the SAME memoised import the provider is waiting on. `notation` is still null in that
         // window, so nothing the person opened can be lost and there is nothing to confirm.
-        at = await loadAlphaTabEngine().catch(() => null);
+        at = await loadAlphaTabEngine().catch((error: unknown) => {
+          // A breadcrumb only: the provider has already reported the cause as E201.
+          noteError(error, 'The engine was not there when a file was opened (E205)');
+          return null;
+        });
         if (!at) {
           // The import rejection is cached for the whole page ("one failed import is permanent"),
           // and the banner that reported it is dismissible — so by now there may be nothing on

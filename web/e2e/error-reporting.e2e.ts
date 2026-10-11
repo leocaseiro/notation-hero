@@ -1,7 +1,8 @@
 import { expect, test } from '@playwright/test';
 
 import { KNOWN_ENGINE_NOISE } from '../lib/monitoring/known-engine-noise';
-import { recordSentry, throwSentinel } from './sentry-envelopes';
+import { abortEngine } from './player-states';
+import { recordSentry, throwSentinel, withCode } from './sentry-envelopes';
 
 // The reporting and privacy cases (spec section 6). Every case throws on purpose, so this file
 // does NOT install failOnUnexpectedPageErrors — only *.vr.ts files must. Each case reads event
@@ -113,4 +114,18 @@ test('storage the browser blocks leaves a breadcrumb, never a report of its own'
         crumb.data?.error === 'SecurityError',
     ),
   ).toBe(true);
+});
+
+// Case 8. No case in player.e2e.ts aborts the engine module, so E201 gets its own.
+test('an engine that never loads sends one unhandled E201', async ({ page }) => {
+  // The recorder FIRST: the import fails during abortEngine's own first load of the page.
+  const sentry = await recordSentry(page);
+  await abortEngine(page);
+  await expect(page.getByTestId('engine-error')).toContainText('Error E201', { timeout: 15_000 });
+
+  await throwSentinel(page, sentry, 'sentinel: after E201');
+  const reports = withCode(sentry, 'E201');
+  expect(reports).toHaveLength(1);
+  expect(reports[0]?.level).toBe('error');
+  expect(reports[0]?.exception?.values?.[0]?.mechanism?.handled).toBe(false);
 });
