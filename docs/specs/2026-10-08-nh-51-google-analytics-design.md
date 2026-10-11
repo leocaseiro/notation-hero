@@ -135,10 +135,16 @@ export type Purpose = 'errors' | 'visits' | 'analytics';
 
 /** True for a time zone in Europe — and for an unknown one, to be safe. */
 export function asksFirst(timeZone?: string): boolean;
-/** The saved answer; null when there is none, the value is corrupt, or storage is blocked. */
+/**
+ * The saved answer to the current `version`; null when there is none, the value is corrupt,
+ * storage is blocked, or the answer is to an older `version`.
+ */
 export function savedChoice(): PrivacyChoice | null;
 export function saveChoice(choice: PrivacyChoice): void;
-/** The table above: an answer, saved or kept in memory, wins in any time zone. */
+/**
+ * The table above: a current answer, saved or kept in memory, wins in any time zone. An answer
+ * to an older `version` never allows more than it did.
+ */
 export function allowed(purpose: Purpose): boolean;
 ```
 
@@ -153,8 +159,11 @@ export function allowed(purpose: Purpose): boolean;
   `MF`). Not from `zone1970.tab`: it files Iceland, Réunion, Mayotte, Guadeloupe and Saint-Martin
   under `Africa/Abidjan`, `Asia/Dubai`, `Africa/Nairobi` and `America/Puerto_Rico`.
 - **Kept in this browser:** the `localStorage` key `notation-hero.privacy-choice` holds
-  `{"choice":"all","version":1}`. `version` lets a later change to the question ask again. Keeping
-  the answer needs no consent: the CNIL lists trackers that store the user's choice as exempt.
+  `{"choice":"all","version":1}`. `version` lets a later change to the question ask again. An
+  answer saved under an older `version` counts as no answer, but never allows more than it did: in
+  Europe the popup asks again and nothing starts meanwhile, and elsewhere an old `none` or `errors`
+  still holds until the visitor changes it. Keeping the answer needs no consent: the CNIL lists
+  trackers that store the user's choice as exempt.
 - **Blocked storage** (a private window) reads as "not answered", so the popup returns on each
   visit. An answer given there still holds for the rest of the visit: it is kept in memory when it
   cannot be saved. Both failures go to `noteError()`, never a silent catch (Sentry's lint rule and
@@ -456,7 +465,8 @@ An agent may not create accounts.
 - `savedChoice()` and `saveChoice()`: each valid value; a corrupt value and blocked storage read as
   `null`; an answer that cannot be saved still holds for the visit; both failures reach `noteError()`.
 - `allowed()`: the 15 cells of section 2's table, each answered row in both `Europe/Berlin` and
-  `Australia/Sydney`: a saved `none` in Sydney allows nothing.
+  `Australia/Sydney`: a saved `none` in Sydney allows nothing. A `none` or `errors` saved under an
+  older `version` allows nothing in Berlin, and in Sydney no more than it did.
 - `startAnalytics()`: nothing without an ID or without permission; the queue's order; one script
   only, added after `load`; a second call does nothing.
 - `track()`: nothing before the start; `['event', name, fields]` after it, without any key the event
