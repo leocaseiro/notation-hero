@@ -84,7 +84,7 @@ No new dependency: the loader is our own (G2).
 | ------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
 | `web/lib/privacy/choice.ts`     | `asksFirst()`, `savedChoice()`, `saveChoice()`, `allowed()`: the one rule both tools follow (section 2)           |
 | `web/lib/analytics/events.ts`   | the typed event list (section 5)                                                                                  |
-| `web/lib/analytics/start.ts`    | `startAnalytics()` (section 4)                                                                                    |
+| `web/lib/analytics/start.ts`    | `startAnalytics()` and `gtag()` (section 4)                                                                       |
 | `web/lib/analytics/track.ts`    | `track()`: sends one event, or nothing until Google Analytics has started                                         |
 | `web/lib/score-facts.ts`        | `instrumentsValue()`, moved out of Sentry's `report.ts` (section 6), `trackInstrument()` and `SAMPLE_INSTRUMENTS` |
 | `web/app/PrivacyChoices.tsx`    | the popup (section 3)                                                                                             |
@@ -218,14 +218,16 @@ addition is "(with a cookie)", because EU guidance expects the first layer to me
 
 ```ts
 // web/lib/analytics/start.ts (sketch)
+/** Not on `window`: gtag.js reads only `window.dataLayer`. track.ts imports it. */
+export function gtag(..._args: unknown[]): void {
+  window.dataLayer.push(arguments); // gtag.js reads an `arguments` object, never an array
+}
+
 export function startAnalytics(): void {
   const id = process.env.NEXT_PUBLIC_GA_ID; // set in Vercel Production only
   if (!id || started || !allowed('analytics')) return;
   started = true;
   window.dataLayer = window.dataLayer ?? [];
-  window.gtag = function gtag() {
-    window.dataLayer.push(arguments); // gtag.js reads an `arguments` object, never an array
-  };
   gtag('consent', 'default', {
     ad_storage: 'denied',
     ad_user_data: 'denied',
@@ -247,7 +249,9 @@ export function startAnalytics(): void {
 - **`track(name, fields)`** calls `gtag('event', name, …)` once started, and nothing before — no
   console warning, unlike `sendGAEvent`. It sends only the fields its event declares, copied by name
   from a key list beside `AnalyticsEvents` that `typecheck` checks against it. An object built
-  elsewhere with an extra key, such as a track name, therefore sends nothing more.
+  elsewhere with an extra key, such as a track name, therefore sends nothing more. `gtag()` is a
+  function of `start.ts`, not a global: other code reaches Google only by importing it or by pushing
+  onto `window.dataLayer` by hand, and a review sees both.
 - **Page views** come from Google's enhanced measurement: one on load, and one on each client-side
   page change ("page changes based on browser history events"). Not yet seen working: the spike's
   made-up ID could not show it (section 8, step 6). If it is missing, the fallback turns that
