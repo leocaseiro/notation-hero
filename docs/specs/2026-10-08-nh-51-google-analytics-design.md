@@ -278,12 +278,12 @@ cannot reach Google. Sliders send their final value only; seeking and volume are
 | `score_loaded`     | a score becomes the one on screen                                                                 | `source`, `file_type`, `track_count`, `instruments` | `PlayerShell.tsx`                                    |
 | `score_failed`     | an open fails                                                                                     | `error_code`, `file_type`, `file_size_kb`           | the E101–E103 and E105 paths                         |
 | `play`             | the visitor starts playback                                                                       | `source`                                            | `PlayerShell.tsx`                                    |
-| `loop_toggle`      | Loop                                                                                              | `on`, `range`                                       | `TransportRow.tsx`                                   |
+| `loop_toggle`      | Loop, on the transport row or in the Settings popover                                             | `on`, `range`                                       | `applyLooping` in `PlayerShell.tsx`, which both call |
 | `metronome_toggle` | Metronome                                                                                         | `on`                                                | `TransportRow.tsx`                                   |
 | `count_in_toggle`  | Count-In                                                                                          | `on`                                                | `TransportRow.tsx`                                   |
-| `tempo_change`     | the speed is set                                                                                  | `speed_percent`                                     | `PlayerHeader.tsx`                                   |
+| `tempo_change`     | the speed is set, in the header or in the Settings popover                                        | `speed_percent`                                     | `applySpeed` in `PlayerShell.tsx`, which both call   |
 | `mixer_change`     | a track's show/hide, solo, mute, transpose or staff option; solo all, mute all; the layout switch | `control`, `on`, `instrument`                       | `TracksPopover.tsx`                                  |
-| `setting_change`   | a row in the Settings popover changes                                                             | `setting`                                           | `SettingsPopover.tsx`                                |
+| `setting_change`   | a Settings row changes, except Playback speed, Loop (events above) and the volumes (not tracked)  | `setting`                                           | `SettingsPopover.tsx`                                |
 | `export_score`     | MIDI or Guitar Pro export                                                                         | `format`                                            | `SettingsPopover.tsx`                                |
 
 | Field           | Values                                                                                                                                                                    |
@@ -549,6 +549,9 @@ hands Google, in `window.dataLayer`; what Google's script sends is checked by ha
   events. Google documents that switch as set before any `gtag()` call, so NH-349's test must prove
   no hit follows either answer. On a "No", the link must also close Sentry for the rest of the
   visit.
+- **Auto-Speed** (a v0.2 practice feature that changes the speed by itself): `tempo_change` is sent
+  from `applySpeed`, so a speed the app sets would count as the visitor's own. That feature moves
+  the call into the two speed controls.
 
 ## Known limits
 
