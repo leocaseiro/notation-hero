@@ -190,6 +190,11 @@ Details ▾
   [Google's page for sites that use its services](https://policies.google.com/technologies/partner-sites),
   and "Privacy notice" links to `/privacy`. Both open in a new tab, so an open score is not lost,
   and say so to screen readers.
+- **44 px targets:** Details and every link (on the card, in the home note and on `/privacy`) are
+  each the design system's `Button` with `min-h-11`, built like Play on `/`: a link is the link
+  variant, rendered as the `<a>` itself, underlined, in the place the copy gives it. The lane's
+  hit-area check (`expectHitAreas` in `web/e2e/a11y.e2e.ts`) fails any button or link under
+  44 × 44 px.
 - **Screen readers:** the card is a labelled region ("Privacy choice") with no `aria-live` of its
   own: it arrives with its text, and a live region that arrives with its text is generally not
   announced. `PrivacyChoices` renders an empty polite live region in the HTML the server sends and
@@ -491,10 +496,12 @@ hands Google, in `window.dataLayer`; what Google's script sends is checked by ha
   as `web/`'s own CSS build draws them. The no-overlap case measures the card's box but cannot see
   it. No `/` shot (there the card sits over empty page) and no phone-width shot (the lane covers
   no width under 900 px, by design; the no-overlap case measures the phone placement).
-- An axe scan with the popup open, in light only, like every other axe case in the lane: `web/`
+- An axe scan with the popup open and Details expanded (as the Settings case opens every group),
+  in light only, like every other axe case in the lane: `web/`
   cannot show dark mode until NH-302 (see "Light only" in
   `docs/specs/2026-09-21-web-visual-regression-gate.md`).
-- An axe scan of `/privacy`.
+- An axe scan of `/privacy`. Both new cases also run the hit-area check, as every case in
+  `web/e2e/a11y.e2e.ts` does; the landing case already runs it over `/` and the note's links.
 
 ## 10. Documents that change
 
