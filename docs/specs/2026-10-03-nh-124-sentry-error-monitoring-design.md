@@ -405,9 +405,11 @@ export function rememberScore(score: ScoreFacts): void; // title, subtitle, arti
   today, but a future bug could, and E105, E901 and E201–E204 keep their message. A thrown `Error`
   puts its message in the exception's value. A string, or a Web Worker error that reaches the page
   without an `Error` object, puts it in the event's `message` as well, and the breadcrumb Sentry
-  adds for each sent report repeats `message` in every later report. So when an event is sent
-  (`beforeSend`), the filter runs over each exception's value and the event's `message`, and over
-  nothing else. The breadcrumb is made after `beforeSend`, so it repeats the cleaned text.
+  adds for each sent report repeats `message` in every later report. Any other thrown object — a
+  plain object, or a browser `Event` — is copied whole into `extra.__serialized__`, where its text
+  would leave unfiltered. So when an event is sent (`beforeSend`), the filter runs over each
+  exception's value and the event's `message`, deletes `extra.__serialized__`, and touches nothing
+  else. The breadcrumb is made after `beforeSend`, so it repeats the cleaned text.
 - **The list never forgets** within a tab. An error about file A can be sent after file B opens.
 - **Remembered as soon as a file parses.** `requestNotation` calls `rememberScore` right after
   `loadScoreFromBytes` returns, before the new score replaces the open one. Two reports can be sent
