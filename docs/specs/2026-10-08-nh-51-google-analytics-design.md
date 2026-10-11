@@ -80,17 +80,17 @@ No new dependency: the loader is our own (G2).
 
 **New files:**
 
-| File                            | Job                                                                                                     |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `web/lib/privacy/choice.ts`     | `asksFirst()`, `savedChoice()`, `saveChoice()`, `allowed()`: the one rule both tools follow (section 2) |
-| `web/lib/analytics/events.ts`   | the typed event list (section 5)                                                                        |
-| `web/lib/analytics/start.ts`    | `startAnalytics()` (section 4)                                                                          |
-| `web/lib/analytics/track.ts`    | `track()`: sends one event, or nothing until Google Analytics has started                               |
-| `web/lib/score-facts.ts`        | `instrumentsValue()`, moved out of Sentry's `report.ts` (section 6), and `trackInstrument()`            |
-| `web/app/PrivacyChoices.tsx`    | the popup (section 3)                                                                                   |
-| `web/app/privacy/page.tsx`      | the privacy notice (section 7)                                                                          |
-| `web/e2e/google-analytics.ts`   | the shared fixture: answers Google's hosts locally (an empty `gtag.js`) and records every request       |
-| `web/e2e/privacy-choice.e2e.ts` | the consent, privacy, no-overlap, drop-through and keyboard cases (section 9)                           |
+| File                            | Job                                                                                                               |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `web/lib/privacy/choice.ts`     | `asksFirst()`, `savedChoice()`, `saveChoice()`, `allowed()`: the one rule both tools follow (section 2)           |
+| `web/lib/analytics/events.ts`   | the typed event list (section 5)                                                                                  |
+| `web/lib/analytics/start.ts`    | `startAnalytics()` (section 4)                                                                                    |
+| `web/lib/analytics/track.ts`    | `track()`: sends one event, or nothing until Google Analytics has started                                         |
+| `web/lib/score-facts.ts`        | `instrumentsValue()`, moved out of Sentry's `report.ts` (section 6), `trackInstrument()` and `SAMPLE_INSTRUMENTS` |
+| `web/app/PrivacyChoices.tsx`    | the popup (section 3)                                                                                             |
+| `web/app/privacy/page.tsx`      | the privacy notice (section 7)                                                                                    |
+| `web/e2e/google-analytics.ts`   | the shared fixture: answers Google's hosts locally (an empty `gtag.js`) and records every request                 |
+| `web/e2e/privacy-choice.e2e.ts` | the consent, privacy, no-overlap, drop-through and keyboard cases (section 9)                                     |
 
 Each `lib` file and the popup has its unit test beside it.
 
@@ -325,10 +325,11 @@ track('mixer_change', { control: 'solo_all', on: true }); // ✅
 track('mixer_change', { control: 'solo', on: true, track: 'Lead Guitar' }); // ❌ a type error
 ```
 
-`Instruments` and `Instrument` are branded strings that only `instrumentsValue()` and its one-track
-twin `trackInstrument()` can make, so a free string never type-checks. A `mixer_change` for one
-track (render, solo, mute, either transpose, staff) names that track's instrument; solo all, mute
-all and the layout switch act on the whole mixer and carry none.
+`Instruments` and `Instrument` are branded strings that only `instrumentsValue()`, its one-track
+twin `trackInstrument()` and the bundled beat's `SAMPLE_INSTRUMENTS` (`sample`) can make, so a free
+string never type-checks. A `mixer_change` for one track (render, solo, mute, either transpose,
+staff) names that track's instrument; solo all, mute all and the layout switch act on the whole
+mixer and carry none.
 
 `score_loaded` fires once for each score that reaches the screen: the bundled beat once per player
 mount, and never again after a visitor's file replaces it. AlphaTab's own score-loaded event also
