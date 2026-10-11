@@ -87,8 +87,10 @@ function cutAddress(address: string): string {
 
 /**
  * Sentry's `beforeSend` half: the names out of the event's free text — each exception's value and
- * the event's `message`, and nothing else — and its page address cut. It must never throw: Sentry
- * 11 drops an event whose `beforeSend` throws.
+ * the event's `message` — and its page address cut. When a thrown non-Error object is passed to
+ * Sentry, it is copied whole into `extra.__serialized__`, which this filter deletes to prevent
+ * unfiltered content from leaving. It must never throw: Sentry 11 drops an event whose
+ * `beforeSend` throws.
  */
 export function scrubEvent(event: ErrorEvent): ErrorEvent {
   if (typeof event.message === 'string') event.message = scrubText(event.message);
@@ -96,6 +98,9 @@ export function scrubEvent(event: ErrorEvent): ErrorEvent {
     if (typeof exception.value === 'string') exception.value = scrubText(exception.value);
   }
   if (typeof event.request?.url === 'string') event.request.url = cutAddress(event.request.url);
+  if (event.extra && '__serialized__' in event.extra) {
+    delete event.extra.__serialized__;
+  }
   return event;
 }
 

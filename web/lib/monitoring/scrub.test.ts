@@ -180,4 +180,13 @@ describe('an event or breadcrumb the filter does not expect', () => {
       data: null,
     });
   });
+
+  it('deletes a thrown non-Error object copy but keeps other extra keys', () => {
+    const event = scrub.scrubEvent({
+      type: undefined,
+      extra: { __serialized__: { message: 'Night Drive failed' }, other: 'kept' },
+    });
+    expect(event.extra?.__serialized__).toBeUndefined();
+    expect(event.extra?.other).toBe('kept');
+  });
 });
