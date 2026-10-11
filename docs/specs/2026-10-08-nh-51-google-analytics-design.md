@@ -509,6 +509,12 @@ hands Google, in `window.dataLayer`; what Google's script sends is checked by ha
   consent default first (ad signals denied, analytics granted), Google signals and ad
   personalisation off, `release` set; `open_file` and `score_loaded` with the right fields after
   opening a fixture; `play` after pressing ▶.
+- **Every control once:** in Sydney, open a file that is not a score, then a fixture. Press Loop,
+  Metronome, Count-In and one track's Solo; step the tempo once; change one Settings row that
+  rebuilds the sound; export MIDI. Wait until `window.dataLayer` holds the settled `tempo_change`
+  and `setting_change` (section 5); it then holds one `score_failed` with `E103`, and exactly one
+  event for each control, with its fields. The rebuild reloads the player, which re-applies the
+  Solo; it adds no second `mixer_change`.
 - **Berlin:** the popup shows, and nothing starts before an answer: `window.dataLayer` does not
   exist, and an error the test throws is seen as a page error but never reported. After "Yes", a
   sentinel error arrives and that earlier error does not (the Sentry spec's sentinel rule). "No,
