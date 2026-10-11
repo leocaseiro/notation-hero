@@ -105,6 +105,11 @@ describe('the names filter', () => {
     scrub.rememberOpenFile('second-song.gp');
     expect(valueOf(scrub.scrubEvent(thrown('first-song.gp failed')))).toBe('[file] failed');
   });
+
+  it('replaces the same name twice in one message', () => {
+    scrub.rememberScore(SCORE);
+    expect(valueOf(scrub.scrubEvent(thrown('Night Drive / Night Drive')))).toBe('[file] / [file]');
+  });
 });
 
 describe('the address cut', () => {
@@ -127,6 +132,11 @@ describe('the address cut', () => {
       data: { method: 'GET', url: '/play?_rsc=1a2b' },
     });
     expect(fetched.data).toEqual({ method: 'GET', url: '/play' });
+    const xhr = scrub.scrubBreadcrumb({
+      category: 'xhr',
+      data: { method: 'POST', url: '/api/save?token=xyz', status_code: 200 },
+    });
+    expect(xhr.data).toEqual({ method: 'POST', url: '/api/save', status_code: 200 });
   });
 });
 
@@ -143,6 +153,31 @@ describe('an event or breadcrumb the filter does not expect', () => {
     expect(scrub.scrubBreadcrumb({ category: 'navigation', data: { from: 42 } })).toEqual({
       category: 'navigation',
       data: { from: 42 },
+    });
+  });
+
+  it('never throws on odd shapes even with names remembered', () => {
+    scrub.rememberScore(SCORE);
+    // exception.value as a number instead of a string
+    const eventWithNumberValue = scrub.scrubEvent({
+      type: undefined,
+      exception: { values: [{ value: 42 as unknown as string }] },
+    });
+    expect(eventWithNumberValue.exception?.values?.[0]?.value).toBe(42);
+    // message as a number instead of a string
+    const eventWithNumberMessage = scrub.scrubEvent({
+      type: undefined,
+      message: 99 as unknown as string,
+    });
+    expect(eventWithNumberMessage.message).toBe(99);
+    // breadcrumb with data: null
+    const breadcrumbWithNullData: Breadcrumb = {
+      category: 'navigation',
+      data: null as unknown as Record<string, unknown>,
+    };
+    expect(scrub.scrubBreadcrumb(breadcrumbWithNullData)).toEqual({
+      category: 'navigation',
+      data: null,
     });
   });
 });

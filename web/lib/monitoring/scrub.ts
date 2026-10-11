@@ -91,11 +91,11 @@ function cutAddress(address: string): string {
  * 11 drops an event whose `beforeSend` throws.
  */
 export function scrubEvent(event: ErrorEvent): ErrorEvent {
-  if (event.message !== undefined) event.message = scrubText(event.message);
+  if (typeof event.message === 'string') event.message = scrubText(event.message);
   for (const exception of event.exception?.values ?? []) {
-    if (exception.value !== undefined) exception.value = scrubText(exception.value);
+    if (typeof exception.value === 'string') exception.value = scrubText(exception.value);
   }
-  if (event.request?.url !== undefined) event.request.url = cutAddress(event.request.url);
+  if (typeof event.request?.url === 'string') event.request.url = cutAddress(event.request.url);
   return event;
 }
 
@@ -105,7 +105,7 @@ export function scrubEvent(event: ErrorEvent): ErrorEvent {
  */
 export function scrubBreadcrumb(breadcrumb: Breadcrumb): Breadcrumb {
   const { data } = breadcrumb;
-  if (data === undefined) return breadcrumb;
+  if (data == null) return breadcrumb;
   for (const key of ['from', 'to', 'url']) {
     const value: unknown = data[key];
     if (typeof value === 'string') data[key] = cutAddress(value);
