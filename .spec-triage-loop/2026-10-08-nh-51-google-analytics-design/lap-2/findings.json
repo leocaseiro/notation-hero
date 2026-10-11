@@ -177,10 +177,14 @@
     "2026-10-12, triage invocation 2: the R4 mock (four scenes of /play, checked with elementFromPoint) was a throwaway in the session's scratchpad, not in the repository. It confirmed the review's measurement: with no z-index the white score box is on top at the card's centre and at 'No, send nothing'."
   ],
   "resume": {
-    "next_step": "The second triage invocation of lap 2 (review-loop step 4 again), after /compact. This artifact is still triaged: false, so the entry rule restarts at step 4, on the 9 undecided items only. Follow triage_plan.invocation_2, then steps 6 and 7.",
-    "command": "Run the spec-triage-loop doc-review loop on .claude/worktrees/pr-162-code-review-5c2901/docs/specs/2026-10-08-nh-51-google-analytics-design.md (NH-51, draft PR #193)",
-    "entry_rule": "lap-2/findings.json has triaged: false and 9 undecided items, so the next invocation continues lap 2's triage half; it reads this file and little else.",
-    "written_at": "2026-10-11, the end of lap 2's first triage invocation"
+    "next_step": "Write the implementation plan for NH-51 (superpowers:writing-plans) from the spec, on the same branch and draft PR #193, then run the doc-review loop on the plan. This spec review is finished (stopped after lap 2); do not start lap 3.",
+    "command": "Write the implementation plan for NH-51 from .claude/worktrees/pr-162-code-review-5c2901/docs/specs/2026-10-08-nh-51-google-analytics-design.md (draft PR #193), then run the doc-review loop on it",
+    "for_the_plan": [
+      "The spec's 'To verify at plan time' list, which now includes F-24's check of how Google's script orders the landing and current page views, and whether its click-ID redaction covers an address our code sets.",
+      "F-24's folded residual, unchecked and not in the spec: outside Europe, Google's script is added after `load`, so a click on Play before then may also lose the landing page.",
+      "lap_decision.caveat_for_the_plan: lap 2's new text is unreviewed."
+    ],
+    "written_at": "2026-10-12, the end of lap 2's second triage invocation"
   },
   "decided_findings": [
     {
@@ -3214,5 +3218,11 @@
       "applied_in_commit": "f57df1ef",
       "triage_rounds": 1
     }
-  ]
+  ],
+  "lap_decision": {
+    "date": "2026-10-12",
+    "step_7": "a. Bound: lap 2 of 5; no P0 or P1 was raised in lap 1 or lap 2 (lap 1: 12 P2, 10 P3; lap 2: 13 P2, 6 P3, 2 residual), so the no-progress rule had nothing to measure. b. Re-lap: no P0/P1 applied, but the envelope was NOT CLEAN, so the rule pointed to lap 3. The two rules disagreed, so the choice went to leocaseiro, with lap 3 recommended (score 19 to 16), because this spec's own lap 2 found a defect that lap 1's new text created (R4).",
+    "decision": "STOPPED by leocaseiro after lap 2: 'Start the plan'. The spec review ends here, not clean. NH-51 moves to PLAN in Jira.",
+    "caveat_for_the_plan": "Lap 2's new text was never read by a review lap: the landing page view after a late 'Yes' (F-24), the room below the page (F-28), the card at z-60 (R4), the stop in other tabs (FYI-8), the saved-answer announcement (FYI-9) and the 'Every control once' test (R2). Treat it as unreviewed while planning."
+  }
 }
