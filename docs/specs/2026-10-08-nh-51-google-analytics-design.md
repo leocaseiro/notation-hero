@@ -456,12 +456,16 @@ hands Google, in `window.dataLayer`; what Google's script sends is checked by ha
   consent default first (ad signals denied, analytics granted), Google signals and ad
   personalisation off, `release` set; `open_file` and `score_loaded` with the right fields after
   opening a fixture; `play` after pressing ▶.
-- **Berlin:** the popup shows, and **no** request reaches Google or Sentry before an answer. "No,
-  send nothing": still none, also after a reload. "Report errors only": a forced error reaches
+- **Berlin:** the popup shows, and nothing starts before an answer: `window.dataLayer` does not
+  exist, and an error the test throws is seen as a page error but never reported. After "Yes", a
+  sentinel error arrives and that earlier error does not (the Sentry spec's sentinel rule). "No,
+  send nothing": a "No" sends nothing to wait for, so the test throws an error, reloads, throws
+  another and reloads again, and only then checks that neither recorder holds a request;
+  `window.dataLayer` does not exist after any load. "Report errors only": a forced error reaches
   Sentry; when it arrives, Sentry's fixture has recorded no `session` envelope (the visit ping), and
-  nothing reaches Google. "Yes, …": both, and a `session` envelope arrives. The answer survives a
-  reload. Unlike NH-124's cases, these read session envelopes on purpose: the visit ping is the one
-  thing "Report errors only" withholds from Sentry.
+  `window.dataLayer` does not exist. "Yes, …": both, and a `session` envelope arrives. The answer
+  survives a reload. Unlike NH-124's cases, these read session envelopes on purpose: the visit ping
+  is the one thing "Report errors only" withholds from Sentry.
 - **Privacy:** open a fixture with a known title and track names, and press Solo and Mute on one of
   its tracks (both buttons are named after the track). Wait until `window.dataLayer` holds the
   `score_loaded` event, with the score's `track_count`, and both `mixer_change` events. Only then
