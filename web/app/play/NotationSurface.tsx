@@ -8,6 +8,7 @@ import { useAlphaTabEngine } from '../../lib/alphatab/AlphaTabEngineContext';
 import { selectDrumTrackIndexes } from '../../lib/alphatab/drum-tracks';
 import { clearTrackTranspositions } from '../../lib/alphatab/live-settings';
 import { useAlphaTabEvent } from '../../lib/alphatab/useAlphaTab';
+import { reportError } from '../../lib/monitoring/report';
 import type { OpenNotation } from './PlayerShell';
 import type * as AlphaTab from '@coderline/alphatab';
 import type { RefObject } from 'react';
@@ -89,10 +90,9 @@ export function NotationSurface({
   // place that merely clears one), so a person who dismissed one problem still sees the next.
   const [dismissed, setDismissed] = useState(false);
   const [renderedTrackCount, setRenderedTrackCount] = useState(0);
-  // ReturnType<typeof globalThis.setTimeout>, not `number`: web/tsconfig.json sets no `types`
-  // array, so @types/node is in scope and globalThis.setTimeout resolves to Node's overload,
-  // which returns a Timeout object rather than a handle. ReturnType is correct under both.
-  const timeoutRef = useRef<ReturnType<typeof globalThis.setTimeout> | undefined>(undefined);
+  // Stops the music-font clock below for good. The effect that starts the clock sets it; the first
+  // finished render calls it.
+  const stopFontClock = useRef<() => void>(() => {});
   // The score the person last asked for. It is a REF, not the `notation` closure, and it is
   // written synchronously below BEFORE renderScore — which is the whole point. renderScore fires
   // `scoreLoaded` synchronously, and useAlphaTabEvent refreshes its handler ref in an effect
@@ -107,37 +107,63 @@ export function NotationSurface({
   useEffect(() => {
     if (!api) return;
 
+    // Backstop for a download that hangs without ever failing: no event arrives, so give up after
+    // 60 seconds — counted only while the page is VISIBLE. AlphaTab starts its first render from an
+    // animation frame, and a browser runs none in a hidden tab, so a player opened in a background
+    // tab draws nothing there while a plain timer keeps counting; it would send an unhandled E204
+    // although nothing failed. A tick each second that counts only a visible second needs no
+    // visibilitychange listener, so none can be left behind to restart it. Long on purpose: the
+    // 306 KB font on a slow link must not trip it. Three events stop the clock for good: the first
+    // finished render, an E203, and the E204 itself.
+    let visibleSeconds = 0;
+    const clock = globalThis.setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
+      visibleSeconds += 1;
+      if (visibleSeconds < 60) return;
+      globalThis.clearInterval(clock);
+      reportError(new Error('The music font did not arrive within 60 visible seconds'), {
+        code: ERROR.musicFontTimeout,
+        handled: false,
+      });
+      setFontError(
+        `Error ${ERROR.musicFontTimeout}: the music font did not arrive within 60 seconds`,
+      );
+      setDismissed(false);
+    }, 1000);
+    stopFontClock.current = () => globalThis.clearInterval(clock);
+
     // AlphaTab injects its music font as a CSS @font-face named `alphaTab…` during construction. If
     // that download fails, its font checker has no fallback family: it logs "rendering cannot
     // start", never fires renderFinished and raises no api.error — so the Skeleton would stay up
     // forever. The browser reports it at once, as `loadingerror` on document.fonts (verified in
     // Chromium). Text-font checkers have system fallbacks, hence the family filter.
     const onFontError = (event: FontFaceSetLoadEvent) => {
-      if (event.fontfaces.some((face) => face.family.startsWith('alphaTab'))) {
-        setFontError(`Error ${ERROR.musicFontFailed}: the music font could not be downloaded`);
-        setDismissed(false);
-      }
+      if (!event.fontfaces.some((face) => face.family.startsWith('alphaTab'))) return;
+      // AlphaTab never draws once the font has failed, so the clock stops here. Otherwise every
+      // E203 would be followed, 60 visible seconds later, by an E204 saying the font is late.
+      globalThis.clearInterval(clock);
+      reportError(new Error('The music font could not be downloaded'), {
+        code: ERROR.musicFontFailed,
+        handled: false,
+      });
+      setFontError(`Error ${ERROR.musicFontFailed}: the music font could not be downloaded`);
+      setDismissed(false);
     };
     document.fonts.addEventListener('loadingerror', onFontError);
 
-    // Backstop for a download that hangs without ever failing: no event arrives, so give up after
-    // 60 s. Long on purpose — the 306 KB font on a slow link must not trip it.
-    timeoutRef.current = globalThis.setTimeout(() => {
-      setFontError(
-        `Error ${ERROR.musicFontTimeout}: the music font did not arrive within 60 seconds`,
-      );
-      setDismissed(false);
-    }, 60_000);
-
     return () => {
+      globalThis.clearInterval(clock);
       document.fonts.removeEventListener('loadingerror', onFontError);
-      globalThis.clearTimeout(timeoutRef.current);
     };
   }, [api]);
 
   // The SoundFont download failure surfaces through AlphaTab's own error event; the engine import
   // failure cannot (AlphaTabApi does not exist yet) and arrives through engineError below.
   useAlphaTabEvent(api, 'error', (cause) => {
+    // E202, unhandled, as it arrived. AlphaTab passes an Error in every case measured, though its
+    // class and type field do not survive the worker, and a SoundFont network failure carries an
+    // empty message, which reportError replaces with E202's meaning.
+    reportError(cause, { code: ERROR.engineRuntime, handled: false });
     setRuntimeError(`Error ${ERROR.engineRuntime}: ${String(cause)}`);
     setDismissed(false);
   });
@@ -153,7 +179,7 @@ export function NotationSurface({
     onSoundFontProgress(progress.total > 0 ? Math.min(1, progress.loaded / progress.total) : null);
   });
   useAlphaTabEvent(api, 'renderFinished', () => {
-    globalThis.clearTimeout(timeoutRef.current);
+    stopFontClock.current();
     // A render finished, so the music font is present: drop any font error the 60 s backstop or
     // the loadingerror listener left behind, or it would pin a "reload the page" banner over a
     // score that is drawing and playable. runtimeError is NOT cleared — see its declaration.
