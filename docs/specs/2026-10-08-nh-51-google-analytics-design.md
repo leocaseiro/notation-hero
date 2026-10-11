@@ -191,6 +191,11 @@ Details ▾
   above it. At most 560 px wide; on a phone, the full width less the 16 px gutters, with the
   buttons stacked. At most as tall as the window less its bottom offset and 16 px; past that, the
   card scrolls inside itself, so its question and every answer stay reachable at 400% zoom.
+- **Stacking:** the card is `z-60`. It is first in `<body>`, so with no z-index the player's later
+  layers are drawn over it, the white score box included. At `z-60` it is above every layer, the
+  popovers and tooltips (`z-50`) included: until the visitor answers, it covers any part of an
+  open popover or a tooltip that lies beneath it, such as the footer of an open Tracks popover
+  (Master volume and the layout switch).
 - **Non-blocking:** no backdrop and no focus trap. The player works while the card waits, and
   nothing is sent meanwhile. It returns on every page load until answered.
 - **Files pass through it:** the card floats over the player's drop zone but is not part of it.
@@ -522,10 +527,12 @@ hands Google, in `window.dataLayer`; what Google's script sends is checked by ha
   `Notation Hero` (Google's script sends it as `dt`), and that the page address holds neither.
   Without the wait, an empty queue would pass.
 - **No overlap:** the popup's box never intersects ▶ or the transport row, at desktop and phone
-  width, measured the way `web/e2e/toast-occlusion.e2e.ts` measures the toaster. On `/` and
-  `/privacy`, at 375 × 667 and with a phone held sideways (667 × 375), Play, the note and the
-  notice's last line can each be scrolled clear of the card, and a Tab onto Play leaves it fully
-  above the card.
+  width, measured the way `web/e2e/toast-occlusion.e2e.ts` measures the toaster. On `/play`,
+  after load and while the first-visit Skeleton is up, the card is the top element at its own
+  centre (`document.elementFromPoint`); with the Tracks popover open, each answer is the top
+  element at its own centre too. On `/` and `/privacy`, at 375 × 667 and with a phone held
+  sideways (667 × 375), Play, the note and the notice's last line can each be scrolled clear of
+  the card, and a Tab onto Play leaves it fully above the card.
 - **Zoomed in:** in Berlin, on `/` at 320 × 256 (a 1280 × 1024 screen at 400% zoom), with Details
   open: the card stays inside the window, and each answer scrolls fully into view inside it.
 - **Drop through the card:** in Berlin, with the card showing, drop `Punk.gp` on the card's centre
