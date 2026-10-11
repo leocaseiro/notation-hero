@@ -591,7 +591,9 @@ hands Google, in `window.dataLayer`; what Google's script sends is checked by ha
   (spike, 2026-10-08). So the link also sets `window['ga-disable-<ID>'] = true` and sends no more
   events. Google documents that switch as set before any `gtag()` call, so NH-349's test must prove
   no hit follows either answer. On a "No", the link must also close Sentry for the rest of the
-  visit.
+  visit. The stop also runs in every other open tab of the site: each tab listens for the `storage`
+  event on `notation-hero.privacy-choice` and stops whatever the new answer no longer allows.
+  NH-349's test opens two tabs, changes the answer in one, and proves no hit follows from the other.
 - **Auto-Speed** (a v0.2 practice feature that changes the speed by itself): `tempo_change` is sent
   from `applySpeed`, so a speed the app sets would count as the visitor's own. That feature moves
   the call into the two speed controls.
