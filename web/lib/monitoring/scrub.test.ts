@@ -170,6 +170,31 @@ describe('an event or breadcrumb the filter does not expect', () => {
       message: 99 as unknown as string,
     });
     expect(eventWithNumberMessage.message).toBe(99);
+    // extra as a truthy primitive string
+    const eventWithStringExtra = scrub.scrubEvent({
+      type: undefined,
+      extra: 'text' as unknown as Record<string, unknown>,
+    });
+    expect(eventWithStringExtra.extra).toBe('text');
+    // extra as a truthy primitive number
+    const eventWithNumberExtra = scrub.scrubEvent({
+      type: undefined,
+      extra: 42 as unknown as Record<string, unknown>,
+    });
+    expect(eventWithNumberExtra.extra).toBe(42);
+    // extra as a frozen object with __serialized__
+    const frozenExtra = Object.freeze({ __serialized__: { message: 'x' } });
+    const eventWithFrozenExtra = scrub.scrubEvent({
+      type: undefined,
+      extra: frozenExtra as unknown as Record<string, unknown>,
+    });
+    expect(eventWithFrozenExtra.extra).toEqual(frozenExtra);
+    // exception list containing null
+    const eventWithNullException = scrub.scrubEvent({
+      type: undefined,
+      exception: { values: [null as unknown as { value: string }] },
+    });
+    expect(eventWithNullException.exception?.values?.[0]).toBeNull();
     // breadcrumb with data: null
     const breadcrumbWithNullData: Breadcrumb = {
       category: 'navigation',

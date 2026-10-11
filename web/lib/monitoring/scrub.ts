@@ -95,11 +95,12 @@ function cutAddress(address: string): string {
 export function scrubEvent(event: ErrorEvent): ErrorEvent {
   if (typeof event.message === 'string') event.message = scrubText(event.message);
   for (const exception of event.exception?.values ?? []) {
-    if (typeof exception.value === 'string') exception.value = scrubText(exception.value);
+    if (exception && typeof exception.value === 'string')
+      exception.value = scrubText(exception.value);
   }
   if (typeof event.request?.url === 'string') event.request.url = cutAddress(event.request.url);
-  if (event.extra && '__serialized__' in event.extra) {
-    delete event.extra.__serialized__;
+  if (event.extra && typeof event.extra === 'object') {
+    Reflect.deleteProperty(event.extra, '__serialized__');
   }
   return event;
 }
