@@ -175,7 +175,7 @@ export function allowed(purpose: Purpose): boolean;
 ## 3. The popup
 
 ```text
-Can we count visits (with a cookie) and get error reports? Your scores stay on your device.
+Can we count visits (with cookies) and get error reports? Your scores stay on your device.
 [ Yes, count visits and report errors ]  [ Report errors only ]  [ No, send nothing ]
 Details ▾
   Error reports go to Sentry, a bug-tracking service. Visit counts go to Sentry and Google
@@ -221,7 +221,7 @@ Details ▾
 
 The words were approved on 2026-10-08 after two rounds. Tool names in the first layer were rejected
 ("Musicians have no idea what Sentry means"), and leocaseiro wrote the three button labels. The one
-addition is "(with a cookie)", because EU guidance expects the first layer to mention it.
+addition is "(with cookies)", because EU guidance expects the first layer to mention them.
 
 ## 4. Google Analytics in code
 
@@ -392,7 +392,7 @@ Before (NH-124 spec, web/app/page.tsx, below the Play button):
   wrong. Neither includes your file, its name, or the music in it — only the file's type and size,
   and the kinds of instrument it uses.
 After:
-  This site counts visits with Google Analytics (it uses a cookie) and sends an error report when
+  This site counts visits with Google Analytics (it uses cookies) and sends an error report when
   something breaks. Neither includes your file, its name, or the music in it — only facts like its
   type and size and the kinds of instrument. Visitors in Europe are asked first.
   How Google uses data ↗ · Privacy notice
@@ -400,8 +400,9 @@ After:
 Privacy notice (new page, /privacy, linked from the home note and the popup's Details):
   Notation Hero is run by <name> (<contact>). Error reports go to Sentry, which keeps them 30
   days. Visit counts go to Sentry and Google Analytics, which keeps visit-level data 14 months and
-  sets a cookie (_ga). Neither gets your file, its name, or the music in it. In Europe nothing is
-  sent until you answer. Change your answer at any time: <the Privacy choices link (NH-349)>.
+  sets two cookies: _ga, and _ga_ followed by this site's ID. Neither tool gets your file, its
+  name, or the music in it. In Europe nothing is sent until you answer. Change your answer at any
+  time: <the Privacy choices link (NH-349)>.
   How Google uses data ↗
 
 Before (NH-124 spec, both error.tsx files and global-error.tsx):
@@ -412,15 +413,15 @@ After:
   page.
 ```
 
-- "Anonymously" goes: Google Analytics' cookie is a lasting ID.
+- "Anonymously" goes: Google Analytics' `_ga` cookie is a lasting ID.
 - The home page names Google Analytics because its terms require the site to disclose it and link
   to Google's page (G9). Sentry stays "an error report" (G9).
 - The error pages stop claiming a report was sent: for a visitor in Europe who chose "No, send
   nothing", none was.
 - The privacy notice gives what EU guidance counts as the minimum for an informed "Yes" — who runs
-  the site and how to reach them, what each tool receives and keeps, the cookie, and how to change an
-  answer — and is the posted privacy policy Google Analytics' terms require. leocaseiro picks the
-  name and contact before go-live; the page is public.
+  the site and how to reach them, what each tool receives and keeps, the cookies, and how to change
+  an answer — and is the posted privacy policy Google Analytics' terms require. leocaseiro picks
+  the name and contact before go-live; the page is public.
 
 ## 8. Setup — done by leocaseiro, by hand
 
