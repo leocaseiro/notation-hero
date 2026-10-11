@@ -142,8 +142,11 @@ export function allowed(purpose: Purpose): boolean;
   toward asking. It also asks for EU and EEA places named outside `Europe/`, such as
   `Atlantic/Canary`, `Atlantic/Madeira`, `Atlantic/Azores`, `Atlantic/Reykjavik`, `Asia/Nicosia`
   and the French overseas regions; and for `UTC`, `Etc/…` and a missing value, because
-  privacy-focused browsers report `UTC`. The plan fixes the full list from the IANA time-zone
-  database.
+  privacy-focused browsers report `UTC`. The plan fixes the full list from IANA's `zone.tab`, which
+  keeps the names browsers report: its rows for the EU and EEA country codes, plus the French
+  overseas regions and Saint-Martin, which have codes of their own (`GP`, `MQ`, `GF`, `RE`, `YT`,
+  `MF`). Not from `zone1970.tab`: it files Iceland, Réunion, Mayotte, Guadeloupe and Saint-Martin
+  under `Africa/Abidjan`, `Asia/Dubai`, `Africa/Nairobi` and `America/Puerto_Rico`.
 - **Kept in this browser:** the `localStorage` key `notation-hero.privacy-choice` holds
   `{"choice":"all","version":1}`. `version` lets a later change to the question ask again. Keeping
   the answer needs no consent: the CNIL lists trackers that store the user's choice as exempt.
@@ -422,8 +425,9 @@ An agent may not create accounts.
 
 **Unit (Vitest, beside each file):**
 
-- `asksFirst()`: `Europe/Berlin`, `Europe/London`, `Atlantic/Canary`, `Asia/Nicosia`, `UTC` and an
-  empty value ask first; `Australia/Sydney`, `America/New_York` and `Asia/Tokyo` do not.
+- `asksFirst()`: `Europe/Berlin`, `Europe/London`, `Atlantic/Canary`, `Atlantic/Reykjavik`,
+  `Indian/Reunion`, `Asia/Nicosia`, `UTC` and an empty value ask first; `Australia/Sydney`,
+  `America/New_York`, `Asia/Tokyo` and `Asia/Dubai` do not.
 - `savedChoice()` and `saveChoice()`: each valid value; a corrupt value and blocked storage read as
   `null`; an answer that cannot be saved still holds for the visit; both failures reach `noteError()`.
 - `allowed()`: the 15 cells of section 2's table, each answered row in both `Europe/Berlin` and
@@ -545,7 +549,8 @@ Each is a claim this design rests on that no one has run yet:
 - Sentry 11 can start after the page has loaded, and the name of its Release Health integration.
 - Playwright's `timezoneId` changes `Intl.DateTimeFormat().resolvedOptions().timeZone` inside the
   Linux container.
-- The time-zone list, from the IANA database.
+- The time-zone list, from IANA's `zone.tab`, and what a real phone or laptop set to an overseas
+  region reports (a test browser given `Indian/Reunion` reports that name, checked 2026-10-10).
 - The popup, which appears after hydration, causes no layout shift (it is fixed-position).
 
 ## The spike (2026-10-05, throwaway)
