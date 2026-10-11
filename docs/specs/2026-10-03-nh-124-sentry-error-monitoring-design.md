@@ -688,11 +688,15 @@ secret. The upload now runs inside Vercel's build, so neither GitHub mechanism a
        with `console.error`, then throw an error whose message quotes the Solo track's name: the
        envelope holds no click breadcrumb, its message reads `[file]` where the name was, and the
        raw envelope contains none of those strings, and not the marker.
-    4. Open `guitar-no-percussion.gp` (an NH-335 file) while the bundled sample is held back, as
-       the late-sample test in `web/e2e/player.e2e.ts` already does. Once a page error with the
-       NH-335 message has been seen and the sample has arrived, the test throws a sentinel error:
-       the sentinel is the only error event sent, and it carries the tag `instruments: 025` (the
-       file's one track, an acoustic guitar), not `sample`.
+    4. Two cases, because NH-335 never fires while the bundled sample is held back (measured):
+       - Open `guitar-no-percussion.gp` (an NH-335 file) with no hold-back, reloading until a page
+         error with the NH-335 message has been seen. Then the test throws a sentinel error: the
+         sentinel is the only error event sent, so no NH-335 throw was sent, and it carries the tag
+         `instruments: 025` (the file's one track, an acoustic guitar), not `sample`.
+       - Hold the bundled sample back, as the late-sample test in `web/e2e/player.e2e.ts` already
+         does, and open the same file. After the late sample arrives, a sentinel error is the only
+         error event sent and still carries `instruments: 025`: the late sample does not put
+         `sample` back.
     5. With storage blocked by an init script that throws `DOMException('…', 'SecurityError')`, as
        browsers do, no event is sent until a real error, and that report carries the storage
        breadcrumb.

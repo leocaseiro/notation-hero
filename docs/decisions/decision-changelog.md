@@ -11,6 +11,47 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
+### 2026-10-12 — Sentry error monitoring ships in `web/` (NH-124)
+
+The implementation of the 2026-10-03 design, through the plan in
+`docs/plans/2026-10-08-nh-124-sentry-error-monitoring-plan.md`. The decisions are recorded in the
+entry below; this one says what shipped.
+
+- **SDK:** `@sentry/nextjs` 11.4.0, pinned exactly. `withSentryConfig` comes from
+  `@sentry/nextjs/config` in 11.x. The plan measured 11.1.0; on 11.4.0 the SDK runs the same 12
+  integrations.
+- **Enforced:** every catch in `web/` reports (lint rule + canary); a token in a browser file fails
+  the build; a failed source-map upload fails the production deploy; the reporting and privacy
+  promises are end-to-end cases.
+- **Choices the plan made**, as they stood after the plan review:
+  - _Approved in the plan review_ (leocaseiro; the entry below holds the reasoning): **2** `org` and
+    `project` go into `next.config.ts` once the owner has them, and a production build that has the
+    token but not both slugs fails; **3** the file's type travels as a tag and as a `file` context,
+    with its size rounded up to the next power of two; **4** E101–E103, and an E202 that arrives
+    with an empty message, send a fresh error that holds a fixed sentence and has no `cause`; **12**
+    only a production build on Vercel reads the upload token.
+  - _As the plan proposed_: **1** the SDK is pinned exactly; **5** `isStorageRefusal` and
+    `noteError` read an error's `name`, because jsdom's `DOMException` is not an `Error`; **6** the
+    E601 and E603 reports carry fixed text (and, for E601, the repaired keys' dot-paths), each sent
+    beside its toast; **7** the E204 clock is a one-second counter that counts only while the page
+    is visible; **8** every unit test runs against a replaced `@sentry/nextjs`; **9** the two
+    transport-restore cases that #185 added get the same E601 and E603 assertions as the settings
+    cases; **10** three extra tests (the lint canary checks that the browser's global `reportError`
+    is banned, a test holds the fixed sentences to `docs/reference/error-codes.md`, and the
+    dropped-file twin of the open-file catch has an E105 case); **11** case 7's fragment is
+    `#anchor-probe-456`, not `#frag`.
+- **Changed while building:**
+  - The `instruments` tag keeps only General MIDI programs 000–127. AlphaTab reads a file's program
+    number unbounded, so a damaged file could have put any number in the tag.
+  - The end-to-end case that waited for the engine's NH-335 throw while the bundled beat was held
+    back is now two cases. Measured, NH-335 never fires while the beat is held back: one case
+    proves "NH-335 is never sent", and another proves "the file's instruments win over a late
+    beat". Spec section 6 says so.
+  - Two more changes made while building (a thrown object's copy is dropped; the crash pages' words)
+    are recorded in the entry below.
+
+**Registry:** L11-sentry ✅ 🤖; L11-srcmap ✅ 🟡; F7-sentry flips when the owner confirms setup.
+
 ### 2026-10-03 — Sentry error monitoring for `web/`: design approved (NH-124)
 
 leocaseiro approved the design for [NH-124](https://leocaseiro.atlassian.net/browse/NH-124) section

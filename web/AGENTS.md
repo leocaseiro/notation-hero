@@ -17,6 +17,9 @@
   `// eslint-disable-next-line no-restricted-syntax -- <reason>` on the line above the `catch`.
   Storage the browser refuses is the visitor's, not a bug:
   `if (isStorageRefusal(error)) noteError(error, '…'); else reportError(error);`, written in place.
+  The lint rule cannot see a report made in only one branch of the catch, a `.catch(namedHandler)`
+  given a function by name, or a rejection handled as the second argument of `.then(ok, onError)`:
+  green lint is not proof that every path reports.
   `reportError` keeps the error's message for every code except E101–E103 (and an E202 whose message
   is empty), and the names filter removes names, not a file's contents. A catch around code that
   reads or parses the visitor's file, such as the cached-score path E104 is reserved for, needs a

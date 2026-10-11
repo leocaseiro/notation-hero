@@ -90,7 +90,7 @@ the task that pins it with a test.
    0 and the tag come back once both end, never stay off for the rest of the visit. Pinned in
    Task 13.
 3. **A name that looks like a pattern** — a file called `Song (Live) [v2].gp` or `C++ Riff $1.gp`,
-   a track called `.*`. It must be replaced exactly as written, and nothing else in the message may
+   a track called `.*+`. It must be replaced exactly as written, and nothing else in the message may
    change. Pinned in Task 4.
 4. **An unusual extension** — `Song.GP5`, `riff.gp.bak`, `README`, `.gp`. They must give `gp5`,
    `other`, `other` and `gp`, never a name. Pinned in Task 10.
