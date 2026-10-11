@@ -80,17 +80,17 @@ No new dependency: the loader is our own (G2).
 
 **New files:**
 
-| File                            | Job                                                                                                                                   |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `web/lib/privacy/choice.ts`     | `asksFirst()`, `savedChoice()`, `saveChoice()`, `allowed()`: the one rule both tools follow (section 2)                               |
-| `web/lib/analytics/events.ts`   | the typed event list (section 5)                                                                                                      |
-| `web/lib/analytics/start.ts`    | `startAnalytics()` and `gtag()` (section 4)                                                                                           |
-| `web/lib/analytics/track.ts`    | `track()`: sends one event, or nothing until Google Analytics has started                                                             |
-| `web/lib/score-facts.ts`        | `instrumentsValue()` and `roundedSize()`, moved out of Sentry's `report.ts` (section 6), `trackInstrument()` and `SAMPLE_INSTRUMENTS` |
-| `web/app/PrivacyChoices.tsx`    | the popup (section 3)                                                                                                                 |
-| `web/app/privacy/page.tsx`      | the privacy notice (section 7)                                                                                                        |
-| `web/e2e/google-analytics.ts`   | the shared fixture: answers Google's hosts locally (an empty `gtag.js`) and records every request                                     |
-| `web/e2e/privacy-choice.e2e.ts` | the consent, privacy, no-overlap, drop-through and keyboard cases (section 9)                                                         |
+| File                            | Job                                                                                                                                      |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `web/lib/privacy/choice.ts`     | `asksFirst()`, `savedChoice()`, `saveChoice()`, `allowed()`: the one rule both tools follow (section 2)                                  |
+| `web/lib/analytics/events.ts`   | the typed event list (section 5)                                                                                                         |
+| `web/lib/analytics/start.ts`    | `startAnalytics()` and `gtag()` (section 4)                                                                                              |
+| `web/lib/analytics/track.ts`    | `track()`: sends one event, or nothing until Google Analytics has started; and the settle step that makes one edit one event (section 5) |
+| `web/lib/score-facts.ts`        | `instrumentsValue()` and `roundedSize()`, moved out of Sentry's `report.ts` (section 6), `trackInstrument()` and `SAMPLE_INSTRUMENTS`    |
+| `web/app/PrivacyChoices.tsx`    | the popup (section 3)                                                                                                                    |
+| `web/app/privacy/page.tsx`      | the privacy notice (section 7)                                                                                                           |
+| `web/e2e/google-analytics.ts`   | the shared fixture: answers Google's hosts locally (an empty `gtag.js`) and records every request                                        |
+| `web/e2e/privacy-choice.e2e.ts` | the consent, privacy, no-overlap, drop-through and keyboard cases (section 9)                                                            |
 
 Each `lib` file and the popup has its unit test beside it.
 
@@ -270,6 +270,12 @@ export function startAnalytics(): void {
 Every name except Google's own `page_view` avoids Google's reserved names (`click`, `error`,
 `file_download`, …). Every field comes from a fixed list or is a number, so text from the file
 cannot reach Google. Sliders send their final value only; seeking and volume are not tracked.
+`tempo_change` and `setting_change` send one event per edit: 1 second after the control's last
+change (the settle time the header's tempo control already uses), or at once when the page is
+hidden or left. A held button, the mouse wheel, typed digits and a colour-picker drag are each one
+edit, and `tempo_change` carries the last speed. A change to the value a control already has
+sends nothing. The held event goes through `track()` when it is sent, so it obeys the answer
+given by then.
 
 | Event              | Sent when                                                                                         | Fields                                              | Where the control lives                              |
 | ------------------ | ------------------------------------------------------------------------------------------------- | --------------------------------------------------- | ---------------------------------------------------- |
@@ -454,7 +460,8 @@ An agent may not create accounts.
 - `startAnalytics()`: nothing without an ID or without permission; the queue's order; one script
   only, added after `load`; a second call does nothing.
 - `track()`: nothing before the start; `['event', name, fields]` after it, without any key the event
-  does not declare.
+  does not declare. A burst of changes to one control sends one event with its latest fields, a
+  second after the last change or at once when the page is hidden; an unchanged value sends nothing.
 - Types: `// @ts-expect-error` on a free-text field, checked by `typecheck`.
 - `PrivacyChoices`: each button saves its answer; Details opens and closes; the card is hidden
   outside Europe, once answered, and when neither key is set; the live region is in the page before
