@@ -215,19 +215,27 @@ test('on /play, before any file opens, an error carries instruments: sample', as
 // the file opens — a race, so the file is opened again until the throw is seen (measured: it never
 // happens when the beat is held back, so the late-beat half below cannot wait for it). None of
 // those throws may be sent, and the next report carries the file's one track — an acoustic guitar,
-// program 25 — not the bundled beat's value. When NH-335 is fixed, delete the loop and what waits
-// for it; keep the sentinel and its checks.
+// program 25 — not the bundled beat's value. When NH-335 is fixed, open the file once instead of
+// looping, and stop waiting for the page error; keep the sentinel and its checks.
 test("NH-335 is never sent, and the next report carries the opened file's instruments", async ({
   page,
 }) => {
-  const nh335 = KNOWN_ENGINE_NOISE.find((noise) => noise.ticket === 'NH-335')?.message ?? '';
+  const tries = 10;
+  // One try is a page load, an open and a one-second wait: about two seconds measured, five here
+  // for a slow machine. The slack covers the sentinel. A slow run then ends on the message below,
+  // not on Playwright's 30-second default.
+  test.setTimeout(tries * 5000 + 15_000);
+
+  const nh335 = KNOWN_ENGINE_NOISE.find((noise) => noise.ticket === 'NH-335')?.message;
+  // A renamed or removed entry would leave nothing to match: `includes('')` is true for any message.
+  if (nh335 === undefined) throw new Error('NH-335 is no longer in the known-noise list');
   const sentry = await recordSentry(page);
   let nh335Seen = false;
   page.on('pageerror', (error) => {
     if (error.message.includes(nh335)) nh335Seen = true;
   });
 
-  for (let attempt = 0; attempt < 10 && !nh335Seen; attempt += 1) {
+  for (let attempt = 0; attempt < tries && !nh335Seen; attempt += 1) {
     await page.goto('/play');
     await page.getByTestId('open-file-input').setInputFiles('e2e/fixtures/guitar-no-percussion.gp');
     await expect(page.getByTestId('loaded-notation-name')).toHaveAttribute(
@@ -238,7 +246,7 @@ test("NH-335 is never sent, and the next report carries the opened file's instru
     await page.waitForTimeout(1000);
   }
   // Without the throw this case proves nothing about it.
-  expect(nh335Seen, 'NH-335 never fired in 10 tries').toBe(true);
+  expect(nh335Seen, `NH-335 never fired in ${tries} tries`).toBe(true);
 
   const sentinel = await throwSentinel(page, sentry, 'sentinel: after NH-335');
   expect(sentinel.tags?.instruments).toBe('025');

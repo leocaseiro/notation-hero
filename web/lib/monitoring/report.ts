@@ -131,12 +131,20 @@ export function isStorageRefusal(error: unknown): boolean {
   return name !== undefined && STORAGE_REFUSALS.has(name);
 }
 
-/** The `instruments` value for these tracks: `drums` first, then each program in three digits. */
+/**
+ * The `instruments` value for these tracks: `drums` first, then each program in three digits. A
+ * program outside General MIDI's 0-127 (a corrupt or crafted file can hold any number) is left out.
+ */
 export function instrumentsValue(
   tracks: readonly { program: number; isPercussion: boolean }[],
 ): string {
   const programs = [
-    ...new Set(tracks.filter((track) => !track.isPercussion).map((track) => track.program)),
+    ...new Set(
+      tracks
+        .filter((track) => !track.isPercussion)
+        .map((track) => track.program)
+        .filter((program) => Number.isInteger(program) && program >= 0 && program <= 127),
+    ),
   ].toSorted((a, b) => a - b);
   const drums = tracks.some((track) => track.isPercussion) ? ['drums'] : [];
   // Three digits, so a search for one program never matches another: 025 is not inside 125.

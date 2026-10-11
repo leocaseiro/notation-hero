@@ -186,6 +186,21 @@ describe('instrumentsValue', () => {
   it('lists each kind once', () => {
     expect(report.instrumentsValue([track(30), track(30), kit, kit])).toBe('drums,030');
   });
+
+  // A corrupt or crafted file can hand over any number as a program. The tag holds only drums,
+  // sample and 000-127, so anything else is left out.
+  it.each([128, -1, 2_147_483_647, 25.5, Number.NaN])(
+    'leaves out program %s, and gives nothing when it is the only one',
+    (program) => {
+      expect(report.instrumentsValue([track(program)])).toBe('');
+      expect(report.instrumentsValue([track(program), track(25)])).toBe('025');
+    },
+  );
+
+  it('keeps the edges of the range, and drums beside a program that is left out', () => {
+    expect(report.instrumentsValue([track(127), track(0)])).toBe('000,127');
+    expect(report.instrumentsValue([kit, track(128)])).toBe('drums');
+  });
 });
 
 /** The instruments tag a report captured on `pathname` would carry right now. */
