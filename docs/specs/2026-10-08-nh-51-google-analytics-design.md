@@ -270,6 +270,12 @@ export function startAnalytics(): void {
   Click IDs that other sites add (`fbclid`, `gclid`, `msclkid`) are redacted in the browser before
   sending (section 8, step 3). Sentry cuts addresses at `?` on purpose; only Google Analytics needs
   to know the source. No address in `web/` carries anything of the visitor's.
+- **A late "Yes":** a visitor in Europe may click Play before answering. When the answer comes
+  after a client-side page change, `startAnalytics()` first sends a page view for the address the
+  visit began at, read after the answer from the browser's navigation record
+  (`performance.getEntriesByType('navigation')[0].name`) without its `#` part, then the one for the
+  current page. Without it, the first page view is `/play`, and the landing page and its campaign
+  tags never reach Google Analytics.
 - **The tab title:** Google Analytics sends `document.title` with every event; the spike saw
   `dt=Notation Hero`. It is fixed today, and the privacy test (section 9) fails if a score's title
   ever reaches it.
@@ -468,7 +474,8 @@ An agent may not create accounts.
   `Australia/Sydney`: a saved `none` in Sydney allows nothing. A `none` or `errors` saved under an
   older `version` allows nothing in Berlin, and in Sydney no more than it did.
 - `startAnalytics()`: nothing without an ID or without permission; the queue's order; one script
-  only, added after `load`; a second call does nothing.
+  only, added after `load`; a second call does nothing. After a client-side page change, a page
+  view for the landing address, without its `#` part, comes before the one for the current page.
 - `track()`: nothing before the start; `['event', name, fields]` after it, without any key the event
   does not declare. A burst of changes to one control sends one event with its latest fields, a
   second after the last change or at once when the page is hidden; an unchanged value sends nothing.
@@ -501,7 +508,9 @@ hands Google, in `window.dataLayer`; what Google's script sends is checked by ha
   Sentry; when it arrives, Sentry's fixture has recorded no `session` envelope (the visit ping), and
   `window.dataLayer` does not exist. "Yes, …": both, and a `session` envelope arrives. The answer
   survives a reload. Unlike NH-124's cases, these read session envelopes on purpose: the visit ping
-  is the one thing "Report errors only" withholds from Sentry.
+  is the one thing "Report errors only" withholds from Sentry. Land on `/?utm_source=probe`, click
+  Play, then answer "Yes": `window.dataLayer` holds a page view for `/?utm_source=probe` before the
+  one for `/play`.
 - **Privacy:** open a fixture with a known title and track names, and press Solo and Mute on one of
   its tracks (both buttons are named after the track). Wait until `window.dataLayer` holds the
   `score_loaded` event, with the score's `track_count`, and both `mixer_change` events. Only then
@@ -606,6 +615,9 @@ Each is a claim this design rests on that no one has run yet:
 - The time-zone list, from IANA's `zone.tab`, and what a real phone or laptop set to an overseas
   region reports (a test browser given `Indian/Reunion` reports that name, checked 2026-10-10).
 - The popup, which appears after hydration, causes no layout shift (it is fixed-position).
+- That after a late "Yes" the landing page view can come first (the `config` command's own page
+  view withheld on that path), that page views on later client-side page changes still arrive, and
+  that the click-ID redaction (section 8, step 3) also covers that first address.
 
 ## The spike (2026-10-05, throwaway)
 
