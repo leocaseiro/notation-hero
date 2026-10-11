@@ -36,9 +36,11 @@ file's type and size, and the kinds of instrument it uses.
   block there (`client/src/components/About.tsx:65`) stays as it is.
 - **No size gate.** The bundle cost is measured and recorded, not enforced. A size gate is the
   separate pending decision L12-size.
-- **No choice popup yet.** A popup that lets a visitor choose what is sent — reject all, accept
-  all, or errors only — is [NH-349](https://leocaseiro.atlassian.net/browse/NH-349). Until it
-  ships, every production visit reports as this spec describes.
+- **No choice popup yet.** A popup that lets a visitor choose what is sent is
+  [NH-51](https://leocaseiro.atlassian.net/browse/NH-51) (Google Analytics plus the privacy popup),
+  and a "Privacy choices" link to change that answer later is
+  [NH-349](https://leocaseiro.atlassian.net/browse/NH-349). Until the popup ships, every production
+  visit reports as this spec describes.
 
 ## Why this exists
 
@@ -741,8 +743,8 @@ secret. The upload now runs inside Vercel's build, so neither GitHub mechanism a
   this project counts no visits outside Sentry, and adding a counter is the usage tracking
   [NH-52](https://leocaseiro.atlassian.net/browse/NH-52) owns.
 - **The privacy note is on the home page only.** A visitor who opens `/play` directly is counted
-  without seeing it. The choice popup, [NH-349](https://leocaseiro.atlassian.net/browse/NH-349),
-  would show on every page.
+  without seeing it. The privacy popup, [NH-51](https://leocaseiro.atlassian.net/browse/NH-51),
+  would show on whichever page a visitor in Europe opens first.
 - **The quota.** Past 5,000 errors in a month, Sentry refuses further reports until it resets — "Events
   and attachments that exceed your quota will not be accepted" (Sentry's quota docs). The SDK stops
   sending without any sign to the visitor, and Release Health keeps counting. There is no per-page cap:

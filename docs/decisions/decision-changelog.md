@@ -220,6 +220,11 @@ so the loop's no-progress rule stopped it and asked; lap 2's review was not clea
 the pin above, which was run both ways before it landed. Every change in both laps was checked by
 running code. NH-124 moves to implementation.
 
+**The privacy popup is NH-51, not NH-349** (leocaseiro, 2026-10-11). NH-349 was narrowed on
+2026-10-05 to a "Privacy choices" link for changing an answer later, and NH-51 (Google Analytics
+plus the privacy popup) builds the popup. The spec's Non-goals and Known limits now say so; the
+follow-up line above keeps the wording of its day.
+
 **Registry:** L11-sentry points at the spec; L11-srcmap reworded (D4); L11-envsecret ⛔ superseded
 and F7-sentry rewritten, because the source-map upload runs inside Vercel's build rather than a
 GitHub Actions job.
