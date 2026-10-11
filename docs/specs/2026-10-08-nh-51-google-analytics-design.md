@@ -107,6 +107,11 @@ Each `lib` file and the popup has its unit test beside it.
   Analytics ID, and Chromium's `--host-resolver-rules` launch argument, which makes Google's hosts
   unresolvable in the test browser.
 - Screenshot baselines: `/` (the new note) and one new shot with the popup (section 9).
+- `web/e2e/pages.vr.ts`: the new shot, beside the ten, so its baseline lands in
+  `pages.vr.ts-snapshots/`, the one folder the shot guard pairs against; the card's computed
+  `background-color` check beside it; "ten" → "eleven" where its comments count the shots.
+- `tooling/workflow-guards.test.mjs`: `EXPECTED_SHOTS` 10 → 11, a fifth surface anchor for the
+  card's check, and "ten" → "eleven" where its comments and messages count the shots.
 - `web/README.md` (the variable), `cspell.json`, and the decision registry and changelog.
 
 ## 2. The privacy choice
@@ -499,7 +504,9 @@ hands Google, in `window.dataLayer`; what Google's script sends is checked by ha
   only check that sees the card itself: its colours and its three buttons over the transport row,
   as `web/`'s own CSS build draws them. The no-overlap case measures the card's box but cannot see
   it. No `/` shot (there the card sits over empty page) and no phone-width shot (the lane covers
-  no width under 900 px, by design; the no-overlap case measures the phone placement).
+  no width under 900 px, by design; the no-overlap case measures the phone placement). The card's
+  fill is `--popover`, white on the white score, a step the comparison cannot see, so the shot
+  also reads the card's computed `background-color`, as AGENTS.md asks for a new surface.
 - An axe scan with the popup open and Details expanded (as the Settings case opens every group),
   in light only, like every other axe case in the lane: `web/`
   cannot show dark mode until NH-302 (see "Light only" in
@@ -513,6 +520,11 @@ hands Google, in `window.dataLayer`; what Google's script sends is checked by ha
 - `docs/decisions/decision-registry.md` — a new row, `L11-analytics`, ⏳ pending. It flips to ✅ in
   the implementation.
 - `web/README.md` — `NEXT_PUBLIC_GA_ID` in the Deploy section.
+- The screenshot count, ten → eleven: `AGENTS.md` (two lines), `web/README.md`,
+  `client/README.md`, row L13 (the test harnesses) of `docs/decisions/decision-registry.md`, and
+  `docs/runbooks/vr-a11y-testing.md` (its heading, two sentences and its list of shot names, which
+  gains the popup shot). The runbook's "Three shots carry four assertions" becomes four shots and
+  five assertions.
 - **Jira:** NH-51 rewritten and NH-349 narrowed (both done on 2026-10-05); NH-349 blocks NH-51. The
   future same-origin privacy test on [NH-298](https://leocaseiro.atlassian.net/browse/NH-298) must
   allow Google's hosts as well as Sentry's.
