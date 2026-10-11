@@ -64,17 +64,23 @@ vi.mock('../../lib/alphatab/useAlphaTab', async () => {
 // ours there.
 vi.mock('../../lib/alphatab/playback-selection', () => ({ dropPlaybackSelection: vi.fn() }));
 
-// Wrapped so a case can see WHEN the score's names were remembered. Its behaviour is unchanged.
+// Wrapped so a case can see WHEN a file's name and a score's names were remembered. Their
+// behaviour is unchanged.
 vi.mock('../../lib/monitoring/scrub', async (importOriginal) => {
   const real = (await importOriginal()) as Record<string, unknown>;
+  const rememberOpenFile = real.rememberOpenFile as (fileName: string) => void;
   const rememberScore = real.rememberScore as (score: unknown) => void;
-  return { ...real, rememberScore: vi.fn(rememberScore) };
+  return {
+    ...real,
+    rememberOpenFile: vi.fn(rememberOpenFile),
+    rememberScore: vi.fn(rememberScore),
+  };
 });
 
 // Imported after the vi.mock calls on purpose: Vitest hoists them, and keeping the import below
 // them makes the dependency order readable rather than surprising.
 import { dropPlaybackSelection } from '../../lib/alphatab/playback-selection';
-import { rememberScore, scrubEvent } from '../../lib/monitoring/scrub';
+import { rememberOpenFile, rememberScore, scrubEvent } from '../../lib/monitoring/scrub';
 import { PlayerShell } from './PlayerShell';
 
 import type { ReactNode } from 'react';
@@ -309,4 +315,22 @@ test("the score's names are remembered before the swap, so an E105 quoting one i
   expect(event.exception?.values?.[0]?.value).toBe(
     "Cannot read properties of undefined (reading '[file]')",
   );
+});
+
+test('a dropped file is remembered by name before it is read, even when the read fails', async () => {
+  currentApi = standInApi();
+  // Earlier cases opened files too; only this case's call may count.
+  vi.mocked(rememberOpenFile).mockClear();
+  const file = fixture('Punk.gp');
+  const read = vi.spyOn(file, 'arrayBuffer').mockRejectedValue(new Error('the volume went away'));
+  render(<PlayerShell />);
+
+  fireEvent.drop(screen.getByTestId('drop-zone'), { dataTransfer: { files: [file] } });
+  await waitFor(() => expect(reported('E102')).toHaveLength(1), { timeout: 5000 });
+
+  // The name arrived before the read that failed, so a report quoting it is filtered.
+  expect(rememberOpenFile).toHaveBeenCalledWith('Punk.gp');
+  const [remembered] = vi.mocked(rememberOpenFile).mock.invocationCallOrder;
+  const [tried] = read.mock.invocationCallOrder;
+  expect(remembered).toBeLessThan(tried ?? 0);
 });

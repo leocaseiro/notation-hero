@@ -90,11 +90,13 @@ test('a report holds no click, no console line, and no name from the file', asyn
     console.error('console-marker-7f3a');
   });
 
+  // The probe quotes all three kinds of name: the file's (remembered when it was picked), the
+  // score's title and a track's (both remembered when it parsed).
   const report = await throwSentinel(
     page,
     sentry,
-    "privacy probe: (reading 'Rhythm')",
-    "privacy probe: (reading '[file]')",
+    "privacy probe: transposed.alphatex, Transposed (reading 'Rhythm')",
+    "privacy probe: [file], [file] (reading '[file]')",
   );
   expect(report.breadcrumbs?.some((crumb) => crumb.category?.startsWith('ui.'))).toBe(false);
   const raw = sentry.raw().join('\n');
