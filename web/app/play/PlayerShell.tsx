@@ -37,6 +37,7 @@ import {
 } from '../../lib/alphatab/settings-storage';
 import { persistTransport, TRANSPORT_LABELS } from '../../lib/alphatab/transport-storage';
 import { setAlphaTabValue, useAlphaTab, useAlphaTabEvent } from '../../lib/alphatab/useAlphaTab';
+import { isStorageRefusal, noteError, reportError } from '../../lib/monitoring/report';
 import { NotationSurface } from './NotationSurface';
 import {
   OpenFileControl,
@@ -181,11 +182,15 @@ function Player() {
         SETTING_NUMERIC_BOUNDS,
         SETTING_TEXT_VALIDATORS,
       );
-    } catch {
+    } catch (error) {
       // A browser with site data blocked makes the localStorage GETTER itself throw, not only
       // setItem — and this initialiser runs during render, so an unguarded throw takes the whole
       // page. Blocked storage is not a corrupt document: reset stays false, so no toast fires and
-      // no repair write happens. Both setItem calls below are guarded the same way.
+      // no repair write happens. Both setItem calls below are guarded the same way. A throw from
+      // our own reader lands here too, and that one is a bug.
+      if (isStorageRefusal(error))
+        noteError(error, 'Player settings could not be read from storage');
+      else reportError(error);
       return { settings: DEFAULT_PLAYER_SETTINGS, reset: false, repaired: [] };
     }
   });
@@ -211,8 +216,11 @@ function Player() {
     if (!restored.reset) return;
     try {
       globalThis.localStorage.setItem(SETTINGS_STORAGE_KEY, serializeSettings(restored.settings));
-    } catch {
+    } catch (error) {
       // Storage is unavailable or full; the warning below is still worth showing.
+      if (isStorageRefusal(error))
+        noteError(error, 'Repaired player settings could not be written back');
+      else reportError(error);
     }
     // Both forms, because they serve different readers: the label is what the row is CALLED in the
     // popover, the dot-path is what to grep for. A report that carries only one of them is hard to
@@ -693,9 +701,11 @@ function Player() {
           setSettings(accepted);
           try {
             globalThis.localStorage.setItem(SETTINGS_STORAGE_KEY, serializeSettings(accepted));
-          } catch {
+          } catch (error) {
             // Private browsing and a full quota both throw here. Losing persistence is survivable;
-            // losing the player is not, so swallow it rather than breaking the edit.
+            // losing the player is not, so the edit carries on either way.
+            if (isStorageRefusal(error)) noteError(error, 'Player settings could not be saved');
+            else reportError(error);
           }
         },
       });

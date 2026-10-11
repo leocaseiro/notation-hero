@@ -83,3 +83,34 @@ test('page addresses reach Sentry without their query or fragment', async ({ pag
   expect(raw).not.toContain('probe123');
   expect(raw).not.toContain('anchor-probe-456');
 });
+
+// Case 5. Blocked storage is the visitor's environment: a breadcrumb only (S2b), which travels
+// inside the next real report.
+test('storage the browser blocks leaves a breadcrumb, never a report of its own', async ({
+  page,
+}) => {
+  const sentry = await recordSentry(page);
+  await page.addInitScript(() => {
+    // What a browser with site data blocked does: the getter itself throws a SecurityError. A
+    // plain Error here would be reported as a bug of ours, correctly.
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      get() {
+        throw new DOMException('The operation is insecure.', 'SecurityError');
+      },
+    });
+  });
+  await page.goto('/play');
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+
+  const sentinel = await throwSentinel(page, sentry, 'sentinel: storage blocked');
+  expect(sentry.events()).toHaveLength(1);
+  expect(
+    sentinel.breadcrumbs?.some(
+      (crumb) =>
+        crumb.category === 'notation-hero' &&
+        crumb.message === 'Player settings could not be read from storage' &&
+        crumb.data?.error === 'SecurityError',
+    ),
+  ).toBe(true);
+});
