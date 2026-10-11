@@ -210,6 +210,7 @@ Details ▾
 - **Equal buttons:** the design system's `Button`, one variant for all three, each at least 44 px
   tall. Refusing is as easy as allowing.
 - **Answering** saves the choice, hides the card and starts what it allows at once — no reload.
+  The live region then says "Your answer is saved:" and the label of the button pressed.
 - **Details** is a button with `aria-expanded`, closed by default. "How Google uses data" links to
   [Google's page for sites that use its services](https://policies.google.com/technologies/partner-sites),
   and "Privacy notice" links to `/privacy`. Both open in a new tab, so an open score is not lost,
@@ -491,7 +492,7 @@ An agent may not create accounts.
 - Types: `// @ts-expect-error` on a free-text field, checked by `typecheck`.
 - `PrivacyChoices`: each button saves its answer; Details opens and closes; the card is hidden
   outside Europe, once answered, and when neither key is set; the live region is in the page before
-  the card appears, and receives the question when it does.
+  the card appears, receives the question when it does, and names the saved answer when it goes.
 
 **End to end (Playwright).** The lane's one build carries the fake Google Analytics ID and every
 project runs as Sydney, so every page in every case starts Google Analytics. The config makes
