@@ -21,6 +21,8 @@ export const ERROR = {
   notAScore: 'E103',
   /** A cached or catalog score could not be loaded; the player falls back to the bundled beat. */
   cachedScoreUnavailable: 'E104',
+  /** The file was read, but loading it into the player failed — a bug in our code, not the file. */
+  openFailedAfterRead: 'E105',
 
   /** The self-hosted AlphaTab module failed to import. */
   engineImport: 'E201',

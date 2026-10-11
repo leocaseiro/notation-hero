@@ -41,6 +41,8 @@ import { isStorageRefusal, noteError, reportError } from '../../lib/monitoring/r
 import { NotationSurface } from './NotationSurface';
 import {
   OpenFileControl,
+  fileType,
+  loadFailureMessage,
   openFailureCode,
   readFailureMessage,
   readNotation,
@@ -938,16 +940,33 @@ function Player() {
       setLoadFailed(false);
       setNotation({ name: next.name, score });
       setOpening(false);
-      toast.success(`${next.name} loaded`, { id: 'notation-load' });
-      // Success only. None of this is reachable from the cancel path or the parse failure (both
-      // returned above), from the read failures the picker catches, or for the bundled score —
-      // nobody asked for that one, so nothing is announced and nothing is focused at page load.
-      setAnnouncement(`Opened ${next.name}`);
-      // A later success contradicts an earlier open-a-file failure, so the stale 1xx toasts go.
-      // 2xx engine failures are NOT toasts — they render over the notation area — so nothing
-      // here reaches them.
-      dismissErrors((id) => id.startsWith('E1'));
-      playRef.current?.focus();
+      // The new score is on screen from here, so a bug of ours in the steps left must not say the
+      // file "could not be opened": this catch reports it as E105 with its own sentence, and the
+      // open ends here instead of reaching either open path's catch. No announcement: the toast is
+      // a polite live region, as the picker's E105 already relies on.
+      try {
+        toast.success(`${next.name} loaded`, { id: 'notation-load' });
+        // Success only. None of this is reachable from the cancel path or the parse failure (both
+        // returned above), from the read failures the picker catches, or for the bundled score —
+        // nobody asked for that one, so nothing is announced and nothing is focused at page load.
+        setAnnouncement(`Opened ${next.name}`);
+        // A later success contradicts an earlier open-a-file failure, so the stale 1xx toasts go.
+        // 2xx engine failures are NOT toasts — they render over the notation area — so nothing
+        // here reaches them.
+        dismissErrors((id) => id.startsWith('E1'));
+        playRef.current?.focus();
+      } catch (error) {
+        reportError(error, {
+          code: ERROR.openFailedAfterRead,
+          file: { type: next.type, bytes: next.bytes.byteLength },
+        });
+        // The loading toast, or the "loaded" toast that replaced it, gives way to the error.
+        toast.dismiss('notation-load');
+        toast.error(
+          `${next.name} opened, but something went wrong on our side. If the player misbehaves, reload the page. (Error ${ERROR.openFailedAfterRead})`,
+          { id: `${ERROR.openFailedAfterRead}:${next.name}` },
+        );
+      }
     },
     [api, engine, notation, playing],
   );
@@ -959,11 +978,8 @@ function Player() {
   // await at the top of runRequestNotation, so a second pick made during that window sees it still
   // false. A ref is written in the same synchronous tick as the call and is visible immediately.
   //
-  // The guard wraps rather than nests so the 113-line body keeps its shape; `finally` releases the
-  // slot on every exit, including the early returns for a failed engine import and an unreadable
-  // score.
-  //
-  // PRE-EXISTING: this path is unchanged by this feature, and the race predates it.
+  // The guard wraps rather than nests so the body keeps its shape; `finally` releases the slot on
+  // every exit, including the early returns for a failed engine import and an unreadable score.
   const openInFlight = useRef(false);
   const requestNotation = useCallback(
     async (next: LoadedNotation) => {
@@ -973,6 +989,11 @@ function Player() {
         await runRequestNotation(next);
       } finally {
         openInFlight.current = false;
+        // Every exit lowers the opening state, a throw after the parse included: without this,
+        // that throw skipped both calls that lower it and the bar kept pulsing beside the error.
+        // The early return above stays outside the `try`, so a second open never lowers the bar
+        // of the open still running.
+        setOpening(false);
       }
     },
     [runRequestNotation],
@@ -991,13 +1012,24 @@ function Player() {
   const acceptDropped = useCallback(
     async (file: File | undefined) => {
       if (!file) return;
+      // Set between the two steps, as in OpenFileControl's `accept`: before it, the visitor's file
+      // (E101 or E102, a warning); after it, our own code (E105, an error).
+      let read = false;
       try {
-        await requestNotation(await readNotation(file));
-      } catch {
+        const loaded = await readNotation(file);
+        read = true;
+        await requestNotation(loaded);
+      } catch (error) {
+        const code = read ? ERROR.openFailedAfterRead : openFailureCode(file);
+        const facts = { type: fileType(file.name), bytes: file.size };
+        if (read) reportError(error, { code, file: facts });
+        else reportError(error, { code, level: 'warning', file: facts });
         // Same id as requestNotation's loading toast — see OpenFileControl's `accept`.
         toast.dismiss('notation-load');
-        toast.error(readFailureMessage(file), { id: `${openFailureCode(file)}:${file.name}` });
-        setAnnouncement(`${file.name} could not be opened. Error ${openFailureCode(file)}.`);
+        toast.error(read ? loadFailureMessage(file) : readFailureMessage(file), {
+          id: `${code}:${file.name}`,
+        });
+        setAnnouncement(`${file.name} could not be opened. Error ${code}.`);
       }
     },
     [requestNotation],

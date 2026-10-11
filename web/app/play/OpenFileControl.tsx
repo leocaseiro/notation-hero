@@ -4,7 +4,9 @@ import { Button, Tooltip, TooltipContent, TooltipTrigger, toast } from '@notatio
 import { ERROR } from '@notation-hero/shared/error-codes';
 import { useId, useRef } from 'react';
 
+import { reportError } from '../../lib/monitoring/report';
 import type { LoadedNotation } from './PlayerShell';
+import type { ErrorCode } from '@notation-hero/shared/error-codes';
 
 // Every extension of a format AlphaTab 1.8.4 reads (spec §4): Guitar Pro 3-8, MusicXML plain and
 // compressed, Capella and alphaTex, by extension only. ScoreLoader sniffs file CONTENT and never
@@ -64,7 +66,7 @@ export async function readNotation(file: File): Promise<LoadedNotation> {
  * changes the message. A file that is read but does not parse gets E103 from requestNotation.
  */
 /** Which read failure this is. The toast id is keyed on it, so it must not drift from the copy. */
-export function openFailureCode(file: File): string {
+export function openFailureCode(file: File): ErrorCode {
   return file.size > MAX_NOTATION_BYTES ? ERROR.fileTooLarge : ERROR.fileUnreadable;
 }
 
@@ -72,6 +74,11 @@ export function readFailureMessage(file: File): string {
   return file.size > MAX_NOTATION_BYTES
     ? `${file.name} is too large to open. The limit is ${MAX_NOTATION_MB} MB. (Error ${ERROR.fileTooLarge})`
     : `${file.name} could not be read. Check that the file still exists, then try again. (Error ${ERROR.fileUnreadable})`;
+}
+
+/** Toast text for a file that was read but could not be loaded: our bug, not the file (E105). */
+export function loadFailureMessage(file: { readonly name: string }): string {
+  return `${file.name} could not be opened. Something went wrong on our side, not with your file. Try again, or reload the page. (Error ${ERROR.openFailedAfterRead})`;
 }
 
 export function OpenFileControl({ onNotation }: Readonly<OpenFileControlProps>) {
@@ -84,17 +91,27 @@ export function OpenFileControl({ onNotation }: Readonly<OpenFileControlProps>) 
   // would produce nothing at all: no toast, no error state, just a control the user keeps pressing.
   const accept = async (file: File | undefined) => {
     if (!file) return;
+    // Set between the two steps. Before it, a failure is the visitor's file: E101 or E102, a
+    // warning. After it, our own code failed loading a file that was read fine: E105, an error.
+    let read = false;
     try {
       // AWAIT it: onNotation is async, so an un-awaited call drops any rejection on the floor —
       // the same reason the drag-and-drop twin in PlayerShell awaits requestNotation.
-      await onNotation(await readNotation(file));
-    } catch {
-      // Same id as requestNotation's loading toast, so a throw mid-open REPLACES the "Opening…"
-      // spinner instead of stacking a second toast beside one that never resolves.
-      // Own id, not the spinner's: see the note in PlayerShell. Same file failing the same way
+      const loaded = await readNotation(file);
+      read = true;
+      await onNotation(loaded);
+    } catch (error) {
+      const facts = { type: fileType(file.name), bytes: file.size };
+      // Own id, not the spinner's: see the note in PlayerShell. The same file failing the same way
       // twice refreshes one toast rather than stacking a duplicate.
       toast.dismiss('notation-load');
-      toast.error(readFailureMessage(file), { id: `${openFailureCode(file)}:${file.name}` });
+      if (read) {
+        reportError(error, { code: ERROR.openFailedAfterRead, file: facts });
+        toast.error(loadFailureMessage(file), { id: `${ERROR.openFailedAfterRead}:${file.name}` });
+      } else {
+        reportError(error, { code: openFailureCode(file), level: 'warning', file: facts });
+        toast.error(readFailureMessage(file), { id: `${openFailureCode(file)}:${file.name}` });
+      }
     }
   };
 

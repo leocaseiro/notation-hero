@@ -115,6 +115,12 @@ describe('reportError', () => {
     expect(captured()[0]?.[0]).toBe(error);
   });
 
+  it('E105 keeps its message: it describes our bug, not the file', () => {
+    const bug = new Error("Cannot read properties of undefined (reading 'tracks')");
+    report.reportError(bug, { code: 'E105', file: { type: 'gp', bytes: 5 } });
+    expect(captured()[0]?.[0]).toBe(bug);
+  });
+
   it('sends E202 its meaning when AlphaTab gives it no message at all', () => {
     // eslint-disable-next-line unicorn/error-message -- the input under test: AlphaTab reports a SoundFont network failure with exactly this empty message
     report.reportError(new Error(''), { code: 'E202', handled: false });

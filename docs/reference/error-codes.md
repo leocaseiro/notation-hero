@@ -22,12 +22,13 @@ and can be archived later without breaking the gate.
 
 The player reading a file you picked or dropped, on `/play`. Each of these shows as a toast.
 
-| Code | Meaning                                                                                   |
-| ---- | ----------------------------------------------------------------------------------------- |
-| E101 | Over the size limit; the file is never read.                                              |
-| E102 | The browser could not read the file — moved, deleted or unmounted after it was picked.    |
-| E103 | No AlphaTab importer accepts the bytes.                                                   |
-| E104 | A cached or catalog score could not be loaded; the player falls back to the bundled beat. |
+| Code | Meaning                                                                                     |
+| ---- | ------------------------------------------------------------------------------------------- |
+| E101 | Over the size limit; the file is never read.                                                |
+| E102 | The browser could not read the file — moved, deleted or unmounted after it was picked.      |
+| E103 | No AlphaTab importer accepts the bytes.                                                     |
+| E104 | A cached or catalog score could not be loaded; the player falls back to the bundled beat.   |
+| E105 | The file was read, but loading it into the player failed — a bug in our code, not the file. |
 
 `E104` is reserved rather than live: the v0 player spec records it as unused in v0a, where the
 bundled beat _is_ the score that loads. It keeps its number so the cached-score path can use it

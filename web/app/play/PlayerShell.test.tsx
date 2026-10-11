@@ -1,7 +1,12 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+
 // eslint-disable-next-line @typescript-eslint/no-restricted-imports -- Vitest files are never bundled by Next, so the double-bundle reason for this fence does not apply
 import * as engine from '@coderline/alphatab';
-import { act, render, screen } from '@testing-library/react';
-import { expect, test, vi } from 'vitest';
+import { toast } from '@notation-hero/client';
+import { captureException } from '@sentry/nextjs';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
 // The per-row work, counted — the same instrument SettingsPopover.test.tsx uses. valueOf calls
 // readSettingValue once for every settings-sourced row, so the call count IS the number of rows
@@ -33,23 +38,105 @@ vi.mock('../../lib/alphatab/AlphaTabEngineContext', () => ({
   useAlphaTabEngine: () => ({ engine, error: null }),
 }));
 
-// Every AlphaTab subscription, captured by event name, so a test can deliver one. `useAlphaTab`
-// itself returns no api: this file drives the shell's OWN state commits, and every handler that
-// touches the api guards on it.
-const handlers = new Map<string, (args: unknown) => void>();
-vi.mock('../../lib/alphatab/useAlphaTab', () => ({
-  useAlphaTab: () => [undefined, { current: null }],
-  useAlphaTabEvent: (_api: unknown, name: string, handler: (args: unknown) => void) => {
-    handlers.set(name, handler);
-  },
-  setAlphaTabValue: () => {},
-}));
+// Every AlphaTab subscription, kept per event AND per call site, so a case can deliver an event to
+// every component listening for it — not only the last one to subscribe. Each call site keeps one
+// slot (a ref), so a component that re-renders replaces its own handler instead of adding another.
+const handlers = new Map<string, Map<object, (args: unknown) => void>>();
+// The api the shell sees. Undefined is the original harness, with no engine at all; a case that
+// needs the player ready, or a file opened, sets a stand-in first.
+let currentApi: object | undefined;
+vi.mock('../../lib/alphatab/useAlphaTab', async () => {
+  const { useRef } = await import('react');
+  function useAlphaTabEvent(_api: unknown, name: string, handler: (args: unknown) => void): void {
+    const slot = useRef({});
+    const byName = handlers.get(name) ?? new Map<object, (args: unknown) => void>();
+    byName.set(slot.current, handler);
+    handlers.set(name, byName);
+  }
+  return {
+    useAlphaTab: () => [currentApi, { current: null }],
+    useAlphaTabEvent,
+    setAlphaTabValue: () => {},
+  };
+});
+
+// The step right after the parse and before the swap. A case makes it throw, to stand for a bug of
+// ours there.
+vi.mock('../../lib/alphatab/playback-selection', () => ({ dropPlaybackSelection: vi.fn() }));
 
 // Imported after the vi.mock calls on purpose: Vitest hoists them, and keeping the import below
 // them makes the dependency order readable rather than surprising.
+import { dropPlaybackSelection } from '../../lib/alphatab/playback-selection';
 import { PlayerShell } from './PlayerShell';
 
 import type { ReactNode } from 'react';
+
+/** Delivers one AlphaTab event to every component subscribed to it. */
+const deliver = (name: string, args?: unknown): void => {
+  for (const handler of handlers.get(name)?.values() ?? []) handler(args);
+};
+
+/**
+ * Enough of the live api for the shell, NotationSurface and the popovers to mount, report the
+ * player ready, and open a file.
+ */
+const standInApi = () => ({
+  settings: {
+    player: { playerMode: engine.PlayerMode.EnabledAutomatic },
+    notation: { transpositionPitches: [] as number[] },
+  },
+  actualPlayerMode: engine.PlayerMode.EnabledSynthesizer,
+  isReadyForPlayback: true,
+  score: undefined,
+  tracks: [],
+  playbackRange: null,
+  renderScore: vi.fn(),
+  pause: vi.fn(),
+  play: vi.fn(),
+  playPause: vi.fn(),
+});
+
+/** A file from web/e2e/fixtures. Read by path: under jsdom, new URL(…, import.meta.url) fails. */
+const fixture = (name: string): File =>
+  new File([readFileSync(path.join(process.cwd(), 'e2e/fixtures', name))], name);
+
+/** Picks `file` through the real open-file control. */
+function pick(file: File): void {
+  fireEvent.change(screen.getByTestId('open-file-input'), { target: { files: [file] } });
+}
+
+/** The reports sent with `code`, as captureException received them. */
+const reported = (code: string) =>
+  vi
+    .mocked(captureException)
+    .mock.calls.filter(
+      ([, hint]) =>
+        (hint as { captureContext?: { tags?: { code?: string } } } | undefined)?.captureContext
+          ?.tags?.code === code,
+    );
+
+/** Waits until the loading bar has left the page: it fades for 700 ms once nothing is pending. */
+const loadingBarGone = () =>
+  waitFor(
+    () => expect(screen.queryByRole('progressbar', { name: 'Loading the player' })).toBeNull(),
+    { timeout: 3000 },
+  );
+
+beforeEach(() => {
+  handlers.clear();
+  currentApi = undefined;
+  vi.mocked(captureException).mockReset();
+  vi.mocked(dropPlaybackSelection).mockReset();
+  // jsdom has no document.fonts, and NotationSurface listens on it as soon as an api exists.
+  Object.defineProperty(document, 'fonts', {
+    configurable: true,
+    value: { addEventListener: () => {}, removeEventListener: () => {} },
+  });
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 /**
  * The elapsed clock, mm:ss — where a committed position lands on screen, and the proof a frame
@@ -72,7 +159,7 @@ async function runFrames(count: number): Promise<number> {
   for (let index = 0; index < count; index += 1) {
     // Sequential by definition: each frame has to commit before the next one is delivered.
     await act(async () => {
-      handlers.get('playerPositionChanged')?.({
+      deliver('playerPositionChanged', {
         currentTime: 1000 + index * 100,
         endTime: 60_000,
         currentTick: index,
@@ -107,4 +194,83 @@ test('the transport running rebuilds no settings rows, because apiValues stays m
   // write reaching the screen, and the last frame carried 1200 ms, so 00:01 is that proof.
   expect(shownClock()).toBe('00:01');
   expect(reads).toBe(0);
+});
+
+test('an open that fails after the parse shows E105 and leaves no loading bar', async () => {
+  currentApi = standInApi();
+  const toastError = vi.spyOn(toast, 'error');
+  vi.mocked(dropPlaybackSelection).mockImplementation(() => {
+    throw new Error('a bug of ours, after the parse');
+  });
+  render(<PlayerShell />);
+  act(() => deliver('playerReady'));
+  // First, the bar must be gone with the player ready; otherwise "no bar" below proves nothing.
+  await loadingBarGone();
+
+  pick(fixture('Punk.gp'));
+  await waitFor(
+    () =>
+      expect(toastError).toHaveBeenCalledWith(expect.stringContaining('(Error E105)'), {
+        id: 'E105:Punk.gp',
+      }),
+    { timeout: 5000 },
+  );
+  await loadingBarGone();
+});
+
+test('a dropped file that fails after the read reports E105 and announces it', async () => {
+  currentApi = standInApi();
+  vi.mocked(dropPlaybackSelection).mockImplementation(() => {
+    throw new Error('a bug of ours, after the parse');
+  });
+  render(<PlayerShell />);
+
+  fireEvent.drop(screen.getByTestId('drop-zone'), {
+    dataTransfer: { files: [fixture('Punk.gp')] },
+  });
+  await waitFor(() => expect(reported('E105')).toHaveLength(1), { timeout: 5000 });
+  expect(await screen.findByText('Punk.gp could not be opened. Error E105.')).toBeInTheDocument();
+});
+
+test('a picked file whose open fails after the swap says it opened, and reports E105 once', async () => {
+  currentApi = standInApi();
+  const toastError = vi.spyOn(toast, 'error');
+  // The first step after the swap. A throw there stands for a bug of ours with the score on screen.
+  vi.spyOn(toast, 'success').mockImplementation(() => {
+    throw new Error('a bug of ours, after the swap');
+  });
+  render(<PlayerShell />);
+  act(() => deliver('playerReady'));
+  await loadingBarGone();
+
+  pick(fixture('Punk.gp'));
+  await waitFor(() => expect(reported('E105')).toHaveLength(1), { timeout: 5000 });
+  expect(toastError).toHaveBeenCalledWith(
+    'Punk.gp opened, but something went wrong on our side. If the player misbehaves, reload the page. (Error E105)',
+    { id: 'E105:Punk.gp' },
+  );
+  expect(toastError).not.toHaveBeenCalledWith(
+    expect.stringContaining('could not be opened'),
+    expect.anything(),
+  );
+  await loadingBarGone();
+});
+
+test('a dropped file whose open fails after the swap says it opened, not that it failed', async () => {
+  currentApi = standInApi();
+  const toastError = vi.spyOn(toast, 'error');
+  vi.spyOn(toast, 'success').mockImplementation(() => {
+    throw new Error('a bug of ours, after the swap');
+  });
+  render(<PlayerShell />);
+
+  fireEvent.drop(screen.getByTestId('drop-zone'), {
+    dataTransfer: { files: [fixture('Punk.gp')] },
+  });
+  await waitFor(() => expect(reported('E105')).toHaveLength(1), { timeout: 5000 });
+  expect(toastError).toHaveBeenCalledWith(
+    expect.stringContaining('Punk.gp opened, but something went wrong on our side.'),
+    { id: 'E105:Punk.gp' },
+  );
+  expect(screen.queryByText('Punk.gp could not be opened. Error E105.')).toBeNull();
 });
