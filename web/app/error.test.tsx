@@ -17,7 +17,11 @@ test('the error page reports the crash once, and says what a report leaves out',
       'Errors are reported automatically — without your file, its name, or the music in it. Try again, or reload the page.',
     ),
   ).toBeInTheDocument();
-  expect(screen.getByText('Error E901')).toBeInTheDocument();
+  expect(screen.getByRole('heading', { level: 1, name: 'Notation Hero' })).toBeInTheDocument();
+  expect(
+    screen.getByRole('heading', { level: 2, name: 'Something went wrong' }),
+  ).toBeInTheDocument();
+  expect(screen.getByText('Error E901 — the page crashed unexpectedly.')).toBeInTheDocument();
   expect(vi.mocked(reportError).mock.calls).toEqual([[error, { code: 'E901', handled: false }]]);
 
   await userEvent.click(screen.getByRole('button', { name: 'Try again' }));

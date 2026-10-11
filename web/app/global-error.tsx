@@ -22,13 +22,16 @@ export default function GlobalError({
       <body>
         <title>Notation Hero</title>
         <main className="mx-auto flex min-h-dvh max-w-3xl flex-col items-center justify-center gap-6 p-8 text-center">
-          <h1 className="text-2xl font-bold">Something went wrong</h1>
+          <h1 className="text-3xl font-bold">Notation Hero</h1>
+          <h2 className="text-xl font-semibold">Something went wrong</h2>
           {/* Not "a report was sent": an ad blocker may have stopped it, and this page cannot know. */}
           <p className="max-w-prose text-muted-foreground">
             Errors are reported automatically — without your file, its name, or the music in it. Try
             again, or reload the page.
           </p>
-          <p className="text-sm text-muted-foreground">Error {ERROR.unexpectedCrash}</p>
+          <p className="text-sm text-muted-foreground">
+            Error {ERROR.unexpectedCrash} — the page crashed unexpectedly.
+          </p>
           <Button className="min-h-11 px-8" onClick={reset}>
             Try again
           </Button>
