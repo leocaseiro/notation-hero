@@ -58,12 +58,25 @@ describe('the names filter', () => {
     expect(valueOf(scrub.scrubEvent(thrown('Error 1 of 2')))).toBe('Error 1 of 2');
   });
 
-  it('never touches stack frames', () => {
+  it("never runs over a frame's file address: that is our code, and source maps match it", () => {
     scrub.rememberScore(SCORE);
     const event = scrub.scrubEvent(thrown('x'));
     expect(event.exception?.values?.[0]?.stacktrace?.frames?.[0]?.filename).toBe(
       'app:///_next/static/chunks/Night Drive.js',
     );
+  });
+
+  // A line of a multi-line message that is not a real frame can be parsed as one, with message
+  // text as its function name.
+  it("replaces a name inside a stack frame's function name", () => {
+    scrub.rememberScore(SCORE);
+    const event = scrub.scrubEvent({
+      type: undefined,
+      exception: {
+        values: [{ value: 'x', stacktrace: { frames: [{ function: 'Night Drive' }] } }],
+      },
+    });
+    expect(event.exception?.values?.[0]?.stacktrace?.frames?.[0]?.function).toBe('[file]');
   });
 
   it('stores a name trimmed, the form the mixer shows', () => {
@@ -119,6 +132,25 @@ describe('the address cut', () => {
       request: { url: 'https://notationhero.com/play?fbclid=abc#x' },
     });
     expect(event.request?.url).toBe('https://notationhero.com/play');
+  });
+
+  // Sentry gives a frameless uncaught error one frame named after the page's full address.
+  it("cuts a stack frame's address at its first ? or #", () => {
+    const event = scrub.scrubEvent({
+      type: undefined,
+      exception: {
+        values: [
+          {
+            value: 'x',
+            stacktrace: { frames: [{ filename: 'app:///play?q=1#frag' }, { filename: 'app:///' }] },
+          },
+        ],
+      },
+    });
+    expect(event.exception?.values?.[0]?.stacktrace?.frames).toEqual([
+      { filename: 'app:///play' },
+      { filename: 'app:///' },
+    ]);
   });
 
   it('cuts navigation, fetch and xhr breadcrumbs', () => {
@@ -195,6 +227,27 @@ describe('an event or breadcrumb the filter does not expect', () => {
       exception: { values: [null as unknown as { value: string }] },
     });
     expect(eventWithNullException.exception?.values?.[0]).toBeNull();
+    // stack traces and frames of the wrong shape
+    const oddFrames = [
+      { value: 'a', stacktrace: null },
+      { value: 'b', stacktrace: { frames: null } },
+      { value: 'c', stacktrace: { frames: 'Night Drive' } },
+      { value: 'd', stacktrace: { frames: [null, 7, { filename: 42, function: { name: 'x' } }] } },
+    ] as unknown as { value: string }[];
+    expect(scrub.scrubEvent({ type: undefined, exception: { values: oddFrames } })).toEqual({
+      type: undefined,
+      exception: {
+        values: [
+          { value: 'a', stacktrace: null },
+          { value: 'b', stacktrace: { frames: null } },
+          { value: 'c', stacktrace: { frames: 'Night Drive' } },
+          {
+            value: 'd',
+            stacktrace: { frames: [null, 7, { filename: 42, function: { name: 'x' } }] },
+          },
+        ],
+      },
+    });
     // breadcrumb with data: null
     const breadcrumbWithNullData: Breadcrumb = {
       category: 'navigation',

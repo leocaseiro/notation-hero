@@ -6,7 +6,7 @@ import type { Breadcrumb, ErrorEvent } from '@sentry/nextjs';
  * The names filter: a file name, a score's title or credits, or a track name quoted in an error's
  * message becomes `[file]`. Click breadcrumbs are off (web/instrumentation-client.ts), so what is
  * left to filter is an error's own text. No message quotes a name today, but a future bug could,
- * and E105, E901 and E201–E204 keep their message.
+ * and E105, E901, E201–E204 and E206 keep their message.
  *
  * The address cut: a page address loses everything from its first `?` or `#`. Sentry 11's
  * `dataCollection` settings remove neither from the event's address or from its breadcrumbs.
@@ -85,18 +85,33 @@ function cutAddress(address: string): string {
   return cut === -1 ? address : address.slice(0, cut);
 }
 
+/** Each stack frame's file address cut and its function name filtered, whatever their shape. */
+function scrubFrames(frames: unknown): void {
+  if (!Array.isArray(frames)) return;
+  for (const frame of frames as unknown[]) {
+    if (typeof frame !== 'object' || frame === null) continue;
+    const fields = frame as { filename?: unknown; function?: unknown };
+    if (typeof fields.filename === 'string') fields.filename = cutAddress(fields.filename);
+    if (typeof fields.function === 'string') fields.function = scrubText(fields.function);
+  }
+}
+
 /**
- * Sentry's `beforeSend` half: the names out of the event's free text — each exception's value and
- * the event's `message` — and its page address cut. When a thrown non-Error object is passed to
- * Sentry, it is copied whole into `extra.__serialized__`, which this filter deletes to prevent
- * unfiltered content from leaving. It must never throw: Sentry 11 drops an event whose
- * `beforeSend` throws.
+ * Sentry's `beforeSend` half: the names out of the event's free text — each exception's value, the
+ * event's `message` and each stack frame's function name — and its page addresses cut: the event's
+ * own and each stack frame's file address. Sentry gives a frameless uncaught error one frame named
+ * after the page's full address, and it can parse a line of a multi-line message as a frame whose
+ * function name is message text. Our own frames' addresses carry no query, so source maps still
+ * match them. When a thrown non-Error object is passed to Sentry, it is copied whole into
+ * `extra.__serialized__`, which this filter deletes to prevent unfiltered content from leaving. It
+ * must never throw: Sentry 11 drops an event whose `beforeSend` throws.
  */
 export function scrubEvent(event: ErrorEvent): ErrorEvent {
   if (typeof event.message === 'string') event.message = scrubText(event.message);
   for (const exception of event.exception?.values ?? []) {
-    if (exception && typeof exception.value === 'string')
-      exception.value = scrubText(exception.value);
+    if (!exception) continue;
+    if (typeof exception.value === 'string') exception.value = scrubText(exception.value);
+    scrubFrames(exception.stacktrace?.frames);
   }
   if (typeof event.request?.url === 'string') event.request.url = cutAddress(event.request.url);
   if (event.extra && typeof event.extra === 'object') {
