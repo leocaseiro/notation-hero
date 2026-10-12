@@ -25,6 +25,9 @@ import type * as AlphaTab from '@coderline/alphatab';
 const STAND_IN_API: unknown = { tracks: [] };
 let visibility: DocumentVisibilityState = 'visible';
 let fontFailed: ((event: { fontfaces: { family: string }[] }) => void) | undefined;
+// What iterating `document.fonts` gives: FontFace-like entries. By default AlphaTab's music font is
+// still on its way, the state every browser puts it in within a fraction of a second.
+let faces: { family: string; status: FontFaceLoadStatus }[] = [];
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -32,8 +35,10 @@ beforeEach(() => {
   handlers.clear();
   visibility = 'visible';
   fontFailed = undefined;
+  faces = [{ family: 'alphaTab', status: 'loading' }];
   Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => visibility });
-  // jsdom has no document.fonts; the component listens on it for the font's `loadingerror`.
+  // jsdom has no document.fonts; the component listens on it for the font's `loadingerror`, and
+  // reads its faces when the 60 visible seconds end.
   Object.defineProperty(document, 'fonts', {
     configurable: true,
     value: {
@@ -41,6 +46,7 @@ beforeEach(() => {
         fontFailed = listener;
       },
       removeEventListener: () => {},
+      [Symbol.iterator]: () => faces[Symbol.iterator](),
     },
   });
 });
@@ -126,4 +132,48 @@ test("AlphaTab's error event is reported as an unhandled E202, as it arrived", (
     [soundFont, { code: 'E202', handled: false }],
   ]);
   expect(screen.getByTestId('engine-error')).toHaveTextContent('Error E202');
+});
+
+test.each(['loading', 'loaded'] as const)(
+  'an error event before the first render stops the clock: 60 visible seconds raise neither E204 nor E206 (font %s)',
+  (status) => {
+    faces = [{ family: 'alphaTab', status }];
+    mount();
+    act(() => handlers.get('error')?.(new Error('the bundled score could not be loaded')));
+    pass(60_000);
+    expect(reports()).toEqual([{ code: 'E202', handled: false }]);
+    expect(screen.getByTestId('engine-error')).toHaveTextContent('Error E202');
+  },
+);
+
+// Firefox gives the family WITH its quotes; Chromium and WebKit without.
+test('60 visible seconds with the music font loaded raise one E206, not an E204', () => {
+  faces = [{ family: '"alphaTab"', status: 'loaded' }];
+  mount();
+  pass(60_000);
+  expect(reports()).toEqual([{ code: 'E206', handled: false }]);
+  expect(vi.mocked(reportError).mock.calls[0]?.[0]).toEqual(
+    new Error('The score did not draw within 60 visible seconds, although the music font arrived'),
+  );
+  expect(screen.getByTestId('engine-error')).toHaveTextContent(
+    'Error E206: the score could not be drawn. Reload the page.',
+  );
+});
+
+test('60 visible seconds with the music font still loading raise E204, whatever other font loaded', () => {
+  faces = [
+    { family: 'Inter', status: 'loaded' },
+    { family: '"alphaTab"', status: 'loading' },
+  ];
+  mount();
+  pass(60_000);
+  expect(reports()).toEqual([{ code: 'E204', handled: false }]);
+  expect(screen.getByTestId('engine-error')).toHaveTextContent('Error E204');
+});
+
+test('a loadingerror whose family carries quotes, as in Firefox, raises E203', () => {
+  mount();
+  act(() => fontFailed?.({ fontfaces: [{ family: '"alphaTab"' }] }));
+  expect(reports()).toEqual([{ code: 'E203', handled: false }]);
+  expect(screen.getByTestId('engine-error')).toHaveTextContent('Error E203');
 });

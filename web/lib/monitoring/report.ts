@@ -101,8 +101,8 @@ export function reportError(
       ? {}
       : { contexts: { file: { type: file.type, bytes: roundedSize(file.bytes) } } }),
   };
-  // Only the error pages (E901) and the player failures E201–E204 pass `handled: false`. It marks
-  // the visit unhandled, which is what the interim health number counts.
+  // Only the error pages (E901) and the player failures E201–E204 and E206 pass `handled: false`.
+  // It marks the visit unhandled, which is what the interim health number counts.
   if (handled === false) captureException(sent, { mechanism: { handled: false }, captureContext });
   else captureException(sent, { captureContext });
 }

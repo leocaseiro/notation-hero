@@ -40,13 +40,14 @@ AlphaTab and the fonts it needs. These render as a message over the notation are
 toast, because unmounting the notation box while the engine is alive leaves AlphaTab drawing into a
 detached node.
 
-| Code | Meaning                                                                    |
-| ---- | -------------------------------------------------------------------------- |
-| E201 | The self-hosted AlphaTab module failed to import.                          |
-| E202 | AlphaTab raised its own error event — in practice, the soundfont download. |
-| E203 | The music font download failed (`loadingerror` on `document.fonts`).       |
-| E204 | The music font did not arrive within 60 seconds.                           |
-| E205 | The engine was not there when a file was opened — E201's cause, met later. |
+| Code | Meaning                                                                                      |
+| ---- | -------------------------------------------------------------------------------------------- |
+| E201 | The self-hosted AlphaTab module failed to import.                                            |
+| E202 | AlphaTab raised its own error event — in practice, the soundfont download.                   |
+| E203 | The music font download failed (`loadingerror` on `document.fonts`).                         |
+| E204 | The music font did not arrive within 60 seconds.                                             |
+| E205 | The engine was not there when a file was opened — E201's cause, met later.                   |
+| E206 | Nothing drew within 60 seconds, although the music font arrived — the cause is not the font. |
 
 ## 3xx — the catalog and the API
 

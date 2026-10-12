@@ -54,6 +54,15 @@ function renderOpenNotation(
   api.renderScore(notation.score, drumIndexes.length > 0 ? drumIndexes : undefined);
 }
 
+/**
+ * Whether `face` is AlphaTab's music font. AlphaTab names it `alphaTab` (`alphaTab1` and on for a
+ * second player in the page). Firefox gives the family WITH its quotes (`"alphaTab"`), Chromium
+ * and WebKit without, so the quotes come off first.
+ */
+function isMusicFont(face: FontFace): boolean {
+  return face.family.replaceAll(/^["']|["']$/g, '').startsWith('alphaTab');
+}
+
 export function NotationSurface({
   api,
   hostRef,
@@ -91,7 +100,7 @@ export function NotationSurface({
   const [dismissed, setDismissed] = useState(false);
   const [renderedTrackCount, setRenderedTrackCount] = useState(0);
   // Stops the music-font clock below for good. The effect that starts the clock sets it; the first
-  // finished render calls it.
+  // finished render calls it, and so does an AlphaTab error that arrives before that render.
   const stopFontClock = useRef<() => void>(() => {});
   // The score the person last asked for. It is a REF, not the `notation` closure, and it is
   // written synchronously below BEFORE renderScore — which is the whole point. renderScore fires
@@ -113,21 +122,43 @@ export function NotationSurface({
     // tab draws nothing there while a plain timer keeps counting; it would send an unhandled E204
     // although nothing failed. A tick each second that counts only a visible second needs no
     // visibilitychange listener, so none can be left behind to restart it. Long on purpose: the
-    // 306 KB font on a slow link must not trip it. Three events stop the clock for good: the first
-    // finished render, an E203, and the E204 itself.
+    // 306 KB font on a slow link must not trip it. Four events stop the clock for good: the first
+    // finished render, an E203, an AlphaTab error (E202) that arrives before the first render, and
+    // the clock's own report. Before the first render, an E202 can mean the score will never draw
+    // (the built-in score failed to load, for one) while the font arrived fine, and that E202
+    // already reports the visit as unhandled. The cost: a font that is also late on that visit is
+    // not reported a second time.
+    //
+    // At 60 seconds the report names the cause. If the music font has loaded, the font is not why
+    // nothing drew (the built-in score may have failed to load, for one), so the report is E206.
+    // Otherwise it is E204, the font did not arrive. Only `loaded` counts as arrived: WebKit marks
+    // a blocked font `error` and can mark it `loaded` later, and `document.fonts.check()` answers
+    // true in WebKit while the font is missing, so neither "not error" nor `check()` can tell.
     let visibleSeconds = 0;
     const clock = globalThis.setInterval(() => {
       if (document.visibilityState !== 'visible') return;
       visibleSeconds += 1;
       if (visibleSeconds < 60) return;
       globalThis.clearInterval(clock);
-      reportError(new Error('The music font did not arrive within 60 visible seconds'), {
-        code: ERROR.musicFontTimeout,
-        handled: false,
-      });
-      setFontError(
-        `Error ${ERROR.musicFontTimeout}: the music font did not arrive within 60 seconds`,
-      );
+      if ([...document.fonts].some((face) => isMusicFont(face) && face.status === 'loaded')) {
+        reportError(
+          new Error(
+            'The score did not draw within 60 visible seconds, although the music font arrived',
+          ),
+          { code: ERROR.scoreNotDrawn, handled: false },
+        );
+        setFontError(
+          `Error ${ERROR.scoreNotDrawn}: the score could not be drawn. Reload the page.`,
+        );
+      } else {
+        reportError(new Error('The music font did not arrive within 60 visible seconds'), {
+          code: ERROR.musicFontTimeout,
+          handled: false,
+        });
+        setFontError(
+          `Error ${ERROR.musicFontTimeout}: the music font did not arrive within 60 seconds`,
+        );
+      }
       setDismissed(false);
     }, 1000);
     stopFontClock.current = () => globalThis.clearInterval(clock);
@@ -135,10 +166,11 @@ export function NotationSurface({
     // AlphaTab injects its music font as a CSS @font-face named `alphaTab…` during construction. If
     // that download fails, its font checker has no fallback family: it logs "rendering cannot
     // start", never fires renderFinished and raises no api.error — so the Skeleton would stay up
-    // forever. The browser reports it at once, as `loadingerror` on document.fonts (verified in
-    // Chromium). Text-font checkers have system fallbacks, hence the family filter.
+    // forever. Chromium and Firefox report it at once, as `loadingerror` on document.fonts; WebKit
+    // fires no `loadingerror`, so there the clock above reports E204 instead. Text-font checkers
+    // have system fallbacks, hence the family filter.
     const onFontError = (event: FontFaceSetLoadEvent) => {
-      if (!event.fontfaces.some((face) => face.family.startsWith('alphaTab'))) return;
+      if (!event.fontfaces.some((face) => isMusicFont(face))) return;
       // AlphaTab never draws once the font has failed, so the clock stops here. Otherwise every
       // E203 would be followed, 60 visible seconds later, by an E204 saying the font is late.
       globalThis.clearInterval(clock);
@@ -160,6 +192,10 @@ export function NotationSurface({
   // The SoundFont download failure surfaces through AlphaTab's own error event; the engine import
   // failure cannot (AlphaTabApi does not exist yet) and arrives through engineError below.
   useAlphaTabEvent(api, 'error', (cause) => {
+    // Before the first render, this error can mean the score will never draw, with the font
+    // already here: the font clock must not go on to blame the font. After a render, the clock has
+    // already stopped.
+    if (!rendered) stopFontClock.current();
     // E202, unhandled, as it arrived. AlphaTab passes an Error in every case measured, though its
     // class and type field do not survive the worker, and a SoundFont network failure carries an
     // empty message, which reportError replaces with E202's meaning.
