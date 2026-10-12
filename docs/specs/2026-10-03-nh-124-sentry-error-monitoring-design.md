@@ -116,7 +116,8 @@ changelog. Also:
   is exported like `readNotation`, so the drop path in `PlayerShell.tsx` uses the same list.
 - `web/e2e/player.e2e.ts` — one assertion each on the failures it already forces: the font and
   SoundFont downloads, and the out-of-range and corrupt stored settings (section 6).
-- `shared/src/error-codes.ts` and `docs/reference/error-codes.md` — the new E105 (section 2.4).
+- `shared/src/error-codes.ts` and `docs/reference/error-codes.md` — the new E105 and E206
+  (section 2.4).
 
 ## 2. How each error reaches Sentry
 
@@ -153,10 +154,12 @@ one line, and the new `global-error.tsx` carries the same line:
 
 `global-error.tsx` replaces the root layout when it renders, so it supplies its own
 `<html lang="en">` and `<body>` and imports `globals.css` itself. It is a client component
-(`'use client'`) that repeats `web/app/error.tsx` as changed by the diff above: the "Something went
-wrong" heading, the same `<main>` classes, the "Error E901" line, a Try again button wired to
-`reset`, and the section 3.4 sentence. It names the tab with a React `<title>Notation Hero</title>`,
-because this file does not support metadata exports.
+(`'use client'`) that repeats `web/app/error.tsx` as changed by the diff above: `Notation Hero` as
+the `h1`, "Something went wrong" as an `h2` below it, the same `<main>` classes, the line "Error
+E901 — the page crashed unexpectedly.", a Try again button wired to `reset`, and the section 3.4
+sentence. The other two crash pages have the same shape; `web/app/play/error.tsx` keeps its own
+crash title, "The player stopped unexpectedly", as its `h2`. It names the tab with a React
+`<title>Notation Hero</title>`, because this file does not support metadata exports.
 
 ### 2.3 The reporting functions
 
@@ -194,7 +197,7 @@ export function addInstrumentsTag(event: SentryEvent): void; // Sentry's `Event`
 - `level` defaults to `error`.
 - `handled: false` marks the report _unhandled_, and the visit with it, which is what the interim
   health number counts (Non-goals). Only the three error pages (E901) and the player failures
-  E201–E204 pass it. It reaches Sentry as
+  E201–E204 and E206 pass it. It reaches Sentry as
   `captureException(error, { mechanism: { handled: false }, captureContext: { tags: { code }, level } })`.
   The shorter `{ tags, mechanism }` form fails the type-check and, forced through, stays handled.
 - `code` becomes the Sentry tag `code`, so a visitor who quotes "Error E203" maps straight to a
@@ -292,12 +295,13 @@ the page is reloaded.
 
 **Failures that never throw** — an event, a timer, or a state change:
 
-| Where                                              | What fails                                          | Code      | Sends            |
-| -------------------------------------------------- | --------------------------------------------------- | --------- | ---------------- |
-| `web/app/play/NotationSurface.tsx:117`             | the music font failed to download                   | E203      | error, unhandled |
-| `web/app/play/NotationSurface.tsx:126`             | the music font did not arrive within 60 seconds     | E204      | error, unhandled |
-| `web/app/play/NotationSurface.tsx:141`             | AlphaTab's `error` event, for example the SoundFont | E202      | error, unhandled |
-| `web/app/play/PlayerShell.tsx`, both restore paths | saved settings or transport repaired, or unreadable | E601/E603 | warning          |
+| Where                                              | What fails                                                      | Code      | Sends            |
+| -------------------------------------------------- | --------------------------------------------------------------- | --------- | ---------------- |
+| `web/app/play/NotationSurface.tsx:117`             | the music font failed to download                               | E203      | error, unhandled |
+| `web/app/play/NotationSurface.tsx:126`             | the music font did not arrive within 60 seconds                 | E204      | error, unhandled |
+| `web/app/play/NotationSurface.tsx:126`             | nothing drew within 60 seconds, although the music font arrived | E206      | error, unhandled |
+| `web/app/play/NotationSurface.tsx:141`             | AlphaTab's `error` event, for example the SoundFont             | E202      | error, unhandled |
+| `web/app/play/PlayerShell.tsx`, both restore paths | saved settings or transport repaired, or unreadable             | E601/E603 | warning          |
 
 **E204 counts visible time only.** AlphaTab 1.8.4 starts its first render from an animation
 frame, and a browser runs none in a hidden tab, so a player opened in a background tab draws
@@ -307,13 +311,25 @@ the tab is first shown, a `visibilitychange` to `hidden` stops it, and it contin
 left when the page is visible again. Without this, a background tab left for a minute sends an
 unhandled E204 that lowers the health number although nothing failed.
 
-**Three events stop the clock permanently.** The first finished render, an E203, or the E204
-itself stops it, and after that a tab switch never starts it again. An E203 stops it because
-AlphaTab never draws once the font download has failed: without this, every E203 would be
-followed by a second unhandled report when the 60 visible seconds end, an E204 that says the font
-is late when it has already failed. The same clock also sets the banner's E204 text, so after an
-E203 the banner keeps its E203 text, and the clock does not show it again after the visitor
-dismisses it.
+**Four events stop the clock permanently.** The first finished render, an E203, an AlphaTab
+`error` event (E202) that arrives before the first render, or the clock's own report stops it, and
+after that a tab switch never starts it again. An E203 stops it because AlphaTab never draws once
+the font download has failed: without this, every E203 would be followed by a second unhandled
+report when the 60 visible seconds end, an E204 that says the font is late when it has already
+failed. An E202 before the first render stops it for the same reason: it can mean the score will
+never draw (the built-in score failed to load, for one) while the font arrived fine, and that E202
+already reports the visit as unhandled.
+
+**At 60 seconds, the music font's own status names the cause.** If the AlphaTab music font in
+`document.fonts` has the status `loaded`, the font is not why nothing drew, and the report is
+E206, "the score could not be drawn". Otherwise it is E204, "the music font did not arrive". A
+spike in Chromium, Firefox and WebKit found the status reliable and `document.fonts.check()` not:
+WebKit answers `true` while the font is missing, and can move a blocked font from `error` to
+`loaded` later, so only `loaded` counts as arrived. Firefox gives the family with its quotes
+(`"alphaTab"`), so the match strips them; the `loadingerror` listener uses the same match, which
+is what lets E203 fire in Firefox. The same clock also sets the banner's E204 or E206 text, so
+after an E203 the banner keeps its E203 text, and the clock does not show it again after the
+visitor dismisses it.
 
 **Blocked is not corrupt.** Storage the browser _blocks_ is the visitor's environment: a breadcrumb
 (S2b). Saved data that is _corrupt_ means our own code wrote something bad, or an update changed which
@@ -362,8 +378,8 @@ in the engine bundle `/alphatab/esm/alphaTab.core.mjs`; the same words thrown fr
 fail. That list moves to `web/lib/monitoring/known-engine-noise.ts`. The e2e gate reads it from a
 stack string and the Sentry filter reads it from Sentry's structured frames, so removing one entry
 when NH-335 or NH-338 is fixed updates both. Two end-to-end cases need the bugs to happen and
-change in the same step (section 6): when NH-335 is fixed, case 4 stops waiting for its page error
-and keeps its `instruments` check; when NH-338 is fixed, case 6 is deleted.
+change in the same step (section 6): when NH-335 is fixed, case 4's first half stops waiting for
+its page error and keeps its `instruments` check; when NH-338 is fixed, case 6 is deleted.
 
 Sentry's default `BrowserApiErrors` integration is removed (section 3.3). It wraps every
 `addEventListener` callback — including the engine's listeners on its worker, where both errors are
@@ -376,17 +392,17 @@ and XHR callbacks, is lost; those errors still arrive through the same global ha
 
 ### 3.1 What could leave the device, and what stops it
 
-| What                                           | How it would leak                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | What stops it                                                                                                                                                        |
-| ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| track names, title, artist, album              | **Verified in Sentry's source** (`packages/browser-utils/src/htmlTreeAsString.ts:156`): click breadcrumbs record each element's `aria-label`, `type`, `name`, `title` and `alt`. The Solo, Mute and Render buttons are labelled `` `Solo ${name}` `` (`client/src/components/ui/TrackRow/TrackRow.tsx:247`). An error's message could quote one too: none does today, but reading a value by a track name off a missing object gives `Cannot read properties of undefined (reading 'Lead Guitar')`. | click breadcrumbs are off (`dom: false`, 3.3), so no label is recorded; the names filter (3.2) replaces a name in an error's message with `[file]`                   |
-| the file name                                  | any error message that quotes it — none does today                                                                                                                                                                                                                                                                                                                                                                                                                                                  | the same filter                                                                                                                                                      |
-| the score's contents — notes, lyrics, alphaTex | AlphaTab's console logs, and its parse messages, can quote a broken alphaTex line                                                                                                                                                                                                                                                                                                                                                                                                                   | console breadcrumbs are off: the default `Console` integration is removed (3.3), since Sentry 11 has no `console` switch; E101–E103 send our own fixed message (2.3) |
-| kinds of instrument                            | the `instruments` tag (2.3) — sent on purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                       | only `drums`, `sample` and the General MIDI numbers 000–127 can be sent, never text from the file, so no name can reach the tag                                      |
-| the file's type and size                       | `FileFacts` (2.3) on E101–E103 and E105 — sent on purpose                                                                                                                                                                                                                                                                                                                                                                                                                                           | only an extension the open-file picker accepts, or `other`, and a size in bytes; never the file name                                                                 |
-| IP address, cookies, the Referer header        | collected by Sentry's defaults                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | `dataCollection` turns off each one — the Referer is sent as `[Filtered]` — **and** the project setting "Prevent Storing of IP Addresses" is on (section 5)          |
-| the browser's user-agent string                | the `User-Agent` header on each report, and the Release Health ping on every visit (S4) — sent on purpose                                                                                                                                                                                                                                                                                                                                                                                           | it names the browser, its version and the operating system, which Sentry shows on each issue; it holds no IP address and nothing from the file                       |
-| the visitor's locale and time zone             | Sentry's default culture context (`CultureContext`) on each report — sent on purpose                                                                                                                                                                                                                                                                                                                                                                                                                | the browser's language and time zone, such as `en-AU` and `Australia/Sydney`, and its calendar; it holds no IP address and nothing from the file                     |
-| query strings and `#` fragments                | the event's page address, and the from/to of navigation breadcrumbs — Sentry 11's `dataCollection` covers neither                                                                                                                                                                                                                                                                                                                                                                                   | `scrub.ts` cuts each address at its first `?` or `#`: the event's `request.url`, navigation breadcrumbs' `from` and `to`, fetch and xhr breadcrumbs' `url`           |
+| What                                           | How it would leak                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | What stops it                                                                                                                                                                             |
+| ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| track names, title, artist, album              | **Verified in Sentry's source** (`packages/browser-utils/src/htmlTreeAsString.ts:156`): click breadcrumbs record each element's `aria-label`, `type`, `name`, `title` and `alt`. The Solo, Mute and Render buttons are labelled `` `Solo ${name}` `` (`client/src/components/ui/TrackRow/TrackRow.tsx:247`). An error's message could quote one too: none does today, but reading a value by a track name off a missing object gives `Cannot read properties of undefined (reading 'Lead Guitar')`. | click breadcrumbs are off (`dom: false`, 3.3), so no label is recorded; the names filter (3.2) replaces a name in an error's message with `[file]`                                        |
+| the file name                                  | any error message that quotes it — none does today                                                                                                                                                                                                                                                                                                                                                                                                                                                  | the same filter                                                                                                                                                                           |
+| the score's contents — notes, lyrics, alphaTex | AlphaTab's console logs, and its parse messages, can quote a broken alphaTex line                                                                                                                                                                                                                                                                                                                                                                                                                   | console breadcrumbs are off: the default `Console` integration is removed (3.3), since Sentry 11 has no `console` switch; E101–E103 send our own fixed message (2.3)                      |
+| kinds of instrument                            | the `instruments` tag (2.3) — sent on purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                       | only `drums`, `sample` and the General MIDI numbers 000–127 can be sent, never text from the file, so no name can reach the tag                                                           |
+| the file's type and size                       | `FileFacts` (2.3) on E101–E103 and E105 — sent on purpose                                                                                                                                                                                                                                                                                                                                                                                                                                           | only an extension the open-file picker accepts, or `other`, and a size in bytes; never the file name                                                                                      |
+| IP address, cookies, the Referer header        | collected by Sentry's defaults                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | `dataCollection` turns off each one — the Referer is sent as `[Filtered]` — **and** the project setting "Prevent Storing of IP Addresses" is on (section 5)                               |
+| the browser's user-agent string                | the `User-Agent` header on each report, and the Release Health ping on every visit (S4) — sent on purpose                                                                                                                                                                                                                                                                                                                                                                                           | it names the browser, its version and the operating system, which Sentry shows on each issue; it holds no IP address and nothing from the file                                            |
+| the visitor's locale and time zone             | Sentry's default culture context (`CultureContext`) on each report — sent on purpose                                                                                                                                                                                                                                                                                                                                                                                                                | the browser's language and time zone, such as `en-AU` and `Australia/Sydney`, and its calendar; it holds no IP address and nothing from the file                                          |
+| query strings and `#` fragments                | the event's page address, a stack frame's file address, and the from/to of navigation breadcrumbs — Sentry 11's `dataCollection` covers none of them                                                                                                                                                                                                                                                                                                                                                | `scrub.ts` cuts each address at its first `?` or `#`: the event's `request.url`, each stack frame's `filename`, navigation breadcrumbs' `from` and `to`, fetch and xhr breadcrumbs' `url` |
 
 The copy says "anonymous", so the IP address must be stopped on **both** sides: Sentry's docs warn
 that with `userInfo` off, an IP address can still arrive through headers, cookies or query strings.
@@ -402,13 +418,14 @@ export function rememberScore(score: ScoreFacts): void; // title, subtitle, arti
 
 - **Error messages only.** Click breadcrumbs are off (section 3.3), so no button label — and no
   track name in one — is ever recorded. What is left is an error's own message: none quotes a name
-  today, but a future bug could, and E105, E901 and E201–E204 keep their message. A thrown `Error`
-  puts its message in the exception's value. A string, or a Web Worker error that reaches the page
+  today, but a future bug could, and E105, E901, E201–E204 and E206 keep their message. A thrown
+  `Error` puts its message in the exception's value. A string, or a Web Worker error that reaches the page
   without an `Error` object, puts it in the event's `message` as well, and the breadcrumb Sentry
   adds for each sent report repeats `message` in every later report. Any other thrown object — a
   plain object, or a browser `Event` — is copied whole into `extra.__serialized__`, where its text
   would leave unfiltered. So when an event is sent (`beforeSend`), the filter runs over each
-  exception's value and the event's `message`, deletes `extra.__serialized__`, and touches nothing
+  exception's value, the event's `message` and each stack frame's function name, cuts each stack
+  frame's file address at its first `?` or `#`, deletes `extra.__serialized__`, and touches nothing
   else. The breadcrumb is made after `beforeSend`, so it repeats the cleaned text.
 - **The list never forgets** within a tab. An error about file A can be sent after file B opens.
 - **Remembered as soon as a file parses.** `requestNotation` calls `rememberScore` right after
@@ -422,10 +439,15 @@ export function rememberScore(score: ScoreFacts): void; // title, subtitle, arti
 - **Longest first, as plain text.** Remembered strings are replaced longest first, so a name that
   contains a shorter remembered string is removed whole. Each is matched as written, not as a
   pattern, so a `"` or a `(` in a name needs no escaping.
-- **Stack frames are not touched.** File paths in frames are our code, not the visitor's.
+- **Stack frames: the address cut, the names filtered.** Sentry gives a frameless uncaught error
+  one frame named after the page's full address, and can parse a line of a multi-line message as a
+  frame whose function name is message text. So each frame's file address is cut at its first `?`
+  or `#`, and its function name passes the names filter. Our own frames' addresses carry no query,
+  so they reach Sentry unchanged and source maps still match them.
 
 `scrub.ts` also cuts page addresses at their first `?` or `#` (section 3.1): the event's address
-when it is sent, and navigation, fetch and xhr breadcrumbs when they are recorded
+and each stack frame's address when it is sent, and navigation, fetch and xhr breadcrumbs when they
+are recorded
 (`beforeBreadcrumb`).
 
 ### 3.3 SDK settings
@@ -481,6 +503,16 @@ Before (web/app/error.tsx:12 and web/app/play/error.tsx:12):
 After (both, and the new global-error.tsx):
                               Errors are reported automatically — without your file, its name, or
                               the music in it. Try again, or reload the page.
+
+Before (the heading, and the code line below the sentence):
+                              Something went wrong              (on /play: The player stopped
+                                                                 unexpectedly)
+                              Error E901
+After (all three crash pages):
+                              Notation Hero                     (h1)
+                              Something went wrong              (h2; on /play: The player stopped
+                                                                 unexpectedly)
+                              Error E901 — the page crashed unexpectedly.
 ```
 
 The tagline keeps its two lines. As one paragraph, the copy would grow from 119 to 348 characters,
@@ -603,7 +635,8 @@ secret. The upload now runs inside Vercel's build, so neither GitHub mechanism a
 
 - **Unit (Vitest), beside each `lib/monitoring` file:**
   - the names filter, over an exception's message: the file name, the title and every track name
-    become `[file]`; strings shorter than 3 characters are left alone; stack frames are untouched;
+    become `[file]`; strings shorter than 3 characters are left alone; a name in a stack frame's
+    function name becomes `[file]`, while a frame's file address is never name-filtered;
     a track named `"Lead Guitar "` (with a trailing space) is stored trimmed, so a message with
     `(reading 'Lead Guitar')` comes out with `(reading '[file]')`; with `Drums (Lef` (the engine's
     automatic short name) and `Drums (Left Kit)` both remembered, a message quoting
@@ -612,7 +645,8 @@ secret. The upload now runs inside Vercel's build, so neither GitHub mechanism a
     Web Worker error that reached the page without an `Error` object): a remembered track name in
     the event's `message` and in its exception's value comes out as `[file]` in both;
   - the address scrub: `/play?fbclid=abc#x` comes out as `/play`, in the event's address and in a
-    navigation breadcrumb;
+    navigation breadcrumb, and a stack frame's address is cut the same way; odd frame shapes (no
+    frames, a null frame, a field that is not a string) pass through without a throw;
   - `reportError`: the default level, the `code` tag, and E101–E103 replacing the message with the
     code's fixed sentence, also in the event's `message`;
   - `instrumentsValue`: a percussion track and a Distortion Guitar track (program 30) give
@@ -654,7 +688,11 @@ secret. The upload now runs inside Vercel's build, so neither GitHub mechanism a
   `document.visibilityState` and a stub `document.fonts` (jsdom has none): two hidden minutes raise
   no E204; 40 visible seconds, a hidden minute, then 20 more visible seconds raise one; once a
   render has finished, hiding and showing the tab raises none a minute later; after an E203, 60
-  visible seconds raise no E204 and the banner still shows E203; and once an E204 has been raised,
+  visible seconds raise no E204 and the banner still shows E203; an AlphaTab error before the
+  first render, then 60 visible seconds, raise neither E204 nor E206; 60 visible seconds with the
+  music font `loaded` (its family quoted, as Firefox gives it) raise one E206 and its banner, and
+  with the font still loading raise E204; a `loadingerror` whose family carries quotes raises E203;
+  and once an E204 has been raised,
   hiding and showing the tab raises no second one. The end-to-end lane cannot cover the hidden-tab
   cases: headless Chromium keeps every page visible.
 - **Lint canary:** `tooling/silent-catch-fence.test.sh`, a sibling of
@@ -674,7 +712,7 @@ secret. The upload now runs inside Vercel's build, so neither GitHub mechanism a
     test with no test code in the app.
   - **Cases that already force a failure** get one extra assertion each: the font abort
     (`web/e2e/player.e2e.ts:218`) must produce E203, the SoundFont abort
-    (`web/e2e/player.e2e.ts:267`) E202, the out-of-range stored Zoom
+    (`web/e2e/player.e2e.ts:267`) E202, both marked unhandled, the out-of-range stored Zoom
     (`web/e2e/player.e2e.ts:1856`) one E601 `warning`, and the corrupt stored settings
     (`web/e2e/player.e2e.ts:1885`) one E603 `warning`. No case in `player.e2e.ts` aborts the
     engine module, so E201 gets a case of its own (case 8 below), and none stores a bad transport
@@ -703,10 +741,11 @@ secret. The upload now runs inside Vercel's build, so neither GitHub mechanism a
        breadcrumb.
     6. Play then Pause quickly, repeated until a page error with the NH-338 message has been
        seen (at most 20 tries): no event envelope carries that message.
-    7. Open `/?fbclid=probe123#frag` and cause an error there, then click Play and cause another:
-       neither envelope contains `probe123` or `frag`.
+    7. Open `/?fbclid=probe123#anchor-probe-456` and cause an error there, then click Play and
+       cause another: neither envelope contains `probe123` or `anchor-probe-456`.
     8. Abort the engine module with the existing `abortEngine` helper
-       (`web/e2e/player-states.ts`, navigation only): one E201 `error` is sent, marked unhandled.
+       (`web/e2e/player-states.ts`, navigation only): one E201 `error` is sent, marked unhandled,
+       and it and the sentinel are the only events sent.
        The envelope fixture is set up before the helper's `page.goto`, because the import fails
        during that first load.
   - **Every case that expects nothing to be sent ends with a sentinel** — an error the test throws
@@ -733,7 +772,8 @@ secret. The upload now runs inside Vercel's build, so neither GitHub mechanism a
   `web/lib/monitoring/report.ts`, a deliberate silence is
   `// eslint-disable-next-line no-restricted-syntax -- <reason>`, and lint enforces the rule
   (section 2.5).
-- `shared/src/error-codes.ts` and `docs/reference/error-codes.md` — the new E105 (section 2.4).
+- `shared/src/error-codes.ts` and `docs/reference/error-codes.md` — the new E105 and E206
+  (section 2.4).
 - **Jira, at implementation:** the two NH-298 checklist items "Sentry integration" and "Test the
   'Nothing you open leaves this device' claim" change. The second's future same-origin test must now
   allow exactly the Sentry ingest host — and only once this ships.

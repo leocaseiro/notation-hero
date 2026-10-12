@@ -49,6 +49,14 @@ entry below; this one says what shipped.
     beat". Spec section 6 says so.
   - Two more changes made while building (a thrown object's copy is dropped; the crash pages' words)
     are recorded in the entry below.
+  - **E206 — the score could not be drawn** (leocaseiro, 2026-10-13). The final review found that a
+    failure other than the font, such as the built-in score failing to load, was reported after 60
+    seconds as E204, "the music font did not arrive". A spike in Chromium, Firefox and WebKit showed
+    that the font's own status tells the two cases apart reliably, once Firefox's quoted family name
+    is handled, and that in this case nothing else sends a report. So an E202 before the first
+    drawing now stops the clock, and at 60 seconds a loaded font raises E206 instead of E204. Two
+    smaller fixes came with it: E203 now fires in Firefox too (its family name carries quotes), and
+    the privacy filter now cuts the address and removes names inside stack frames.
 - **Page weight:** a cold `/play` load transfers 274.7 KiB of JavaScript before the SDK and 339.5
   KiB after.
 
