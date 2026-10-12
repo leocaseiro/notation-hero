@@ -26,6 +26,8 @@ const uploadToken =
   process.env.VERCEL_ENV === 'production' ? process.env.SENTRY_AUTH_TOKEN : undefined;
 
 const sentryBuildOptions: SentryBuildOptions = {
+  org: 'leo-caseiro',
+  project: 'notation-hero-nextjs',
   authToken: uploadToken,
   // The same variable the build script sets for `next build`, so a report always matches its maps.
   release: { name: process.env.NEXT_PUBLIC_APP_VERSION },
