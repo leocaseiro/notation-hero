@@ -49,6 +49,8 @@ entry below; this one says what shipped.
     beat". Spec section 6 says so.
   - Two more changes made while building (a thrown object's copy is dropped; the crash pages' words)
     are recorded in the entry below.
+- **Page weight:** a cold `/play` load transfers 274.7 KiB of JavaScript before the SDK and 339.5
+  KiB after.
 
 **Registry:** L11-sentry ✅ 🤖; L11-srcmap ✅ 🟡; F7-sentry ✅ 📄 (the setup is by hand; leocaseiro
 confirmed it on 2026-10-12).
