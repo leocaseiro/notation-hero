@@ -584,7 +584,8 @@ An agent may not create accounts or handle the token.
 4. Create an **organization auth token**, used only for the source-map upload.
 5. Vercel → the project → Settings → Environment Variables, **Production only** (D5):
    - `NEXT_PUBLIC_SENTRY_DSN` — public by design; it ships inside the page.
-   - `SENTRY_AUTH_TOKEN` — marked **Sensitive**. Never in chat, never in the repository.
+   - `SENTRY_AUTH_TOKEN` — marked **Secret** (Vercel's newer name for Sensitive). Never in chat,
+     never in the repository.
 6. After the first production deploy, open the site at a domain that step 3 lists. A
    deployment's own address, such as `notation-hero-web-<id>.vercel.app`, is not on that list, so
    Sentry rejects its reports. Open a file that is not a score. An E103 warning appearing in

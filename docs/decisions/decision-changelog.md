@@ -50,7 +50,8 @@ entry below; this one says what shipped.
   - Two more changes made while building (a thrown object's copy is dropped; the crash pages' words)
     are recorded in the entry below.
 
-**Registry:** L11-sentry ✅ 🤖; L11-srcmap ✅ 🟡; F7-sentry flips when the owner confirms setup.
+**Registry:** L11-sentry ✅ 🤖; L11-srcmap ✅ 🟡; F7-sentry ✅ 📄 (the setup is by hand; leocaseiro
+confirmed it on 2026-10-12).
 
 ### 2026-10-03 — Sentry error monitoring for `web/`: design approved (NH-124)
 
