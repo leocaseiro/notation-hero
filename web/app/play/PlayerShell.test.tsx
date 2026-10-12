@@ -131,6 +131,13 @@ const reported = (code: string) =>
           ?.tags?.code === code,
     );
 
+/** The level of each report sent with `code`. */
+const levelsReported = (code: string) =>
+  reported(code).map(
+    ([, hint]) =>
+      (hint as { captureContext?: { level?: string } } | undefined)?.captureContext?.level,
+  );
+
 /** Waits until the loading bar has left the page: it fades for 700 ms once nothing is pending. */
 const loadingBarGone = () =>
   waitFor(
@@ -263,6 +270,8 @@ test('a dropped file that fails after the read reports E105 and announces it', a
     dataTransfer: { files: [fixture('Punk.gp')] },
   });
   await waitFor(() => expect(reported('E105')).toHaveLength(1), { timeout: 5000 });
+  // Our own bug: an error, never the warning the visitor's file gets.
+  expect(levelsReported('E105')).toEqual(['error']);
   expect(await screen.findByText('Punk.gp could not be opened. Error E105.')).toBeInTheDocument();
 });
 
@@ -347,6 +356,8 @@ test('a dropped file is remembered by name before it is read, even when the read
 
   fireEvent.drop(screen.getByTestId('drop-zone'), { dataTransfer: { files: [file] } });
   await waitFor(() => expect(reported('E102')).toHaveLength(1), { timeout: 5000 });
+  // The visitor's file, not our bug: a warning.
+  expect(levelsReported('E102')).toEqual(['warning']);
 
   // The name arrived before the read that failed, so a report quoting it is filtered.
   expect(rememberOpenFile).toHaveBeenCalledWith('Punk.gp');

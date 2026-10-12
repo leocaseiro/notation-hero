@@ -39,6 +39,8 @@ test('the SDK runs with exactly the integrations the spec chose', async ({ page 
   // "Anonymously" rests on `userInfo: false` alone. Sentry 11's default infers each visitor's IP:
   // without that line, `infer_ip` reads `auto` and the session ping carries ip_address "{{auto}}".
   expect(sentinel.sdk?.settings?.infer_ip).toBe('never');
+  // The check below reads the session ping, so the ping must be among the recorded envelopes first.
+  await expect.poll(() => sentry.raw().join('\n')).toContain('"type":"session"');
   expect(sentry.raw().join('\n')).not.toContain('ip_address');
 });
 
@@ -195,6 +197,8 @@ test('an engine that never loads sends one unhandled E201', async ({ page }) => 
   await throwSentinel(page, sentry, 'sentinel: after E201');
   const reports = withCode(sentry, 'E201');
   expect(reports).toHaveLength(1);
+  // The E201 and the sentinel, nothing else: an untagged copy of the same failure would be a third.
+  expect(sentry.events()).toHaveLength(2);
   expect(reports[0]?.level).toBe('error');
   expect(reports[0]?.exception?.values?.[0]?.mechanism?.handled).toBe(false);
 });

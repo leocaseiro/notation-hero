@@ -71,6 +71,10 @@ export const withCode = (recorder: SentryRecorder, code: string): RecordedEvent[
 export const messageOf = (event: RecordedEvent): string | undefined =>
   event.exception?.values?.[0]?.value;
 
+/** Every exception's `mechanism.handled`, as it was sent: `[false]` for one unhandled report. */
+export const handledFlags = (event: RecordedEvent | undefined): (boolean | undefined)[] =>
+  event?.exception?.values?.map((value) => value.mechanism?.handled) ?? [];
+
 /**
  * Throws an uncaught error in the page and waits until its report arrives. A throw from a timer
  * reaches the page's `error` handler; a throw directly inside `page.evaluate` only rejects the

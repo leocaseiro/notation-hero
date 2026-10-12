@@ -3,7 +3,7 @@ import path from 'node:path';
 import { expect, test } from '@playwright/test';
 
 import { failOnUnexpectedPageErrors } from './page-errors';
-import { recordSentry, withCode } from './sentry-envelopes';
+import { handledFlags, recordSentry, withCode } from './sentry-envelopes';
 
 import type { Locator, Page } from '@playwright/test';
 
@@ -224,6 +224,7 @@ test('a failed music-font download shows the engine error, not an endless Skelet
   await expect(page.getByTestId('notation-skeleton')).toBeHidden();
   await expect.poll(() => withCode(sentry, 'E203').length).toBeGreaterThan(0);
   expect(withCode(sentry, 'E203')[0]?.level).toBe('error');
+  expect(handledFlags(withCode(sentry, 'E203')[0])).toEqual([false]);
 });
 
 // The other half of that backstop. The 60 s timer and the font race each other, and the font can
@@ -275,6 +276,7 @@ test('opening a new file clears a stale engine-error banner', async ({ page }) =
   await expect(page.getByTestId('engine-error')).toBeVisible({ timeout: 15_000 });
   await expect(page.getByTestId('engine-error')).toContainText('Error E202');
   await expect.poll(() => withCode(sentry, 'E202').length).toBeGreaterThan(0);
+  expect(handledFlags(withCode(sentry, 'E202')[0])).toEqual([false]);
 
   await page.unroute('**/alphatab/soundfont/**');
   await page.getByTestId('open-file-input').setInputFiles('e2e/fixtures/1-beat.gpx');
