@@ -359,6 +359,8 @@ test('a dropped file is remembered by name before it is read, even when the read
   await waitFor(() => expect(reported('E102')).toHaveLength(1), { timeout: 5000 });
   // The visitor's file, not our bug: a warning.
   expect(levelsReported('E102')).toEqual(['warning']);
+  // And the drop says the number aloud, for a read failure as for E105.
+  expect(await screen.findByText('Punk.gp could not be opened. Error E102.')).toBeInTheDocument();
 
   // The name arrived before the read that failed, so a report quoting it is filtered.
   expect(rememberOpenFile).toHaveBeenCalledWith('Punk.gp');
