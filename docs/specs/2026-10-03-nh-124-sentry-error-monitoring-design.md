@@ -85,6 +85,7 @@ whatever pnpm resolves under the 7-day `minimumReleaseAge` gate; the plan record
 | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `web/instrumentation-client.ts`            | Starts Sentry before the page becomes interactive. With no DSN the SDK sends nothing — which is the state in `pnpm dev`, in unit tests, and on preview deployments. |
 | `web/app/global-error.tsx`                 | Catches a crash in the root layout itself. Today there is none, so a root-layout crash shows Next's bare default page.                                              |
+| `web/app/CrashPage.tsx`                    | What the three error pages show, written once: the headings, the E901 line, Try again and the section 3.4 sentence. It also sends the E901 report (section 2.2).    |
 | `web/lib/monitoring/report.ts`             | `reportError()`, `noteError()`, `isStorageRefusal()` and the tag functions (2.3). Apart from `instrumentation-client.ts`, the only file that imports Sentry.        |
 | `web/lib/monitoring/scrub.ts`              | The privacy filter (section 3): names out of error messages, page addresses cut at `?` or `#`.                                                                      |
 | `web/lib/monitoring/known-engine-noise.ts` | The known AlphaTab throws, shared by the Sentry filter and `web/e2e/page-errors.ts` (section 2.6).                                                                  |
@@ -112,8 +113,8 @@ changelog. Also:
   and sets the tag just before the opened score replaces the open one, but only while the player
   that started the open is still mounted; the player sets the tag to `sample` each time it mounts;
   `readNotation` and `LoadedNotation` carry the file's extension (2.3). The function that turns a
-  file name into that type lives in `OpenFileControl.tsx`, beside the `ACCEPT` list it checks, and
-  is exported like `readNotation`, so the drop path in `PlayerShell.tsx` uses the same list.
+  file name into that type lives in `OpenFileControl.tsx`, beside the `ACCEPT` list it checks. A
+  picked and a dropped file are both opened by `openPickedFile` there, so both use the same list.
 - `web/e2e/player.e2e.ts` — one assertion each on the failures it already forces: the font and
   SoundFont downloads, and the out-of-range and corrupt stored settings (section 6).
 - `shared/src/error-codes.ts` and `docs/reference/error-codes.md` — the new E105 and E206
@@ -143,23 +144,24 @@ an error happens
 
 ### 2.2 The error pages
 
-`web/app/error.tsx` and `web/app/play/error.tsx` receive the crash and currently ignore it. Each gains
-one line, and the new `global-error.tsx` carries the same line:
+`web/app/error.tsx` and `web/app/play/error.tsx` receive the crash and currently ignore it. Both now
+pass it to one shared component, `web/app/CrashPage.tsx`, and so does the new `global-error.tsx`.
+`CrashPage` sends it with one line:
 
-```diff
--export default function AppError({ reset }: Readonly<{ error: Error; reset: () => void }>) {
-+export default function AppError({ error, reset }: Readonly<{ error: Error; reset: () => void }>) {
-+  useEffect(() => reportError(error, { code: ERROR.unexpectedCrash, handled: false }), [error]);
+```ts
+// web/app/CrashPage.tsx
+useEffect(() => reportError(error, { code: ERROR.unexpectedCrash, handled: false }), [error]);
 ```
 
 `global-error.tsx` replaces the root layout when it renders, so it supplies its own
 `<html lang="en">` and `<body>` and imports `globals.css` itself. It is a client component
-(`'use client'`) that repeats `web/app/error.tsx` as changed by the diff above: `Notation Hero` as
-the `h1`, "Something went wrong" as an `h2` below it, the same `<main>` classes, the line "Error
-E901 — the page crashed unexpectedly.", a Try again button wired to `reset`, and the section 3.4
-sentence. The other two crash pages have the same shape; `web/app/play/error.tsx` keeps its own
-crash title, "The player stopped unexpectedly", as its `h2`. It names the tab with a React
-`<title>Notation Hero</title>`, because this file does not support metadata exports.
+(`'use client'`) that renders `CrashPage` inside them. `CrashPage` holds what all three pages show:
+`Notation Hero` as the `h1`, the page's crash title as an `h2` below it, the line "Error E901 — the
+page crashed unexpectedly.", a Try again button wired to `reset`, and the section 3.4 sentence.
+`web/app/error.tsx` and `global-error.tsx` pass "Something went wrong" as the crash title, and
+`web/app/play/error.tsx` passes its own, "The player stopped unexpectedly". `global-error.tsx`
+names the tab with a React `<title>Notation Hero</title>`, because this file does not support
+metadata exports.
 
 ### 2.3 The reporting functions
 
@@ -268,15 +270,17 @@ export function addInstrumentsTag(event: SentryEvent): void; // Sentry's `Event`
 | `web/app/play/PlayerShell.tsx:743` and `:761`                                                  | MIDI and Guitar Pro export                                      | E401       | error                                                                                                                               |
 | `web/lib/alphatab/live-settings.ts:165`                                                        | the engine refused a value our checks allowed                   | E602       | warning                                                                                                                             |
 | `web/app/play/PlayerShell.tsx:872`                                                             | the file is not a score                                         | E103       | warning, with file type and size                                                                                                    |
-| `web/app/play/OpenFileControl.tsx:75`, `web/app/play/PlayerShell.tsx:969`                      | the file is too large, or cannot be read                        | E101/E102  | warning, with file type and size                                                                                                    |
-| the same two catches, after the file was read                                                  | our own code failed while loading the score into the player     | E105 (new) | error, message kept, with file type and size                                                                                        |
+| `web/app/play/OpenFileControl.tsx`, `openPickedFile`                                           | the file is too large, or cannot be read                        | E101/E102  | warning, with file type and size                                                                                                    |
+| the same catch, after the file was read                                                        | our own code failed while loading the score into the player     | E105 (new) | error, message kept, with file type and size                                                                                        |
+| `web/app/play/PlayerShell.tsx`, `requestNotation` after the swap                               | our own code failed after the new score was on screen           | E105       | error, message kept, with file type and size                                                                                        |
 | `web/lib/alphatab/settings-storage.ts:195`                                                     | the saved settings are not valid JSON                           | (E603)     | a lint opt-out with a reason: its caller reports E603                                                                               |
 | `web/app/play/PlayerShell.tsx:190`, `web/lib/alphatab/transport-storage.ts:129`                | storage blocked while reading, or our reader failed             | —          | breadcrumb if the browser refused (`SecurityError`); anything else: error                                                           |
 | `web/app/play/PlayerShell.tsx:220`, `:594`, `:722`, `web/app/play/useRestoredTransport.ts:114` | storage blocked or full while writing, or our serializer failed | —          | breadcrumb if refused or full (`SecurityError`, `QuotaExceededError`, Firefox's `NS_ERROR_DOM_QUOTA_REACHED`); anything else: error |
 
-**Read, then open.** The two open-file catches set a flag between their two steps —
-`const loaded = await readNotation(file); read = true; await onNotation(loaded);`
-(`requestNotation` in the drop path) — so a failure before it is the visitor's file (E101 or E102,
+**Read, then open.** A picked file and a dropped file share one catch, in `openPickedFile`. It sets
+a flag between its two steps —
+`const loaded = await readNotation(file); read = true; await load(loaded);`
+(`load` is `requestNotation` for both) — so a failure before it is the visitor's file (E101 or E102,
 a warning) and a failure after it is our own code (E105, an error). For E105 the visitor sees
 "song.gp could not be opened. Something went wrong on our side, not with your file. Try again, or
 reload the page. (Error E105)". A screen reader reads that toast, because Sonner's toaster is a
@@ -673,7 +677,7 @@ secret. The upload now runs inside Vercel's build, so neither GitHub mechanism a
   section 3.4 sentence and "Error E901", its Try again calls `reset`, and `reportError` is called
   once with the stub error and code E901. (Rendering `global-error.tsx` prints one development
   warning, `<html>` inside a `<div>`; it does not fail the test.)
-- **The open-file catches**, a test beside `web/app/play/OpenFileControl.tsx`: a read that fails
+- **The open-file catch**, a test beside `web/app/play/OpenFileControl.tsx`: a read that fails
   shows E102 and reports a warning whose message is E102's fixed sentence; an `onNotation` that
   fails shows E105 and reports an error that keeps its message; neither report carries the
   `instruments` tag, and once the open ends the tag is back to the value for the score on screen;
