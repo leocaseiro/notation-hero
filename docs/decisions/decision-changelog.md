@@ -63,9 +63,10 @@ entry below; this one says what shipped.
     unhandled crashes, measured against a production build: the known-noise list held only
     Chrome's wording, and Safari adds a `[native code]` frame. Chosen over matching the wording
     alone: each entry lists every browser's measured wording, and the Sentry filter skips a
-    browser's own `[native code]` frame, so Firefox and Safari visitors send neither. Firefox with
-    its developer tools open still sends both, a known limit in the spec. NH-335 fires once per
-    open, not seven times.
+    browser's own `[native code]` frame, so Safari visitors send neither, and Firefox visitors
+    should send neither too: that a Firefox with no developer tools open records no async stacks is
+    inferred, not yet checked in a release build. Firefox with its developer tools open still sends
+    both, a known limit in the spec. NH-335 fires once per open, not seven times.
   - **Two test gaps closed:** the token check now runs in a test the way the build runs it, and
     seven cases pin which report each of four storage catches sends.
   - **Two scope calls reversed.** While building, two sets of copies were kept to keep this PR
