@@ -571,7 +571,7 @@ describe('what a settings storage failure reports', () => {
     expect(crumbs('Player settings could not be read from storage')).toEqual([]);
   });
 
-  test('a repaired settings write-back the browser refuses leaves a breadcrumb, never an error', async () => {
+  test('a repaired settings write-back the browser refuses leaves a breadcrumb, never a report', async () => {
     globalThis.localStorage.setItem(SETTINGS_STORAGE_KEY, '{broken');
     settingsKeyThrows('setItem', refused('QuotaExceededError'));
     render(<PlayerShell />);
@@ -580,7 +580,7 @@ describe('what a settings storage failure reports', () => {
     ]);
     // The corrupt document still sends its own E603 warning; the refusal adds no report.
     await waitFor(() => expect(reported('E603')).toHaveLength(1));
-    expect(errorsReported()).toEqual([]);
+    expect(vi.mocked(captureException).mock.calls).toEqual(reported('E603'));
   });
 
   test('a repaired settings write-back that fails for any other reason reports an error', async () => {
