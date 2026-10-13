@@ -26,6 +26,9 @@
   "words": [
     "networkidle",
     "requestfailed",
+    "unhandledrejection",
+    "fbclid",
+    "visibilitychange",
     "sonivox",
     "flatrow",
     "peaceiris",
@@ -36,6 +39,7 @@
     "AEST",
     "AEDT",
     "envload",
+    "envsecret",
     "notation",
     "nativeselect",
     "alphatab",

@@ -37,13 +37,16 @@ import {
 } from '../../lib/alphatab/settings-storage';
 import { persistTransport, TRANSPORT_LABELS } from '../../lib/alphatab/transport-storage';
 import { setAlphaTabValue, useAlphaTab, useAlphaTabEvent } from '../../lib/alphatab/useAlphaTab';
-import { NotationSurface } from './NotationSurface';
 import {
-  OpenFileControl,
-  openFailureCode,
-  readFailureMessage,
-  readNotation,
-} from './OpenFileControl';
+  instrumentsValue,
+  isStorageRefusal,
+  noteError,
+  reportError,
+  tagInstruments,
+} from '../../lib/monitoring/report';
+import { rememberScore } from '../../lib/monitoring/scrub';
+import { NotationSurface } from './NotationSurface';
+import { OpenFileControl, openPickedFile } from './OpenFileControl';
 import { PlayerHeader } from './PlayerHeader';
 import { SettingsPopover } from './SettingsPopover';
 import { TracksPopover } from './TracksPopover';
@@ -62,6 +65,8 @@ import type { SettingValue } from '@notation-hero/client';
 /** What the picker produces: a file read into memory, not yet parsed. */
 export interface LoadedNotation {
   name: string;
+  /** `fileType(name)`: all an error report may say about the file, with its size. */
+  type: string;
   bytes: Uint8Array;
 }
 
@@ -126,6 +131,18 @@ function Player() {
   // because the shell is what knows an open finished; the picker only hands over bytes.
   const [announcement, setAnnouncement] = useState('');
   const playRef = useRef<HTMLButtonElement | null>(null);
+  // Whether this player is still mounted. An open that outlives its player must not set the tag
+  // for a page that has moved on; a ref, because the open's closure outlives the render.
+  const mounted = useRef(false);
+  useEffect(() => {
+    mounted.current = true;
+    // The bundled one-track beat AlphaTab loads on every visit is on screen first, and has its own
+    // value, so its errors are found apart from a visitor's own drum chart.
+    tagInstruments('sample');
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   // The playhead. This IS product state — the Scrubber is a controlled component over it — which is
   // why it may live here when a `data-position` DOM hook may not: the rule bans test-only
@@ -181,11 +198,15 @@ function Player() {
         SETTING_NUMERIC_BOUNDS,
         SETTING_TEXT_VALIDATORS,
       );
-    } catch {
+    } catch (error) {
       // A browser with site data blocked makes the localStorage GETTER itself throw, not only
       // setItem — and this initialiser runs during render, so an unguarded throw takes the whole
       // page. Blocked storage is not a corrupt document: reset stays false, so no toast fires and
-      // no repair write happens. Both setItem calls below are guarded the same way.
+      // no repair write happens. Both setItem calls below are guarded the same way. A throw from
+      // our own reader lands here too, and that one is a bug.
+      if (isStorageRefusal(error))
+        noteError(error, 'Player settings could not be read from storage');
+      else reportError(error);
       return { settings: DEFAULT_PLAYER_SETTINGS, reset: false, repaired: [] };
     }
   });
@@ -211,8 +232,11 @@ function Player() {
     if (!restored.reset) return;
     try {
       globalThis.localStorage.setItem(SETTINGS_STORAGE_KEY, serializeSettings(restored.settings));
-    } catch {
+    } catch (error) {
       // Storage is unavailable or full; the warning below is still worth showing.
+      if (isStorageRefusal(error))
+        noteError(error, 'Repaired player settings could not be written back');
+      else reportError(error);
     }
     // Both forms, because they serve different readers: the label is what the row is CALLED in the
     // popover, the dot-path is what to grep for. A report that carries only one of them is hard to
@@ -248,6 +272,20 @@ function Player() {
           ? `Some settings were not valid and have been corrected: ${named.join(', ')}. (Error ${ERROR.settingsRepaired})`
           : `Your saved settings could not be read, so they were reset to the defaults. (Error ${ERROR.settingsUnreadable})`,
       );
+      // A corrupt stored document means our own code wrote something bad, or an update changed
+      // which values are valid: a bug signal, so a warning. The repaired keys go as dot-paths —
+      // the schema's names, never a stored value.
+      if (named.length > 0) {
+        reportError(new Error(`Player settings repaired: ${restored.repaired.join(', ')}`), {
+          code: ERROR.settingsRepaired,
+          level: 'warning',
+        });
+      } else {
+        reportError(new Error('Player settings could not be read'), {
+          code: ERROR.settingsUnreadable,
+          level: 'warning',
+        });
+      }
     }, 0);
     return () => clearTimeout(id);
   }, [restored]);
@@ -300,8 +338,10 @@ function Player() {
     // practice, but the cost of being wrong is a page with no player.
     try {
       engineSettings.fillFromJson(settings as AlphaTab.json.SettingsJson);
-    } catch {
-      // Keep the defaults already on `engineSettings`.
+    } catch (error) {
+      // Keep the defaults already on `engineSettings`. The per-key merge makes this unreachable in
+      // practice, so a throw here is a bug of ours.
+      reportError(error);
     }
   });
 
@@ -561,6 +601,17 @@ function Player() {
           ? `Some settings were not valid and have been corrected: ${named.join(', ')}. (Error ${ERROR.settingsRepaired})`
           : `Your saved playback settings could not be read, so they were reset to the defaults. (Error ${ERROR.settingsUnreadable})`,
       );
+      if (named.length > 0) {
+        reportError(new Error(`Transport values repaired: ${transportRepaired.join(', ')}`), {
+          code: ERROR.settingsRepaired,
+          level: 'warning',
+        });
+      } else {
+        reportError(new Error('Transport values could not be read'), {
+          code: ERROR.settingsUnreadable,
+          level: 'warning',
+        });
+      }
     }, 0);
     return () => clearTimeout(id);
   }, [transportRepaired]);
@@ -693,9 +744,11 @@ function Player() {
           setSettings(accepted);
           try {
             globalThis.localStorage.setItem(SETTINGS_STORAGE_KEY, serializeSettings(accepted));
-          } catch {
+          } catch (error) {
             // Private browsing and a full quota both throw here. Losing persistence is survivable;
-            // losing the player is not, so swallow it rather than breaking the edit.
+            // losing the player is not, so the edit carries on either way.
+            if (isStorageRefusal(error)) noteError(error, 'Player settings could not be saved');
+            else reportError(error);
           }
         },
       });
@@ -714,7 +767,8 @@ function Player() {
       if (action === 'export-midi') {
         try {
           api.downloadMidi();
-        } catch {
+        } catch (error) {
+          reportError(error, { code: ERROR.exportFailed });
           toast.error(`That file could not be exported. (Error ${ERROR.exportFailed})`);
         }
         return;
@@ -732,7 +786,8 @@ function Player() {
         link.download = `${api.score.title || 'score'}.gp`;
         link.click();
         URL.revokeObjectURL(url);
-      } catch {
+      } catch (error) {
+        reportError(error, { code: ERROR.exportFailed });
         toast.error(`That file could not be exported. (Error ${ERROR.exportFailed})`);
       }
     },
@@ -776,7 +831,11 @@ function Player() {
         // Opened before the engine arrived — a very fast pick, or a stalled engine import. Wait on
         // the SAME memoised import the provider is waiting on. `notation` is still null in that
         // window, so nothing the person opened can be lost and there is nothing to confirm.
-        at = await loadAlphaTabEngine().catch(() => null);
+        at = await loadAlphaTabEngine().catch((error: unknown) => {
+          // A breadcrumb only: the provider has already reported the cause as E201.
+          noteError(error, 'The engine was not there when a file was opened (E205)');
+          return null;
+        });
         if (!at) {
           // The import rejection is cached for the whole page ("one failed import is permanent"),
           // and the banner that reported it is dismissible — so by now there may be nothing on
@@ -843,7 +902,15 @@ function Player() {
       let score: AlphaTab.model.Score;
       try {
         score = at.importer.ScoreLoader.loadScoreFromBytes(next.bytes);
-      } catch {
+      } catch (error) {
+        // The visitor's file, not our bug: a warning, with its type and size, never its name.
+        // reportError sends E103's fixed sentence in place of the engine's parse message, which
+        // can quote text from inside the file.
+        reportError(error, {
+          code: ERROR.notAScore,
+          level: 'warning',
+          file: { type: next.type, bytes: next.bytes.byteLength },
+        });
         setOpening(false);
         // Dismiss the spinner explicitly, then raise the error under its OWN id. Sharing
         // 'notation-load' is what made an error REPLACE the spinner — necessary while toasts
@@ -861,6 +928,11 @@ function Player() {
         // drained its buffer while the dialog was up and the pump refills it. Nothing to restart.
         return;
       }
+
+      // Remembered now, before anything else can fail: an E105 thrown below, or a crash while the
+      // header draws the new title, keeps its message and is sent before AlphaTab's score-loaded
+      // event. The names filter removes only names it has seen.
+      rememberScore(score);
 
       // Pause only on the confirm path, to stop the synth before renderScore swaps the score.
       if (wasPlaying) api?.pause();
@@ -883,18 +955,48 @@ function Player() {
       // Opening a file is a deliberate new attempt, so a crash reported against the PREVIOUS
       // score must not keep the player marked failed forever — nothing else ever sets this back.
       setLoadFailed(false);
+      // The tag follows the score on screen: set just before the swap, from the parsed score —
+      // never from AlphaTab's score-loaded event, which also fires for the bundled beat, sometimes
+      // after the visitor's file. A throw while computing it counts as before the swap.
+      if (mounted.current) {
+        tagInstruments(
+          instrumentsValue(
+            score.tracks.map((track) => ({
+              program: track.playbackInfo.program,
+              isPercussion: track.staves.some((staff) => staff.isPercussion),
+            })),
+          ),
+        );
+      }
       setNotation({ name: next.name, score });
       setOpening(false);
-      toast.success(`${next.name} loaded`, { id: 'notation-load' });
-      // Success only. None of this is reachable from the cancel path or the parse failure (both
-      // returned above), from the read failures the picker catches, or for the bundled score —
-      // nobody asked for that one, so nothing is announced and nothing is focused at page load.
-      setAnnouncement(`Opened ${next.name}`);
-      // A later success contradicts an earlier open-a-file failure, so the stale 1xx toasts go.
-      // 2xx engine failures are NOT toasts — they render over the notation area — so nothing
-      // here reaches them.
-      dismissErrors((id) => id.startsWith('E1'));
-      playRef.current?.focus();
+      // The new score is on screen from here, so a bug of ours in the steps left must not say the
+      // file "could not be opened": this catch reports it as E105 with its own sentence, and the
+      // open ends here instead of reaching either open path's catch. No announcement: the toast is
+      // a polite live region, as the picker's E105 already relies on.
+      try {
+        toast.success(`${next.name} loaded`, { id: 'notation-load' });
+        // Success only. None of this is reachable from the cancel path or the parse failure (both
+        // returned above), from the read failures the picker catches, or for the bundled score —
+        // nobody asked for that one, so nothing is announced and nothing is focused at page load.
+        setAnnouncement(`Opened ${next.name}`);
+        // A later success contradicts an earlier open-a-file failure, so the stale 1xx toasts go.
+        // 2xx engine failures are NOT toasts — they render over the notation area — so nothing
+        // here reaches them.
+        dismissErrors((id) => id.startsWith('E1'));
+        playRef.current?.focus();
+      } catch (error) {
+        reportError(error, {
+          code: ERROR.openFailedAfterRead,
+          file: { type: next.type, bytes: next.bytes.byteLength },
+        });
+        // The loading toast, or the "loaded" toast that replaced it, gives way to the error.
+        toast.dismiss('notation-load');
+        toast.error(
+          `${next.name} opened, but something went wrong on our side. If the player misbehaves, reload the page. (Error ${ERROR.openFailedAfterRead})`,
+          { id: `${ERROR.openFailedAfterRead}:${next.name}` },
+        );
+      }
     },
     [api, engine, notation, playing],
   );
@@ -906,11 +1008,8 @@ function Player() {
   // await at the top of runRequestNotation, so a second pick made during that window sees it still
   // false. A ref is written in the same synchronous tick as the call and is visible immediately.
   //
-  // The guard wraps rather than nests so the 113-line body keeps its shape; `finally` releases the
-  // slot on every exit, including the early returns for a failed engine import and an unreadable
-  // score.
-  //
-  // PRE-EXISTING: this path is unchanged by this feature, and the race predates it.
+  // The guard wraps rather than nests so the body keeps its shape; `finally` releases the slot on
+  // every exit, including the early returns for a failed engine import and an unreadable score.
   const openInFlight = useRef(false);
   const requestNotation = useCallback(
     async (next: LoadedNotation) => {
@@ -920,6 +1019,11 @@ function Player() {
         await runRequestNotation(next);
       } finally {
         openInFlight.current = false;
+        // Every exit lowers the opening state, a throw after the parse included: without this,
+        // that throw skipped both calls that lower it and the bar kept pulsing beside the error.
+        // The early return above stays outside the `try`, so a second open never lowers the bar
+        // of the open still running.
+        setOpening(false);
       }
     },
     [runRequestNotation],
@@ -932,20 +1036,15 @@ function Player() {
     setDragging(false);
   }, []);
 
-  // Same boundary as OpenFileControl's `accept`: the 25 MB check, then the same failure toast
-  // (E101 or E102). Without the try/catch, `void acceptDropped(...)` would hide a rejected read
-  // and show nothing.
+  // The picker's boundary, shared: openPickedFile (OpenFileControl.tsx) checks the 25 MB limit,
+  // reads the file, opens it with requestNotation, and turns a failure — E101, E102 or E105 — into
+  // one report and one toast. Without that catch, `void acceptDropped(...)` would hide a rejected
+  // read and show nothing. The announcement is this path's own: it says the same number aloud.
   const acceptDropped = useCallback(
     async (file: File | undefined) => {
       if (!file) return;
-      try {
-        await requestNotation(await readNotation(file));
-      } catch {
-        // Same id as requestNotation's loading toast — see OpenFileControl's `accept`.
-        toast.dismiss('notation-load');
-        toast.error(readFailureMessage(file), { id: `${openFailureCode(file)}:${file.name}` });
-        setAnnouncement(`${file.name} could not be opened. Error ${openFailureCode(file)}.`);
-      }
+      const code = await openPickedFile(file, requestNotation);
+      if (code) setAnnouncement(`${file.name} could not be opened. Error ${code}.`);
     },
     [requestNotation],
   );

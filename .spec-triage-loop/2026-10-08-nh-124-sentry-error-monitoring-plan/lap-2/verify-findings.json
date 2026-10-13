@@ -1,0 +1,262 @@
+{
+  "items": [
+    {
+      "id": "C1",
+      "verdict": "PASS-WITH-CORRECTION",
+      "section_exists": true,
+      "quotes": [
+        {
+          "quote": "E105, E901 and E201–E204 keep their message.",
+          "verbatim": true,
+          "line": 63,
+          "real_text": "Global Constraints, 'Fixed sentences' bullet, lines 63-64 (verbatim across the wrap): \"  ours: the code, then its meaning from `docs/reference/error-codes.md`\\\". E105, E901 and E201–E204\" / \"  keep their message.\" Not changed by lap 1."
+        },
+        {
+          "quote": "`reportError` keeps the error's message for every code except E101–E103, and the names filter removes names, not a file's contents.",
+          "verbatim": true,
+          "line": 4822,
+          "real_text": "Task 15 Step 5, inside the ```markdown fence, lines 4822-4823 (verbatim across the wrap): \"  `reportError` keeps the error's message for every code except E101–E103, and the names filter\" / \"  removes names, not a file's contents. A catch around code that reads or parses the visitor's\". Added in lap 1 (diff + lines)."
+        },
+        {
+          "quote": "E202 does the same only when its error arrives with an empty message, as a SoundFont network failure does, so its issue is not titled just `Error`; a non-empty E202 keeps its own words.",
+          "verbatim": true,
+          "line": 286,
+          "real_text": "Choice 4, lines 286-288 (verbatim across two wraps): \"   message or in a chained error. E202 does the same only when its error arrives with an empty\" / \"   message, as a SoundFont network failure does, so its issue is not titled just `Error`; a\" / \"   non-empty E202 keeps its own words. Approved in the plan review, lap 1.\""
+        }
+      ],
+      "contradicts_other_sections": "No. The fix agrees with the QP-1 row (257), Choice 4 (284-288), Task 5's Interfaces (1348-1349), report.ts's SENTENCES_WHEN_EMPTY and fixedSentence (1668-1692), the unit case 'sends E202 its meaning when AlphaTab gives it no message at all' (1493-1502) and Task 14's comment (4569-4571). Whole-plan grep (keep(s) their/its message, own message/words, every code except, fixed sentence, E201–E204, E202): the only OTHER passage of this kind is the scrub.ts module comment in Task 4 Step 3, line 1204: ' * and E105, E901 and E201–E204 keep their message.' Left out of the fix on purpose: it explains why the names filter exists (these codes send their own text, which could quote a name), and the only E202 that Choice 4 rewrites is one whose message is EMPTY, which holds no name, so the reasoning it supports is unchanged; it is also spec 3.2's own sentence (spec line 403). Every other hit is about E105/E901 only (1247-1248, 3196-3197, 3245, 3250, 3312, 3341-3342, 3762, 3853) or already names the E202 case (257, 1348-1349, 1658-1674, 4571).",
+      "notes": "Real: line 64 and the lap-1 web/AGENTS.md bullet both say only E101–E103 replace a message, against approved Choice 4. Spec check: the bullet's quoted part is spec 2.3 (spec lines 200-202) verbatim, with '…' standing for \"— in the exception's value and in the event's `message` —\"; its trailing sentence 'E105, E901 and E201–E204 keep their message.' is NOT in quotation marks but is word for word spec 3.2 (spec line 403). The fix keeps those spec words contiguous and appends the exception with the decision named beside it ('(Choice 4)'), which is the section's own rule (lines 35-36: 'copied verbatim from the spec, or from the decision named beside them'). CORRECTION to the reviewer's Task 15 wording: as proposed it reads '…every code except E101–E103, and an E202 whose message is empty, and the names filter removes names…' — two coordinated 'and's that parse as a three-item list. Use a parenthetical: 'every code except E101–E103 (and an E202 whose message is empty), and the names filter …'. Both edits rewrapped at 100 columns; the second is inside a ```markdown fence and Prettier left it unchanged. markdownlint (repo config) and cspell (repo config, via stdin) report 0 issues on the edited copy, as on the original.",
+      "replacements": [
+        {
+          "where": "Global Constraints, 'Fixed sentences' bullet, plan lines 62-64",
+          "old": "  ours: the code, then its meaning from `docs/reference/error-codes.md`\". E105, E901 and E201–E204\n  keep their message.\n",
+          "new": "  ours: the code, then its meaning from `docs/reference/error-codes.md`\". E105, E901 and E201–E204\n  keep their message, except that an E202 whose message is empty sends E202's sentence instead\n  (Choice 4).\n"
+        },
+        {
+          "where": "Task 15 Step 5, the web/AGENTS.md bullet (inside the markdown fence), plan lines 4822-4825",
+          "old": "  `reportError` keeps the error's message for every code except E101–E103, and the names filter\n  removes names, not a file's contents. A catch around code that reads or parses the visitor's\n  file, such as the cached-score path E104 is reserved for, needs a fixed sentence: add its code to\n  `FIXED_MESSAGES` in `web/lib/monitoring/report.ts`, and to the fixed-sentence test beside it.\n",
+          "new": "  `reportError` keeps the error's message for every code except E101–E103 (and an E202 whose message\n  is empty), and the names filter removes names, not a file's contents. A catch around code that\n  reads or parses the visitor's file, such as the cached-score path E104 is reserved for, needs a\n  fixed sentence: add its code to `FIXED_MESSAGES` in `web/lib/monitoring/report.ts`, and to the\n  fixed-sentence test beside it.\n"
+        }
+      ]
+    },
+    {
+      "id": "C2",
+      "verdict": "PASS",
+      "section_exists": true,
+      "quotes": [
+        {
+          "quote": "A drop also writes it into the player's announcement.",
+          "verbatim": true,
+          "line": 260,
+          "real_text": "The last sentence of the Q13 row (one table line, 260): '… so the sentence is heard once. A drop also writes it into the player's announcement.' Row added in lap 1."
+        },
+        {
+          "quote": "No announcement: the toast is a polite live region, as the picker's E105 already relies on.",
+          "verbatim": true,
+          "line": 3673,
+          "real_text": "Words verbatim, split over two comment lines in the tsx fence (3673-3674): \"// here instead of reaching either open path's catch. No announcement: the toast is a polite live\" / \"// region, as the picker's E105 already relies on.\""
+        },
+        {
+          "quote": "a dropped file whose open fails after the swap says it opened, not that it failed",
+          "verbatim": true,
+          "line": 3600,
+          "real_text": "test('a dropped file whose open fails after the swap says it opened, not that it failed', async () => {"
+        }
+      ],
+      "contradicts_other_sections": "No. The new text matches the Q12 row (259, 'for a picked and a dropped file alike'), Task 11's intro (3197-3199), Step 3's note (3400-3402), the after-swap catch (3686-3697: reportError + toast.dismiss + toast.error, NO setAnnouncement, and it swallows the error, so acceptDropped's catch is never reached) and acceptDropped's catch (3716-3727: setAnnouncement(`${file.name} could not be opened. Error ${code}.`) — the drop's only announcement, reached only by a throw at or before the swap). The Q6 row (251, 'the read flag chooses the code, the toast id, and (for a drop) the announcement') still holds for the open paths' catches; it is silent about the after-swap catch, which always sends E105, but is not contradicted.",
+      "notes": "What the dropped after-swap test (3600-3617) asserts: exactly one E105 report (3611, waitFor timeout 5000); a toast.error containing 'Punk.gp opened, but something went wrong on our side.' with { id: 'E105:Punk.gp' } (3612-3615); and that the text 'Punk.gp could not be opened. Error E105.' is NOT in the document (3616). So it pins only the ABSENCE of the drop's 'could not be opened' announcement — not that the live region is empty (toast.success throws first there, so setAnnouncement(`Opened …`) never runs either). The picked twin (3576-3598) asserts nothing about announcements. The new row claims nothing beyond what the code does and the tests allow. Applying it makes the Q13 cell (249 -> 411 characters) wider than the Answer column (309), so Prettier re-pads all 15 lines of that table, whitespace only (shown in the diff); run Prettier after applying. Optional, if the caller wants no re-pad: a last sentence of at most 113 characters fits the current column, e.g. 'A drop also announces its \"could not be opened\" E105; an E105 after the swap (Q12) has its toast alone.' (103).",
+      "replacements": [
+        {
+          "where": "Questions the spec left to the plan, the Q13 row, plan line 260 (run Prettier after: the table re-pads)",
+          "old": "so the sentence is heard once. A drop also writes it into the player's announcement.",
+          "new": "so the sentence is heard once. A drop also writes the \"could not be opened\" E105, raised before the swap, into the player's announcement; the E105 raised after the swap (Q12) is announced by its toast alone, for a picked and a dropped file alike."
+        }
+      ]
+    },
+    {
+      "id": "V2",
+      "verdict": "PASS",
+      "section_exists": true,
+      "quotes": [
+        {
+          "quote": "In the comment block above `openInFlight`, delete the last line, \"PRE-EXISTING: this path is …",
+          "verbatim": true,
+          "line": 3663,
+          "real_text": "Task 11 Step 6, lines 3663-3664: \"In the comment block above `openInFlight`, delete the last line, \\\"PRE-EXISTING: this path is\" / \"unchanged by this feature, and the race predates it.\\\" — this change touches the path.\" Older than lap 1 (context lines in the diff)."
+        }
+      ],
+      "real_file_quote": "web/app/play/PlayerShell.tsx:902-914 today: \"  // ONE open at a time. Two overlapping opens both run to completion and the one that finishes\" / \"  // LAST wins — which can be the file the person already rejected.\" / \"  //\" / \"  // A ref, not `opening` state: `opening` is set by the flushSync below, which is AFTER the engine\" / \"  // await at the top of runRequestNotation, so a second pick made during that window sees it still\" / \"  // false. A ref is written in the same synchronous tick as the call and is visible immediately.\" / \"  //\" / \"  // The guard wraps rather than nests so the 113-line body keeps its shape; `finally` releases the\" / \"  // slot on every exit, including the early returns for a failed engine import and an unreadable\" / \"  // score.\" / \"  //\" [line 912] / \"  // PRE-EXISTING: this path is unchanged by this feature, and the race predates it.\" [line 913] / \"  const openInFlight = useRef(false);\" [line 914]",
+      "contradicts_other_sections": "No. Line 3663 is the plan's only mention of the PRE-EXISTING line; Step 6's requestNotation snippet (3643-3661) replaces the useCallback, not the comment block.",
+      "notes": "Confirmed in the real file: deleting only line 913 leaves '  //' (line 912) directly above '  const openInFlight = useRef(false);'. The new wording names both lines, so the block ends at '… and an unreadable score.' as intended. FYI, outside V2: the same block's '113-line body' (line 909) is already stale — runRequestNotation's arrow body runs 774-897 (124 lines) today, and Task 11's try/catch lengthens it.",
+      "replacements": [
+        {
+          "where": "Task 11 Step 6, plan lines 3663-3664",
+          "old": "In the comment block above `openInFlight`, delete the last line, \"PRE-EXISTING: this path is\nunchanged by this feature, and the race predates it.\" — this change touches the path.\n",
+          "new": "In the comment block above `openInFlight`, delete its last two lines — the lone `//` and the line\nbelow it, \"PRE-EXISTING: this path is unchanged by this feature, and the race predates it.\" — this\nchange touches the path.\n"
+        }
+      ]
+    },
+    {
+      "id": "V3",
+      "verdict": "PASS",
+      "section_exists": true,
+      "quotes": [
+        {
+          "quote": "The new score is on screen from here",
+          "verbatim": true,
+          "line": 3671,
+          "real_text": "\"// The new score is on screen from here, so a bug of ours in the steps left must not say the file\" (first of four comment lines, 3671-3674, above `try {` in the Task 11 Step 6 tsx fence)"
+        }
+      ],
+      "contradicts_other_sections": "No. Words unchanged (checked mechanically); the comment occurs once. The other Step 6 snippets fit at their real indents: requestNotation and acceptDropped sit at 2 spaces (max 97 and 99 there), and the comments moved inside the try sit at 8 (max 98).",
+      "notes": "Real indent: the lines that move into the try (toast.success … playRef.current?.focus()) sit at 6 spaces inside runRequestNotation (PlayerShell.tsx:886-897), so the try and its lead comment land at 6. Character counts at column 0 / at 6: 97/103, 96/102, 97/103, 50/56 — the claim is exact. Rewrapped to at most 94 at column 0: 92, 91, 93, 64 (98, 97, 99, 70 where it really sits). No ESLint max-len rule (web/eslint.config.mjs, eslint.config.base.mjs) and no max_line_length in .editorconfig; Prettier does not rewrap comments. Prettier left the rewrapped fence unchanged.",
+      "replacements": [
+        {
+          "where": "Task 11 Step 6, the after-swap try/catch snippet's lead comment, plan lines 3671-3674",
+          "old": "// The new score is on screen from here, so a bug of ours in the steps left must not say the file\n// \"could not be opened\": this catch reports it as E105 with its own sentence, and the open ends\n// here instead of reaching either open path's catch. No announcement: the toast is a polite live\n// region, as the picker's E105 already relies on.\n",
+          "new": "// The new score is on screen from here, so a bug of ours in the steps left must not say the\n// file \"could not be opened\": this catch reports it as E105 with its own sentence, and the\n// open ends here instead of reaching either open path's catch. No announcement: the toast is\n// a polite live region, as the picker's E105 already relies on.\n"
+        }
+      ]
+    },
+    {
+      "id": "S1",
+      "verdict": "CONFIRMED",
+      "section_exists": true,
+      "quotes": [
+        {
+          "quote": "const uploadToken = process.env.VERCEL_ENV === 'production' ? process.env.SENTRY_AUTH_TOKEN : undefined;",
+          "verbatim": true,
+          "line": 471,
+          "real_text": "Task 1 Step 4, Prettier-wrapped over 471-472: \"const uploadToken =\" / \"  process.env.VERCEL_ENV === 'production' ? process.env.SENTRY_AUTH_TOKEN : undefined;\""
+        },
+        {
+          "quote": "never makes a local build upload",
+          "verbatim": true,
+          "line": 4871,
+          "real_text": "Task 16 Step 1 README, 4869-4871: \"… Only a production build reads the token (`VERCEL_ENV` is\" / \"`production`), so a `SENTRY_AUTH_TOKEN` in your own shell — Sentry's command-line tools read that\" / \"name — never makes a local build upload. …\""
+        }
+      ],
+      "spike": {
+        "a": "READ, then RAN. Next 16.3.6 (web/node_modules/next): dist/build/index.js:486-487 — '// attempt to load global env values so they are available in next.config.js' / 'const { loadedEnvFiles } = nextBuildSpan.traceChild(\\'load-dotenv\\').traceFn(()=>(0, _env.loadEnvConfig)(dir, false, _log));' — then dist/build/index.js:498 loads the config: 'const config = await nextBuildSpan.traceChild(\\'load-next-config\\').traceAsyncFn(()=>(0, _turborepoaccesstrace.turborepoTraceAccess)(()=>(0, _config.default)(_constants1.PHASE_PRODUCTION_BUILD, dir, {'. Inside it, dist/server/config.js:1404 calls '(0, _env.loadEnvConfig)(dir, phase === _constants.PHASE_DEVELOPMENT_SERVER, curLog);' again before :1447-1451 transpile and evaluate next.config.ts ('userConfigModule = await (0, _transpileconfig.transpileConfig)({ nextConfigPath: path, dir });'). Files, from @next/env 16.3.6 dist/index.js (one minified line): [`.env.${d}.local`, d!==\"test\"&&`.env.local`, `.env.${d}`, \".env\"] with d = \"production\" for a build unless NODE_ENV=test. processEnv fills a key only 'if(typeof u[t]===\"undefined\"&&typeof p[t]===\"undefined\")', p being a copy of the starting process.env, and the vendored dotenv-expand reads 'Object.prototype.hasOwnProperty.call(t,n)?t[n]:e.parsed[n]' — so a variable already present, even as '', is never replaced. Ran the real CLI (node web/node_modules/next/dist/bin/next build <scratch app>) on scratch apps holding .env.local = 'VERCEL_ENV=production' and a next.config that prints and exits: shell without VERCEL_ENV -> '▲ Next.js 16.3.6 (Turbopack)' / '- Environments: .env.local' / '[next.config] VERCEL_ENV=\"production\"; upload gate: true' (next.config.ts too: '[next.config.ts] VERCEL_ENV=\"production\"; uploadToken set: true'). The reviewer's form, sh -c 'VERCEL_ENV=$VERCEL_ENV node … build …' -> '[next.config] VERCEL_ENV=\"\"; upload gate: false' (.ts: 'VERCEL_ENV=\"\"; uploadToken set: false'). Same form with VERCEL_ENV=production in the shell (Vercel) -> 'VERCEL_ENV=\"production\"; upload gate: true'.",
+        "b_unset": "@next/env: 16.3.6\nbefore: VERCEL_ENV=undefined (own property: false), NODE_ENV=undefined\nloaded files: [\".env.local\"]\nafter:  VERCEL_ENV=\"production\"\nnext.config.ts gate (VERCEL_ENV === 'production'): true",
+        "b_empty": "@next/env: 16.3.6\nbefore: VERCEL_ENV=\"\" (own property: true), NODE_ENV=undefined\nloaded files: [\".env.local\"]\nafter:  VERCEL_ENV=\"\"\nnext.config.ts gate (VERCEL_ENV === 'production'): false",
+        "b_control_preview": "(control run, VERCEL_ENV=preview in the shell) after:  VERCEL_ENV=\"preview\"; gate false",
+        "c": "NOT stated in Vercel's docs; confirmed from the CLI's source and from CLI-written files, not by running the CLI. Docs read (cli/env, cli/pull, environment-variables, system-environment-variables, deployments/environments), paraphrased: env pull exports the project's variables to a file (.env.local by default, also with --environment), and VERCEL_ENV is a system variable present at build and run time, valued production, preview or development; no page says whether env pull writes system variables. CLI source (vercel/vercel packages/cli/src/commands/env/pull.ts): it writes every record the env-pull API returns (pullEnvRecords(client, pullId, source, { target: environment || 'development', gitBranch })), dropping only VERCEL_ANALYTICS_ID, VERCEL_SPEED_INSIGHTS_ID and VERCEL_WEB_ANALYTICS_ID, under the header '# Created by Vercel CLI'. Public files carrying that header (GitHub code search) hold VERCEL_ENV=\"development\" (default pulls) and VERCEL_ENV=\"production\" (production pulls, e.g. several '.env.vercel.prod' files — a custom file name, which only 'vercel env pull <file>' writes, since 'vercel pull' uses fixed paths under .vercel/) — so yes, a production pull writes VERCEL_ENV=\"production\" when the project exposes system variables, which this plan requires to be on (Choice 12, Task 17). Found on the way, and it widens S1: Secret variables are written as a placeholder (the env docs say so when the local file has no real value for the key); source: SENSITIVE_ENV_VALUE_PLACEHOLDER = '[SENSITIVE]' (packages/cli/src/util/env/constants.ts), assigned for every Secret key with no local value, file present or not. A production pull therefore also writes SENTRY_AUTH_TOKEN=\"[SENSITIVE]\", which next.config.ts would take as a token. The vercel CLI was not run.",
+        "d": "This worktree: no web/.env* and no root .env* file; no .vercel folder; the only tracked env file is server/.env.example. The root .gitignore covers them at any depth: lines 21-25 '.env', '.env.*', '*.env', 'jira.env', '!.env.example'. Outside this worktree, names only: the primary checkout has web/.env — 0 bytes, git-ignored by '.gitignore:23:*.env', not opened — and no .vercel folder; no other worktree's web/ has a .env* file.",
+        "e": "Compatible. The Task 2 Step 5 script would read: \"build\": \"node scripts/vendor-alphatab.mjs && NEXT_PUBLIC_APP_VERSION=$(node scripts/app-version.mjs) VERCEL_ENV=$VERCEL_ENV next build && node scripts/assert-design-system-css.mjs && node scripts/assert-no-auth-token.mjs\". app-version.mjs (and assert-no-auth-token.mjs) run as their own node processes and never load .env files, so they already read only the shell's VERCEL_ENV; the pin makes next.config.ts read the same value, so the release name and the upload gate can no longer disagree (today, with VERCEL_ENV=production only in a .env file and a token in the shell, the upload would run under release 'local'). On Vercel, web/vercel.json's buildCommand is 'rm -rf .next/cache && pnpm run build', so the pin runs there too and passes Vercel's own value through unchanged; the e2e lane builds with 'pnpm build' (webServer), also covered. '' and unset behave the same downstream: Next 16.3.6 reads VERCEL_ENV only as === 'preview' (dist/lib/metadata/metadata.js:296, resolvers/resolve-url.js:66), and Sentry's getVercelEnv() is 'process.env.VERCEL_TARGET_ENV || process.env.VERCEL_ENV || undefined' (sentry-javascript develop; @sentry/nextjs is not installed here to check 11.1.0). The POSIX 'VAR=$VAR cmd' form adds no portability limit: the script already uses NEXT_PUBLIC_APP_VERSION=$(…) and pnpm runs it with sh. If adopted: Task 1 Step 4's comment should say the build script hands next build the shell's own VERCEL_ENV, and putting the pin in Task 1 keeps the gate and its guard in one commit (Task 2 also works). The pin does not cover 'pnpm dev' (scripts/dev.mjs spawns next dev, which also reads .env.local): dev never uploads, but before Task 17 adds the slugs the slug check would throw there. Alternative of equal strength: gate on the release the script computed (process.env.NEXT_PUBLIC_APP_VERSION?.startsWith('v0.')) — always set on the command line, so a .env file cannot change it — but it ties the upload to the version format; the pin is simpler. Why it is not happening today: no web/.env* and no Vercel CLI link anywhere, and a default 'vercel env pull' writes VERCEL_ENV=\"development\" (gate off). It needs a deliberate production pull into web/ (or a hand-written line). Then: with a token in the shell, a real upload into the production project (release 'local'); with no token in the shell, the '[SENSITIVE]' placeholder makes every local 'pnpm build' and the e2e lane's build fail — the slug check before Task 17, Sentry refusing the token after. The pin prevents both. Not covered by the pin: the same pull writes NEXT_PUBLIC_SENTRY_DSN's real value (NEXT_PUBLIC_ variables are stored as Config, so they are readable), so 'pnpm dev' and local builds would report into the production project, against D5 — the e2e lane is safe, as its webServer env sets the fake DSN, which a .env file cannot override. One README or web/AGENTS.md line ('never pull Production variables into web/') would cover that too."
+      },
+      "contradicts_other_sections": "The pin contradicts nothing: Choice 12, Task 1 Step 4, Task 2 Step 5, Task 16's README and Task 17's tooltip check all stay true, and the README's 'never makes a local build upload' becomes true for a VERCEL_ENV in a web/.env* file as well.",
+      "notes": "Ran: (b) in fresh node processes, plus the real next build CLI with .mjs and .ts configs, with and without the pin. Read only: next build's load order (also observed in the run), the Vercel CLI's pull behaviour (source and CLI-written files), and Sentry's env reads. Not run: an actual source-map upload (no @sentry/nextjs here, and the token is off-limits)."
+    },
+    {
+      "id": "V1",
+      "verdict": "PASS",
+      "section_exists": true,
+      "occurrences": [
+        {
+          "line": 3557,
+          "task": "Task 11",
+          "step": "Step 5",
+          "case": "an open that fails after the parse shows E105 and leaves no loading bar",
+          "added_in_lap1": false
+        },
+        {
+          "line": 3572,
+          "task": "Task 11",
+          "step": "Step 5",
+          "case": "a dropped file that fails after the read reports E105 and announces it",
+          "added_in_lap1": false
+        },
+        {
+          "line": 3588,
+          "task": "Task 11",
+          "step": "Step 5",
+          "case": "a picked file whose open fails after the swap says it opened, and reports E105 once",
+          "added_in_lap1": true
+        },
+        {
+          "line": 3611,
+          "task": "Task 11",
+          "step": "Step 5",
+          "case": "a dropped file whose open fails after the swap says it opened, not that it failed",
+          "added_in_lap1": true
+        },
+        {
+          "line": 3807,
+          "task": "Task 12",
+          "step": "Step 1",
+          "case": "the score's names are remembered before the swap, so an E105 quoting one is filtered",
+          "added_in_lap1": false
+        },
+        {
+          "line": 4087,
+          "task": "Task 13",
+          "step": "Step 3",
+          "case": "opening Punk.gp sets drums,030",
+          "added_in_lap1": false
+        },
+        {
+          "line": 4094,
+          "task": "Task 13",
+          "step": "Step 3",
+          "case": "after an unmount, /play keeps the last score and / has none; a new player says sample",
+          "added_in_lap1": false
+        },
+        {
+          "line": 4123,
+          "task": "Task 13",
+          "step": "Step 3",
+          "case": "an open left running across an unmount sets nothing when it ends",
+          "added_in_lap1": false
+        },
+        {
+          "line": 4131,
+          "task": "Task 13",
+          "step": "Step 3",
+          "case": "with Punk.gp open, a non-score and a Cancel each leave drums,030, and the E103 is untagged",
+          "added_in_lap1": false
+        },
+        {
+          "line": 4135,
+          "task": "Task 13",
+          "step": "Step 3",
+          "case": "with Punk.gp open, a non-score and a Cancel each leave drums,030, and the E103 is untagged",
+          "added_in_lap1": false
+        },
+        {
+          "line": 4155,
+          "task": "Task 13",
+          "step": "Step 3",
+          "case": "an E105 before the swap leaves the old value; one just after it, the new one",
+          "added_in_lap1": false
+        },
+        {
+          "line": 4162,
+          "task": "Task 13",
+          "step": "Step 3",
+          "case": "an E105 before the swap leaves the old value; one just after it, the new one",
+          "added_in_lap1": false
+        },
+        {
+          "line": 4171,
+          "task": "Task 13",
+          "step": "Step 3",
+          "case": "a late score-loaded event for the bundled beat keeps the file's value",
+          "added_in_lap1": false
+        },
+        {
+          "line": 4205,
+          "task": "Task 13",
+          "step": "Step 3",
+          "case": "two opens at once: the one that returns early still puts the tag back",
+          "added_in_lap1": false
+        }
+      ],
+      "expected_fail_text": "Lines 3620-3624: \"Run: `pnpm --filter @notation-hero/web exec vitest run app/play/PlayerShell.test.tsx`\" / \"Expected: FAIL — the first case's last wait times out (the bar keeps pulsing: the throw skips both\" / \"`setOpening(false)` calls), and the second never sees an E105 (the drop's catch reports nothing\" / \"yet). Of the two after-the-swap cases, the picked file's toast says \\\"could not be opened\\\" (the\" / \"throw reaches the picker's catch), and the dropped file's never sees an E105.\"",
+      "notes": "14 occurrences; lap 1 added 2 (3588 and 3611, the '+' lines at diff lines 666 and 689), and 3572 is a diff context line. web/vitest.config.ts sets no testTimeout or hookTimeout (nor does web/vitest.setup.ts), and Vitest 4.1.11's default is 5000 ms: dist/chunks/coverage.DM_a_rWm.js:538 'resolved.testTimeout ??= resolved.browser.enabled ? 15e3 : 5e3;'. Measured with a scratch probe on the checkout's Vitest: a waitFor(…, { timeout: 5000 }) that never passes prints 'Error: Test timed out in 5000ms.', while a 3000 ms one prints its own 'AssertionError: expected [] to have a length of 1 but got +0'. Expected text: the causes are right and all four cases fail, but for 'the second' (3572) and 'the dropped file's' (3611) Vitest prints the test timeout, not an assertion about reported('E105') — recognisable, not literal. The first case's last wait is loadingBarGone (3000 ms), so it shows its own error, and the picked after-swap case fails at once on its toast assertion — both as described. Same 5000 = 5000 pattern before lap 1: in Task 13 Step 3's run ('Expected: FAIL — `tagNow()` is never `sample` or `drums,030`: nothing sets the tag yet.'), the cases that wait 5000 ms for a tag nothing sets yet (4087, 4094, 4123, 4131, 4171, 4205) would also print 'Test timed out in 5000ms' — reasoned, not run. Housekeeping: through a symlink in scratch, the probe added one ':probe.test.ts' entry to the checkout's git-ignored Vitest cache (web/node_modules/.vite/vitest/da39a3ee5e6b4b0d3255bfef95601890afd80709/results.json) and created an empty web/node_modules/.vite-temp. Both are reverted: the entry was removed (the rest of the file is byte-identical, checked by re-serializing it) and the empty folder removed with rmdir. git status is clean."
+    }
+  ],
+  "prettier_diff": "--- plan-original.md\n+++ plan-edited-prettier.md\n@@ -61,7 +61,8 @@\n   only `drums`, `sample` and the General MIDI numbers `000`–`127`.\n - **Fixed sentences:** \"E101, E102 and E103 replace the exception message … with a fixed sentence of\n   ours: the code, then its meaning from `docs/reference/error-codes.md`\". E105, E901 and E201–E204\n-  keep their message.\n+  keep their message, except that an E202 whose message is empty sends E202's sentence instead\n+  (Choice 4).\n - **`handled: false`:** \"Only the three error pages (E901) and the player failures E201–E204 pass\n   it.\"\n - **Every catch reports:** every `catch` clause and `.catch()` callback in `web/` calls `reportError`\n@@ -243,21 +244,21 @@\n \n ## Questions the spec left to the plan\n \n-| Question                                                            | Answer                                                                                                                                                                                                                                                                                                                |\n-| ------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |\n-| Q2 — does pnpm need `allowBuilds` entries for `@sentry/nextjs`?     | **No.** No install scripts anywhere in its tree (verified).                                                                                                                                                                                                                                                           |\n-| Q3 — re-check the SDK's behaviour against the version pnpm resolves | Done for 11.1.0: the four integration names, the `unhandled` session status, the `page` session lifecycle, `attachStacktrace` on, permissive `dataCollection` defaults. Task 6's test keeps checking the names on every later version.                                                                                |\n-| Q5 — how are the three error pages seen in a real browser?          | Task 7: a temporary throw (never committed) under `next dev`, looked at desktop and phone width, screenshots in the PR.                                                                                                                                                                                               |\n-| Q6 — how does the open-file code key E105?                          | Task 11: the `read` flag chooses the code, the toast id, and (for a drop) the announcement.                                                                                                                                                                                                                           |\n-| Q7 — blank every chained exception's message for E101–E103?         | Moot: the error sent for those codes is built fresh, with no `cause` (Task 5).                                                                                                                                                                                                                                        |\n-| Q9 — which end-to-end tests install the envelope recorder?          | `error-reporting.e2e.ts` and the six `player.e2e.ts` cases that gain a reporting assertion. Every other page load sends its session ping to `sentry.invalid`, which never resolves (the `.invalid` domain is reserved, RFC 6761): it fails at the DNS lookup and sends nothing anywhere.                              |\n-| Q10 — how does `@sentry/nextjs` load under Vitest?                  | As the Node build. `web/vitest.setup.ts` replaces it for every unit test (Task 5): no unit test talks to the real SDK.                                                                                                                                                                                                |\n-| Q11 — repeat setup step 6 from the new domain                       | Belongs to NH-278.                                                                                                                                                                                                                                                                                                    |\n-| Q14 — in which order do the commits land?                           | The task order below.                                                                                                                                                                                                                                                                                                 |\n-| QP-1 (new) — an E202 whose message is empty                         | **Decided in the plan review, lap 1:** a SoundFont network failure reaches the `error` event with the message `\"\"`, which titles its issue only `Error`; `reportError` sends E202's sentence from the reference page in that case, as E101–E103 always do (Task 5, Choice 4). A non-empty E202 keeps its own message. |\n-| Q8 (lap 2) — how exact is the file size?                            | **Decided in the plan review, lap 1:** rounded up to the next power of two in `reportError` (Task 5, Choice 3); 0 stays 0. An exact size and the type together could identify a widely shared tab file, and a file over the limit already has its own code, E101.                                                     |\n-| Q12 (lap 3) — the E105 toast after the swap                         | **Decided in the plan review, lap 1:** its own sentence. A catch around the steps after the swap in `runRequestNotation` reports E105 and says `riff.gp opened, but something went wrong on our side. If the player misbehaves, reload the page. (Error E105)`, for a picked and a dropped file alike (Task 11).      |\n-| Q13 (lap 3) — the picker's announcement                             | **Decided in the plan review, lap 1:** kept as it is. A picked file's E105 is announced by its toast alone, as E101 and E102 are: the toast is a polite live region, so the sentence is heard once. A drop also writes it into the player's announcement.                                                             |\n+| Question                                                            | Answer                                                                                                                                                                                                                                                                                                                                                                                                                      |\n+| ------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |\n+| Q2 — does pnpm need `allowBuilds` entries for `@sentry/nextjs`?     | **No.** No install scripts anywhere in its tree (verified).                                                                                                                                                                                                                                                                                                                                                                 |\n+| Q3 — re-check the SDK's behaviour against the version pnpm resolves | Done for 11.1.0: the four integration names, the `unhandled` session status, the `page` session lifecycle, `attachStacktrace` on, permissive `dataCollection` defaults. Task 6's test keeps checking the names on every later version.                                                                                                                                                                                      |\n+| Q5 — how are the three error pages seen in a real browser?          | Task 7: a temporary throw (never committed) under `next dev`, looked at desktop and phone width, screenshots in the PR.                                                                                                                                                                                                                                                                                                     |\n+| Q6 — how does the open-file code key E105?                          | Task 11: the `read` flag chooses the code, the toast id, and (for a drop) the announcement.                                                                                                                                                                                                                                                                                                                                 |\n+| Q7 — blank every chained exception's message for E101–E103?         | Moot: the error sent for those codes is built fresh, with no `cause` (Task 5).                                                                                                                                                                                                                                                                                                                                              |\n+| Q9 — which end-to-end tests install the envelope recorder?          | `error-reporting.e2e.ts` and the six `player.e2e.ts` cases that gain a reporting assertion. Every other page load sends its session ping to `sentry.invalid`, which never resolves (the `.invalid` domain is reserved, RFC 6761): it fails at the DNS lookup and sends nothing anywhere.                                                                                                                                    |\n+| Q10 — how does `@sentry/nextjs` load under Vitest?                  | As the Node build. `web/vitest.setup.ts` replaces it for every unit test (Task 5): no unit test talks to the real SDK.                                                                                                                                                                                                                                                                                                      |\n+| Q11 — repeat setup step 6 from the new domain                       | Belongs to NH-278.                                                                                                                                                                                                                                                                                                                                                                                                          |\n+| Q14 — in which order do the commits land?                           | The task order below.                                                                                                                                                                                                                                                                                                                                                                                                       |\n+| QP-1 (new) — an E202 whose message is empty                         | **Decided in the plan review, lap 1:** a SoundFont network failure reaches the `error` event with the message `\"\"`, which titles its issue only `Error`; `reportError` sends E202's sentence from the reference page in that case, as E101–E103 always do (Task 5, Choice 4). A non-empty E202 keeps its own message.                                                                                                       |\n+| Q8 (lap 2) — how exact is the file size?                            | **Decided in the plan review, lap 1:** rounded up to the next power of two in `reportError` (Task 5, Choice 3); 0 stays 0. An exact size and the type together could identify a widely shared tab file, and a file over the limit already has its own code, E101.                                                                                                                                                           |\n+| Q12 (lap 3) — the E105 toast after the swap                         | **Decided in the plan review, lap 1:** its own sentence. A catch around the steps after the swap in `runRequestNotation` reports E105 and says `riff.gp opened, but something went wrong on our side. If the player misbehaves, reload the page. (Error E105)`, for a picked and a dropped file alike (Task 11).                                                                                                            |\n+| Q13 (lap 3) — the picker's announcement                             | **Decided in the plan review, lap 1:** kept as it is. A picked file's E105 is announced by its toast alone, as E101 and E102 are: the toast is a polite live region, so the sentence is heard once. A drop also writes the \"could not be opened\" E105, raised before the swap, into the player's announcement; the E105 raised after the swap (Q12) is announced by its toast alone, for a picked and a dropped file alike. |\n \n Nothing the spec left to the plan is still open: the owner decided QP-1, Q8, Q12 and Q13 in the\n plan review's first lap.\n@@ -3660,18 +3661,19 @@\n );\n ```\n \n-In the comment block above `openInFlight`, delete the last line, \"PRE-EXISTING: this path is\n-unchanged by this feature, and the race predates it.\" — this change touches the path.\n+In the comment block above `openInFlight`, delete its last two lines — the lone `//` and the line\n+below it, \"PRE-EXISTING: this path is unchanged by this feature, and the race predates it.\" — this\n+change touches the path.\n \n In `runRequestNotation`, the lines after `setNotation({ name: next.name, score });` and\n `setOpening(false);` — `toast.success` through `playRef.current?.focus();`, with their comments\n unchanged — move inside their own `try`:\n \n ```tsx\n-// The new score is on screen from here, so a bug of ours in the steps left must not say the file\n-// \"could not be opened\": this catch reports it as E105 with its own sentence, and the open ends\n-// here instead of reaching either open path's catch. No announcement: the toast is a polite live\n-// region, as the picker's E105 already relies on.\n+// The new score is on screen from here, so a bug of ours in the steps left must not say the\n+// file \"could not be opened\": this catch reports it as E105 with its own sentence, and the\n+// open ends here instead of reaching either open path's catch. No announcement: the toast is\n+// a polite live region, as the picker's E105 already relies on.\n try {\n   toast.success(`${next.name} loaded`, { id: 'notation-load' });\n   // Success only. None of this is reachable from the cancel path or the parse failure (both\n@@ -4819,10 +4821,11 @@\n   `// eslint-disable-next-line no-restricted-syntax -- <reason>` on the line above the `catch`.\n   Storage the browser refuses is the visitor's, not a bug:\n   `if (isStorageRefusal(error)) noteError(error, '…'); else reportError(error);`, written in place.\n-  `reportError` keeps the error's message for every code except E101–E103, and the names filter\n-  removes names, not a file's contents. A catch around code that reads or parses the visitor's\n-  file, such as the cached-score path E104 is reserved for, needs a fixed sentence: add its code to\n-  `FIXED_MESSAGES` in `web/lib/monitoring/report.ts`, and to the fixed-sentence test beside it.\n+  `reportError` keeps the error's message for every code except E101–E103 (and an E202 whose message\n+  is empty), and the names filter removes names, not a file's contents. A catch around code that\n+  reads or parses the visitor's file, such as the cached-score path E104 is reserved for, needs a\n+  fixed sentence: add its code to `FIXED_MESSAGES` in `web/lib/monitoring/report.ts`, and to the\n+  fixed-sentence test beside it.\n ```\n \n - [ ] **Step 6: Lint the shell script, the docs, and commit**\n",
+  "prettier_clean": true,
+  "notes": "Prettier: the copy lives outside the repository, so the command needs the repo's config passed explicitly: pnpm --dir <checkout> exec prettier --config <checkout>/prettier.config.mjs --write <copy>. Without --config, Prettier falls back to its defaults (printWidth 80, double quotes) and produces a 2,899-line diff on the UNTOUCHED plan. With it, a plain copy of the original stays byte-identical (baseline). On the edited copy, Prettier's only change beyond the edits is the whitespace re-pad of the 15-line Questions table, caused by C2. Nothing inside any code fence changed beyond the edits. The diff is 'diff -u' of the original against the edited copy after Prettier; copies and scripts are in verify-findings-work/ (plan-original.md, plan-edited-prettier.md, replacements.py, replacements.json, prettier.diff). The real plan was not modified; the only write into the checkout was the V1 probe's git-ignored Vitest cache entry and empty temp folder, both reverted (see V1)."
+}

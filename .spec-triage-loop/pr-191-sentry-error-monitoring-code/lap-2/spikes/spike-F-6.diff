@@ -1,0 +1,93 @@
+diff --git a/web/lib/monitoring/known-engine-noise.test.ts b/web/lib/monitoring/known-engine-noise.test.ts
+index 4d1270e..4bb3b2b 100644
+--- a/web/lib/monitoring/known-engine-noise.test.ts
++++ b/web/lib/monitoring/known-engine-noise.test.ts
+@@ -73,12 +73,9 @@ const WEBKIT_VOICES =
+ const FIREFOX_STOP =
+   'AudioScheduledSourceNode.stop: Start has not been called on this AudioBufferSourceNode.';
+
+-/** A Firefox or WebKit stack's lines, as the Sentry frames it becomes: the file of each `fn@url:line:col`. */
+-const framesOf = (...lines: readonly string[]) => ({
+-  frames: lines.map((line) => ({
+-    filename: line.slice(line.indexOf('@') + 1).replace(/:\d+:\d+$/, ''),
+-  })),
+-});
++/** A Firefox or WebKit stack's lines, as the file of each frame: the url in each `fn@url:line:col`. */
++const framesOf = (...lines: readonly string[]) =>
++  lines.map((line) => line.slice(line.indexOf('@') + 1).replace(/:\d+:\d+$/, ''));
+
+ const FIREFOX_VOICES_STACK = framesOf(
+   `fromJson@${ENGINE}:51:527535`,
+@@ -95,34 +92,18 @@ const FIREFOX_STOP_STACK = framesOf(
+
+ describe('isKnownEngineNoise, in Firefox and WebKit', () => {
+   it("drops NH-335 in each engine's own words when every frame is the engine's", () => {
+-    expect(
+-      isKnownEngineNoise({
+-        exception: { values: [{ value: FIREFOX_VOICES, stacktrace: FIREFOX_VOICES_STACK }] },
+-      }),
+-    ).toBe(true);
+-    expect(
+-      isKnownEngineNoise({
+-        exception: { values: [{ value: WEBKIT_VOICES, stacktrace: WEBKIT_VOICES_STACK }] },
+-      }),
+-    ).toBe(true);
++    expect(isKnownEngineNoise(event(FIREFOX_VOICES, FIREFOX_VOICES_STACK))).toBe(true);
++    expect(isKnownEngineNoise(event(WEBKIT_VOICES, WEBKIT_VOICES_STACK))).toBe(true);
+   });
+
+   it("drops Firefox's NH-338 when every frame is the engine's", () => {
+-    expect(
+-      isKnownEngineNoise({
+-        exception: { values: [{ value: FIREFOX_STOP, stacktrace: FIREFOX_STOP_STACK }] },
+-      }),
+-    ).toBe(true);
++    expect(isKnownEngineNoise(event(FIREFOX_STOP, FIREFOX_STOP_STACK))).toBe(true);
+   });
+
+   it('keeps the same words when one frame is our own code', () => {
+     const ours = framesOf(`fromJson@${ENGINE}:51:527535`, `t@${OURS}:1:60471`);
+-    expect(
+-      isKnownEngineNoise({ exception: { values: [{ value: FIREFOX_VOICES, stacktrace: ours }] } }),
+-    ).toBe(false);
+-    expect(
+-      isKnownEngineNoise({ exception: { values: [{ value: WEBKIT_VOICES, stacktrace: ours }] } }),
+-    ).toBe(false);
++    expect(isKnownEngineNoise(event(FIREFOX_VOICES, ours))).toBe(false);
++    expect(isKnownEngineNoise(event(WEBKIT_VOICES, ours))).toBe(false);
+   });
+
+   it('keeps another property read on undefined, in every wording', () => {
+@@ -131,11 +112,7 @@ describe('isKnownEngineNoise, in Firefox and WebKit', () => {
+       'can\'t access property "notes", e.bars[t] is undefined',
+       "undefined is not an object (evaluating 'e.bars[t].notes')",
+     ])
+-      expect(
+-        isKnownEngineNoise({
+-          exception: { values: [{ value, stacktrace: FIREFOX_VOICES_STACK }] },
+-        }),
+-      ).toBe(false);
++      expect(isKnownEngineNoise(event(value, FIREFOX_VOICES_STACK))).toBe(false);
+   });
+
+   it("drops WebKit's NH-338, whose stack starts in the browser's own stop()", () => {
+@@ -145,17 +122,11 @@ describe('isKnownEngineNoise, in Firefox and WebKit', () => {
+       `pause@${ENGINE}:51:650062`,
+       `handleWorkerMessage@${ENGINE}:51:522462`,
+     );
+-    expect(
+-      isKnownEngineNoise({ exception: { values: [{ value: stop, stacktrace: webkitStopStack }] } }),
+-    ).toBe(true);
++    expect(isKnownEngineNoise(event(stop, webkitStopStack))).toBe(true);
+   });
+
+   it("keeps a stack of only the browser's own frames: nothing ties it to the engine", () => {
+-    expect(
+-      isKnownEngineNoise({
+-        exception: { values: [{ value: stop, stacktrace: framesOf('stop@[native code]') }] },
+-      }),
+-    ).toBe(false);
++    expect(isKnownEngineNoise(event(stop, framesOf('stop@[native code]')))).toBe(false);
+   });
+ });
+

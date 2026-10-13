@@ -1,0 +1,18 @@
+diff --git a/web/app/play/OpenFileControl.tsx b/web/app/play/OpenFileControl.tsx
+index 7a30fb45..f78560df 100644
+--- a/web/app/play/OpenFileControl.tsx
++++ b/web/app/play/OpenFileControl.tsx
+@@ -90,8 +90,11 @@ function loadFailureMessage(file: { readonly name: string }): string {
+  * the browser cannot read (moved, deleted, volume unmounted between the pick and the read) would
+  * produce nothing at all: no toast, no error state, just a control the user keeps pressing.
+  *
+- * Resolves to the error code it reported, or null when the file opened. What else a caller does
+- * with that code is its own business: the drop handler announces it to screen readers.
++ * Resolves to the code it reported itself (E101, E102 or E105), or null when it reported nothing.
++ * So null does not mean the file opened: `load` may stop on its own (a cancelled replace, or a
++ * second open while one runs) or show a failure itself (E103 for a file that is not a score, E205
++ * for an engine that never arrived, or an E105 after the new score is on screen). What else a
++ * caller does with that code is its own business: the drop handler announces it to screen readers.
+  */
+ export async function openPickedFile(
+   file: File,

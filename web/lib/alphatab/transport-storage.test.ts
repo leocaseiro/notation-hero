@@ -1,3 +1,4 @@
+import { addBreadcrumb, captureException } from '@sentry/nextjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -230,5 +231,69 @@ describe('persistTransport', () => {
     expect(() => {
       persistTransport({ isLooping: true });
     }).not.toThrow();
+  });
+});
+
+// A refusal is the visitor's browser, not our bug: a breadcrumb that travels with the next real
+// report. Anything else thrown in the same catch is our own reader or writer: an error.
+describe('what a storage failure reports', () => {
+  beforeEach(() => {
+    globalThis.localStorage.clear();
+    vi.mocked(addBreadcrumb).mockClear();
+    vi.mocked(captureException).mockClear();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('leaves only a breadcrumb when the browser blocks the read', () => {
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new DOMException('The operation is insecure.', 'SecurityError');
+    });
+    readStoredTransport();
+    expect(vi.mocked(addBreadcrumb).mock.calls).toEqual([
+      [
+        {
+          category: 'notation-hero',
+          level: 'warning',
+          message: 'Transport values could not be read from storage',
+          data: { error: 'SecurityError' },
+        },
+      ],
+    ]);
+    expect(captureException).not.toHaveBeenCalled();
+  });
+
+  it('reports an error for anything the browser did not refuse', () => {
+    const bug = new TypeError('the reader broke');
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw bug;
+    });
+    readStoredTransport();
+    expect(addBreadcrumb).not.toHaveBeenCalled();
+    expect(vi.mocked(captureException).mock.calls).toEqual([
+      [bug, { captureContext: { level: 'error', tags: {} } }],
+    ]);
+  });
+
+  it('leaves only a breadcrumb when the browser refuses the write', () => {
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('The quota has been exceeded.', 'QuotaExceededError');
+    });
+    persistTransport({ isLooping: true });
+    expect(addBreadcrumb).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'Transport values could not be saved' }),
+    );
+    expect(captureException).not.toHaveBeenCalled();
+  });
+
+  it('reports an error when the write fails for any other reason', () => {
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new TypeError('the writer broke');
+    });
+    persistTransport({ isLooping: true });
+    expect(addBreadcrumb).not.toHaveBeenCalled();
+    expect(captureException).toHaveBeenCalledOnce();
   });
 });

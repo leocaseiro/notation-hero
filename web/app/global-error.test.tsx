@@ -1,0 +1,43 @@
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { expect, test, vi } from 'vitest';
+
+import { reportError } from '../lib/monitoring/report';
+import GlobalError from './global-error';
+
+vi.mock('../lib/monitoring/report', () => ({ reportError: vi.fn() }));
+
+// Rendering a whole document inside the test's <div> prints one development warning, <html>
+// inside a <div>. It does not fail the test.
+test('the root error page reports the crash once, and says what a report leaves out', async () => {
+  const error = new Error('root layout crash');
+  const reset = vi.fn();
+  render(<GlobalError error={error} reset={reset} />);
+
+  // React places a <title> in the document head wherever it is rendered.
+  expect(document.title).toBe('Notation Hero');
+  expect(
+    screen.getByText(
+      'Errors are reported automatically — without your file, its name, or the music in it. Try again, or reload the page.',
+    ),
+  ).toBeInTheDocument();
+  expect(screen.getByRole('heading', { level: 1, name: 'Notation Hero' })).toBeInTheDocument();
+  expect(
+    screen.getByRole('heading', { level: 2, name: 'Something went wrong' }),
+  ).toBeInTheDocument();
+  expect(screen.getByText('Error E901 — the page crashed unexpectedly.')).toBeInTheDocument();
+  expect(vi.mocked(reportError).mock.calls).toEqual([[error, { code: 'E901', handled: false }]]);
+
+  await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
+  expect(reset).toHaveBeenCalledOnce();
+});
+
+// Next.js requires this page to define its own <html> and <body>: it replaces the root layout. The
+// render above mounts it inside a <div>, where the <body> does not show; the server render gives
+// the document exactly as written.
+test('the root error page brings its own <html lang="en"> and <body>', () => {
+  const markup = renderToStaticMarkup(<GlobalError error={new Error('x')} reset={() => {}} />);
+  expect(markup).toMatch(/^<html lang="en">/);
+  expect(markup).toContain('<body>');
+});

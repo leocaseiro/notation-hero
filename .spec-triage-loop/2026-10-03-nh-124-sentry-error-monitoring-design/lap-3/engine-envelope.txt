@@ -1,0 +1,74 @@
+Document review complete (headless mode).
+
+Proposed fixes (concrete fix, requires user confirmation):
+
+[P1] Section: §5 Setup, steps 3 and 6 (Allowed Domains) — The day the site moves to its own domain, Sentry silently throws away every report (adversarial, product-lens (+1 anchor), confidence 100)
+  Recommendation: Apply
+  Consequence if unchanged: Once the site answers on its planned brand domain, every error report and every visit ping from there is discarded, no alert fires, and the empty issue list looks like a healthy site.
+  Change: Let step 3 allow the brand domain as well as today's production host, either listed now or added by a stated step before the new domain serves visitors, and run the step-6 check on a listed domain.
+  Basis: Allowed Domains (the project setting step 3 narrows from `*`) rejects any report whose page origin is not on the list, and Sentry shows the rejections only as "Disallowed Domain" on its Stats page. The repository already lists the domain move as separate work.
+
+[P2] Section: §4 Releases, environments and source maps (the token check); §1 New files; §6 Testing — The check that guards the Sentry token skips the page files browsers actually download (security-lens, adversarial (+1 anchor), confidence 100)
+  Recommendation: Apply
+  Consequence if unchanged: A later change that renders the token into a page would ship it to every visitor while the build stays green.
+  Change: Walk the prerendered page files, and the public folder, as well as the script folder, and correct the sentence that says only public variables can reach the browser.
+  Basis: A static page's HTML and its data payload are written under the build's server folder, not under `.next/static`, and both are sent to browsers. Only browser JavaScript is limited to `NEXT_PUBLIC_` variables; a server component can render any variable into a page.
+
+[P2] Section: §2.4 Every handled failure (E204 counts visible time only); §6 Testing (the font clock) — One music-font failure sends two unhandled errors, and the second can repeat (design-lens, confidence 75)
+  Recommendation: Apply
+  Consequence if unchanged: A visitor whose music font fails to download sends a font-failure error and, a minute later, a false "the font never arrived" error; the owner gets two issue emails, and the visitor's banner changes its words.
+  Change: End the font clock for good at the first of three events — a finished render, the font-failure report, or the timeout report itself — and test both new cases.
+  Basis: The font-failure path does not stop the 60-second clock, and a failed download never finishes a render. Once the timeout has fired, nothing in the text stops a later tab switch from starting it again.
+
+Decisions (requires user judgment):
+
+[P2] Section: §2.3 The reporting functions (when the tag changes); §1 Changed files; §6 Testing — Crash reports from the player never say which instruments were open, and the tag stays off after the player comes back (feasibility, adversarial, scope-guardian (+1 anchor), confidence 100)
+  Recommendation: Apply — the reviewers propose four different fixes
+  Consequence if unchanged: Every player crash reaches Sentry without its instruments, and after one crash or one trip to the home page no report carries them for the rest of the visit.
+  Change: Replace the permanent clear when the player unmounts with a rule that keeps home-page reports untagged without blocking the next player: check the page when a report is sent, reset instead of lock, clear on navigation, or keep the last value.
+  Basis: React runs the removed player's cleanup, which clears the tag, before the error page sends its report. The text also says no call changes the tag after that clear, while every mount of the player sets it.
+
+FYI observations (anchor 50, no decision required): 5
+- Nothing says how long Sentry keeps a report, or how to delete one that leaked a name. (security-lens)
+- A failed source-map upload is only logged: the deploy goes ahead and the maps are deleted, so that release's stack traces stay unreadable. (adversarial)
+- With the message dropped, the issues for a file that is too large, unreadable or not a score have titles that name nothing. (design-lens)
+- The warnings for repaired or unreadable saved settings are pinned by no test, although two existing end-to-end cases already force them. (scope-guardian)
+- The rule that every catch must report is not written in the web package's agent guide. (scope-guardian)
+
+Residual concerns: 11
+- The instruments value passes Sentry's 200-character tag limit at about 49 distinct programs, and the tag is then dropped; rare. (feasibility, product-lens, adversarial)
+- A lint autofix turns the planned tag-removal call into one that fails the type-check; the plan needs another way to remove the tag. (feasibility)
+- The token check matches the raw value only, so an encoded copy of the token would pass. (security-lens)
+- The health number counts every page load, including visits that never leave the home page, so it moves when fewer or more visitors press Play. (adversarial, product-lens)
+- An engine download that never finishes leaves the loading skeleton forever and sends nothing; this predates the spec. (adversarial)
+- Firefox storage failures that are not refusals send one error per page load for the visitor whose profile has them. (adversarial)
+- Storage is read during render, so the blocked-storage breadcrumb is recorded twice under development's strict mode; harmless in production. (adversarial)
+- If the privacy filter throws, Sentry drops that report and keeps the visit healthy; the spec does not say which goal wins then. (product-lens)
+- The owner's own ad blocker can stop the setup check in step 6 from ever arriving. (product-lens)
+- A future third way to open a file must add the calls that take the tag off, and nothing would notice if it did not. (product-lens)
+- The SDK settings remove the default breadcrumbs and add them back on the next line, which can be misread at first. (coherence)
+
+Deferred questions: 4
+- Once the brand domain serves the site, should the domain work repeat setup step 6 from there? (product-lens)
+- What should the open-failure toast say when the failure came after the new score was already on screen? (design-lens)
+- Should an open failure from the file picker also write the screen-reader announcement, as a dropped file does? (design-lens)
+- In which order should the plan's commits land, so each stays small? (scope-guardian)
+
+Dropped: 0 (anchors 0/25 suppressed)
+Restated: 9 (residual/deferred items suppressed as duplicates of findings)
+Verified: lap-2 fixes for the Goal, the names filter's scope and timing, the instruments tag's digits and sample value, the engine-failure e2e case, the helpers' homes, the opening state and the visible-time clock landed as recorded (adversarial, scope-guardian); 11 reviewer notes confirmed claims against Sentry 11.0.0, AlphaTab 1.8.4 and the repository.
+
+Coverage:
+| Persona | Status | Raw | Attributed after merge | Proposed fixes | Decisions | FYI |
+| --- | --- | --- | --- | --- | --- | --- |
+| coherence | completed | 0 | 0 | 0 | 0 | 0 |
+| feasibility | completed | 2 | 1 | 0 | 1 | 0 |
+| security-lens | completed | 2 | 2 | 1 | 0 | 1 |
+| adversarial | completed | 4 | 2 | 1 | 0 | 1 |
+| product-lens | completed | 1 | 0 | 0 | 0 | 0 |
+| design-lens | completed | 2 | 2 | 1 | 0 | 1 |
+| scope-guardian | completed | 3 | 2 | 0 | 0 | 2 |
+Cross-model pass: skipped — it would send the document to an outside AI provider, which the owner has not authorized.
+One residual dropped as already covered by the document (the coherence note that a plan-time check could show the design infeasible: the first item of that list is already a go/no-go with a named fallback).
+
+Review complete

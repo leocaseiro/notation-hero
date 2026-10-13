@@ -1,3 +1,6 @@
+import { ERROR } from '@notation-hero/shared/error-codes';
+
+import { reportError } from '../monitoring/report';
 import type { PlayerSettingsJson } from './settings-paths';
 import type { SettingApply, StylesheetKey } from './settings-schema';
 import type * as AlphaTab from '@coderline/alphatab';
@@ -162,7 +165,9 @@ export function applyThenPersist({
   if (api) {
     try {
       applySettingsJson(api, next, apply);
-    } catch {
+    } catch (error) {
+      // The engine refused a value our own checks allowed, so a check is missing.
+      reportError(error, { code: ERROR.settingRejected, level: 'warning' });
       onRejected();
       return false;
     }

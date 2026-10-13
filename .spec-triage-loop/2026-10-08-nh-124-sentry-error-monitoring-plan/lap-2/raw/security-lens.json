@@ -1,0 +1,23 @@
+{
+  "reviewer": "security-lens",
+  "findings": [
+    {
+      "title": "A VERCEL_ENV line in web/.env files reopens local uploads",
+      "severity": "P3",
+      "section": "Task 1 Step 4 — Wrap the Next config (Choice 12, the production-only token gate); Task 2 Step 5 — the build script; Task 16 Step 1 — the README's Deploy note",
+      "why_it_matters": "A local build can still upload with a developer's token. With a SENTRY_AUTH_TOKEN in the shell (the premise of Choice 12, the production-only token gate) and VERCEL_ENV=production in any web/.env* file, the maps go up as release `local` into the production project, or the build fails on a read-only token. The cause: `next build` loads web/.env.production.local, .env.local, .env.production and .env before it evaluates next.config.ts, and fills in any variable the shell lacks (read in Next 16.3.6's loadConfigImpl and @next/env). The natural way to get the Production-only DSN for a local check, `vercel env pull --environment=production`, writes exactly that line (from Vercel's CLI documentation; not run here). Next never overwrites a variable that is already set, even to an empty value, so passing the shell's own VERCEL_ENV to next build makes the README's 'never makes a local build upload' true for every `pnpm run build`. Relied on: @sentry/nextjs 11.1.0, read from the local pnpm store, uploads only from the runAfterProductionCompile hook, which `Boolean(uploadToken)` switches on.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "In Task 2 Step 5's build script, pass the shell's own value to next build — `NEXT_PUBLIC_APP_VERSION=$(node scripts/app-version.mjs) VERCEL_ENV=$VERCEL_ENV next build` — and add one sentence under the snippet: 'VERCEL_ENV is passed through, and is empty when the shell has none: next build loads web/.env* files before next.config.ts and fills only variables that are missing, so a VERCEL_ENV line in one of those files cannot open the upload gate (Choice 12).'",
+      "confidence": 50,
+      "evidence": [
+        "process.env.VERCEL_ENV === 'production' ? process.env.SENTRY_AUTH_TOKEN : undefined;",
+        "Only a production build on Vercel reads the token: Sentry's own command-line tools read a variable of the same name from a developer's shell, and a local build must never upload with it.",
+        "so a `SENTRY_AUTH_TOKEN` in your own shell — Sentry's command-line tools read that name — never makes a local build upload.",
+        "`VERCEL_ENV` needs Vercel's system environment variables exposed to the build"
+      ]
+    }
+  ],
+  "residual_risks": [],
+  "deferred_questions": []
+}

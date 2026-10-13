@@ -1,0 +1,206 @@
+{
+  "area": "A",
+  "spec_commit": "2f68d380",
+  "method": "Read the spec at 2f68d380 in full, the NH-124 entry of docs/decisions/decision-changelog.md (lines 14-144), the lap-3 primer and lap 2's F-25/F-23 spike report (.spec-triage-loop/2026-10-03-nh-124-sentry-error-monitoring-design/lap-2/spike-F25-F23.md: Design A and scenario xi). Ran the quote checker: 15/15. Read web/app/play/page.tsx, error.tsx, PlayerHeader.tsx, PlayerShell.tsx and PlayerShell.test.tsx, web/app/layout.tsx, page.tsx and error.tsx, web/next.config.ts and web/vitest.setup.ts; Next 16.3.6's error-boundary.js, app-router.js (popstate), app-router-instance.js and router-transition.js, and its bundled instrumentation-client doc; react-dom 19.2.7's flushPassiveEffects; Sentry 11.0.0's capture chain (client.ts, promisebuffer.ts, prepareEvent.ts, browser eventbuilder.ts), httpcontext.ts, setTag, the beforeSend type and the nextjs onRouterTransitionStart warning check (fetched at tag 11.0.0); eslint-plugin-unicorn 63.0.0's no-useless-undefined. Ran, all in scratch files outside the repository: (1) the required effect-order spike — Next's own ErrorBoundaryHandler with react and react-dom 19.2.7 under jsdom 29.1.1, production and development builds; (2) an options matrix in the same harness — the spec text and every proposed fix (with the variants each needs) as small report.ts models, through 14 scenarios and 20 checks; (3) ESLint's Linter with unicorn's recommended config on Sentry.setTag('instruments', undefined); (4) tsc 5.9.3 on option 1's report.ts sketch against Sentry 11.0.0's ErrorEvent and CoreOptions['beforeSend'] types, with a negative control; (5) every option's drafts applied to a scratch copy of the spec, then the repo's Prettier 3.8.4, markdownlint-cli2 and cspell with the repo configs (canaries prove markdownlint and cspell fire). Nothing in the repository was changed except this file.",
+  "items": [
+    {
+      "id": "F-31",
+      "verdict": "pass-with-correction",
+      "checks": {
+        "section_exists": "Yes: §1 Changed files, the 'Also' bullet (106-113); §2.2 The error pages (140-156, the reportError diff at 148); §2.3 The reporting functions (158-235: the tag functions 178-188, 'When the tag changes' 222-235); §3.2's E901 sentence (388-389); §6 Testing (the tag-lifecycle unit case 571-574, the error pages 579-583, the PlayerShell tag case 592-597); To verify (710-711).",
+        "quotes": "15/15 verbatim, each found exactly once (spec lines 109-110, 148, 211-212, 223, 233, 233-234, 388-389, 573-574, 592-593).",
+        "fix_consistent": "Option 1 (ADV-2 plus a swap guard): also changes §3.3's beforeSend line (425) and removes the To-verify item (710-711), both drafted; keeps ADD-3's goal (no tag on reports from /) with a new mechanism, and makes lap 2's R32 true; contradicts no Decisions row. Option 2 (FEA-1): no section contradicts it, but §2.3 must then say that an E901 carries no tag (drafted), so R32's assumption becomes false by design. Option 3 (FEA-2): contradicts §4's 'That hook is for navigation tracing, which S3 rules out' (491-493) and makes suppressOnRouterTransitionStartWarning (513) unneeded, both drafted; §1's list of tested files (95-97) gains the hook (drafted); §1's new-files row for web/instrumentation-client.ts (84) would ideally name the hook, not drafted because editing that cell makes Prettier re-pad the whole table; as FEA-2 wrote it, §6's latch ('no call changes the tag') stays and still blocks a second mount. Option 4 (SCO-1): reverses ADD-3, which lap 2 applied without asking; no other section contradicts it. Under options 1, 3 and 4 the changelog's lap-2 sentence 'The player removes the tag when it unmounts' (docs/decisions/decision-changelog.md, NH-124 entry) needs a lap-3 line. Every option's drafts, applied to a scratch copy of the spec, pass the repo's Prettier, markdownlint and cspell, with no line over 100 columns."
+      },
+      "central_claim": {
+        "status": "confirmed",
+        "evidence": [
+          "react-dom@19.2.7:cjs/react-dom-client.production.js:11762-11768 — flushPassiveEffects runs commitPassiveUnmountOnFiber(root.current) before commitPassiveMountOnFiber: every passive cleanup, a removed child's included, runs before any new passive effect.",
+          "next@16.3.6:dist/client/components/error-boundary.js:34-65 and :101-118 — the boundary that renders web/app/play/error.tsx replaces its children (the player) with errorComponent, passing error and reset; reset (:39-41) clears the error, so Try again mounts the player again in the same page load.",
+          "Required spike (Next's own ErrorBoundaryHandler; react and react-dom 19.2.7; jsdom 29.1.1; production and development builds) printed: 'player passive cleanup: clearInstruments()' then 'error page effect: reportError(E901 …) -> report carries instruments: (none)'. With a useLayoutEffect the cleanup runs earlier still. After Try again the new mount's tagInstruments('sample') is ignored: (none). A crash during an open is reported inside flushSync, with the tag already off.",
+          "web/app/play/PlayerHeader.tsx:112-113 — Back calls router.back() (next@16.3.6:dist/client/components/app-router-instance.js:286, window.history.back(); the popstate becomes a client-side traverse, app-router.js:284-301) or router.push('/'); :144 the wordmark is a Link to /; web/app/page.tsx:19 Play is a Link to /play. All client-side: one page load and one report.ts module, so a latch set on the first unmount stays.",
+          "web/app/play/page.tsx:6-8 renders only PlayerShell, and there is no web/app/play/layout.tsx, so the /play error boundary wraps the player directly; web/next.config.ts:3-12 sets no cacheComponents, so /play unmounts on a navigation (lap 2's reading of Next's bundled preserving-ui-state guide); :6 reactStrictMode: true mounts twice in development, and the spike shows the latch then leaves no tag even on the first visit.",
+          "web/app/play/PlayerShell.tsx:912 — no await follows the swap's setNotation, so the open's finally (restoreInstruments) runs before React renders the new title: a header crash on the new title starts with the open count at 0 and the tag holding the new score's value — until the unmount cleanup removes it.",
+          "Spec §2.3:187 and §6:573-574 — the tag functions are void and take no token, and 'after clearInstruments, no call changes the tag': the latch is permanent for the page load. report.ts could recognise the mount's call by its value alone (instrumentsValue never returns sample), but cannot tell a stale open's restoreInstruments() or swap-time tagInstruments() from the current player's.",
+          "web/vitest.setup.ts:10 — afterEach(cleanup) unmounts every render, and modules persist within a test file: under the latch every PlayerShell.test.tsx tag case after the first would see no tag unless report.ts gained a test-only reset."
+        ]
+      },
+      "spike": {
+        "status": "run",
+        "what": "(1) Required: a throwaway Node script that renders Next 16.3.6's own ErrorBoundaryHandler around a stand-in player whose useEffect (in a second run, useLayoutEffect) calls tagInstruments('sample') and returns clearInstruments, with an error page whose useEffect sends the E901; react and react-dom 19.2.7 under jsdom 29.1.1, NODE_ENV production and development; report.ts modelled as the spec text states it (the latch). (2) The same harness with every option as a small report.ts model, through 14 scenarios and 20 checks: a crash after a swap, a throw inside an effect, a crash during an open, Try again, Back then Play, three stale-open cases (it ends on /, after a new mount, while the new player opens a file), a stale open that fails with E103, and an F-23 overlap. (3) ESLint 9.39.4's Linter with unicorn's recommended config on Sentry.setTag('instruments', undefined), and its autofix. (4) tsc 5.9.3 on option 1's report.ts sketch against Sentry 11.0.0's ErrorEvent and CoreOptions['beforeSend'], with a negative control. (5) Every option's drafts applied to a scratch copy of the spec, then the repo's Prettier, markdownlint-cli2 and cspell.",
+        "result": "(1) Confirmed on both builds: the crashed player's cleanup runs before the error page's effect, so the E901 carries no instruments tag, for a passive or a layout effect alike. Try again, Back then Play, and the development double mount each leave the tag absent for the rest of the visit. (2) Checks passed, of 20, identical in production and development: spec text 10; option 1 as ADV-2 wrote it 18 — its two misses are an open that outlives its player and ends after a new mount or after Try again, writing drums,030 while the sample is on screen; option 1 plus a guard on the swap's tagInstruments only (restore still runs) 20; FEA-1's wider guard with the count reset at mount 19 (a stale E103 after Back then Play carries sample), and with the reset at unmount 17 (an E901 sent during an open carries sample, against F-23); option 2 (FEA-1) 16 — every E901 untagged, plus that stale E103; option 3 (FEA-2) as written, with §6's latch kept, 14 — Back then Play still loses the tag; option 3 with the latch removed and the same swap guard 20; option 4 (SCO-1) 16 — reports from / carry drums,030, and stale opens write wrong values. (3) unicorn/no-useless-undefined does not flag the call: no message, and the autofix leaves it. (4) Option 1's sketch type-checks against Sentry 11.0.0's types (0 errors in the sketch; a beforeSend that returns a string fails). (5) All four options' drafts are Prettier-, markdownlint- and cspell-clean, with no line over 100 columns."
+      },
+      "before": [
+        {
+          "lines": "95-97",
+          "text": "Each `lib/monitoring` file has its unit test beside it, and so do the three error pages,\n`web/app/play/OpenFileControl.tsx`, `web/app/play/PlayerShell.tsx` and\n`web/app/play/NotationSurface.tsx` (section 6)."
+        },
+        {
+          "lines": "106-113",
+          "text": "- `web/app/play/OpenFileControl.tsx` and `web/app/play/PlayerShell.tsx`, beyond their catch sites:\n  picking or dropping a file remembers its name (3.2) and takes the `instruments` tag off until the\n  open ends (2.3); `requestNotation` remembers the score's names as soon as the file parses (3.2)\n  and sets the tag just before the opened score replaces the open one; the player sets the tag to\n  `sample` when it mounts and removes it when it unmounts; `readNotation` and `LoadedNotation`\n  carry the file's extension (2.3). The function that turns a file name into that type lives in\n  `OpenFileControl.tsx`, beside the `ACCEPT` list it checks, and is exported like `readNotation`,\n  so the drop path in `PlayerShell.tsx` uses the same list."
+        },
+        {
+          "lines": "178-188",
+          "text": "/** Sets the Sentry tag `instruments` for the score on screen: `sample` or `instrumentsValue()`. */\nexport function tagInstruments(value: string): void;\n\n/** A file was picked or dropped: no report carries the tag until that open ends. */\nexport function suspendInstruments(): void;\n\n/** In a `finally`, when that open ends: the tag holds the value for the score on screen again. */\nexport function restoreInstruments(): void;\n\n/** The player unmounted: the tag is removed, and an open still running changes nothing. */\nexport function clearInstruments(): void;"
+        },
+        {
+          "lines": "233-235",
+          "text": "  When the player unmounts, `clearInstruments()` removes the tag: a report from `/` carries none,\n  and an open still running then changes nothing. AlphaTab's score-loaded event never sets the\n  tag: it also fires for the bundled beat, sometimes after the visitor's file."
+        },
+        {
+          "lines": "425",
+          "text": "  beforeSend: (event) => (isKnownEngineNoise(event) ? null : scrubEvent(event)),"
+        },
+        {
+          "lines": "491-493",
+          "text": "- **No navigation-tracing prompt.** `suppressOnRouterTransitionStartWarning: true` stops the\n  \"ACTION REQUIRED … `onRouterTransitionStart`\" line that the wrapper prints on every build. That\n  hook is for navigation tracing, which S3 rules out."
+        },
+        {
+          "lines": "513",
+          "text": "  suppressOnRouterTransitionStartWarning: true,"
+        },
+        {
+          "lines": "571-574",
+          "text": "  - the tag's lifecycle: `suspendInstruments` takes the tag off and `restoreInstruments` puts the\n    remembered value back; `tagInstruments` while an open runs changes only the remembered value;\n    with two opens running, the tag comes back only when the second one ends; after\n    `clearInstruments`, no call changes the tag;"
+        },
+        {
+          "lines": "592-597",
+          "text": "- **The tag follows the score on screen**, cases in `web/app/play/PlayerShell.test.tsx`: the tag\n  is `sample` once the player mounts and gone once it unmounts; opening `Punk.gp` sets `drums,030`;\n  with `Punk.gp` open, a file that is not a score sends an E103 without the tag and leaves\n  `drums,030`, and so does Cancel on the prompt to replace it; an E105 thrown just after the swap\n  leaves the new score's value; and when the bundled sample's score-loaded event arrives after the\n  visitor's file, the tag keeps the file's value."
+        },
+        {
+          "lines": "710-711",
+          "text": "- How Sentry 11 removes a tag: that `Sentry.setTag('instruments', undefined)` leaves no\n  `instruments` key in the report that is sent."
+        }
+      ],
+      "after_draft": [
+        {
+          "replaces_lines": "106-113",
+          "option": "1 (recommended)",
+          "text": "- `web/app/play/OpenFileControl.tsx` and `web/app/play/PlayerShell.tsx`, beyond their catch sites:\n  picking or dropping a file remembers its name (3.2) and takes the `instruments` tag off until the\n  open ends (2.3); `requestNotation` remembers the score's names as soon as the file parses (3.2)\n  and sets the tag just before the opened score replaces the open one, but only while the player\n  that started the open is still mounted; the player sets the tag to `sample` each time it mounts;\n  `readNotation` and `LoadedNotation` carry the file's extension (2.3). The function that turns a\n  file name into that type lives in `OpenFileControl.tsx`, beside the `ACCEPT` list it checks, and\n  is exported like `readNotation`, so the drop path in `PlayerShell.tsx` uses the same list."
+        },
+        {
+          "replaces_lines": "178-188",
+          "option": "1 (recommended)",
+          "text": "/** The `instruments` value for the score on screen: `sample` or `instrumentsValue()`. */\nexport function tagInstruments(value: string): void;\n\n/** A file was picked or dropped: no report carries the tag until that open ends. */\nexport function suspendInstruments(): void;\n\n/** In a `finally`, when that open ends: reports carry the value for the score on screen again. */\nexport function restoreInstruments(): void;\n\n/** For `beforeSend`: adds the tag to a report sent from `/play` while no open runs. */\nexport function addInstrumentsTag(event: ErrorEvent): ErrorEvent; // Sentry's type, not the DOM's"
+        },
+        {
+          "replaces_lines": "233-235",
+          "option": "1 (recommended)",
+          "text": "  AlphaTab's score-loaded event never sets the tag: it also fires for the bundled beat, sometimes\n  after the visitor's file.\n- **The page decides, when a report is sent.** No code calls `Sentry.setTag` for this tag.\n  `beforeSend` calls `addInstrumentsTag()`, which adds the value only to a report sent while the\n  page is `/play` and no open runs. So a report from `/` carries none, even after a visit to\n  `/play`, and the E901 that `/play`'s error page sends carries the score the crashed player held.\n  Removing the tag when the player unmounts would lose that: React runs the crashed player's\n  unmount cleanups before the error page's own effect sends the report. Leaving `/play` and\n  returning to it, or Try again on its error page, mounts the player again, and it sets `sample`.\n  An open that outlives its player never sets a value: the swap's `tagInstruments()` runs only\n  while the player that started the open is mounted (a ref). Its `restoreInstruments()` still\n  runs, so the count of running opens stays correct."
+        },
+        {
+          "replaces_lines": "425",
+          "option": "1 (recommended)",
+          "text": "  beforeSend: (event) => (isKnownEngineNoise(event) ? null : addInstrumentsTag(scrubEvent(event))),"
+        },
+        {
+          "replaces_lines": "571-574",
+          "option": "1 (recommended)",
+          "text": "  - the tag's lifecycle, read through `addInstrumentsTag`: `suspendInstruments` takes the tag off\n    and `restoreInstruments` puts the remembered value back; `tagInstruments` while an open runs\n    changes only the remembered value; with two opens running, the tag comes back only when the\n    second one ends; a report from `/play` carries the remembered value, and a report from `/`\n    never carries the tag;"
+        },
+        {
+          "replaces_lines": "592-597",
+          "option": "1 (recommended)",
+          "text": "- **The tag follows the score on screen**, cases in `web/app/play/PlayerShell.test.tsx`: the tag\n  is `sample` once the player mounts; opening `Punk.gp` sets `drums,030`; after an unmount, a report\n  from `/play` still carries `drums,030` (the E901 case) and a report from `/` carries none, and a\n  second mount gives `sample`; an open left running across that unmount sets nothing when it ends;\n  with `Punk.gp` open, a file that is not a score sends an E103 without the tag and leaves\n  `drums,030`, and so does Cancel on the prompt to replace it; an E105 thrown just after the swap\n  leaves the new score's value; and when the bundled sample's score-loaded event arrives after the\n  visitor's file, the tag keeps the file's value."
+        },
+        {
+          "replaces_lines": "710-711",
+          "option": "1 (recommended)",
+          "text": ""
+        },
+        {
+          "replaces_lines": "106-113",
+          "option": "2",
+          "text": "- `web/app/play/OpenFileControl.tsx` and `web/app/play/PlayerShell.tsx`, beyond their catch sites:\n  picking or dropping a file remembers its name (3.2) and takes the `instruments` tag off until the\n  open ends (2.3); `requestNotation` remembers the score's names as soon as the file parses (3.2)\n  and sets the tag just before the opened score replaces the open one; the player sets the tag to\n  `sample` when it mounts and removes it when it unmounts, and both components keep a mounted ref\n  so that an open that outlives them changes nothing (2.3); `readNotation` and `LoadedNotation`\n  carry the file's extension (2.3). The function that turns a file name into that type lives in\n  `OpenFileControl.tsx`, beside the `ACCEPT` list it checks, and is exported like `readNotation`,\n  so the drop path in `PlayerShell.tsx` uses the same list."
+        },
+        {
+          "replaces_lines": "187-188",
+          "option": "2",
+          "text": "/** The player unmounted: the tag is removed, the open count is 0, and the value is forgotten. */\nexport function clearInstruments(): void;"
+        },
+        {
+          "replaces_lines": "233-235",
+          "option": "2",
+          "text": "  When the player unmounts, `clearInstruments()` removes the tag, sets the open count to 0 and\n  forgets the remembered value: a report from `/` carries none, and the next mount sets `sample` as\n  on a first visit. An E901 from `/play` carries none either, because React runs the crashed\n  player's unmount cleanups before the error page's own effect sends it. An open that outlives its\n  player changes nothing: the player and `OpenFileControl` each keep a mounted ref, and an open\n  whose component has unmounted skips the swap's `tagInstruments()` and its `restoreInstruments()`.\n  AlphaTab's score-loaded event never sets the tag: it also fires for the bundled beat, sometimes\n  after the visitor's file."
+        },
+        {
+          "replaces_lines": "571-574",
+          "option": "2",
+          "text": "  - the tag's lifecycle: `suspendInstruments` takes the tag off and `restoreInstruments` puts the\n    remembered value back; `tagInstruments` while an open runs changes only the remembered value;\n    with two opens running, the tag comes back only when the second one ends; after\n    `clearInstruments` the tag is gone and the open count is 0, and `tagInstruments('sample')` then\n    sets it again;"
+        },
+        {
+          "replaces_lines": "592-597",
+          "option": "2",
+          "text": "- **The tag follows the score on screen**, cases in `web/app/play/PlayerShell.test.tsx`: the tag\n  is `sample` once the player mounts and gone once it unmounts, and a second mount gives `sample`\n  again; an open left running across that unmount changes nothing when it ends; opening `Punk.gp`\n  sets `drums,030`; with `Punk.gp` open, a file that is not a score sends an E103 without the tag\n  and leaves `drums,030`, and so does Cancel on the prompt to replace it; an E105 thrown just after\n  the swap leaves the new score's value; and when the bundled sample's score-loaded event arrives\n  after the visitor's file, the tag keeps the file's value."
+        },
+        {
+          "replaces_lines": "95-97",
+          "option": "3",
+          "text": "Each `lib/monitoring` file has its unit test beside it, and so do `web/instrumentation-client.ts`,\nthe three error pages, `web/app/play/OpenFileControl.tsx`, `web/app/play/PlayerShell.tsx` and\n`web/app/play/NotationSurface.tsx` (section 6)."
+        },
+        {
+          "replaces_lines": "106-113",
+          "option": "3",
+          "text": "- `web/app/play/OpenFileControl.tsx` and `web/app/play/PlayerShell.tsx`, beyond their catch sites:\n  picking or dropping a file remembers its name (3.2) and takes the `instruments` tag off until the\n  open ends (2.3); `requestNotation` remembers the score's names as soon as the file parses (3.2)\n  and sets the tag just before the opened score replaces the open one, but only while the player\n  that started the open is still mounted; the player sets the tag to `sample` each time it mounts;\n  `readNotation` and `LoadedNotation` carry the file's extension (2.3). The function that turns a\n  file name into that type lives in `OpenFileControl.tsx`, beside the `ACCEPT` list it checks, and\n  is exported like `readNotation`, so the drop path in `PlayerShell.tsx` uses the same list."
+        },
+        {
+          "replaces_lines": "187-188",
+          "option": "3",
+          "text": "/** The visitor is leaving `/play`: the tag is removed, and the remembered value forgotten. */\nexport function clearInstruments(): void;"
+        },
+        {
+          "replaces_lines": "233-235",
+          "option": "3",
+          "text": "  When a navigation leaves `/play`, `onRouterTransitionStart` in `web/instrumentation-client.ts`\n  calls `clearInstruments()` (section 4): a report from `/` carries none. The tag is not removed\n  when the player unmounts, because React runs a crashed player's unmount cleanups before the error\n  page's own effect sends its E901; that report carries the score the player held. Leaving `/play`\n  and returning to it, or Try again on its error page, mounts the player again, and it sets\n  `sample`. An open that outlives its player never sets a value: the swap's `tagInstruments()` runs\n  only while the player that started the open is mounted (a ref). Its `restoreInstruments()` still\n  runs, so the count of running opens stays correct. AlphaTab's score-loaded event never sets the\n  tag: it also fires for the bundled beat, sometimes after the visitor's file."
+        },
+        {
+          "replaces_lines": "491-493",
+          "option": "3",
+          "text": "- **The navigation hook clears the tag.** `web/instrumentation-client.ts` exports\n  `onRouterTransitionStart`, which Next 16 calls at the start of every App Router navigation: a\n  link, `router.push`, and Back or Forward (`traverse`). It calls `clearInstruments()` when the new\n  path, read with `new URL(url, location.href)`, is not `/play`, and it records no navigation span\n  (S3). Because the file names the hook, the wrapper prints no \"ACTION REQUIRED\" line, so\n  `suppressOnRouterTransitionStartWarning` is not set."
+        },
+        {
+          "replaces_lines": "513",
+          "option": "3",
+          "text": ""
+        },
+        {
+          "replaces_lines": "571-574",
+          "option": "3",
+          "text": "  - the tag's lifecycle: `suspendInstruments` takes the tag off and `restoreInstruments` puts the\n    remembered value back; `tagInstruments` while an open runs changes only the remembered value;\n    with two opens running, the tag comes back only when the second one ends; after\n    `clearInstruments` the tag is gone, and a `restoreInstruments` after it restores nothing;\n  - the navigation hook, beside `web/instrumentation-client.ts`: called with `'/'` and `'push'`,\n    or with `'http://localhost/'` and `'traverse'` (Back), it removes the tag; called with\n    `'/play'`, it keeps it;"
+        },
+        {
+          "replaces_lines": "592-597",
+          "option": "3",
+          "text": "- **The tag follows the score on screen**, cases in `web/app/play/PlayerShell.test.tsx`: the tag\n  is `sample` once the player mounts; opening `Punk.gp` sets `drums,030`; an unmount leaves\n  `drums,030` (an E901 is sent after its player unmounts), and a second mount gives `sample`; an\n  open left running across that unmount sets nothing when it ends; with `Punk.gp` open, a file\n  that is not a score sends an E103 without the tag and leaves `drums,030`, and so does Cancel on\n  the prompt to replace it; an E105 thrown just after the swap leaves the new score's value; and\n  when the bundled sample's score-loaded event arrives after the visitor's file, the tag keeps the\n  file's value."
+        },
+        {
+          "replaces_lines": "106-113",
+          "option": "4",
+          "text": "- `web/app/play/OpenFileControl.tsx` and `web/app/play/PlayerShell.tsx`, beyond their catch sites:\n  picking or dropping a file remembers its name (3.2) and takes the `instruments` tag off until the\n  open ends (2.3); `requestNotation` remembers the score's names as soon as the file parses (3.2)\n  and sets the tag just before the opened score replaces the open one; the player sets the tag to\n  `sample` when it mounts; `readNotation` and `LoadedNotation` carry the file's extension (2.3).\n  The function that turns a file name into that type lives in `OpenFileControl.tsx`, beside the\n  `ACCEPT` list it checks, and is exported like `readNotation`, so the drop path in\n  `PlayerShell.tsx` uses the same list."
+        },
+        {
+          "replaces_lines": "186-188",
+          "option": "4",
+          "text": ""
+        },
+        {
+          "replaces_lines": "233-235",
+          "option": "4",
+          "text": "  When the player unmounts, the tag keeps the value of the score last on screen, so the E901 that\n  `/play`'s error page sends carries it. A report from `/` after a visit to `/play` carries it too,\n  and an open still running when the player unmounted can still change it. AlphaTab's score-loaded\n  event never sets the tag: it also fires for the bundled beat, sometimes after the visitor's file."
+        },
+        {
+          "replaces_lines": "571-574",
+          "option": "4",
+          "text": "  - the tag's lifecycle: `suspendInstruments` takes the tag off and `restoreInstruments` puts the\n    remembered value back; `tagInstruments` while an open runs changes only the remembered value;\n    with two opens running, the tag comes back only when the second one ends;"
+        },
+        {
+          "replaces_lines": "592-597",
+          "option": "4",
+          "text": "- **The tag follows the score on screen**, cases in `web/app/play/PlayerShell.test.tsx`: the tag\n  is `sample` once the player mounts and keeps its value once it unmounts; opening `Punk.gp` sets\n  `drums,030`; with `Punk.gp` open, a file that is not a score sends an E103 without the tag and\n  leaves `drums,030`, and so does Cancel on the prompt to replace it; an E105 thrown just after the\n  swap leaves the new score's value; and when the bundled sample's score-loaded event arrives after\n  the visitor's file, the tag keeps the file's value."
+        }
+      ],
+      "scenario": "You are the owner, reading Sentry. A visitor opens Punk.gp on /play, the header fails while it draws the new title, and /play's error page shows \"Error E901\" — but the E901 issue's Tags panel has no instruments entry, because the player's unmount removes the tag a moment before the error page sends the report. The visitor then presses Try again (or Back, then Play) and opens Punk.gp again, and every later report from that visit also arrives without the tag, so a search for instruments:*030* finds none of them.",
+      "corrections": "1. The related note on unicorn/no-useless-undefined is refuted for the installed eslint-plugin-unicorn 63.0.0: the rule skips any callee whose name matches /^set[A-Z]/ (eslint-plugin-unicorn@63.0.0:rules/no-useless-undefined.js, the setState exception), so Sentry.setTag('instruments', undefined) gets no message and no autofix (ran it). The To-verify item about removing a tag at run time still stands for options 2-4; option 1 drops it for another reason (no setTag call is left). 2. FEA-1's 'report.ts cannot tell a new mount's tagInstruments('sample') from a call by an open that outlived the old player' is imprecise: only the mount passes sample, since instrumentsValue never returns it. What report.ts cannot tell apart is a stale open's restoreInstruments() and swap-time tagInstruments(). The conclusion holds. 3. ADV-2 as written misses two rare cases (18/20): an open that outlives its player and ends after a new mount, or after Try again, writes drums,030 while the sample is on screen. A guard on the swap's tagInstruments() alone, with restoreInstruments() still running, fixes both (20/20). FEA-1's wider guard (skip the restore too) needs a count reset, and both places for it cost something: at mount, a stale open that fails reports its E103 with sample after Back then Play (19/20); at unmount, an E901 sent during an open carries sample, against F-23 (17/20). 4. FEA-1's fix alone mends the second mount but leaves every E901 untagged (16/20). 5. FEA-2 as written keeps §6's latch, so Back then Play still loses the tag (14/20); it needs the latch removed and the same swap guard (20/20). Next 16.3.6 does call the hook for Back and Forward ('traverse': next@16.3.6:dist/client/components/app-router.js:297 → app-router-instance.js:235) and for links and router.push (app-router-instance.js:224). The hook contradicts §4's sentence, and the suppress flag becomes unneeded, because Sentry's warning only checks whether instrumentation-client's text contains onRouterTransitionStart (getsentry/sentry-javascript@11.0.0:packages/nextjs/src/config/withSentryConfig/getFinalConfigObjectUtils.ts:222-233). 6. SCO-1's fix tags reports from / with the last score, and stale opens can still write a value, so it reverses ADD-3; its 'rare' is not measured. 7. The claim all four reviewers share — the unmount clear runs before the error page reports — is confirmed on both React builds, and FEA-2's 'commitPassiveUnmountOnFiber before passive mounts' is exact.",
+      "notes_for_triage": "Two owner questions decide this item. (a) Should an E901 from /play carry the score's instruments? Lap 2's R32 assumed yes, and §2.3 says the tag exists so an issue's Tags panel shows which sets of instruments its reports came from. Yes: option 1 (or 3). No: option 2. (b) May a report from / carry the last score's value after a visit to /play? Yes: option 4 is the least code, but it reverses ADD-3. The reviewers did not agree: each proposed its own fix (ADV-2 is option 1, FEA-1 option 2, FEA-2 option 3, SCO-1 option 4), and only ADV-2 claimed to fix both halves. The evidence supports option 1 — ADV-2's 'decide by page' plus a guard on the swap's tagInstruments() — the only shape that passed all 20 checks without a framework hook. Flip to option 3 if the owner wants the tag to stay in Sentry's scope instead of being added in beforeSend (also 20/20, but it adds the Next hook, rewrites §4 and keeps the setTag To-verify item); flip to option 2 if the answer to (a) is no. What a Drop leaves: every E901, the unhandled report the health number counts, reaches Sentry with no instruments tag; after one Back then Play, one Try again or the development double mount, no report carries the tag for the rest of the visit; and §6's own PlayerShell.test.tsx tag cases cannot pass in one file without a test-only reset in report.ts. No e2e case can check the E901 tag without a crash hook in the app, which the spec rules out, so the PlayerShell.test.tsx unmount case is the only check. For the plan, if option 1 is chosen: addInstrumentsTag can read location.pathname, or event.request.url, which Sentry's HttpContext integration sets in preprocessEvent, before beforeSend (getsentry/sentry-javascript@11.0.0:packages/browser/src/integrations/httpcontext.ts:13-36); Sentry 11's capture-to-beforeSend chain is synchronous for the browser SDK (packages/browser/src/eventbuilder.ts:224-238, packages/core/src/utils/promisebuffer.ts:45-52, packages/core/src/client.ts:310-333 and :1505-1527), so 'no open runs' is judged at the moment of capture, as the scope tag is today; Vitest's jsdom page is /, so tag tests set /play with history.replaceState. The draft's signature uses Sentry's ErrorEvent, the beforeSend parameter type in 11.0.0 (packages/core/src/types/options.ts:577). Option 1 keeps lines 222-232 as they are: 'the tag holds the remembered value' still reads right, because the tag is what reports carry. In every option a hung open keeps the count above 0, so the tag stays off for the rest of the visit (lap 2's known note). An after_draft whose text is empty means: delete those lines."
+    }
+  ]
+}

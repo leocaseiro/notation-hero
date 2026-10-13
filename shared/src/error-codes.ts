@@ -21,6 +21,8 @@ export const ERROR = {
   notAScore: 'E103',
   /** A cached or catalog score could not be loaded; the player falls back to the bundled beat. */
   cachedScoreUnavailable: 'E104',
+  /** The file was read, but loading it into the player failed — a bug in our code, not the file. */
+  openFailedAfterRead: 'E105',
 
   /** The self-hosted AlphaTab module failed to import. */
   engineImport: 'E201',
@@ -37,6 +39,12 @@ export const ERROR = {
    * started" from "a file was opened too early".
    */
   engineUnavailableOnOpen: 'E205',
+  /**
+   * Nothing drew within 60 visible seconds, although the music font arrived — so the cause is not
+   * the font. For example, the built-in score failed to load. Separate from E204 on purpose: a
+   * report that blamed the font would send the owner to check font delivery when the font is fine.
+   */
+  scoreNotDrawn: 'E206',
 
   /** The catalog API answered, but not with a success status. */
   catalogResponseNotOk: 'E301',
