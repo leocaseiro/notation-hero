@@ -73,6 +73,17 @@ entry below; this one says what shipped.
     small: the open-a-file failure handling in the file picker and in drag-and-drop, and a third
     copy of the crash page. Both grew in this PR, and the merged versions were measured to behave
     the same, so each now exists once: `openPickedFile()` and `CrashPage`.
+- **Code review, lap 2** (leocaseiro, 2026-10-13), over only what lap 1 changed. Eight reviewers
+  found three small issues and four test gaps, none blocking:
+  - **Fixed without a question**, under leocaseiro's rule for stale text and small test fixes:
+    the spec now describes `openPickedFile` and `CrashPage` as shipped (it still counts 16 catch
+    sites, because a catch it never listed is now in its table); one storage test now checks that
+    no report of any level is sent; a comment says what `null` from `openPickedFile` means; a test
+    name no longer hides a helper; and the Firefox line above now says what is inferred.
+  - **Decided by leocaseiro:** the Firefox and WebKit filter tests now build their events with
+    the file's own helper, and three tests were added: Vercel's build must still run the token
+    check after `next build`, a dropped file the browser cannot read is announced with its error
+    number, and the root error page keeps its own `<html lang="en">` and `<body>`.
 - **Page weight:** a cold `/play` load transfers 274.7 KiB of JavaScript before the SDK and 339.5
   KiB after.
 

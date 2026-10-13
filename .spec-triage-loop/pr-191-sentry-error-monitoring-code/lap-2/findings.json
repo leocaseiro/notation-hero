@@ -99,8 +99,11 @@
     },
     "already_applied_silent_edits": "NONE. ce-code-review in mode:agent applies nothing.",
     "note_for_triage": "Read only this file. Lap 2 reviewed only what lap 1 changed (f102c377..51e71665); the engine said 'Ready with fixes' with three P3 findings, all confirmed, and no P0 or P1. (0) First apply the five auto_resolve items WITHOUT a picker — AR-3, AR-4, AR-5, AR-6, AR-8 — each as its own commit, and report each in one line in the chat and in its commit message (the owner's rule: auto-resolving skips the picker, never the report). AR-3 carries two notes the owner must see (its 'report_to_owner'). AR-8 has no spike diff: apply its 'after' text, then run prettier and markdownlint on the change log. (1) Then ONE picker round: card 1 = F-6 (Apply / Skip — decide later / Drop); card 2 = a multi-select over F-7, F-8 and F-9 (three small test additions; say on the card that an unchecked box stays open, it is not a Drop); card 3 = the [Q-add] catcher. Apply each Apply decision as its own commit, from its spike diff. F-6's diff needs AR-6 applied first. All 8 diffs were cut at 51e71665 and apply together (checked); re-check each against HEAD first. Gates after applying: the touched unit files (vitest, with SENTRY_AUTH_TOKEN and VERCEL_ENV unset), `node --test tooling/workflow-guards.test.mjs` if F-7 is applied, web lint and typecheck, prettier, and markdownlint and cspell on the spec and the change log. No end-to-end run is needed: nothing changes at runtime (AR-5 is a comment). (2) Step 6: code_review_lap: 2, code_review_last_applied: P3 if anything was applied, code_review_findings: this file. (3) Step 7: the exit signal is not clean, so the loop's rule says re-lap; there is no P0 or P1, so the no-progress bound does not apply. Lap 2 found only P3 items and its fixes are tests, comments and docs, so a lap 3 would review little runtime code. Ask the owner with a picker: a focused lap 3 / exit the loop and go to merge / skip — decide later.",
-    "triaged": false,
-    "triage_undecided_remaining": 4
+    "triaged": true,
+    "triaged_on": "2026-10-13",
+    "triage_rounds": 1,
+    "triage_undecided_remaining": 0,
+    "triage_last_applied": "P3"
   },
   "findings": [
     {
@@ -151,8 +154,8 @@
       "recommendation": "Apply: test code only, 29 lines shorter, and proven to catch the same bugs. Flip to Drop if you prefer each case to spell out its event in full.",
       "missing_context": "Nothing the reviewer missed. ESLint has no no-shadow rule here, so the shadowed name (AR-6) is invisible to lint.",
       "recorded_decisions": "Lap 1 F-4 option 1 (the per-browser wordings and the native-frame rule these cases test) is unchanged: this touches only how the tests build their events.",
-      "triage_decision": null,
-      "applied_in": null
+      "triage_decision": "Apply (leocaseiro, 2026-10-13, round 1).",
+      "applied_in": "a330a7c1"
     },
     {
       "id": "F-7",
@@ -209,8 +212,8 @@
       "recommendation": "Apply: it closes the gap lap 1's F-1 was about, five of the eight reviewers raised it, and it costs one test. Flip to Skip if you plan to rework the build line soon.",
       "missing_context": "The reviewers' candidate regex read only web/package.json; the spike also reads web/vercel.json, because Vercel runs `rm -rf .next/cache && pnpm run build` from web/. That regex would also raise false alarms if the CSS step were dropped or a later step added.",
       "recorded_decisions": "Lap 1 F-1 (the token check's tests, applied; the build starts the script by a relative path, so the symlink limit is safe). This test turns that premise from assumed into checked. Lap 1's FYI about the entry check and symlinks stays as it is.",
-      "triage_decision": null,
-      "applied_in": null
+      "triage_decision": "Apply, checked on the multi-select card (leocaseiro, 2026-10-13, round 1).",
+      "applied_in": "a349f016"
     },
     {
       "id": "F-8",
@@ -261,8 +264,8 @@
       "classification_note": "Borderline for the auto-resolve rule (one assertion in an existing test, no design choice). Kept as a picker because it adds coverage; the owner's 2026-09-21 rule puts new tests in a picker.",
       "missing_context": "Before lap 1 the drop catch always announced (f102c377, PlayerShell.tsx:1073); lap 1 made the announcement depend on the return value.",
       "recorded_decisions": "Lap 1 F-2 (openPickedFile as the one open boundary, which returns the code the drop handler announces). This test pins that contract.",
-      "triage_decision": null,
-      "applied_in": null
+      "triage_decision": "Apply, checked on the multi-select card (leocaseiro, 2026-10-13, round 1).",
+      "applied_in": "1a713944"
     },
     {
       "id": "F-9",
@@ -312,8 +315,8 @@
       "recommendation": "Apply: about ten lines, and it pins a rule the bundled Next.js 16 docs state. Flip to Drop if you prefer no server-render import in the tests, since the title check already catches the most likely simplification.",
       "missing_context": "The bundled Next.js 16.3.6 docs: 'Global error UI must define its own <html> and <body> tags' (node_modules/next/dist/docs, error.md and 10-error-handling.md).",
       "recorded_decisions": "Lap 1 F-5 (CrashPage for all three crash routes; global-error keeps its own html, body and title). This test pins that last part.",
-      "triage_decision": null,
-      "applied_in": null
+      "triage_decision": "Apply, checked on the multi-select card (leocaseiro, 2026-10-13, round 1).",
+      "applied_in": "c78ca841"
     }
   ],
   "auto_resolve": [
@@ -332,7 +335,7 @@
       "after_excerpt": "[docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md]\n| `web/app/CrashPage.tsx`                    | What the three error pages show, written once: the headings, the E901 line, Try again and the section 3.4 sentence. It also sends the E901 report (section 2.2).    |\n…\n[docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md]\n  file name into that type lives in `OpenFileControl.tsx`, beside the `ACCEPT` list it checks. A\n  picked and a dropped file are both opened by `openPickedFile` there, so both use the same list.\n…\n[docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md]\n`web/app/error.tsx` and `web/app/play/error.tsx` receive the crash and currently ignore it. Both now\npass it to one shared component, `web/app/CrashPage.tsx`, and so does the new `global-error.tsx`.\n`CrashPage` sends it with one line:\n```ts\n// web/app/CrashPage.tsx\nuseEffect(() => reportError(error, { code: ERROR.unexpectedCrash, handled: false }), [error]);\n(`'use client'`) that renders `CrashPage` inside them. `CrashPage` holds what all three pages show:\n`Notation Hero` as the `h1`, the page's crash title as an `h2` below it, the line \"Error E901 — the\npage crashed unexpectedly.\", a Try again button wired to `reset`, and the section 3.4 sentence.\n`web/app/error.tsx` and `global-error.tsx` pass \"Something went wrong\" as the crash title, and\n`web/app/play/error.tsx` passes its own, \"The player stopped unexpectedly\". `global-error.tsx`\nnames the tab with a React `<title>Notation Hero</title>`, because this file does not support\nmetadata exports.\n…\n[docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md]\n| `web/app/play/OpenFileControl.tsx`, `openPickedFile`                                           | the file is too large, or cannot be read                        | E101/E102  | warning, with file type and size                                                                                                    |\n| the same catch, after the file was read                                                        | our own code failed while loading the score into the player     | E105 (new) | error, message kept, with file type and size                                                                                        |\n| `web/app/play/PlayerShell.tsx`, `requestNotation` after the swap                               | our own code failed after the new score was on screen           | E105       | error, message kept, with file type and size                                                                                        |\n**Read, then open.** A picked file and a dropped file share one catch, in `openPickedFile`. It sets\na flag between its two steps —\n`const loaded = await readNotation(file); read = true; await load(loaded);`\n(`load` is `requestNotation` for both) — so a failure before it is the visitor's file (E101 or E102,\n…\n[docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md]\n- **The open-file catch**, a test beside `web/app/play/OpenFileControl.tsx`: a read that fails",
       "after_diff": "spikes/spike-AR-3.diff",
       "spike": "prettier --write then --check pass (only the new table rows were re-padded; the one replaced code fence keeps its line); markdownlint 0 issues; cspell 0 issues; git apply --check OK.",
-      "applied_in": null
+      "applied_in": "a90cd572"
     },
     {
       "id": "AR-4",
@@ -345,7 +348,7 @@
       "after_excerpt": "[web/app/play/PlayerShell.test.tsx]\n  test('a repaired settings write-back the browser refuses leaves a breadcrumb, never a report', async () => {\n…\n[web/app/play/PlayerShell.test.tsx]\n    expect(vi.mocked(captureException).mock.calls).toEqual(reported('E603'));",
       "after_diff": "spikes/spike-AR-4.diff",
       "spike": "PlayerShell.test.tsx 21/21; eslint, prettier and cspell pass. Mutation (an uncoded warning added beside noteError in the refusal arm): the new assertion fails, the old one passed, and the whole web suite (227 tests) stayed green — nothing else catches it.",
-      "applied_in": null
+      "applied_in": "0d8bf67a"
     },
     {
       "id": "AR-5",
@@ -359,7 +362,7 @@
       "after_excerpt": "[web/app/play/OpenFileControl.tsx]\n * Resolves to the code it reported itself (E101, E102 or E105), or null when it reported nothing.\n * So null does not mean the file opened: `load` may stop on its own (a cancelled replace, or a\n * second open while one runs) or show a failure itself (E103 for a file that is not a score, E205\n * for an engine that never arrived, or an E105 after the new score is on screen). What else a\n * caller does with that code is its own business: the drop handler announces it to screen readers.",
       "after_diff": "spikes/spike-AR-5.diff",
       "spike": "eslint 0 errors, prettier pass, cspell 0; a comment only, so no test run was needed.",
-      "applied_in": null
+      "applied_in": "5a901319"
     },
     {
       "id": "AR-6",
@@ -372,7 +375,7 @@
       "after_excerpt": "[web/lib/monitoring/known-engine-noise.test.ts]\n    const webkitStopStack = framesOf(\n      isKnownEngineNoise({ exception: { values: [{ value: stop, stacktrace: webkitStopStack }] } }),",
       "after_diff": "spikes/spike-AR-6.diff",
       "spike": "16/16 pass; eslint and prettier pass. F-6's diff applies on top of it.",
-      "applied_in": null
+      "applied_in": "4fe1e5d6"
     },
     {
       "id": "AR-8",
@@ -385,7 +388,7 @@
       "after_excerpt": "In the change-log bullet, replace\n'browser's own `[native code]` frame, so Firefox and Safari visitors send neither. Firefox with its developer tools open still sends both, a known limit in the spec.'\nwith\n'browser's own `[native code]` frame, so Safari visitors send neither, and Firefox visitors should send neither too: that a Firefox with no developer tools open records no async stacks is inferred, not yet checked in a release build. Firefox with its developer tools open still sends both, a known limit in the spec.'\nThen re-wrap the bullet to the file's line width.",
       "after_diff": null,
       "spike": "(untested) — text only; run prettier and markdownlint on docs/decisions/decision-changelog.md after applying.",
-      "applied_in": null,
+      "applied_in": "9e92adb5",
       "also_align": "The PR description's code-review Round 1 line says the same ('Firefox and Safari visitors now send neither known engine error'). Align it in the same PR-description edit, before the push that carries AR-8."
     }
   ],
