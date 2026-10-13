@@ -4,9 +4,9 @@ import path from 'node:path';
 // eslint-disable-next-line @typescript-eslint/no-restricted-imports -- Vitest files are never bundled by Next, so the double-bundle reason for this fence does not apply
 import * as engine from '@coderline/alphatab';
 import { toast } from '@notation-hero/client';
-import { captureException } from '@sentry/nextjs';
+import { addBreadcrumb, captureException } from '@sentry/nextjs';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 // The per-row work, counted — the same instrument SettingsPopover.test.tsx uses. valueOf calls
 // readSettingValue once for every settings-sourced row, so the call count IS the number of rows
@@ -80,6 +80,7 @@ vi.mock('../../lib/monitoring/scrub', async (importOriginal) => {
 // Imported after the vi.mock calls on purpose: Vitest hoists them, and keeping the import below
 // them makes the dependency order readable rather than surprising.
 import { dropPlaybackSelection } from '../../lib/alphatab/playback-selection';
+import { SETTINGS_STORAGE_KEY } from '../../lib/alphatab/settings-storage';
 import { addInstrumentsTag } from '../../lib/monitoring/report';
 import { rememberOpenFile, rememberScore, scrubEvent } from '../../lib/monitoring/scrub';
 import { PlayerShell } from './PlayerShell';
@@ -494,4 +495,120 @@ test('two opens at once: the one that returns early still puts the tag back', as
 
   // Both ended: the count is back to zero, and the tag names the dropped file's one guitar.
   await waitFor(() => expect(tagNow()).toBe('025'), { timeout: 5000 });
+});
+
+const refused = (name: 'SecurityError' | 'QuotaExceededError') => new DOMException('blocked', name);
+
+/** Storage throws `error`, but only for the settings document; every other key behaves. */
+const settingsKeyThrows = (method: 'getItem' | 'setItem', error: unknown) => {
+  const real = Storage.prototype[method] as (this: Storage, ...args: string[]) => unknown;
+  vi.spyOn(Storage.prototype, method).mockImplementation(function (
+    this: Storage,
+    ...args: string[]
+  ) {
+    if (args[0] === SETTINGS_STORAGE_KEY) throw error;
+    return real.apply(this, args) as never;
+  });
+};
+
+/** The breadcrumbs left with `message`. */
+const crumbs = (message: string) =>
+  vi
+    .mocked(addBreadcrumb)
+    .mock.calls.map(([crumb]) => crumb)
+    .filter((crumb) => crumb.message === message);
+
+/** Every report sent at the error level, as captureException received it. */
+const errorsReported = () =>
+  vi
+    .mocked(captureException)
+    .mock.calls.filter(
+      ([, hint]) =>
+        (hint as { captureContext?: { level?: string } } | undefined)?.captureContext?.level ===
+        'error',
+    );
+
+const crumb = (message: string, error: string) => ({
+  category: 'notation-hero',
+  level: 'warning',
+  message,
+  data: { error },
+});
+
+/** Opens Settings and types a new Zoom. With no engine yet, the edit goes straight to storage. */
+const editZoom = () => {
+  fireEvent.click(screen.getByTestId('settings-trigger'));
+  fireEvent.change(screen.getByRole('spinbutton', { name: 'Zoom' }), { target: { value: '2' } });
+};
+
+// Each of the shell's three storage catches tells the visitor's browser (a refusal: a breadcrumb
+// that travels with the next real report) from our own bug (anything else: an error). The lint rule
+// cannot see a report made in only one branch, so these cases are what pin both arms.
+describe('what a settings storage failure reports', () => {
+  beforeEach(() => {
+    globalThis.localStorage.clear();
+    vi.mocked(addBreadcrumb).mockClear();
+  });
+
+  afterEach(() => {
+    globalThis.localStorage.clear();
+  });
+
+  test('a settings read the browser blocks leaves a breadcrumb, never a report', () => {
+    settingsKeyThrows('getItem', refused('SecurityError'));
+    render(<PlayerShell />);
+    expect(crumbs('Player settings could not be read from storage')).toEqual([
+      crumb('Player settings could not be read from storage', 'SecurityError'),
+    ]);
+    expect(captureException).not.toHaveBeenCalled();
+  });
+
+  test('a settings read that fails for any other reason reports an error', () => {
+    const bug = new TypeError('our bug');
+    settingsKeyThrows('getItem', bug);
+    render(<PlayerShell />);
+    expect(errorsReported()).toEqual([[bug, { captureContext: { level: 'error', tags: {} } }]]);
+    expect(crumbs('Player settings could not be read from storage')).toEqual([]);
+  });
+
+  test('a repaired settings write-back the browser refuses leaves a breadcrumb, never an error', async () => {
+    globalThis.localStorage.setItem(SETTINGS_STORAGE_KEY, '{broken');
+    settingsKeyThrows('setItem', refused('QuotaExceededError'));
+    render(<PlayerShell />);
+    expect(crumbs('Repaired player settings could not be written back')).toEqual([
+      crumb('Repaired player settings could not be written back', 'QuotaExceededError'),
+    ]);
+    // The corrupt document still sends its own E603 warning; the refusal adds no report.
+    await waitFor(() => expect(reported('E603')).toHaveLength(1));
+    expect(errorsReported()).toEqual([]);
+  });
+
+  test('a repaired settings write-back that fails for any other reason reports an error', async () => {
+    globalThis.localStorage.setItem(SETTINGS_STORAGE_KEY, '{broken');
+    const bug = new TypeError('our bug');
+    settingsKeyThrows('setItem', bug);
+    render(<PlayerShell />);
+    expect(errorsReported()).toEqual([[bug, { captureContext: { level: 'error', tags: {} } }]]);
+    expect(crumbs('Repaired player settings could not be written back')).toEqual([]);
+    await waitFor(() => expect(reported('E603')).toHaveLength(1));
+  });
+
+  test('a settings edit the browser refuses to save leaves a breadcrumb, never a report', () => {
+    render(<PlayerShell />);
+    settingsKeyThrows('setItem', refused('SecurityError'));
+    editZoom();
+    expect(crumbs('Player settings could not be saved')).toEqual([
+      crumb('Player settings could not be saved', 'SecurityError'),
+    ]);
+    expect(captureException).not.toHaveBeenCalled();
+  });
+
+  test('a settings edit that fails to save for any other reason reports an error', () => {
+    render(<PlayerShell />);
+    const bug = new TypeError('our bug');
+    settingsKeyThrows('setItem', bug);
+    editZoom();
+    expect(errorsReported()).toEqual([[bug, { captureContext: { level: 'error', tags: {} } }]]);
+    expect(crumbs('Player settings could not be saved')).toEqual([]);
+  });
 });
