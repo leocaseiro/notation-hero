@@ -139,14 +139,14 @@ describe('isKnownEngineNoise, in Firefox and WebKit', () => {
   });
 
   it("drops WebKit's NH-338, whose stack starts in the browser's own stop()", () => {
-    const stack = framesOf(
+    const webkitStopStack = framesOf(
       'stop@[native code]',
       `pause@${ENGINE}:51:392516`,
       `pause@${ENGINE}:51:650062`,
       `handleWorkerMessage@${ENGINE}:51:522462`,
     );
     expect(
-      isKnownEngineNoise({ exception: { values: [{ value: stop, stacktrace: stack }] } }),
+      isKnownEngineNoise({ exception: { values: [{ value: stop, stacktrace: webkitStopStack }] } }),
     ).toBe(true);
   });
 
