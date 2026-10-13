@@ -1,0 +1,924 @@
+{
+  "_header": {
+    "artifact": "PR #191 (leocaseiro/notation-hero) — Sentry error monitoring for web/ (NH-124): the code, 47a7c6c3..ec7f6619 (Tasks 1-17 and the final-review fix wave)",
+    "artifact_url": "https://github.com/leocaseiro/notation-hero/pull/191",
+    "artifact_path": "web/ (+ shared/src/error-codes.ts, tooling/, docs/) — 49 files; see scope.files",
+    "artifact_worktree": "nh-320-vr-spec-lap-4-92e22a",
+    "artifact_path_from_root": ".claude/worktrees/nh-320-vr-spec-lap-4-92e22a/",
+    "artifact_permalink": "https://github.com/leocaseiro/notation-hero/tree/ec7f6619fa864c88801f8e96854782b64c5f7415",
+    "artifact_permalink_sha": "ec7f6619fa864c88801f8e96854782b64c5f7415",
+    "lap": 1,
+    "finding_count": 5,
+    "review_skill": "compound-engineering:ce-code-review",
+    "review_mode": "mode:agent base:47a7c6c3 (report-only; the reviewer mutated nothing)",
+    "verify_check": "superpowers:receiving-code-review, From External Reviewers branch: one verifier (V1) over all 5 findings; spikes in two throwaway DETACHED worktrees (V1: F-1, F-3, F-4 incl. three production builds and real Firefox/WebKit runs; V2: F-2, F-5). The engine's own validator had already confirmed all 5.",
+    "state_store": "docs/plans/2026-10-08-nh-124-sentry-error-monitoring-plan.md frontmatter, keys code_review_lap / code_review_last_applied (a separate lane from the doc laps' lap / last_applied, as PR #188 did) — written at triage step 6",
+    "scope": {
+      "base": "47a7c6c3da66caaadbf3d2a4b05b613374b6b96c",
+      "head": "ec7f6619fa864c88801f8e96854782b64c5f7415",
+      "branch": "claude/sentry-error-monitoring-89abc2",
+      "files_changed": 49,
+      "changed_lines": 4406,
+      "exec_nontest_lines": 1590,
+      "depth": "full"
+    },
+    "reviewers": [
+      "correctness",
+      "project-standards",
+      "testing",
+      "maintainability",
+      "security",
+      "reliability",
+      "adversarial (in-process)",
+      "julik-frontend-races"
+    ],
+    "reviewers_skipped": {
+      "agent-native": "the only agent surface is a note in web/AGENTS.md",
+      "learnings": "3 notes in docs/solutions/, none relevant",
+      "performance": "no query/loop/cache surface; +64.8 KiB page weight already measured",
+      "api-contract": "the error-code registry is internal with its own gate",
+      "previous-comments": "base: scope, no PR metadata"
+    },
+    "cross_model_pass": "NOT RUN — the owner has not consented to sending code to an outside AI provider. The adversarial lens ran in-process.",
+    "engine_verdict": "Ready with fixes (no P0 or P1; four P2 and one P3, all confirmed)",
+    "id_expansions": {
+      "NH-335": "known AlphaTab 1.8.4 bug: 'Cannot read properties of undefined (reading voices)' thrown on ordinary Guitar Pro files; nothing visible breaks",
+      "NH-338": "known AlphaTab 1.8.4 bug: pressing Pause before playback has really started throws 'cannot call stop without calling start first'",
+      "known engine noise": "web/lib/monitoring/known-engine-noise.ts: the list of those two errors that Sentry drops and the e2e gate tolerates — only when every stack frame is in the engine bundle /alphatab/esm/alphaTab.core.mjs",
+      "E101 / E102 / E103": "the visitor's file is too large / unreadable / not a score (warnings)",
+      "E105": "the file was read, but loading it failed — our bug",
+      "E901": "a crash page was shown",
+      "E601 / E603": "stored settings repaired / unreadable",
+      "S2b": "spec decision: storage the browser blocks leaves a breadcrumb only (costs no quota)",
+      "D2": "spec decision: known engine noise is dropped, with one list the e2e gate also reads",
+      "ruling E11 / E12": "the controller's pre-flight rulings in the implementation ledger (reported to the owner, not owner picks): keep the third crash-page copy / keep the read-flag branching in both open paths",
+      "Choice 2": "plan choice, owner-approved: a production build that has the upload token but not both Sentry slugs fails",
+      "P2": "a real problem with a meaningful downside; fix if straightforward",
+      "P3": "low impact; the owner's discretion",
+      "confidence 75": "the reviewer inferred it from reading, not running; 100 = confirmed against the source; 50 = a suspicion",
+      "Release Health": "Sentry's share of visits per release that ended without an unhandled error — the interim health number until NH-52",
+      "breadcrumb": "a note that travels inside the next real report; never sent alone, costs no quota",
+      "DSN": "the address the browser sends reports to; only Vercel Production has it",
+      "spike": "the proposed fix tried for real in a throwaway copy of the repository, with the result recorded"
+    },
+    "already_applied_silent_edits": "NONE. ce-code-review in mode:agent applies nothing.",
+    "note_for_triage": "Read only this file. Every finding carries its scenario, the verbatim current code (before), the spiked change (after_excerpt, full diff under spikes/), the spike result, the recorded decisions it touches, and the options with a recommendation. Suggested rounds, by area and ordered by impact: round 1 = F-4 (a comparison: options 1-4); round 2 = F-1 + F-3 (tests only); round 3 = F-2 + F-5 (consolidate now / follow-up / keep). Apply each round's Apply decisions as their own commits before the next round, from the spike diffs (re-check them against HEAD first; they were cut at ec7f6619). Report the auto_resolve items in one line each; they need no picker.",
+    "triaged": false,
+    "triage_undecided_remaining": 5
+  },
+  "findings": [
+    {
+      "id": "F-4",
+      "batch": "A — the noise filter (monitoring that misbehaves for real visitors today)",
+      "plain_title": "Firefox and Safari send the two known AlphaTab errors to Sentry as crashes",
+      "engine_number": 4,
+      "engine_title": "Firefox/Safari NH-335 throws bypass noise filter, sent as unhandled",
+      "severity": "P2",
+      "confidence": 75,
+      "file": "web/lib/monitoring/known-engine-noise.ts",
+      "line": 46,
+      "reviewers": ["adversarial"],
+      "autofix_class": "manual",
+      "engine_why_it_matters": "A Firefox or Safari visitor who opens an ordinary Guitar Pro file can hit NH-335. Measured in Chromium, it fires seven times in one open. In those browsers it reaches Sentry as an unhandled error, because the filter's list holds only V8's wording of the message. SpiderMonkey and JavaScriptCore word the same engine bug differently, so `message.includes(noise.message)` never matches, and the event is scrubbed and sent with GlobalHandlers' `handled: false`. Sentry's Dedupe keeps only the first of a run of identical consecutive throws, so this costs about one report per affected open rather than seven. That still spends the 5,000-a-month quota that decision D2 dropped this noise to protect, and it marks those visits unhandled, so the interim Release Health number falls for non-Chromium visitors only. Nothing goes red: the only end-to-end proof that known noise never reaches Sentry (cases 4 and 6 in error-reporting.e2e.ts) runs in Chromium alone, and the unit tests build their events from the V8 messages. The check that keeps our own errors reaching Sentry is the every-frame-in-ENGINE_BUNDLE condition, not the wording, so matching each engine's wording keeps that promise.",
+      "engine_suggested_fix": "In web/lib/monitoring/known-engine-noise.ts, match each entry by every engine's wording and leave the every-frame-in-ENGINE_BUNDLE condition as it is. NH-335: accept V8's `(reading 'voices')`, SpiderMonkey's `can't access property \"voices\"` and JavaScriptCore's `evaluating '….voices'`, for example with one regex per entry: /\\(reading 'voices'\\)|can't access property \"voices\"|evaluating '[^']*\\.voices'/. NH-338: also accept an exception whose type is `InvalidStateError`, because Gecko words stop-before-start differently. That means adding `type` to NoiseEvent. Add Firefox-shaped and WebKit-shaped events, in `fn@url:line:col` frame form, to known-engine-noise.test.ts. The fix assumes AlphaTab's bug does not depend on the browser, because the throwing code is AlphaTab's own JavaScript. Confirm that once in a real Firefox before trusting the change.",
+      "engine_validator": "known-engine-noise.ts:32,45-46 (added by this diff) matches only V8's wording via includes, while this Mac's JavaScriptCore (run read-only through osascript -l JavaScript) words the same read as `TypeError: undefined is not an object (evaluating 't.voices')`, Sentry 11.4.0 copies ex.message into exception.value (@sentry/browser esm/prod/eventbuilder.js:7,95-109) and tags onerror events handled:false (globalhandlers.js:49-50), web/ has no ignoreErrors or denyUrls, and both e2e projects use Desktop Chrome (playwright.e2e.config.ts:32,51), so a Safari NH-335 throw would pass beforeSend unfiltered; SpiderMonkey's wording was not checked locally and whether AlphaTab's NH-335 actually fires in Firefox or Safari (the precondition) was not measured.",
+      "severity_meaning": "P2 = a real problem with a meaningful downside; fix if straightforward",
+      "confidence_meaning": "75 = the reviewer inferred it from reading the code; this loop's verifier then ran it (see 'verified'). Here the verifier MEASURED it in real browsers, so treat it as confirmed.",
+      "verified": "pass — measured against a production build of this branch (fake DSN), in Playwright's Chromium 149, Firefox 148 and WebKit 26.5: Chromium sends neither error; Firefox and WebKit send BOTH NH-335 and NH-338 as level error, handled false (an unhandled crash).",
+      "scenario": "You open the player in Safari or Firefox, choose an ordinary Guitar Pro file, and it plays fine. In the background, the engine's known NH-335 error is sent to Sentry as an unhandled error, so the owner gets an issue for a bug that is already known. If you press Play and then Pause quickly, NH-338 is sent too, and the health number goes down for Safari and Firefox visitors only, although nothing went wrong for them.",
+      "whats_wrong": "The known-noise list (web/lib/monitoring/known-engine-noise.ts) holds only Chrome's wording of each error, and matches with `message.includes(...)`. Firefox and Safari word the same two engine errors differently, so the filter never matches there, and Sentry receives each one as an unhandled error. Two more measured details: Safari adds a `stop@[native code]` frame to NH-338, which breaks the rule that EVERY frame must be the engine's; and Firefox, when a debugger is attached (Playwright, or open developer tools), adds async frames from our own React code, with the same effect.",
+      "breaks_today": "Today a Firefox or Safari visitor who opens an ordinary Guitar Pro file (like guitar-no-percussion.gp) sends one unhandled NH-335 error report, and one who presses Play then Pause quickly sends an unhandled NH-338 report. Measured against a production build with the fake DSN: NH-335 fired on the first open in Firefox 148 and WebKit 26.5, and in each the event reached the recorded envelopes with level error and handled false (mechanism auto.browser.global_handlers.onerror); NH-338 the same. In Chromium neither was sent. Each report uses the 5,000-a-month quota and marks the visit unhandled in Release Health.",
+      "before": "web/lib/monitoring/known-engine-noise.ts:31-32\n31        ticket: 'NH-335',\n32        message: \"Cannot read properties of undefined (reading 'voices')\",\n\nweb/lib/monitoring/known-engine-noise.ts:40-41\n40        ticket: 'NH-338',\n41        message: 'cannot call stop without calling start first',\n\nweb/lib/monitoring/known-engine-noise.ts:45-46\n45  const isKnownMessage = (message: string): boolean =>\n46    KNOWN_ENGINE_NOISE.some((noise) => message.includes(noise.message));\n\nweb/instrumentation-client.ts:45\n45    beforeSend: (event) => (isKnownEngineNoise(event) ? null : scrubEvent(event)),",
+      "after_excerpt": "Each entry gets a `wordings` list built only from the MEASURED messages, and `isKnownMessage` tests them; frames named `[native code]` are left out of the every-frame rule (but at least one engine frame is still required):\n\n  NH-335 wordings:\n    /Cannot read properties of undefined \\(reading 'voices'\\)/        (Chrome)\n    /can't access property \"voices\", .+ is undefined/                  (Firefox)\n    /undefined is not an object \\(evaluating '[^']*\\.voices'\\)/       (Safari)\n  NH-338 wordings:\n    /cannot call stop without calling start first/                      (Chrome, Safari)\n    /Start has not been called on this AudioBufferSourceNode/           (Firefox)\n\n  const isKnownMessage = (message: string): boolean =>\n    KNOWN_ENGINE_NOISE.some((noise) => noise.wordings.some((wording) => wording.test(message)));\n\n  const frames = (exception.stacktrace?.frames ?? []).filter(\n    (frame) => frame.filename !== '[native code]',\n  );\n\nThe V8 `message` field stays, because the Chromium-only end-to-end cases read it. Six new unit cases use the recorded Firefox and WebKit messages and stacks (16/16 pass).",
+      "after_diff": "spikes/spike-F4-plus-native-frame.diff (option 1); spikes/spike-F4.diff (option 2, wording only)",
+      "proposed_fix": "Match each known error by every browser's measured wording, and ignore Safari's `[native code]` frame in the every-frame rule.",
+      "why_it_works": "The rule that protects our own errors is 'every frame is in the engine bundle', not the wording, so widening the wording cannot hide one of our errors: the new unit cases show a single frame of our code still keeps the event, and another property read on undefined (in all three wordings) is still sent.",
+      "spike": {
+        "applied": true,
+        "where": "throwaway detached worktree; three production builds",
+        "result": "Before: Firefox and WebKit sent both errors; Chromium sent neither. Wording fix only: WebKit NH-335 dropped, WebKit NH-338 still sent (native frame), Firefox with async stacks off: both dropped, Firefox with async stacks on (debugger attached): both still sent. Wording + native-frame rule: everything dropped except Firefox with a debugger attached; Chromium unchanged in every run; a sentinel error was still recorded in every run (so the recorder worked). Unit: 16/16; web lint, typecheck, cspell pass.",
+        "measurements": {
+          "wording": {
+            "how": "page.evaluate in each browser: read .voices on undefined three ways (literal undefined, a variable, a member) and catch; create an AudioContext, createBufferSource(), call stop(0) and stop() without start(), catch. Script: zz-spike-wording.mjs; raw: f4-wording.json.",
+            "chromium": {
+              "version": "149.0.7827.55",
+              "nh335_read_undefined": {
+                "literal_undefined": {
+                  "name": "TypeError",
+                  "message": "Cannot read properties of undefined (reading 'voices')"
+                },
+                "variable": {
+                  "name": "TypeError",
+                  "message": "Cannot read properties of undefined (reading 'voices')"
+                },
+                "member": {
+                  "name": "TypeError",
+                  "message": "Cannot read properties of undefined (reading 'voices')"
+                }
+              },
+              "nh338_stop_before_start": {
+                "stop(0)": {
+                  "name": "InvalidStateError",
+                  "message": "Failed to execute 'stop' on 'AudioScheduledSourceNode': cannot call stop without calling start first.",
+                  "isDOMException": true
+                },
+                "stop()": {
+                  "name": "InvalidStateError",
+                  "message": "Failed to execute 'stop' on 'AudioScheduledSourceNode': cannot call stop without calling start first.",
+                  "isDOMException": true
+                }
+              }
+            },
+            "firefox": {
+              "version": "148.0.2",
+              "nh335_read_undefined": {
+                "literal_undefined": {
+                  "name": "TypeError",
+                  "message": "can't access property \"voices\" of undefined"
+                },
+                "variable": {
+                  "name": "TypeError",
+                  "message": "can't access property \"voices\", t is undefined"
+                },
+                "member": {
+                  "name": "TypeError",
+                  "message": "can't access property \"voices\", n.e is undefined"
+                }
+              },
+              "nh338_stop_before_start": {
+                "stop(0)": {
+                  "name": "InvalidStateError",
+                  "message": "AudioScheduledSourceNode.stop: Start has not been called on this AudioBufferSourceNode.",
+                  "isDOMException": true
+                },
+                "stop()": {
+                  "name": "InvalidStateError",
+                  "message": "AudioScheduledSourceNode.stop: Start has not been called on this AudioBufferSourceNode.",
+                  "isDOMException": true
+                }
+              }
+            },
+            "webkit": {
+              "version": "26.5",
+              "nh335_read_undefined": {
+                "literal_undefined": {
+                  "name": "TypeError",
+                  "message": "undefined is not an object (evaluating 'undefined.voices')"
+                },
+                "variable": {
+                  "name": "TypeError",
+                  "message": "undefined is not an object (evaluating 't.voices')"
+                },
+                "member": {
+                  "name": "TypeError",
+                  "message": "undefined is not an object (evaluating 'n.e.voices')"
+                }
+              },
+              "nh338_stop_before_start": {
+                "stop(0)": {
+                  "name": "InvalidStateError",
+                  "message": "cannot call stop without calling start first.",
+                  "isDOMException": true
+                },
+                "stop()": {
+                  "name": "InvalidStateError",
+                  "message": "cannot call stop without calling start first.",
+                  "isDOMException": true
+                }
+              }
+            }
+          },
+          "real_runs": {
+            "setup": "next build of the copy with NEXT_PUBLIC_SENTRY_DSN=https://public@sentry.invalid/1, served by next start on port 4191; probe web/zz-spike-noise.mjs (copy in this folder): routes https://sentry.invalid/** and records every envelope (answers 200 '{}'), records page errors (Playwright pageerror and an in-page error listener), opens /play, sets guitar-no-percussion.gp on the file input, waits 8 s, reloads and re-opens up to 10 times until NH-335 is seen; then presses Play twice quickly up to 20 times until NH-338 is seen; then throws a sentinel and waits for its event. 'firefox_no_async_stacks' is the same Firefox with javascript.options.asyncstack=false.",
+            "before_fix": {
+              "chromium": {
+                "version": "149.0.7827.55",
+                "nh335_seen": true,
+                "nh335_tries": 2,
+                "nh338_seen": true,
+                "nh338_tries": 1,
+                "sentinel_recorded": true,
+                "nh335_message": "Cannot read properties of undefined (reading 'voices')",
+                "nh335_stack_first_3_lines": [
+                  "TypeError: Cannot read properties of undefined (reading 'voices')",
+                  "    at Jn.fromJson (http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:527552)",
+                  "    at jn.Zu (http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:530833)"
+                ],
+                "nh335_stack_lines_total": 0,
+                "nh335_sent": false,
+                "nh338_message": "Failed to execute 'stop' on 'AudioScheduledSourceNode': cannot call stop without calling start first.",
+                "nh338_stack_first_3_lines": [
+                  "InvalidStateError: Failed to execute 'stop' on 'AudioScheduledSourceNode': cannot call stop without calling start first.",
+                  "    at _a.pause (http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:392512)",
+                  "    at _a.pause (http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:650057)"
+                ],
+                "nh338_stack_lines_total": 0,
+                "nh338_sent": false
+              },
+              "firefox": {
+                "version": "148.0.2",
+                "nh335_seen": true,
+                "nh335_tries": 1,
+                "nh338_seen": true,
+                "nh338_tries": 1,
+                "sentinel_recorded": true,
+                "nh335_message": "can't access property \"voices\", e.tracks[t.get(...)].staves[t.get(...)].bars[t.get(...)] is undefined",
+                "nh335_stack_first_3_lines": [
+                  "fromJson@http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:527535",
+                  "Zu@http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:530833",
+                  "jn/<@http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:529858"
+                ],
+                "nh335_stack_lines_total": 129,
+                "nh335_sent": true,
+                "nh335_event": {
+                  "level": "error",
+                  "handled": false,
+                  "mechanism": "auto.browser.global_handlers.onerror",
+                  "frames": 50,
+                  "frame_files": [
+                    "app:///_next/static/chunks/25148r4nn0jm7.js",
+                    "app:///_next/static/chunks/373qcpwy__cp7.js",
+                    "app:///alphatab/esm/alphaTab.core.mjs"
+                  ]
+                },
+                "nh338_message": "AudioScheduledSourceNode.stop: Start has not been called on this AudioBufferSourceNode.",
+                "nh338_stack_first_3_lines": [
+                  "pause@http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:392512",
+                  "pause@http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:650057",
+                  "handleWorkerMessage@http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:522462"
+                ],
+                "nh338_stack_lines_total": 47,
+                "nh338_sent": true,
+                "nh338_event": {
+                  "level": "error",
+                  "handled": false,
+                  "mechanism": "auto.browser.global_handlers.onerror",
+                  "frames": 47,
+                  "frame_files": [
+                    "app:///_next/static/chunks/25148r4nn0jm7.js",
+                    "app:///_next/static/chunks/373qcpwy__cp7.js",
+                    "app:///alphatab/esm/alphaTab.core.mjs"
+                  ]
+                }
+              },
+              "firefox_no_async_stacks": {
+                "version": "148.0.2",
+                "nh335_seen": true,
+                "nh335_tries": 1,
+                "nh338_seen": true,
+                "nh338_tries": 1,
+                "sentinel_recorded": true,
+                "nh335_message": "can't access property \"voices\", e.tracks[t.get(...)].staves[t.get(...)].bars[t.get(...)] is undefined",
+                "nh335_stack_first_3_lines": [
+                  "fromJson@http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:527535",
+                  "Zu@http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:530833",
+                  "jn/<@http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:529858"
+                ],
+                "nh335_stack_lines_total": 3,
+                "nh335_sent": true,
+                "nh335_event": {
+                  "level": "error",
+                  "handled": false,
+                  "mechanism": "auto.browser.global_handlers.onerror",
+                  "frames": 3,
+                  "frame_files": ["app:///alphatab/esm/alphaTab.core.mjs"]
+                },
+                "nh338_message": "AudioScheduledSourceNode.stop: Start has not been called on this AudioBufferSourceNode.",
+                "nh338_stack_first_3_lines": [
+                  "pause@http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:392512",
+                  "pause@http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:650057",
+                  "handleWorkerMessage@http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:522462"
+                ],
+                "nh338_stack_lines_total": 4,
+                "nh338_sent": true,
+                "nh338_event": {
+                  "level": "error",
+                  "handled": false,
+                  "mechanism": "auto.browser.global_handlers.onerror",
+                  "frames": 4,
+                  "frame_files": ["app:///alphatab/esm/alphaTab.core.mjs"]
+                }
+              },
+              "webkit": {
+                "version": "26.5",
+                "nh335_seen": true,
+                "nh335_tries": 1,
+                "nh338_seen": true,
+                "nh338_tries": 1,
+                "sentinel_recorded": true,
+                "nh335_message": "undefined is not an object (evaluating 'e.tracks[t.get(\"trackIndex\")].staves[t.get(\"staffIndex\")].bars[t.get(\"barIndex\")].voices')",
+                "nh335_stack_first_3_lines": [
+                  "fromJson@http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:527551",
+                  "Zu@http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:530841"
+                ],
+                "nh335_stack_lines_total": 0,
+                "nh335_sent": true,
+                "nh335_event": {
+                  "level": "error",
+                  "handled": false,
+                  "mechanism": "auto.browser.global_handlers.onerror",
+                  "frames": 2,
+                  "frame_files": ["app:///alphatab/esm/alphaTab.core.mjs"]
+                },
+                "nh338_message": "cannot call stop without calling start first.",
+                "nh338_stack_first_3_lines": [
+                  "stop@[native code]",
+                  "pause@http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:392516",
+                  "pause@http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:650062"
+                ],
+                "nh338_stack_lines_total": 0,
+                "nh338_sent": true,
+                "nh338_event": {
+                  "level": "error",
+                  "handled": false,
+                  "mechanism": "auto.browser.global_handlers.onerror",
+                  "frames": 4,
+                  "frame_files": ["[native code]", "app:///alphatab/esm/alphaTab.core.mjs"]
+                }
+              }
+            },
+            "after_fix_wording_only": {
+              "chromium": {
+                "version": "149.0.7827.55",
+                "nh335_seen": true,
+                "nh335_tries": 1,
+                "nh338_seen": true,
+                "nh338_tries": 1,
+                "sentinel_recorded": true,
+                "nh335_message": "Cannot read properties of undefined (reading 'voices')",
+                "nh335_stack_first_3_lines": [
+                  "TypeError: Cannot read properties of undefined (reading 'voices')",
+                  "    at Jn.fromJson (http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:527552)",
+                  "    at jn.Zu (http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:530833)"
+                ],
+                "nh335_stack_lines_total": 4,
+                "nh335_sent": false,
+                "nh338_message": "Failed to execute 'stop' on 'AudioScheduledSourceNode': cannot call stop without calling start first.",
+                "nh338_stack_first_3_lines": [
+                  "InvalidStateError: Failed to execute 'stop' on 'AudioScheduledSourceNode': cannot call stop without calling start first.",
+                  "    at _a.pause (http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:392512)",
+                  "    at _a.pause (http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:650057)"
+                ],
+                "nh338_stack_lines_total": 5,
+                "nh338_sent": false
+              },
+              "firefox": {
+                "version": "148.0.2",
+                "nh335_seen": true,
+                "nh335_tries": 1,
+                "nh338_seen": true,
+                "nh338_tries": 1,
+                "sentinel_recorded": true,
+                "nh335_message": "can't access property \"voices\", e.tracks[t.get(...)].staves[t.get(...)].bars[t.get(...)] is undefined",
+                "nh335_stack_first_3_lines": [
+                  "fromJson@http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:527535",
+                  "Zu@http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:530833",
+                  "jn/<@http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:529858"
+                ],
+                "nh335_stack_lines_total": 129,
+                "nh335_sent": true,
+                "nh335_event": {
+                  "level": "error",
+                  "handled": false,
+                  "mechanism": "auto.browser.global_handlers.onerror",
+                  "frames": 50,
+                  "frame_files": [
+                    "app:///_next/static/chunks/25148r4nn0jm7.js",
+                    "app:///_next/static/chunks/3l1fhmdgke4br.js",
+                    "app:///alphatab/esm/alphaTab.core.mjs"
+                  ]
+                },
+                "nh338_message": "AudioScheduledSourceNode.stop: Start has not been called on this AudioBufferSourceNode.",
+                "nh338_stack_first_3_lines": [
+                  "pause@http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:392512",
+                  "pause@http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:650057",
+                  "handleWorkerMessage@http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:522462"
+                ],
+                "nh338_stack_lines_total": 47,
+                "nh338_sent": true,
+                "nh338_event": {
+                  "level": "error",
+                  "handled": false,
+                  "mechanism": "auto.browser.global_handlers.onerror",
+                  "frames": 47,
+                  "frame_files": [
+                    "app:///_next/static/chunks/25148r4nn0jm7.js",
+                    "app:///_next/static/chunks/3l1fhmdgke4br.js",
+                    "app:///alphatab/esm/alphaTab.core.mjs"
+                  ]
+                }
+              },
+              "firefox_no_async_stacks": {
+                "version": "148.0.2",
+                "nh335_seen": true,
+                "nh335_tries": 1,
+                "nh338_seen": true,
+                "nh338_tries": 1,
+                "sentinel_recorded": true,
+                "nh335_message": "can't access property \"voices\", e.tracks[t.get(...)].staves[t.get(...)].bars[t.get(...)] is undefined",
+                "nh335_stack_first_3_lines": [
+                  "fromJson@http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:527535",
+                  "Zu@http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:530833",
+                  "jn/<@http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:529858"
+                ],
+                "nh335_stack_lines_total": 3,
+                "nh335_sent": false,
+                "nh338_message": "AudioScheduledSourceNode.stop: Start has not been called on this AudioBufferSourceNode.",
+                "nh338_stack_first_3_lines": [
+                  "pause@http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:392512",
+                  "pause@http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:650057",
+                  "handleWorkerMessage@http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:522462"
+                ],
+                "nh338_stack_lines_total": 4,
+                "nh338_sent": false
+              },
+              "webkit": {
+                "version": "26.5",
+                "nh335_seen": true,
+                "nh335_tries": 1,
+                "nh338_seen": true,
+                "nh338_tries": 1,
+                "sentinel_recorded": true,
+                "nh335_message": "undefined is not an object (evaluating 'e.tracks[t.get(\"trackIndex\")].staves[t.get(\"staffIndex\")].bars[t.get(\"barIndex\")].voices')",
+                "nh335_stack_first_3_lines": [
+                  "fromJson@http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:527551",
+                  "Zu@http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:530841"
+                ],
+                "nh335_stack_lines_total": 2,
+                "nh335_sent": false,
+                "nh338_message": "cannot call stop without calling start first.",
+                "nh338_stack_first_3_lines": [
+                  "stop@[native code]",
+                  "pause@http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:392516",
+                  "pause@http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:650062"
+                ],
+                "nh338_stack_lines_total": 4,
+                "nh338_sent": true,
+                "nh338_event": {
+                  "level": "error",
+                  "handled": false,
+                  "mechanism": "auto.browser.global_handlers.onerror",
+                  "frames": 4,
+                  "frame_files": ["[native code]", "app:///alphatab/esm/alphaTab.core.mjs"]
+                }
+              }
+            },
+            "after_fix_plus_native_frame_rule": {
+              "chromium": {
+                "version": "149.0.7827.55",
+                "nh335_seen": true,
+                "nh335_tries": 1,
+                "nh338_seen": true,
+                "nh338_tries": 1,
+                "sentinel_recorded": true,
+                "nh335_message": "Cannot read properties of undefined (reading 'voices')",
+                "nh335_stack_first_3_lines": [
+                  "TypeError: Cannot read properties of undefined (reading 'voices')",
+                  "    at Jn.fromJson (http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:527552)",
+                  "    at jn.Zu (http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:530833)"
+                ],
+                "nh335_stack_lines_total": 4,
+                "nh335_sent": false,
+                "nh338_message": "Failed to execute 'stop' on 'AudioScheduledSourceNode': cannot call stop without calling start first.",
+                "nh338_stack_first_3_lines": [
+                  "InvalidStateError: Failed to execute 'stop' on 'AudioScheduledSourceNode': cannot call stop without calling start first.",
+                  "    at _a.pause (http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:392512)",
+                  "    at _a.pause (http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:650057)"
+                ],
+                "nh338_stack_lines_total": 5,
+                "nh338_sent": false
+              },
+              "firefox": {
+                "version": "148.0.2",
+                "nh335_seen": true,
+                "nh335_tries": 1,
+                "nh338_seen": true,
+                "nh338_tries": 1,
+                "sentinel_recorded": true,
+                "nh335_message": "can't access property \"voices\", e.tracks[t.get(...)].staves[t.get(...)].bars[t.get(...)] is undefined",
+                "nh335_stack_first_3_lines": [
+                  "fromJson@http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:527535",
+                  "Zu@http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:530833",
+                  "jn/<@http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:529858"
+                ],
+                "nh335_stack_lines_total": 129,
+                "nh335_sent": true,
+                "nh335_event": {
+                  "level": "error",
+                  "handled": false,
+                  "mechanism": "auto.browser.global_handlers.onerror",
+                  "frames": 50,
+                  "frame_files": [
+                    "app:///_next/static/chunks/25148r4nn0jm7.js",
+                    "app:///_next/static/chunks/2xxbaj-9nslop.js",
+                    "app:///alphatab/esm/alphaTab.core.mjs"
+                  ]
+                },
+                "nh338_message": "AudioScheduledSourceNode.stop: Start has not been called on this AudioBufferSourceNode.",
+                "nh338_stack_first_3_lines": [
+                  "pause@http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:392512",
+                  "pause@http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:650057",
+                  "handleWorkerMessage@http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:522462"
+                ],
+                "nh338_stack_lines_total": 47,
+                "nh338_sent": true,
+                "nh338_event": {
+                  "level": "error",
+                  "handled": false,
+                  "mechanism": "auto.browser.global_handlers.onerror",
+                  "frames": 47,
+                  "frame_files": [
+                    "app:///_next/static/chunks/25148r4nn0jm7.js",
+                    "app:///_next/static/chunks/2xxbaj-9nslop.js",
+                    "app:///alphatab/esm/alphaTab.core.mjs"
+                  ]
+                }
+              },
+              "firefox_no_async_stacks": {
+                "version": "148.0.2",
+                "nh335_seen": true,
+                "nh335_tries": 1,
+                "nh338_seen": true,
+                "nh338_tries": 1,
+                "sentinel_recorded": true,
+                "nh335_message": "can't access property \"voices\", e.tracks[t.get(...)].staves[t.get(...)].bars[t.get(...)] is undefined",
+                "nh335_stack_first_3_lines": [
+                  "fromJson@http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:527535",
+                  "Zu@http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:530833",
+                  "jn/<@http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:529858"
+                ],
+                "nh335_stack_lines_total": 3,
+                "nh335_sent": false,
+                "nh338_message": "AudioScheduledSourceNode.stop: Start has not been called on this AudioBufferSourceNode.",
+                "nh338_stack_first_3_lines": [
+                  "pause@http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:392512",
+                  "pause@http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:650057",
+                  "handleWorkerMessage@http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:522462"
+                ],
+                "nh338_stack_lines_total": 4,
+                "nh338_sent": false
+              },
+              "webkit": {
+                "version": "26.5",
+                "nh335_seen": true,
+                "nh335_tries": 1,
+                "nh338_seen": true,
+                "nh338_tries": 1,
+                "sentinel_recorded": true,
+                "nh335_message": "undefined is not an object (evaluating 'e.tracks[t.get(\"trackIndex\")].staves[t.get(\"staffIndex\")].bars[t.get(\"barIndex\")].voices')",
+                "nh335_stack_first_3_lines": [
+                  "fromJson@http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:527551",
+                  "Zu@http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:530841"
+                ],
+                "nh335_stack_lines_total": 2,
+                "nh335_sent": false,
+                "nh338_message": "cannot call stop without calling start first.",
+                "nh338_stack_first_3_lines": [
+                  "stop@[native code]",
+                  "pause@http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:392516",
+                  "pause@http://localhost:4191/alphatab/esm/alphaTab.core.mjs:51:650062"
+                ],
+                "nh338_stack_lines_total": 4,
+                "nh338_sent": false
+              }
+            }
+          }
+        }
+      },
+      "options": [
+        {
+          "key": "1",
+          "label": "Wording + native-frame rule (Recommended)",
+          "what": "spikes/spike-F4-plus-native-frame.diff",
+          "pros": "Measured: drops both errors in Safari and in Firefox as visitors run it; Chromium unchanged; our own errors still sent.",
+          "cons": "Firefox with developer tools open (a debugger attached) still sends them: that affects developers, not visitors (inferred: Firefox records async stacks only for a page under a debugger by default; not checked in a release Firefox).",
+          "best_when": "the goal is: no quota and no false crashes from known engine bugs, for real visitors"
+        },
+        {
+          "key": "2",
+          "label": "Wording only",
+          "what": "spikes/spike-F4.diff",
+          "pros": "Smallest change to the matching rule.",
+          "cons": "Safari still sends NH-338 on a quick Play then Pause.",
+          "best_when": "you want to leave the frame rule exactly as the spec wrote it"
+        },
+        {
+          "key": "3",
+          "label": "Also cut Firefox's async frames",
+          "what": "(untested) read frames only up to Firefox's first async boundary (a function name such as 'EventListener.handleEvent*jn')",
+          "pros": "Would also cover Firefox with developer tools open.",
+          "cons": "Untested; more complex; reads a Firefox-specific frame marker; a risk of hiding a real error whose async part is ours.",
+          "best_when": "developer sessions in Firefox matter to the quota"
+        },
+        {
+          "key": "4",
+          "label": "Skip — decide later",
+          "what": "nothing changes now",
+          "pros": "",
+          "cons": "Every Firefox or Safari visitor who opens an ordinary Guitar Pro file keeps sending an unhandled error, which lowers the Release Health number for those browsers only.",
+          "best_when": ""
+        }
+      ],
+      "decision_matrix": "criteria (weight): stops false crash reports for real visitors (x3), keeps our own errors reaching Sentry (x3), simplicity (x2), evidence (x1). Option 1: 5,5,4,5 -> 15+15+8+5 = 43. Option 2: 3,5,5,5 -> 9+15+10+5 = 39. Option 3: 5,4,2,1 -> 15+12+4+1 = 32.",
+      "decisive_tradeoff": "How much of the non-Chrome noise to close versus how far to move from the spec's 'every frame is the engine's' rule.",
+      "recommendation": "Option 1: it is measured in all three browsers, closes every visitor case, and keeps the rule that protects our own errors. Flip to option 2 if you want the frame rule left exactly as written.",
+      "also_fold_in": "AR-1 (the 'seven times in one open' comment) lands in the same file; apply it in the same commit.",
+      "missing_context": "No recorded decision covers other browsers: spec 2.6 and D2 measured the noise in Chromium only, and both e2e projects are Chromium. The reviewer missed two measured facts that make the suggested fix incomplete. (1) WebKit's NH-338 wording already matches the list ('cannot call stop without calling start first.'), but WebKit adds a `stop@[native code]` frame, so the every-frame rule keeps the event and it is sent anyway. (2) In Firefox run by Playwright (a debugger is attached), each stack also holds async frames that show where the engine's listener was set up: our own React code in _next/static. So the every-frame rule keeps NH-335 and NH-338 there even with the right wording. With async stacks turned off (javascript.options.asyncstack false), which is likely how a visitor's Firefox runs without its developer tools open (not checked in a release Firefox), all frames are the engine's and the wording fix is enough. Also, the finding's guess that Gecko's NH-338 needs a match on the InvalidStateError type is not needed: Firefox's measured message is distinct ('AudioScheduledSourceNode.stop: Start has not been called on this AudioBufferSourceNode.').",
+      "recorded_decisions": "Spec decision D2 (drop known engine noise, one list read by Sentry and the e2e gate) — this fix keeps D2; it only makes the list match other browsers. The spec measured the noise in Chromium only.",
+      "triage_decision": null,
+      "applied_in": null
+    },
+    {
+      "id": "F-1",
+      "batch": "B — tests that prove a guard works",
+      "plain_title": "The token check is never tested the way the build runs it",
+      "engine_number": 1,
+      "engine_title": "Auth-token build guard never run end to end with a token",
+      "severity": "P2",
+      "confidence": 75,
+      "file": "tooling/assert-no-auth-token.test.mjs",
+      "line": 67,
+      "reviewers": ["testing"],
+      "autofix_class": "gated_auto",
+      "engine_why_it_matters": "The only test of the script as the build runs it passes SENTRY_AUTH_TOKEN='' and expects exit 0. That is also what happens if the entry check (process.argv[1] against import.meta.url) never matches, so the last defence against the production token reaching a browser-downloaded file could be a silent no-op with every test green. The branch that prints the report and sets process.exitCode = 1 (assert-no-auth-token.mjs:61-63) is executed by no test; the function-level tests call tokenLeakReport directly and skip that wiring. Running a copy of the real script from a temp web/scripts/ with a planted leak closes the gap without a production seam, because the script derives WEB from its own location.",
+      "engine_suggested_fix": "Add two cases to tooling/assert-no-auth-token.test.mjs: copy web/scripts/assert-no-auth-token.mjs into <tmp>/web/scripts/, plant <tmp>/web/public/leak.txt holding the fake token, and spawnSync the copy with SENTRY_AUTH_TOKEN set to the fake. Expect status 1, stderr naming public/leak.txt and not containing the token. A clean tree with the same token expects status 0. Keep the existing empty-token case.",
+      "engine_validator": "tooling/assert-no-auth-token.test.mjs:67-73 is the file's only spawnSync and runs with SENTRY_AUTH_TOKEN='', which returns null at web/scripts/assert-no-auth-token.mjs:40 and exits 0 whether or not the argv-versus-import.meta.url entry check at :56-59 matches, so the print-and-exitCode=1 path at :60-63 (both files added by this diff; git grep finds no other test or caller besides the build script) is exercised by nothing, though whether the entry check ever fails to match in a real build (the precondition) was not measured.",
+      "severity_meaning": "P2 = a real problem with a meaningful downside; fix if straightforward",
+      "confidence_meaning": "75 = the reviewer inferred it from reading the code; this loop's verifier then ran it (see 'verified')",
+      "verified": "pass — the test file starts the script once, with an empty token, which exits 0 whether or not the script's entry check works; the path that fails a production build (print the report, exit 1) runs in no test.",
+      "scenario": "You change the token check later, for example you move its entry check into a helper, and by mistake the check no longer runs when the build starts the script. Every test stays green, because the only test that starts the script gives it an empty token, and then the script exits 0 anyway. Later another change puts the Sentry token into a page, and the production build still passes and serves the token to every visitor.",
+      "whats_wrong": "tooling/assert-no-auth-token.test.mjs tests the leak-finding function directly, but runs the SCRIPT only with an empty token. If the script's entry check (`process.argv[1]` against `import.meta.url`) stopped matching, the build would run it, it would check nothing, exit 0, and every test would stay green.",
+      "breaks_today": "Nothing today; it guards a future edit. Measured: started the way the build starts it, with a fake token and a planted public/leak.txt, the script exits 1 and names the file.",
+      "before": "tooling/assert-no-auth-token.test.mjs:67-73\n67  test('run as a script with no token, it exits 0', () => {\n68    const run = spawnSync(process.execPath, ['web/scripts/assert-no-auth-token.mjs'], {\n69      env: { ...process.env, SENTRY_AUTH_TOKEN: '' },\n70      encoding: 'utf8',\n71    });\n72    assert.equal(run.status, 0, run.stderr);\n73  });\n\nweb/scripts/assert-no-auth-token.mjs:39-40\n39  export function tokenLeakReport({ token, root = WEB }) {\n40    if (!token) return null;\n\nweb/scripts/assert-no-auth-token.mjs:56-64\n56  if (\n57    process.argv[1] &&\n58    path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url))\n59  ) {\n60    const report = tokenLeakReport({ token: process.env.SENTRY_AUTH_TOKEN });\n61    if (report !== null) {\n62      console.error(report);\n63      process.exitCode = 1;\n64    }",
+      "after_excerpt": "Two new cases copy the real script into a temporary web/scripts/ and start it EXACTLY as web's build does — from inside web/, `node scripts/assert-no-auth-token.mjs` — with a made-up token in its environment:\n  - a temporary web/public/leak.txt holding the token: exit 1, stderr names public/leak.txt, and the output never contains the token;\n  - a clean tree with the same token: exit 0.\n(the existing empty-token case stays)",
+      "after_diff": "spikes/spike-F1.diff",
+      "proposed_fix": "Add the two cases above to tooling/assert-no-auth-token.test.mjs.",
+      "why_it_works": "It runs the only path that fails a production build. The bite run proved it: breaking the entry check turns exactly the new leak case red while the 9 other cases stay green.",
+      "spike": {
+        "applied": true,
+        "result": "10/10 pass (relative start, as the build does); bite: only the new leak case fails; prettier and cspell pass (eslint does not lint tooling/*.mjs in this repository).",
+        "surprise": "The finding's own version (start the copy by an ABSOLUTE path under the system temp folder) FAILS on macOS: the temp folder sits behind a symlink, Node resolves symlinks in import.meta.url but not in process.argv[1], so the entry check never matches and the script exits 0 having checked nothing. The build is safe (it starts the script by a relative path, and the working folder is always a real path), so the spiked test uses the build's own form."
+      },
+      "options": [
+        {
+          "key": "1",
+          "label": "Apply (Recommended)",
+          "what": "spikes/spike-F1.diff"
+        },
+        {
+          "key": "2",
+          "label": "Skip — decide later"
+        },
+        {
+          "key": "3",
+          "label": "Drop"
+        }
+      ],
+      "recommendation": "Apply: tests only, no runtime change, and it pins the last guard between the token and a browser.",
+      "missing_context": "The gap is already known: the implementation ledger lists it as a deferred minor for Task 2 (\"the exit-1 CLI path has no test (only the empty-token exit 0 run); reviewer's probe shows it works\"). No decision says to leave it untested, and the plan's commit table claims Task 2 proves \"a leaked token fails the build\". The finding adds a concrete fix. The spike found one thing the reviewer did not know: the entry check compares process.argv[1] with import.meta.url, and Node resolves symlinks in import.meta.url but not in process.argv[1]. So when the script is started with an absolute path that goes through a symlink, the check never matches and the script exits 0 without checking anything. The build itself is safe: it starts the script as `node scripts/assert-no-auth-token.mjs` from inside web/, and Node's working folder is always the real path (measured from a symlinked folder: exit 1 on a planted leak). But the test exactly as the finding wrote it starts the copy with an absolute path under Node's temp folder, and on macOS that folder sits behind a system symlink, so that test fails on a Mac.",
+      "recorded_decisions": "Already a deferred minor in the implementation ledger (Task 2: 'the exit-1 path has no test'); no decision says to leave it untested.",
+      "triage_decision": null,
+      "applied_in": null
+    },
+    {
+      "id": "F-3",
+      "batch": "B — tests that prove a guard works",
+      "plain_title": "Four storage catches: nothing tests which report each one sends",
+      "engine_number": 3,
+      "engine_title": "Storage-refusal vs bug split unpinned at four storage catches",
+      "severity": "P2",
+      "confidence": 75,
+      "file": "web/app/play/PlayerShell.tsx",
+      "line": 759,
+      "reviewers": ["testing"],
+      "autofix_class": "gated_auto",
+      "engine_why_it_matters": "Four of the six storage catches decide whether a failure is the visitor's environment (a breadcrumb, no quota) or our bug (an error event), and seven of their eight arms have no assertion. If the check were inverted or the else arm dropped, every settings edit by a private-window or full-quota visitor would send an error event (quota burn, bogus issues), or a real serializer bug would be swallowed as a breadcrumb. web/AGENTS.md says the lint rule cannot see a report made in only one branch of a catch, so nothing else would fail: only transport-storage.ts's two catches have unit cases, and e2e case 5 reaches the settings-read noteError arm alone.",
+      "engine_suggested_fix": "Add one case per catch that makes storage throw new DOMException('blocked', 'SecurityError') and then new TypeError('our bug'), asserting addBreadcrumb (the catch's message, data.error 'SecurityError') versus captureException, the way transport-storage.test.ts:239-298 does. In PlayerShell.test.tsx: spy Storage.prototype.getItem to throw (settings read), seed '{broken' with setItem throwing (repair write-back), and edit one setting with setItem throwing (edit write). In useRestoredTransport.test.ts: assert the breadcrumb in 'a blocked write-back keeps the restore and the warning' and add the TypeError variant asserting captureException.",
+      "engine_validator": "The four catches at PlayerShell.tsx:216-218, :246-248, :759-760 and useRestoredTransport.ts:117-119 were bare catch blocks at base 47a7c6c3 and now branch on isStorageRefusal, yet PlayerShell.test.tsx contains no Storage spy, useRestoredTransport.test.ts:226-240 throws QuotaExceededError but asserts nothing about addBreadcrumb or captureException (both mocked globally at vitest.setup.ts:9), only error-reporting.e2e.ts:166-185 asserts the settings-read breadcrumb arm, and web/AGENTS.md:20-22 states lint cannot see a one-branch report, so seven of eight arms are unpinned; the precondition is a future inverted check or dropped arm, so incidence was not measured.",
+      "severity_meaning": "P2 = a real problem with a meaningful downside; fix if straightforward",
+      "confidence_meaning": "75 = the reviewer inferred it from reading the code; this loop's verifier then ran it (see 'verified')",
+      "verified": "pass — seven of the eight arms (blocked storage -> breadcrumb; our bug -> error report) have no assertion; only e2e case 5 pins the settings-read breadcrumb.",
+      "scenario": "You tidy one of these catches later, for example you swap its two lines while moving code. From then on, every visitor in a private window who changes a setting sends an error report to Sentry, which uses the 5,000-a-month quota on something that is not a bug; or a real bug in our settings code becomes a quiet breadcrumb. No unit test would fail today: in the spike, the 19 other PlayerShell cases stayed green when any one of these catches was swapped.",
+      "whats_wrong": "Each of the four catches decides: storage the browser refused (a private window, a full quota) leaves only a breadcrumb (spec decision S2b), anything else is our bug and sends an error report. Nothing tests that split at these four places, and the lint rule cannot see a report made in only one branch (web/AGENTS.md says so).",
+      "breaks_today": "Nothing today; it guards a future edit. All four catches pick the right arm today: the new cases pass on the current code.",
+      "before": "web/app/play/PlayerShell.tsx:216-218\n216        if (isStorageRefusal(error))\n217          noteError(error, 'Player settings could not be read from storage');\n218        else reportError(error);\n\nweb/app/play/PlayerShell.tsx:246-248\n246        if (isStorageRefusal(error))\n247          noteError(error, 'Repaired player settings could not be written back');\n248        else reportError(error);\n\nweb/app/play/PlayerShell.tsx:759-760\n759              if (isStorageRefusal(error)) noteError(error, 'Player settings could not be saved');\n760              else reportError(error);\n\nweb/app/play/useRestoredTransport.ts:117-119\n117        if (isStorageRefusal(error))\n118          noteError(error, 'Repaired transport values could not be written back');\n119        else reportError(error);\n\nweb/app/play/useRestoredTransport.test.ts:226-231\n226  test('a blocked write-back keeps the restore and the warning', () => {\n227    seed(JSON.stringify({ version: 1, settings: { ...STORED, masterVolume: 9 } }));\n228    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {\n229      throw new DOMException('The quota has been exceeded.', 'QuotaExceededError');\n230    });\n231    const { engine, result, arrive } = renderTransport();\n\nweb/app/play/useRestoredTransport.test.ts:237-240\n237    expect(restoredValues(result.current)).toEqual({ ...STORED, masterVolume: 1 });\n238    expect(engine).toEqual({ ...STORED, masterVolume: 1 });\n239    expect(result.current.repaired).toEqual(['masterVolume']);\n240  });",
+      "after_excerpt": "7 new unit cases. In web/app/play/PlayerShell.test.tsx, one describe block with a refusal case and a TypeError case for each of three catches: settings read, repaired-settings write-back, settings edit. In web/app/play/useRestoredTransport.test.ts, the breadcrumb assertion is added to 'a blocked write-back keeps the restore and the warning', plus a TypeError case. Each refusal case asserts the exact breadcrumb (category notation-hero, level warning, the catch's own message, data.error SecurityError or QuotaExceededError) and no error report; each TypeError case asserts exactly one captureException and no breadcrumb.",
+      "after_diff": "spikes/spike-F3.diff",
+      "proposed_fix": "Add the seven cases (tests only).",
+      "why_it_works": "Bite-proven: inverting the check in any one catch turns exactly that catch's two new cases red, while every other case stays green.",
+      "spike": {
+        "applied": true,
+        "result": "31/31 pass in the two files; web lint, typecheck, prettier and cspell pass; bites on all four catches each turn exactly 2 cases red."
+      },
+      "options": [
+        {
+          "key": "1",
+          "label": "Apply (Recommended)",
+          "what": "spikes/spike-F3.diff"
+        },
+        {
+          "key": "2",
+          "label": "Skip — decide later"
+        },
+        {
+          "key": "3",
+          "label": "Drop"
+        }
+      ],
+      "recommendation": "Apply: tests only; it protects decision S2b (a blocked visit costs no quota) at every place that applies it.",
+      "missing_context": "Already known: the implementation ledger lists it as a deferred minor for Task 8 (\"only the two transport-storage catches have unit coverage; the four others rely on e2e case 5 (which asserts the settings-read breadcrumb) and a mutation check\"). e2e case 5 (web/e2e/error-reporting.e2e.ts:161-188) pins exactly one arm: the settings read's breadcrumb (it also checks that only the sentinel was sent). So 7 of the 8 arms have no assertion, as the finding says. No decision says to leave them unpinned.",
+      "recorded_decisions": "Already a deferred minor in the ledger (Task 8: only the two transport-storage catches have unit coverage). Spec S2b is the rule these tests protect.",
+      "triage_decision": null,
+      "applied_in": null
+    },
+    {
+      "id": "F-2",
+      "batch": "C — copies that must be edited in step (consolidate now, later, or never)",
+      "plain_title": "The open-a-file error handling is written twice (file picker and drag-and-drop)",
+      "engine_number": 2,
+      "engine_title": "Open-failure handling duplicated across picker and drop handler",
+      "severity": "P2",
+      "confidence": 75,
+      "file": "web/app/play/PlayerShell.tsx",
+      "line": 1054,
+      "reviewers": ["maintainability"],
+      "autofix_class": "manual",
+      "engine_why_it_matters": "The picker (OpenFileControl.accept) and the drop handler (PlayerShell.acceptDropped) now each carry the same ~25-line frame: rememberOpenFile, suspendInstruments, a `read` flag, an E101/E102-versus-E105 split with its {type, bytes} facts, the dismiss-and-toast tail, and restoreInstruments in a `finally`. Only comments ('Same boundary as OpenFileControl's accept') and a test written to keep the copies in step (commit f25daa41, 'pin that both open paths remember the file name first') hold the two together, so a copy that misses rememberOpenFile sends the file name unscrubbed from that entry point, and one that misses restoreInstruments leaves the instruments tag off for the rest of the visit (report.ts:156-159 documents that failure mode). One openPickedFile(file, load) helper beside readNotation and loadFailureMessage owns both invariants once and removes the duplicated lines from the 1382-line PlayerShell.tsx.",
+      "engine_suggested_fix": "In web/app/play/OpenFileControl.tsx (it already exports readNotation, openFailureCode, readFailureMessage, loadFailureMessage and fileType) add `export async function openPickedFile(file: File, load: (notation: LoadedNotation) => Promise<void>): Promise<ErrorCode | null>` that runs rememberOpenFile, suspendInstruments, readNotation, `read = true`, load; in its catch it picks `code = read ? ERROR.openFailedAfterRead : openFailureCode(file)`, calls reportError with level 'warning' only when the file was not read, runs toast.dismiss('notation-load') and toast.error(read ? loadFailureMessage(file) : readFailureMessage(file), { id: `${code}:${file.name}` }), and returns the code; restoreInstruments goes in its `finally`. Then `accept` becomes `void openPickedFile(file, onNotation)` and `acceptDropped` becomes `const code = await openPickedFile(file, requestNotation); if (code) setAnnouncement(`${file.name} could not be opened. Error ${code}.`)`. Assumption: the screen-reader announcement stays drop-only, as today. The E103 catch (PlayerShell.tsx:914-940) and the post-swap E105 catch (PlayerShell.tsx:997-1008) can adopt the same dismiss-and-toast tail later; they need not move now.",
+      "engine_validator": "At base 47a7c6c3 both handlers held only a short try/catch, and this diff grew PlayerShell.tsx:1051-1079 and OpenFileControl.tsx:93-123 into the same ~25-line frame (rememberOpenFile, suspendInstruments, the read flag with its E105 versus E101/E102 split, the dismiss-and-toast tail also repeated at PlayerShell.tsx:928 and :1003, restoreInstruments in finally) joined only by cross-referencing comments, although per-path tests (OpenFileControl.test.tsx:74,100; PlayerShell.test.tsx:262,349) already pin several of those invariants, so the cited drift consequences are partly guarded and their future incidence was not measured.",
+      "severity_meaning": "P2 = a real problem with a meaningful downside; fix if straightforward",
+      "confidence_meaning": "75 = the reviewer inferred it from reading the code; this loop's verifier then ran it (see 'verified')",
+      "verified": "pass — both copies grew in this PR from about 10 lines to about 28; but its two drift examples (a missing rememberOpenFile or restoreInstruments) already turn tests red on both paths (bite-run). What is left is a NEW step added to only one copy.",
+      "scenario": "You add a new detail to the report for a failed open, for example a new tag, in the picker's catch in OpenFileControl.tsx. You do not know there is a second copy in PlayerShell.tsx, so files dropped onto the player send reports without it. No test notices, because the tests on each path check only the details that exist today.",
+      "whats_wrong": "OpenFileControl.tsx's `accept` (the file picker) and PlayerShell.tsx's `acceptDropped` (drag-and-drop) each carry the same frame: remember the file name, hold back the instruments tag, the read flag, the E101/E102-versus-E105 report and toast, and restore the tag in `finally`. Only comments tie them together.",
+      "breaks_today": "Nothing today; it guards a future edit. Both copies behave the same today.",
+      "before": "web/app/play/PlayerShell.tsx:1048-1050\n1048    // Same boundary as OpenFileControl's `accept`: the 25 MB check, then the same failure toast\n1049    // (E101 or E102). Without the try/catch, `void acceptDropped(...)` would hide a rejected read\n1050    // and show nothing.\n\nweb/app/play/PlayerShell.tsx:1053-1058\n1053        if (!file) return;\n1054        rememberOpenFile(file.name);\n1055        suspendInstruments();\n1056        // Set between the two steps, as in OpenFileControl's `accept`: before it, the visitor's file\n1057        // (E101 or E102, a warning); after it, our own code (E105, an error).\n1058        let read = false;\n\nweb/app/play/PlayerShell.tsx:1063-1076\n1063        } catch (error) {\n1064          const code = read ? ERROR.openFailedAfterRead : openFailureCode(file);\n1065          const facts = { type: fileType(file.name), bytes: file.size };\n1066          if (read) reportError(error, { code, file: facts });\n1067          else reportError(error, { code, level: 'warning', file: facts });\n1068          // Same id as requestNotation's loading toast — see OpenFileControl's `accept`.\n1069          toast.dismiss('notation-load');\n1070          toast.error(read ? loadFailureMessage(file) : readFailureMessage(file), {\n1071            id: `${code}:${file.name}`,\n1072          });\n1073          setAnnouncement(`${file.name} could not be opened. Error ${code}.`);\n1074        } finally {\n1075          restoreInstruments();\n1076        }\n\nweb/app/play/OpenFileControl.tsx:94-101\n94      if (!file) return;\n95      rememberOpenFile(file.name);\n96      // While this open runs, no report carries the instruments tag: a failure while opening must\n97      // never carry the last song's instruments. The `finally` puts it back when the open ends.\n98      suspendInstruments();\n99      // Set between the two steps. Before it, a failure is the visitor's file: E101 or E102, a\n100      // warning. After it, our own code failed loading a file that was read fine: E105, an error.\n101      let read = false;\n\nweb/app/play/OpenFileControl.tsx:108-122\n108      } catch (error) {\n109        const facts = { type: fileType(file.name), bytes: file.size };\n110        // Own id, not the spinner's: see the note in PlayerShell. The same file failing the same way\n111        // twice refreshes one toast rather than stacking a duplicate.\n112        toast.dismiss('notation-load');\n113        if (read) {\n114          reportError(error, { code: ERROR.openFailedAfterRead, file: facts });\n115          toast.error(loadFailureMessage(file), { id: `${ERROR.openFailedAfterRead}:${file.name}` });\n116        } else {\n117          reportError(error, { code: openFailureCode(file), level: 'warning', file: facts });\n118          toast.error(readFailureMessage(file), { id: `${openFailureCode(file)}:${file.name}` });\n119        }\n120      } finally {\n121        restoreInstruments();\n122      }",
+      "after_excerpt": "One helper in web/app/play/OpenFileControl.tsx owns the whole frame:\n\n  export async function openPickedFile(\n    file: File,\n    load: (notation: LoadedNotation) => void | Promise<void>,\n  ): Promise<ErrorCode | null> { ...remember, hold back the tag, read, load, report + toast on failure, restore the tag... }\n\n  // PlayerShell.tsx, the drop path, keeps its own screen-reader announcement:\n  const code = await openPickedFile(file, requestNotation);\n  if (code) setAnnouncement(`${file.name} could not be opened. Error ${code}.`);\n\n  // OpenFileControl.tsx, the picker:\n  if (file) void openPickedFile(file, onNotation);",
+      "after_diff": "spikes/spike-F2.diff",
+      "proposed_fix": "Move the shared frame into `openPickedFile(file, load)`; both paths call it.",
+      "why_it_works": "Each invariant lives in one place, so a new step cannot reach only one path.",
+      "spike": {
+        "applied": true,
+        "result": "web/app/play/OpenFileControl.test.tsx: 5 passed of 5. web/app/play/PlayerShell.test.tsx: 15 passed of 15. No test file was changed. Lint and typecheck pass. Lines: PlayerShell.tsx 1382 -> 1353, OpenFileControl.tsx 185 -> 199; net 15 fewer. A throwaway test compared ordered call lists on old and new code in 15 scenarios (E101, E102, E105, success, cancel; picker, drop, picker inside the shell): identical except ONE order change in the picker (toast.dismiss now runs after the report; the other three copies already used that order).",
+        "problems": "1) The signature in the finding does not compile as written. It types load as returning Promise<void>, but the onNotation prop is typed void | Promise<void> on purpose (its comment explains why). TypeScript gave error TS2345 at the call in accept. The spike types load as void | Promise<void> instead, and leaves the prop type alone. 2) One small change of order, in the picker only: toast.dismiss now runs after the report, not before it. This order is the same as the drop path and as the two other catches in PlayerShell.tsx (E103 and the E105 after the swap), so three of the four old copies already used it. A person cannot see the difference, because both calls run in the same moment. It would matter only if reportError threw: then the picker would now skip the dismiss and the error toast (the drop path already did that). One of the two orders has to change; to keep the picker's old order, move the toast.dismiss line above the reportError lines. 3) Four exports lose their only outside user: readNotation, openFailureCode, readFailureMessage and loadFailureMessage in web/app/play/OpenFileControl.tsx. The repo's knip tool (configured, but not run in CI) now lists them as unused exports. The spike left them exported. Dropping the word export on those four was not tried. 4) The drop path now sets the screen-reader text one small step later than before (after restoreInstruments, not before it). The final text is the same, and no test or scenario can tell. 5) accept stays in OpenFileControl.tsx as a two-line wrapper, because openPickedFile takes a real File and the cancel case (no file) still needs its guard. 6) The stale comment above acceptDropped is replaced: it now names E101, E102 and E105 and says the announcement is the drop path's own. Extra checks, all pass: prettier --check and cspell on the two files.",
+        "untested": "The end-to-end lane (the real open flow in a browser) was not run in the spike; it would run before the commit."
+      },
+      "options": [
+        {
+          "key": "1",
+          "label": "Apply now (Recommended)",
+          "what": "spikes/spike-F2.diff, then the full end-to-end lane before the commit",
+          "pros": "One place for the frame; 15 lines fewer; behaviour proven the same in 15 scenarios.",
+          "cons": "Touches the open flow late in this PR; four exports lose their only outside user (knip, not in CI, would list them); one invisible order change in the picker."
+        },
+        {
+          "key": "2",
+          "label": "Follow-up ticket",
+          "what": "a small Jira ticket with the spike diff attached",
+          "pros": "This PR stays as reviewed.",
+          "cons": "Another ticket in the backlog; the duplicate ships."
+        },
+        {
+          "key": "3",
+          "label": "Keep as is (Drop)",
+          "what": "ruling E12 stands",
+          "pros": "No change.",
+          "cons": "A future step may reach only one path."
+        },
+        {
+          "key": "4",
+          "label": "Skip — decide later"
+        }
+      ],
+      "recommendation": "Apply now: the work is done and proven the same, and this PR is what made both copies grow. Flip to a follow-up if you want this PR to stay surgical — the reason ruling E12 gave.",
+      "missing_context": "Recorded decision: ledger ruling E12 (pre-flight scan, before Task 11): \"Task 11's read-flag branching stays in both open paths as written; the twin exists today — cost if wrong: duplicated branching stays.\" So the duplication was a known, accepted cost. What E12 did not weigh: at the base commit each copy was about 10 lines, and this diff grew both to about 28. The stale comment (PlayerShell.tsx:1048-1050 names only E101/E102) is already a deferred minor from Task 11's review. The two drift risks the finding names are already caught by tests on both paths, measured by deleting each call in the copy: drop path without restoreInstruments: 8 PlayerShell tests fail (including 'two opens at once'); drop path without rememberOpenFile: 'a dropped file is remembered by name before it is read' fails; picker without restoreInstruments: OpenFileControl's 'carries no instruments tag on either failure, and puts it back once the open ends' fails (f2-bites.log). The picker's rememberOpenFile is pinned by e2e case 3 (its sentinel quotes the file name and expects [file]); not bite-run here. The warning-versus-error level is pinned on both paths too (OpenFileControl.test.tsx:52-99; PlayerShell.test.tsx:262-276 and 349-360).",
+      "recorded_decisions": "Ruling E12 (the controller's pre-flight ruling, reported to the owner, NOT an owner pick): 'Task 11's read-flag branching stays in both open paths as written; the twin exists today — cost if wrong: duplicated branching stays.' New since then: the copies grew about 3x, and a spike shows the merge is cheap and behaves the same.",
+      "triage_decision": null,
+      "applied_in": null
+    },
+    {
+      "id": "F-5",
+      "batch": "C — copies that must be edited in step (consolidate now, later, or never)",
+      "plain_title": "The crash-page text and its report are written three times",
+      "engine_number": 5,
+      "engine_title": "Crash-page copy and report effect triplicated across three pages",
+      "severity": "P3",
+      "confidence": 75,
+      "file": "web/app/global-error.tsx",
+      "line": 19,
+      "reviewers": ["maintainability"],
+      "autofix_class": "manual",
+      "engine_why_it_matters": "The privacy sentence 'Errors are reported automatically - without your file, its name, or the music in it', the 'Error E901 - the page crashed unexpectedly.' line, the h1/h2 structure and the one-line report effect now exist verbatim in error.tsx, play/error.tsx and the new global-error.tsx, and each page has its own copy of the same test assertions. This diff had to rewrite that promise in every page in lock-step (it replaced 'Nothing you opened was sent anywhere'); a crash page missed by a later copy edit would keep making a claim the product no longer honors, and no test would notice because each test asserts only its own page. One shared component turns the promise into a single edit.",
+      "engine_suggested_fix": "Add web/app/CrashPage.tsx ('use client'; props: error, reset, heading) holding the <main> markup, the privacy and E901 paragraphs, the Try again Button and `useEffect(() => reportError(error, { code: ERROR.unexpectedCrash, handled: false }), [error])`. error.tsx and play/error.tsx render it with their heading; global-error.tsx wraps it in its own <html><body><title>. Collapse the three near-identical test files into one `test.each` over the three pages. Assumption: the heading text is the only per-page difference, as in this diff.",
+      "engine_validator": "global-error.tsx:19,29-30,33 (new), error.tsx:10,17-18,21 and play/error.tsx:13,20-21,24 repeat the same report effect, privacy sentence and E901 line verbatim, differing only in the h2 and global-error's html/body wrapper, and the three new test files each assert the sentence for their own page only (error.test.tsx:17, play/error.test.tsx:17, global-error.test.tsx:21), so this diff created the third copy and rewrote the other two in lock-step, and a future copy edit that misses one page would pass every test, though such drift's incidence cannot be measured.",
+      "severity_meaning": "P3 = low impact, narrow; the owner's discretion",
+      "confidence_meaning": "75 = the reviewer inferred it from reading the code; this loop's verifier then ran it (see 'verified')",
+      "verified": "pass — the three crash pages repeat the same report effect, the privacy sentence and the E901 line, word for word; each page's test checks only its own copy.",
+      "scenario": "You change the privacy sentence on the crash pages later, for example because reports start to carry something new. You update web/app/error.tsx and its test, but you miss web/app/play/error.tsx. A visitor whose player crashes still reads the old promise, and every test stays green, because each page's test checks only its own copy of the sentence.",
+      "whats_wrong": "web/app/error.tsx, web/app/play/error.tsx and the new web/app/global-error.tsx each hold the same h1, the privacy promise, the E901 line, the Try again button and the E901 report. A later copy edit that misses one page passes every test.",
+      "breaks_today": "Nothing today; it guards a future edit. The three pages say the same thing today.",
+      "before": "web/app/global-error.tsx:19\n19    useEffect(() => reportError(error, { code: ERROR.unexpectedCrash, handled: false }), [error]);\n\nweb/app/global-error.tsx:25-34\n25            <h1 className=\"text-3xl font-bold\">Notation Hero</h1>\n26            <h2 className=\"text-xl font-semibold\">Something went wrong</h2>\n27            {/* Not \"a report was sent\": an ad blocker may have stopped it, and this page cannot know. */}\n28            <p className=\"max-w-prose text-muted-foreground\">\n29              Errors are reported automatically — without your file, its name, or the music in it. Try\n30              again, or reload the page.\n31            </p>\n32            <p className=\"text-sm text-muted-foreground\">\n33              Error {ERROR.unexpectedCrash} — the page crashed unexpectedly.\n34            </p>\n\nweb/app/error.tsx:10\n10    useEffect(() => reportError(error, { code: ERROR.unexpectedCrash, handled: false }), [error]);\n\nweb/app/error.tsx:13-22\n13        <h1 className=\"text-3xl font-bold\">Notation Hero</h1>\n14        <h2 className=\"text-xl font-semibold\">Something went wrong</h2>\n15        {/* Not \"a report was sent\": an ad blocker may have stopped it, and this page cannot know. */}\n16        <p className=\"max-w-prose text-muted-foreground\">\n17          Errors are reported automatically — without your file, its name, or the music in it. Try\n18          again, or reload the page.\n19        </p>\n20        <p className=\"text-sm text-muted-foreground\">\n21          Error {ERROR.unexpectedCrash} — the page crashed unexpectedly.\n22        </p>\n\nweb/app/play/error.tsx:13\n13    useEffect(() => reportError(error, { code: ERROR.unexpectedCrash, handled: false }), [error]);\n\nweb/app/play/error.tsx:16-25\n16        <h1 className=\"text-3xl font-bold\">Notation Hero</h1>\n17        <h2 className=\"text-xl font-semibold\">The player stopped unexpectedly</h2>\n18        {/* Not \"a report was sent\": an ad blocker may have stopped it, and this page cannot know. */}\n19        <p className=\"max-w-prose text-muted-foreground\">\n20          Errors are reported automatically — without your file, its name, or the music in it. Try\n21          again, or reload the page.\n22        </p>\n23        <p className=\"text-sm text-muted-foreground\">\n24          Error {ERROR.unexpectedCrash} — the page crashed unexpectedly.\n25        </p>",
+      "after_excerpt": "A new web/app/CrashPage.tsx ('use client'; props error, reset, heading) holds the <main> content and the E901 report effect, once. The pages become:\n\n  // web/app/error.tsx\n  return <CrashPage error={error} reset={reset} heading=\"Something went wrong\" />;\n  // web/app/play/error.tsx\n  return <CrashPage error={error} reset={reset} heading=\"The player stopped unexpectedly\" />;\n  // web/app/global-error.tsx keeps its own <html lang=\"en\">, <body>, <title> and globals.css, around <CrashPage .../>",
+      "after_diff": "spikes/spike-F5.diff",
+      "proposed_fix": "One CrashPage component; the three pages pass only their heading.",
+      "why_it_works": "The privacy promise and the E901 report exist once, so a copy edit cannot miss a page.",
+      "spike": {
+        "applied": true,
+        "result": "web/app/error.test.tsx: 1 passed of 1. web/app/play/error.test.tsx: 1 passed of 1. web/app/global-error.test.tsx: 1 passed of 1. The three files are unchanged. Lint and typecheck pass. The rendered HTML of all three pages is byte-for-byte the same before and after (a one-character negative control was caught, so the check is not blind). Lines: 4 files, net 24 fewer.",
+        "problems": "No problem found in what was run. Limits: (a) no Next.js build or server was run, so a real root-layout crash through global-error.tsx was not tried; only the rendered HTML and the unit tests were. (b) In global-error.tsx the E901 report effect now lives in CrashPage, one level inside body, not in GlobalError itself. The tests cannot tell the difference, and it runs in the same commit. (c) The three test files were kept as they are, as asked, so they still repeat the same checks; the finding's idea to join them into one test.each was not applied. (d) Two of the three pages still pass the same heading text (Something went wrong). (e) I deleted the throwaway test before running lint and typecheck, so they judge only the real change. Extra checks, all pass: prettier --check and cspell on the four files. The wording of the privacy sentence now exists once, in web/app/CrashPage.tsx.",
+        "render_note": "Byte-identical HTML is the evidence that nothing visible changes; the owner's rule is still to render and look before accepting a UI change, so the apply step renders one crash page."
+      },
+      "options": [
+        {
+          "key": "1",
+          "label": "Apply now (Recommended)",
+          "what": "spikes/spike-F5.diff",
+          "pros": "The privacy promise lives in one place; HTML proven identical; 24 lines fewer.",
+          "cons": "Moves global-error's report effect one component lower (same commit, same behaviour in tests); a real root-layout crash was not run."
+        },
+        {
+          "key": "2",
+          "label": "Follow-up ticket"
+        },
+        {
+          "key": "3",
+          "label": "Keep as is (Drop)",
+          "what": "ruling E11 stands"
+        },
+        {
+          "key": "4",
+          "label": "Skip — decide later"
+        }
+      ],
+      "recommendation": "Apply now: a privacy promise is the text most worth keeping in one place, and the spike proves the pages render the same. Flip to a follow-up if you want this PR to stay surgical (ruling E11's reason).",
+      "missing_context": "Recorded decision: ledger ruling E11 (pre-flight scan): \"Task 7's global-error.tsx keeps its own body as written; refactoring the two existing error pages into a shared panel is outside this PR's scope (surgical changes) — cost if wrong: a third near-copy of the error page.\" So the third copy was a known, accepted cost. At the base commit, error.tsx and play/error.tsx were already twins (without the report effect). The owner's copy decisions of 2026-10-12 (h1 'Notation Hero', the crash title as h2, the E901 line) were applied to all three pages by hand, which is the lock-step edit the finding describes. The finding adds the concrete risk (a privacy promise that goes stale on one page while all tests stay green) but no new defect.",
+      "recorded_decisions": "Ruling E11 (the controller's pre-flight ruling, reported to the owner, NOT an owner pick): 'global-error.tsx keeps its own body as written; refactoring the two existing error pages into a shared panel is outside this PR's scope (surgical changes) — cost if wrong: a third near-copy of the error page.' The owner's copy decisions of 2026-10-12 (h1, h2, E901 line) were then applied to all three pages by hand.",
+      "triage_decision": null,
+      "applied_in": null
+    }
+  ],
+  "auto_resolve": [
+    {
+      "id": "AR-1",
+      "what": "known-engine-noise.ts (its NH-335 comment) and spec section 2.6 say NH-335 fires 'seven times in one open'. Measured on 2026-10-13: once per open, in Chromium, Firefox and WebKit (an earlier probe during Task 13 also saw once). The earlier e2e comment this was paraphrased from said 'seven throws in one CASE'.",
+      "fix": "Reword to 'once per open when measured on 2026-10-13; an earlier CI run counted seven in one test case'. Comment and spec text only; no behaviour change. Fold into F-4's commit if F-4 is applied; otherwise its own commit.",
+      "kind": "ambiguity-only (a wrong fact in a comment)"
+    },
+    {
+      "id": "AR-2",
+      "what": "The comment above acceptDropped (web/app/play/PlayerShell.tsx:1048-1050) names only E101 and E102, but the catch below also sends E105 (already a deferred minor from Task 11).",
+      "fix": "If F-2 is applied, its diff already rewrites that comment. Otherwise change '(E101 or E102)' to '(E101 or E102 before the read, E105 after it)'.",
+      "kind": "ambiguity-only (a stale comment)"
+    }
+  ],
+  "fyi": [
+    "Three reviewers (testing, maintainability, reliability) note that the production-only upload gate in web/next.config.ts (VERCEL_ENV === 'production' ? SENTRY_AUTH_TOKEN : undefined, plus sourcemaps.disable and the hook flag) has no test, so a later edit back to reading the token alone would pass every gate. The engine filed it as a testing gap, not a finding. A small extracted function with a test, as web/scripts/app-version.mjs does for the same rule, would pin it.",
+    "Sentry's Dedupe integration drops an event identical to the previous one; two different non-score files opened back to back fail with the same fixed sentence and stack, so the second E103 (with its file type) never arrives. The same holds for E101 and E102. Counts undercount repeats.",
+    "A production deploy whose DSN or token is later deleted or renamed ships green with monitoring silently off; the owner's one-time setup step 6 check is the only guard.",
+    "A crafted file with tens of thousands of uniquely named tracks could freeze the tab during the open: the names filter's remember() re-sorts its list for every name (O(n^2 log n)). Crafted files only; nothing leaves the device.",
+    "On a return visit to /play in the same tab, a crash before the player's mount effect runs sends the previous visit's instruments tag (a known deferred minor from Task 13).",
+    "global-error.tsx's Try again calls reset(); Next 16's bundled guide suggests retry() in most cases. Spec section 2.2 chose reset, and the page also says to reload.",
+    "No end-to-end case drives a real render crash to an E901 report, and none proves that text from INSIDE a real file (not only its name) is absent from an E103 report.",
+    "The `process.argv[1] === import.meta.url` entry check used by 9 scripts (5 in web/scripts, 4 in tooling) skips its work when a script is started by an absolute path through a symlink (measured). Every build starts them by a relative path, so nothing is affected today; Node 24's import.meta.main would fix all nine. A pre-existing pattern, outside this PR.",
+    "The end-to-end lane runs Chromium only, so Firefox and Safari behaviour of the Sentry filter is pinned by unit cases only (relevant to F-4)."
+  ],
+  "dropped_findings": [
+    {
+      "title": "Unreachable org/project guard in next.config.ts (maintainability, P3, confidence 100)",
+      "reason": "Settled: plan Choice 2 (owner-approved, plan review lap 1). The guard is deliberate protection if a later edit removes a slug; deleting it falls back to the rejected alternative."
+    },
+    {
+      "title": "PlayerShell.tsx grows 128 lines past 1,000 with no split (maintainability, P2, 75)",
+      "reason": "Admission rejection by the engine: a file-size preference with no defect; its concrete trap is F-2. (The file was already 1,254 lines before this PR.)"
+    },
+    {
+      "title": "Music-font clock cleanup on unmount or api change untested (testing, P3, 75)",
+      "reason": "Demoted to a testing gap by the engine: a narrow cleanup case in a subsystem with nine unit cases."
+    },
+    {
+      "title": "Silent-catch lint rule skips .catch(handler) and .then(ok, onRejected) (fast-pass, P3, 50)",
+      "reason": "Suppressed (a suspicion at confidence 50, the orchestrator's own quick read); web/AGENTS.md, added in this PR, documents the same limit. No such form exists in web/ today (grep)."
+    },
+    {
+      "title": "Residual risk: errorHandler's rethrow blocks every production deploy during a Sentry outage (adversarial)",
+      "reason": "Settled: spec section 4 chose to fail the production build rather than deploy with unreadable frames; web/README.md records it."
+    }
+  ],
+  "spike_hygiene": "Both throwaway worktrees were detached (no branch), installed with --ignore-scripts; the shared git hook checksums are unchanged; every server was stopped by its process id. The two copies are still on disk for the controller to remove. The diffs under spikes/ were cut at ec7f6619; their blank context lines were stored without the leading space (the repository's editorconfig check forbids trailing spaces). `git apply --check` accepts all six against ec7f6619 as stored.",
+  "exit_signal": {
+    "status": "complete",
+    "verdict": "Ready with fixes",
+    "actionable_findings": [1, 2, 3, 4, 5],
+    "p0": 0,
+    "p1": 0,
+    "p2": 4,
+    "p3": 1,
+    "validator": "5 confirmed, 0 rejected, 0 unresolved",
+    "suppressed_at_50": 1,
+    "settled_discards": 2,
+    "admission_rejections": 1,
+    "demotions": 1,
+    "clean": false,
+    "not_clean_because": "verdict is 'Ready with fixes' and actionable_findings is non-empty"
+  }
+}

@@ -1,0 +1,200 @@
+diff --git a/web/lib/monitoring/known-engine-noise.test.ts b/web/lib/monitoring/known-engine-noise.test.ts
+index acbd5f83..a20e2976 100644
+--- a/web/lib/monitoring/known-engine-noise.test.ts
++++ b/web/lib/monitoring/known-engine-noise.test.ts
+@@ -63,6 +63,102 @@ describe('isKnownEngineNoise, the Sentry filter', () => {
+   });
+ });
+
++// Firefox and WebKit word both throws differently, and write each stack line as fn@url:line:col.
++// The messages and stacks below were recorded from a production build of this app, opening
++// guitar-no-percussion.gp (NH-335) and pressing Play then Pause (NH-338).
++const FIREFOX_VOICES =
++  'can\'t access property "voices", e.tracks[t.get(...)].staves[t.get(...)].bars[t.get(...)] is undefined';
++const WEBKIT_VOICES =
++  'undefined is not an object (evaluating \'e.tracks[t.get("trackIndex")].staves[t.get("staffIndex")].bars[t.get("barIndex")].voices\')';
++const FIREFOX_STOP =
++  'AudioScheduledSourceNode.stop: Start has not been called on this AudioBufferSourceNode.';
++
++/** A Firefox or WebKit stack's lines, as the Sentry frames it becomes: the file of each `fn@url:line:col`. */
++const framesOf = (...lines: readonly string[]) => ({
++  frames: lines.map((line) => ({
++    filename: line.slice(line.indexOf('@') + 1).replace(/:\d+:\d+$/, ''),
++  })),
++});
++
++const FIREFOX_VOICES_STACK = framesOf(
++  `fromJson@${ENGINE}:51:527535`,
++  `Zu@${ENGINE}:51:530833`,
++  `jn/<@${ENGINE}:51:529858`,
++);
++const WEBKIT_VOICES_STACK = framesOf(`fromJson@${ENGINE}:51:527551`, `Zu@${ENGINE}:51:530841`);
++const FIREFOX_STOP_STACK = framesOf(
++  `pause@${ENGINE}:51:392512`,
++  `pause@${ENGINE}:51:650057`,
++  `handleWorkerMessage@${ENGINE}:51:522462`,
++  `Hn/<@${ENGINE}:51:519570`,
++);
++
++describe('isKnownEngineNoise, in Firefox and WebKit', () => {
++  it("drops NH-335 in each engine's own words when every frame is the engine's", () => {
++    expect(
++      isKnownEngineNoise({
++        exception: { values: [{ value: FIREFOX_VOICES, stacktrace: FIREFOX_VOICES_STACK }] },
++      }),
++    ).toBe(true);
++    expect(
++      isKnownEngineNoise({
++        exception: { values: [{ value: WEBKIT_VOICES, stacktrace: WEBKIT_VOICES_STACK }] },
++      }),
++    ).toBe(true);
++  });
++
++  it("drops Firefox's NH-338 when every frame is the engine's", () => {
++    expect(
++      isKnownEngineNoise({
++        exception: { values: [{ value: FIREFOX_STOP, stacktrace: FIREFOX_STOP_STACK }] },
++      }),
++    ).toBe(true);
++  });
++
++  it('keeps the same words when one frame is our own code', () => {
++    const ours = framesOf(`fromJson@${ENGINE}:51:527535`, `t@${OURS}:1:60471`);
++    expect(
++      isKnownEngineNoise({ exception: { values: [{ value: FIREFOX_VOICES, stacktrace: ours }] } }),
++    ).toBe(false);
++    expect(
++      isKnownEngineNoise({ exception: { values: [{ value: WEBKIT_VOICES, stacktrace: ours }] } }),
++    ).toBe(false);
++  });
++
++  it('keeps another property read on undefined, in every wording', () => {
++    for (const value of [
++      "Cannot read properties of undefined (reading 'notes')",
++      'can\'t access property "notes", e.bars[t] is undefined',
++      "undefined is not an object (evaluating 'e.bars[t].notes')",
++    ])
++      expect(
++        isKnownEngineNoise({
++          exception: { values: [{ value, stacktrace: FIREFOX_VOICES_STACK }] },
++        }),
++      ).toBe(false);
++  });
++
++  it("drops WebKit's NH-338, whose stack starts in the browser's own stop()", () => {
++    const stack = framesOf(
++      'stop@[native code]',
++      `pause@${ENGINE}:51:392516`,
++      `pause@${ENGINE}:51:650062`,
++      `handleWorkerMessage@${ENGINE}:51:522462`,
++    );
++    expect(
++      isKnownEngineNoise({ exception: { values: [{ value: stop, stacktrace: stack }] } }),
++    ).toBe(true);
++  });
++
++  it("keeps a stack of only the browser's own frames: nothing ties it to the engine", () => {
++    expect(
++      isKnownEngineNoise({
++        exception: { values: [{ value: stop, stacktrace: framesOf('stop@[native code]') }] },
++      }),
++    ).toBe(false);
++  });
++});
++
+ /** A V8 stack string for the known throw: its first line, then one frame in each file given. */
+ const stack = (...frames: readonly string[]) =>
+   [`TypeError: ${voices}`, ...frames.map((frame) => `    at Jn.fromJson (${frame}:1:100)`)].join(
+diff --git a/web/lib/monitoring/known-engine-noise.ts b/web/lib/monitoring/known-engine-noise.ts
+index 1f71972b..e45e3799 100644
+--- a/web/lib/monitoring/known-engine-noise.ts
++++ b/web/lib/monitoring/known-engine-noise.ts
+@@ -17,33 +17,50 @@
+ /** The vendored engine bundle, as web/scripts/vendor-alphatab.mjs serves it. */
+ export const ENGINE_BUNDLE = '/alphatab/esm/alphaTab.core.mjs';
+
+-export const KNOWN_ENGINE_NOISE: readonly { readonly ticket: string; readonly message: string }[] =
+-  [
+-    {
+-      // NH-335. Thrown on the MAIN thread, by the engine's listener on its worker, while it
+-      // deserializes a score the worker sent back. Nothing observable follows — the score renders,
+-      // a transposition reaches the staff, and playback runs. Ordinary Guitar Pro files reach it:
+-      // guitar-no-percussion.gp, alphatex-GP5.gp5 and alphatex-GPX.gpx all do, seven times in one
+-      // open. Every frame of every occurrence is the engine's:
+-      //     at Jn.fromJson        (…/alphatab/esm/alphaTab.core.mjs)
+-      //     at jn.Zu              (…/alphatab/esm/alphaTab.core.mjs)
+-      //     at Worker.<anonymous> (…/alphatab/esm/alphaTab.core.mjs)
+-      ticket: 'NH-335',
+-      message: "Cannot read properties of undefined (reading 'voices')",
+-    },
+-    {
+-      // NH-338. The engine's AudioWorklet output has no "has started" flag: play() reaches
+-      // source.start(0) only inside an async promise, while pause() calls source.stop(0) at once, so
+-      // a Pause pressed before that promise settles stops a node that never started. Measured 7 of
+-      // 10 quick Pause presses. The remedy that helps a person — holding Pause back until the output
+-      // has started — costs responsiveness, and NH-338 carries that decision.
+-      ticket: 'NH-338',
+-      message: 'cannot call stop without calling start first',
+-    },
+-  ];
++export const KNOWN_ENGINE_NOISE: readonly {
++  readonly ticket: string;
++  /** V8's wording (Chrome, Edge) — the text the Chromium-only end-to-end cases wait for. */
++  readonly message: string;
++  /** Every browser engine's wording of the same throw, as measured; any one matches. */
++  readonly wordings: readonly RegExp[];
++}[] = [
++  {
++    // NH-335. Thrown on the MAIN thread, by the engine's listener on its worker, while it
++    // deserializes a score the worker sent back. Nothing observable follows — the score renders,
++    // a transposition reaches the staff, and playback runs. Ordinary Guitar Pro files reach it:
++    // guitar-no-percussion.gp, alphatex-GP5.gp5 and alphatex-GPX.gpx all do, seven times in one
++    // open. Every frame of every occurrence is the engine's:
++    //     at Jn.fromJson        (…/alphatab/esm/alphaTab.core.mjs)
++    //     at jn.Zu              (…/alphatab/esm/alphaTab.core.mjs)
++    //     at Worker.<anonymous> (…/alphatab/esm/alphaTab.core.mjs)
++    ticket: 'NH-335',
++    message: "Cannot read properties of undefined (reading 'voices')",
++    // Measured against a production build: Chromium 149, Firefox 148, WebKit 26.5. Firefox and
++    // WebKit quote the expression that was undefined, which is minified engine code.
++    wordings: [
++      /Cannot read properties of undefined \(reading 'voices'\)/,
++      /can't access property "voices", .+ is undefined/,
++      /undefined is not an object \(evaluating '[^']*\.voices'\)/,
++    ],
++  },
++  {
++    // NH-338. The engine's AudioWorklet output has no "has started" flag: play() reaches
++    // source.start(0) only inside an async promise, while pause() calls source.stop(0) at once, so
++    // a Pause pressed before that promise settles stops a node that never started. Measured 7 of
++    // 10 quick Pause presses. The remedy that helps a person — holding Pause back until the output
++    // has started — costs responsiveness, and NH-338 carries that decision.
++    ticket: 'NH-338',
++    message: 'cannot call stop without calling start first',
++    // Chromium and WebKit share this wording; Firefox has its own.
++    wordings: [
++      /cannot call stop without calling start first/,
++      /Start has not been called on this AudioBufferSourceNode/,
++    ],
++  },
++];
+
+ const isKnownMessage = (message: string): boolean =>
+-  KNOWN_ENGINE_NOISE.some((noise) => message.includes(noise.message));
++  KNOWN_ENGINE_NOISE.some((noise) => noise.wordings.some((wording) => wording.test(message)));
+
+ const isEngineFile = (file: string): boolean => file.includes(ENGINE_BUNDLE);
+
+@@ -79,7 +96,11 @@ export function isKnownEngineNoise(event: NoiseEvent): boolean {
+   return (
+     exceptions.length > 0 &&
+     exceptions.every((exception) => {
+-      const frames = exception.stacktrace?.frames ?? [];
++      // WebKit adds a frame for the browser's own function the engine called (NH-338's
++      // `stop@[native code]`). It is neither ours nor the engine's, so it neither counts nor blocks.
++      const frames = (exception.stacktrace?.frames ?? []).filter(
++        (frame) => frame.filename !== '[native code]',
++      );
+       return (
+         isKnownMessage(exception.value ?? '') &&
+         frames.length > 0 &&
