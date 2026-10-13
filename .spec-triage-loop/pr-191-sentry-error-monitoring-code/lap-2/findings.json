@@ -1,0 +1,449 @@
+{
+  "_header": {
+    "artifact": "PR #191 (leocaseiro/notation-hero) — Sentry error monitoring for web/ (NH-124): the code, lap 2 FOCUSED on f102c377..51e71665 (the six commits that applied lap 1's decisions)",
+    "artifact_url": "https://github.com/leocaseiro/notation-hero/pull/191",
+    "artifact_path": "the 15 files changed in f102c377..51e71665; see scope.files",
+    "artifact_worktree": "nh-320-vr-spec-lap-4-92e22a",
+    "artifact_path_from_root": ".claude/worktrees/nh-320-vr-spec-lap-4-92e22a/",
+    "artifact_permalink": "https://github.com/leocaseiro/notation-hero/tree/51e71665bcca659fc9376e4781aea4b9a9cc70f0",
+    "artifact_permalink_sha": "51e71665bcca659fc9376e4781aea4b9a9cc70f0",
+    "lap": 2,
+    "finding_count": 4,
+    "auto_resolve_count": 5,
+    "review_skill": "compound-engineering:ce-code-review",
+    "review_mode": "mode:agent base:f102c377 (report-only; the reviewer mutated nothing)",
+    "verify_check": "superpowers:receiving-code-review, From External Reviewers branch: three verifiers in parallel, by area (V1 spec and comments: AR-3, AR-5, AR-7; V2 web tests: AR-4, F-8, F-9, FYI-a, FYI-b; V3 noise-filter tests and the build line: AR-6, F-6, F-7, FYI-c). Each spiked in its own throwaway DETACHED worktree, with a mutation check for every test it added or changed. The engine's own validator had already confirmed engine findings #1-#3.",
+    "state_store": "docs/plans/2026-10-08-nh-124-sentry-error-monitoring-plan.md frontmatter, keys code_review_lap / code_review_last_applied / code_review_findings — written at triage step 6",
+    "scope": {
+      "base": "f102c3776ba3ed00ae8ec3b52f536898dc816808",
+      "head": "51e71665bcca659fc9376e4781aea4b9a9cc70f0",
+      "branch": "claude/sentry-error-monitoring-89abc2",
+      "files_changed": 15,
+      "changed_lines": 696,
+      "exec_nontest_lines": 325,
+      "depth": "full (the engine's size floor: 325 changed non-test lines)",
+      "files": [
+        ".spec-triage-loop/pr-191-sentry-error-monitoring-code/lap-1/findings.json",
+        "docs/decisions/decision-changelog.md",
+        "docs/plans/2026-10-08-nh-124-sentry-error-monitoring-plan.md",
+        "docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md",
+        "tooling/assert-no-auth-token.test.mjs",
+        "web/app/CrashPage.tsx",
+        "web/app/error.tsx",
+        "web/app/global-error.tsx",
+        "web/app/play/OpenFileControl.tsx",
+        "web/app/play/PlayerShell.test.tsx",
+        "web/app/play/PlayerShell.tsx",
+        "web/app/play/error.tsx",
+        "web/app/play/useRestoredTransport.test.ts",
+        "web/lib/monitoring/known-engine-noise.test.ts",
+        "web/lib/monitoring/known-engine-noise.ts"
+      ]
+    },
+    "reviewers": [
+      "correctness",
+      "project-standards",
+      "testing",
+      "maintainability",
+      "security",
+      "reliability",
+      "adversarial (in-process)",
+      "julik-frontend-races"
+    ],
+    "reviewers_skipped": {
+      "learnings": "docs/solutions/ has no note that matches these files",
+      "previous-comments": "base: scope, no PR metadata",
+      "agent-native, performance, api-contract, data-migration": "no such surface in this range"
+    },
+    "cross_model_pass": "NOT RUN — the owner has not consented to sending code to an outside AI provider. The adversarial lens ran in-process.",
+    "engine_verdict": "Ready with fixes (no P0 or P1; three P3, all confirmed by the engine's validator)",
+    "verifier_corrections": [
+      "Engine finding #1 said to change the spec's 'all 16' catch sites to 15. Refuted: 16 stays true at HEAD. Lap 1 merged two catches into one, but commit 5dd90efe (before this range) had added an E105 catch after the swap, in requestNotation, that the spec's table never listed. AR-3 adds that row instead.",
+      "AR-5: openPickedFile also returns null after an E105 that requestNotation reports itself, a fifth case the reviewer did not list.",
+      "F-9 is narrower than the testing reviewer said: the full simplification (`return <CrashPage/>`) is already caught by the existing title check."
+    ],
+    "id_expansions": {
+      "NH-335": "known AlphaTab 1.8.4 bug: 'Cannot read properties of undefined (reading voices)' thrown on ordinary Guitar Pro files; nothing visible breaks",
+      "NH-338": "known AlphaTab 1.8.4 bug: pressing Pause before playback has really started throws 'cannot call stop without calling start first'",
+      "known engine noise": "web/lib/monitoring/known-engine-noise.ts: the list of those two errors that Sentry drops and the e2e gate tolerates — only when every stack frame is in the engine bundle /alphatab/esm/alphaTab.core.mjs",
+      "E101 / E102 / E103": "the visitor's file is too large / unreadable / not a score (warnings)",
+      "E105": "the file was read, but loading it failed — our bug",
+      "E901": "a crash page was shown",
+      "E601 / E603": "stored settings repaired / unreadable",
+      "S2b": "spec decision: storage the browser blocks (a private window, a full quota) leaves a breadcrumb only, never a report",
+      "D2": "spec decision: known engine noise is dropped, with one list the e2e gate also reads",
+      "ruling E11 / E12": "the controller's pre-flight rulings in the implementation ledger (reported to the owner, not owner picks): keep the third crash-page copy / keep the read-flag branching in both open paths",
+      "Choice 2": "plan choice, owner-approved: a production build that has the upload token but not both Sentry slugs fails",
+      "P2": "a real problem with a meaningful downside; fix if straightforward",
+      "P3": "low impact, narrow scope; the owner's discretion",
+      "confidence 75": "the reviewer inferred it from reading, not running; 100 = confirmed against the source; 50 = a suspicion",
+      "Release Health": "Sentry's share of visits per release that ended without an unhandled error — the interim health number until NH-52",
+      "breadcrumb": "a note that travels inside the next real report; never sent alone, costs no quota",
+      "DSN": "the address the browser sends reports to; only Vercel Production has it",
+      "spike": "the proposed fix tried for real in a throwaway copy of the repository, with the result recorded",
+      "lap 1": "the first code-review lap over this PR (2026-10-13): five findings F-1..F-5, all applied, plus AR-1 and AR-2",
+      "F-6": "lap 2 finding: the Firefox/WebKit noise-filter tests build events by hand instead of the file's event() helper",
+      "F-7": "lap 2 finding: nothing checks that the build Vercel runs still runs the auth-token leak check",
+      "F-8": "lap 2 finding: the drop path's spoken message for a file that cannot be read (E102) is not tested",
+      "F-9": "lap 2 finding: nothing checks that global-error.tsx keeps its own <html lang=\"en\"> and <body>",
+      "AR-3..AR-6, AR-8": "lap 2 auto-resolve items: applied without a picker and reported (the owner's rule for stale text, confusing names and trivial test fixes)",
+      "AR-7": "an orchestrator observation (a misplaced doc comment in OpenFileControl.tsx): pre-existing, so FYI only",
+      "FYI-a / FYI-b / FYI-c": "lap 2 notes for the owner: a toast race, an E101 test gap, a slow regular expression",
+      "openPickedFile": "web/app/play/OpenFileControl.tsx: the one function that opens a picked or dropped file (lap 1, F-2)",
+      "requestNotation": "web/app/play/PlayerShell.tsx: loads a read file into the player; openPickedFile calls it as `load`",
+      "CrashPage": "web/app/CrashPage.tsx: the one crash page the three crash routes render (lap 1, F-5)",
+      "E603": "settings unreadable: the stored settings document was corrupt (a warning)",
+      "E205": "the player engine never arrived",
+      "'notation-load'": "the shared toast id of the 'Opening…' / 'loaded' / E205 toasts",
+      "testing gap": "something the engine lists as missing coverage, without a confidence score and outside its apply queue"
+    },
+    "already_applied_silent_edits": "NONE. ce-code-review in mode:agent applies nothing.",
+    "note_for_triage": "Read only this file. Lap 2 reviewed only what lap 1 changed (f102c377..51e71665); the engine said 'Ready with fixes' with three P3 findings, all confirmed, and no P0 or P1. (0) First apply the five auto_resolve items WITHOUT a picker — AR-3, AR-4, AR-5, AR-6, AR-8 — each as its own commit, and report each in one line in the chat and in its commit message (the owner's rule: auto-resolving skips the picker, never the report). AR-3 carries two notes the owner must see (its 'report_to_owner'). AR-8 has no spike diff: apply its 'after' text, then run prettier and markdownlint on the change log. (1) Then ONE picker round: card 1 = F-6 (Apply / Skip — decide later / Drop); card 2 = a multi-select over F-7, F-8 and F-9 (three small test additions; say on the card that an unchecked box stays open, it is not a Drop); card 3 = the [Q-add] catcher. Apply each Apply decision as its own commit, from its spike diff. F-6's diff needs AR-6 applied first. All 8 diffs were cut at 51e71665 and apply together (checked); re-check each against HEAD first. Gates after applying: the touched unit files (vitest, with SENTRY_AUTH_TOKEN and VERCEL_ENV unset), `node --test tooling/workflow-guards.test.mjs` if F-7 is applied, web lint and typecheck, prettier, and markdownlint and cspell on the spec and the change log. No end-to-end run is needed: nothing changes at runtime (AR-5 is a comment). (2) Step 6: code_review_lap: 2, code_review_last_applied: P3 if anything was applied, code_review_findings: this file. (3) Step 7: the exit signal is not clean, so the loop's rule says re-lap; there is no P0 or P1, so the no-progress bound does not apply. Lap 2 found only P3 items and its fixes are tests, comments and docs, so a lap 3 would review little runtime code. Ask the owner with a picker: a focused lap 3 / exit the loop and go to merge / skip — decide later.",
+    "triaged": false,
+    "triage_undecided_remaining": 4
+  },
+  "findings": [
+    {
+      "id": "F-6",
+      "batch": "A — tidy the tests lap 1 added",
+      "plain_title": "The new Firefox/WebKit filter tests build each event by hand, beside a helper that does it",
+      "engine_number": 3,
+      "engine_title": "New Firefox/WebKit tests hand-build events beside the event() helper",
+      "severity": "P3",
+      "confidence": 75,
+      "file": "web/lib/monitoring/known-engine-noise.test.ts",
+      "line": 100,
+      "reviewers": ["maintainability"],
+      "autofix_class": "gated_auto",
+      "engine_why_it_matters": "Eight of the new Firefox and WebKit cases write out { exception: { values: [{ value, stacktrace }] } } by hand, although event(value, filenames) at line 15 of the same file builds exactly that shape. When NoiseEvent changes, the helper is one edit and the hand-written copies are eight. The local `stack` at line 142 also shadows the module-level stack() builder at line 163.",
+      "engine_suggested_fix": "Make framesOf return the list of file names instead of { frames: [...] }, then write each case with event(...). Rename the local `stack` at line 142.",
+      "engine_validator": "confirmed — eight hand-built literals at lines 100, 105, 113, 121, 124, 136, 149, 156 beside event() at 15-19; the cost is test maintainability only, no behaviour change.",
+      "severity_meaning": "P3 = low impact, narrow scope; the owner's discretion",
+      "confidence_meaning": "75 = the reviewer inferred it from reading the code; this loop's verifier then ran it (see 'verified' and 'spike')",
+      "verified": "pass — exactly 8 hand-built event literals beside the file's own event() helper; framesOf returns { frames } instead of file names, which is why the cases could not use event(). The shadowed name is split out as AR-6.",
+      "scenario": "Later you change what the Sentry filter reads from an event, for example it starts to check the exception's type. You update the event() helper at the top of the noise-filter test file, and eight of the new Firefox and WebKit cases still fail, because each one builds its event by hand. You fix the same shape eight more times. Nothing is broken today: this is the cost of the next change.",
+      "whats_wrong": "Lap 1's Firefox/WebKit cases (commit 0e608cfd) write `{ exception: { values: [{ value, stacktrace }] } }` by hand eight times, next to the file's own `event(value, filenames)` helper that builds the same shape. Their helper `framesOf` returns `{ frames }` instead of a list of file names, so the cases could not call event().",
+      "breaks_today": "Nothing. The tests pass and catch the same bugs either way (mutation check in 'spike').",
+      "before": "web/lib/monitoring/known-engine-noise.test.ts:15-19\n15  const event = (value: string, filenames: readonly string[]) => ({\n16    exception: {\n17      values: [{ value, stacktrace: { frames: filenames.map((filename) => ({ filename })) } }],\n18    },\n19  });\n\nweb/lib/monitoring/known-engine-noise.test.ts:77-81\n77  const framesOf = (...lines: readonly string[]) => ({\n78    frames: lines.map((line) => ({\n79      filename: line.slice(line.indexOf('@') + 1).replace(/:\\d+:\\d+$/, ''),\n80    })),\n81  });\n\nweb/lib/monitoring/known-engine-noise.test.ts:97-102\n97    it(\"drops NH-335 in each engine's own words when every frame is the engine's\", () => {\n98      expect(\n99        isKnownEngineNoise({\n100          exception: { values: [{ value: FIREFOX_VOICES, stacktrace: FIREFOX_VOICES_STACK }] },\n101        }),\n102      ).toBe(true);\n\n(the same hand-built literal also at lines 105, 113, 121, 124, 136, 149 and 156)",
+      "after_excerpt": "[web/lib/monitoring/known-engine-noise.test.ts]\n/** A Firefox or WebKit stack's lines, as the file of each frame: the url in each `fn@url:line:col`. */\nconst framesOf = (...lines: readonly string[]) =>\n  lines.map((line) => line.slice(line.indexOf('@') + 1).replace(/:\\d+:\\d+$/, ''));\n…\n[web/lib/monitoring/known-engine-noise.test.ts]\n    expect(isKnownEngineNoise(event(FIREFOX_VOICES, FIREFOX_VOICES_STACK))).toBe(true);\n    expect(isKnownEngineNoise(event(WEBKIT_VOICES, WEBKIT_VOICES_STACK))).toBe(true);\n    expect(isKnownEngineNoise(event(FIREFOX_STOP, FIREFOX_STOP_STACK))).toBe(true);\n    expect(isKnownEngineNoise(event(FIREFOX_VOICES, ours))).toBe(false);\n    expect(isKnownEngineNoise(event(WEBKIT_VOICES, ours))).toBe(false);\n…\n[web/lib/monitoring/known-engine-noise.test.ts]\n      expect(isKnownEngineNoise(event(value, FIREFOX_VOICES_STACK))).toBe(false);\n…\n[web/lib/monitoring/known-engine-noise.test.ts]\n    expect(isKnownEngineNoise(event(stop, webkitStopStack))).toBe(true);\n    expect(isKnownEngineNoise(event(stop, framesOf('stop@[native code]')))).toBe(false);",
+      "after_diff": "spikes/spike-F-6.diff (cut on top of AR-6: apply AR-6 first)",
+      "proposed_fix": "Make `framesOf` return the list of file names, and write the eight cases with `event(...)`. Test code only.",
+      "why_it_works": "One event shape, built in one place: a later change to that shape is one edit. The spike broke the filter three ways, and the current test file and the tidied one failed on exactly the same cases.",
+      "spike": {
+        "applied": true,
+        "result": "16/16 pass before and after; eslint, prettier and the web typecheck pass; net -29 lines (the file goes from 186 to 157). Three source mutations — no native-frame skip, no Firefox wording, `every` changed to `some` in the frame check — fail the same cases with HEAD's file and with this one."
+      },
+      "options": [
+        {
+          "key": "1",
+          "label": "Apply (Recommended)",
+          "what": "spikes/spike-F-6.diff, after AR-6"
+        },
+        {
+          "key": "2",
+          "label": "Skip — decide later"
+        },
+        {
+          "key": "3",
+          "label": "Drop"
+        }
+      ],
+      "recommendation": "Apply: test code only, 29 lines shorter, and proven to catch the same bugs. Flip to Drop if you prefer each case to spell out its event in full.",
+      "missing_context": "Nothing the reviewer missed. ESLint has no no-shadow rule here, so the shadowed name (AR-6) is invisible to lint.",
+      "recorded_decisions": "Lap 1 F-4 option 1 (the per-browser wordings and the native-frame rule these cases test) is unchanged: this touches only how the tests build their events.",
+      "triage_decision": null,
+      "applied_in": null
+    },
+    {
+      "id": "F-7",
+      "batch": "B — pin what lap 1's changes rely on (test additions)",
+      "plain_title": "Nothing checks that the build Vercel runs still runs the auth-token leak check",
+      "engine_number": null,
+      "engine_title": "testing gap: nothing pins that web/package.json's build still ends with the token check after next build",
+      "severity": "P3",
+      "confidence": null,
+      "file": "tooling/workflow-guards.test.mjs",
+      "line": 238,
+      "reviewers": [
+        "testing",
+        "reliability",
+        "adversarial",
+        "security (as a residual risk)",
+        "maintainability (as a residual risk)"
+      ],
+      "autofix_class": "gated_auto",
+      "engine_why_it_matters": "The new tests in tooling/assert-no-auth-token.test.mjs copy the build's invocation by hand and are named 'run as the build runs it', but nothing reads the build line. Deleting the step, moving it before next build, or changing its form keeps every test and CI job green while production loses the guard between SENTRY_AUTH_TOKEN and browser-served files; CI builds run with no token, so they never exercise it for real.",
+      "engine_suggested_fix": "One assertion in tooling/workflow-guards.test.mjs (which already reads web/package.json scripts at line 229), for example assert.match(packageJson('web/package.json').scripts.build, /next build && .*&& node scripts\\/assert-no-auth-token\\.mjs$/).",
+      "engine_validator": "not sent to the engine's validator (testing gaps are not); this loop's verifier confirmed it with mutations",
+      "severity_meaning": "P3 = low impact, narrow scope; the owner's discretion",
+      "confidence_meaning": "no score: the engine lists testing gaps without one. This loop's verifier proved the gap with a mutation check (see 'spike').",
+      "verified": "pass — no test reads web/package.json's build line or web/vercel.json's buildCommand. With the step deleted, moved before next build, or given an absolute path, all 108 tooling tests stayed green.",
+      "scenario": "Months from now you edit web's build line: you add a step or reorder it, and the token check falls off, or ends up before `next build`. Every test and CI job stays green, because CI builds run without a token, so the check passes there whether it runs or not. The next production build on Vercel runs with the real SENTRY_AUTH_TOKEN, and nothing checks that the token stayed out of the files sent to browsers.",
+      "whats_wrong": "Lap 1's F-1 tests run the token check 'the way the build runs it', but they copy that command by hand (`node scripts/assert-no-auth-token.mjs`, from web/). Nothing reads the real build line in web/package.json, or the buildCommand in web/vercel.json that Vercel actually runs.",
+      "breaks_today": "Nothing: both build lines are correct today. This guards a future edit.",
+      "before": "web/package.json:6\n6      \"build\": \"node scripts/vendor-alphatab.mjs && NEXT_PUBLIC_APP_VERSION=$(node scripts/app-version.mjs) VERCEL_ENV=$VERCEL_ENV next build && node scripts/assert-design-system-css.mjs && node scripts/assert-no-auth-token.mjs\",\n\nweb/vercel.json:5\n5    \"buildCommand\": \"rm -rf .next/cache && pnpm run build\",\n\ntooling/assert-no-auth-token.test.mjs:90\n90    return spawnSync(process.execPath, ['scripts/assert-no-auth-token.mjs'], {",
+      "after_excerpt": "[tooling/workflow-guards.test.mjs]\n// The auth-token leak check protects production only while the build Vercel runs reaches it, and\n// every test of the script runs it by hand. So nothing else fails if an edit drops it from web's\n// build, moves it ahead of the `next build` whose output it reads, or calls it by an absolute path,\n// which its entry check does not recognize through a symlink: it then exits 0 having checked\n// nothing. A deliberate change to either build line has to update this test.\ntest(\"Vercel's build runs the auth-token leak check after next build, by its relative path\", () => {\n  const { buildCommand } = JSON.parse(\n    readFileSync(fileURLToPath(new URL('../web/vercel.json', import.meta.url)), 'utf8'),\n  );\n  assert.match(buildCommand, /(?:^|&& )pnpm run build$/, 'vercel.json no longer runs web build');\n  const steps = packageJson('web/package.json').scripts.build.split(' && ');\n  const nextBuild = steps.findIndex((step) => /\\bnext build\\b/.test(step));\n  const tokenCheck = steps.indexOf('node scripts/assert-no-auth-token.mjs');\n  assert.ok(\n    nextBuild !== -1 && tokenCheck > nextBuild,\n    `web's build must run \"node scripts/assert-no-auth-token.mjs\" after next build: ${steps.join(' && ')}`,\n  );\n});\n",
+      "after_diff": "spikes/spike-F-7.diff",
+      "proposed_fix": "Add one test to tooling/workflow-guards.test.mjs, next to the test that already reads web/package.json scripts: vercel.json must still run `pnpm run build`, and web's build must run `node scripts/assert-no-auth-token.mjs` as a step after `next build`.",
+      "why_it_works": "It reads the two lines Vercel actually runs, so each of the three edits in the scenario fails exactly this one test (proven by mutation).",
+      "trade_off": "Strict on purpose: a deliberate change to either build line — even `./scripts/…` or `pnpm build` in vercel.json — must update this test, and its comment says so. It raises no false alarm for dropping the unrelated CSS step or for adding a later step. It also catches vercel.json skipping the build script, and `|| true` added to the line.",
+      "spike": {
+        "applied": true,
+        "result": "workflow-guards 13/13 → 14/14; all tooling tests 108/108 → 109/109; assert-no-auth-token unchanged at 10/10; prettier, cspell and editorconfig pass (tooling/ has no ESLint config). Mutations of web/package.json — step deleted, moved before next build, absolute path — each fail only the new test, with the message: web's build must run \"node scripts/assert-no-auth-token.mjs\" after next build."
+      },
+      "options": [
+        {
+          "key": "1",
+          "label": "Apply (Recommended)",
+          "what": "spikes/spike-F-7.diff"
+        },
+        {
+          "key": "2",
+          "label": "Skip — decide later"
+        },
+        {
+          "key": "3",
+          "label": "Drop"
+        }
+      ],
+      "recommendation": "Apply: it closes the gap lap 1's F-1 was about, five of the eight reviewers raised it, and it costs one test. Flip to Skip if you plan to rework the build line soon.",
+      "missing_context": "The reviewers' candidate regex read only web/package.json; the spike also reads web/vercel.json, because Vercel runs `rm -rf .next/cache && pnpm run build` from web/. That regex would also raise false alarms if the CSS step were dropped or a later step added.",
+      "recorded_decisions": "Lap 1 F-1 (the token check's tests, applied; the build starts the script by a relative path, so the symlink limit is safe). This test turns that premise from assumed into checked. Lap 1's FYI about the entry check and symlinks stays as it is.",
+      "triage_decision": null,
+      "applied_in": null
+    },
+    {
+      "id": "F-8",
+      "batch": "B — pin what lap 1's changes rely on (test additions)",
+      "plain_title": "The drop path's spoken message for a file that cannot be read is not tested",
+      "engine_number": null,
+      "engine_title": "testing gap: the drop path's screen-reader announcement for a read failure (E101/E102) is asserted nowhere",
+      "severity": "P3",
+      "confidence": null,
+      "file": "web/app/play/PlayerShell.test.tsx",
+      "line": 361,
+      "reviewers": ["julik-frontend-races"],
+      "autofix_class": "gated_auto",
+      "engine_why_it_matters": "Since this diff the announcement depends on openPickedFile returning the code (`if (code) setAnnouncement(...)`, PlayerShell.tsx:1047), and the only announcement assertion is the E105 case (PlayerShell.test.tsx:276). A regression that returned null for E101/E102 would silence the message with every test green; the drop announcement is on this change's must-not-regress list.",
+      "engine_suggested_fix": "Add expect(await screen.findByText('Punk.gp could not be opened. Error E102.')).toBeInTheDocument() to 'a dropped file is remembered by name before it is read, even when the read fails' (PlayerShell.test.tsx:350-368).",
+      "engine_validator": "not sent to the engine's validator (testing gaps are not); this loop's verifier confirmed it with a mutation",
+      "severity_meaning": "P3 = low impact, narrow scope; the owner's discretion",
+      "confidence_meaning": "no score: the engine lists testing gaps without one. This loop's verifier proved the gap with a mutation check (see 'spike').",
+      "verified": "pass — before lap 1 the drop catch always announced; lap 1 (F-2) made the message depend on openPickedFile's return value, and only the E105 case pins it. With openPickedFile changed to return null for read failures, all 227 web tests stayed green.",
+      "scenario": "A visitor who uses a screen reader drags a Guitar Pro file onto the player, but the browser cannot read it (the file was moved, or the drive was unplugged). Today they hear 'Punk.gp could not be opened. Error E102.' If a later edit made openPickedFile return nothing for a read failure, they would hear nothing at all, and every test would still pass.",
+      "whats_wrong": "Since lap 1 (F-2), the drop handler speaks only when openPickedFile returns a code (`if (code) setAnnouncement(...)`). The only test of that message is the E105 case; nothing checks it for E101 or E102.",
+      "breaks_today": "Nothing: the message is spoken today.",
+      "before": "web/app/play/PlayerShell.tsx:1046-1047\n1046        const code = await openPickedFile(file, requestNotation);\n1047        if (code) setAnnouncement(`${file.name} could not be opened. Error ${code}.`);\n\nweb/app/play/PlayerShell.test.tsx:350-351\n350  test('a dropped file is remembered by name before it is read, even when the read fails', async () => {\n351    currentApi = standInApi();\n\nweb/app/play/PlayerShell.test.tsx:359-361\n359    await waitFor(() => expect(reported('E102')).toHaveLength(1), { timeout: 5000 });\n360    // The visitor's file, not our bug: a warning.\n361    expect(levelsReported('E102')).toEqual(['warning']);",
+      "after_excerpt": "[web/app/play/PlayerShell.test.tsx]\n  // And the drop says the number aloud, for a read failure as for E105.\n  expect(await screen.findByText('Punk.gp could not be opened. Error E102.')).toBeInTheDocument();",
+      "after_diff": "spikes/spike-F-8.diff",
+      "proposed_fix": "Add one assertion and a one-line comment to the existing test 'a dropped file is remembered by name before it is read, even when the read fails': the page shows 'Punk.gp could not be opened. Error E102.'",
+      "why_it_works": "It pins the return-code contract for read failures where it matters, in the spoken message. The mutation above now fails this test.",
+      "spike": {
+        "applied": true,
+        "result": "PlayerShell.test.tsx 21/21; eslint and prettier pass. Mutation (`return read ? code : null;` in openPickedFile): the new assertion fails ('Unable to find an element with the text: Punk.gp could not be opened. Error E102.'); the old test passed. Applies together with AR-4 (same file)."
+      },
+      "options": [
+        {
+          "key": "1",
+          "label": "Apply (Recommended)",
+          "what": "spikes/spike-F-8.diff"
+        },
+        {
+          "key": "2",
+          "label": "Skip — decide later"
+        },
+        {
+          "key": "3",
+          "label": "Drop"
+        }
+      ],
+      "recommendation": "Apply: one assertion, and the drop announcement is on this change's must-not-regress list.",
+      "classification_note": "Borderline for the auto-resolve rule (one assertion in an existing test, no design choice). Kept as a picker because it adds coverage; the owner's 2026-09-21 rule puts new tests in a picker.",
+      "missing_context": "Before lap 1 the drop catch always announced (f102c377, PlayerShell.tsx:1073); lap 1 made the announcement depend on the return value.",
+      "recorded_decisions": "Lap 1 F-2 (openPickedFile as the one open boundary, which returns the code the drop handler announces). This test pins that contract.",
+      "triage_decision": null,
+      "applied_in": null
+    },
+    {
+      "id": "F-9",
+      "batch": "B — pin what lap 1's changes rely on (test additions)",
+      "plain_title": "Nothing checks that global-error.tsx keeps its own <html lang=\"en\"> and <body>",
+      "engine_number": null,
+      "engine_title": "testing gap: web/app/global-error.test.tsx does not pin the <html lang=\"en\"> and <body> wrapper Next requires in global-error",
+      "severity": "P3",
+      "confidence": null,
+      "file": "web/app/global-error.test.tsx",
+      "line": 18,
+      "reviewers": ["testing"],
+      "autofix_class": "gated_auto",
+      "engine_why_it_matters": "After this refactor global-error.tsx differs from the two one-line crash routes only by that wrapper, its title and its stylesheet import, so a later simplification to `return <CrashPage .../>` would pass every test.",
+      "engine_suggested_fix": "Pin the wrapper in global-error.test.tsx (no exact form given).",
+      "engine_validator": "not sent to the engine's validator (testing gaps are not); this loop's verifier confirmed a narrower form of it with mutations",
+      "severity_meaning": "P3 = low impact, narrow scope; the owner's discretion",
+      "confidence_meaning": "no score: the engine lists testing gaps without one. This loop's verifier proved the gap with a mutation check (see 'spike').",
+      "verified": "pass, narrower than claimed — the full simplification (`return <CrashPage/>`) is already caught, because the title goes with the wrapper and the existing test checks the tab title. Dropping <html>/<body> while keeping the title (a fragment), or dropping only <body>, passes the existing test.",
+      "scenario": "Later someone tidies web/app/global-error.tsx, which is now a thin wrapper around CrashPage, and replaces its `<html lang=\"en\">` and `<body>` with a fragment, keeping the `<title>`. Next.js's own docs say this page must bring its own `<html>` and `<body>`, because it replaces the root layout when the root layout itself crashes. The existing test still passes. (What a browser then shows was not tested.)",
+      "whats_wrong": "After lap 1 (F-5), global-error.tsx differs from the other two crash routes only by its `<html lang=\"en\">`, `<body>`, `<title>` and stylesheet import. Its test checks the title, text, headings, report and reset — not the `<html>` and `<body>`.",
+      "breaks_today": "Nothing: the wrapper is there today.",
+      "before": "web/app/global-error.tsx:15-22\n15    return (\n16      <html lang=\"en\">\n17        <body>\n18          <title>Notation Hero</title>\n19          <CrashPage error={error} reset={reset} heading=\"Something went wrong\" />\n20        </body>\n21      </html>\n22    );\n\nweb/app/global-error.test.tsx:10-18\n10  // Rendering a whole document inside the test's <div> prints one development warning, <html>\n11  // inside a <div>. It does not fail the test.\n12  test('the root error page reports the crash once, and says what a report leaves out', async () => {\n13    const error = new Error('root layout crash');\n14    const reset = vi.fn();\n15    render(<GlobalError error={error} reset={reset} />);\n16  \n17    // React places a <title> in the document head wherever it is rendered.\n18    expect(document.title).toBe('Notation Hero');",
+      "after_excerpt": "[web/app/global-error.test.tsx]\nimport { renderToStaticMarkup } from 'react-dom/server';\n…\n[web/app/global-error.test.tsx]\n\n// Next.js requires this page to define its own <html> and <body>: it replaces the root layout. The\n// render above mounts it inside a <div>, where the <body> does not show; the server render gives\n// the document exactly as written.\ntest('the root error page brings its own <html lang=\"en\"> and <body>', () => {\n  const markup = renderToStaticMarkup(<GlobalError error={new Error('x')} reset={() => {}} />);\n  expect(markup).toMatch(/^<html lang=\"en\">/);\n  expect(markup).toContain('<body>');\n});",
+      "after_diff": "spikes/spike-F-9.diff",
+      "proposed_fix": "Add one test that renders the page to static HTML (`renderToStaticMarkup` from react-dom/server) and checks that it starts with `<html lang=\"en\">` and contains `<body>`.",
+      "why_it_works": "The DOM render the existing test uses mounts the page inside a <div>, where <body> cannot be seen; the server render shows the document exactly as written. Both narrow mutations now fail.",
+      "spike": {
+        "applied": true,
+        "result": "global-error.test.tsx 2/2; eslint, prettier and cspell pass. With all three test diffs (AR-4, F-8, F-9) applied: web typecheck passes and the whole web suite passes 228/228. Mutations: fragment → new test fails, old passes; <body> dropped → new fails, old passes; `return <CrashPage/>` → both fail."
+      },
+      "options": [
+        {
+          "key": "1",
+          "label": "Apply (Recommended)",
+          "what": "spikes/spike-F-9.diff"
+        },
+        {
+          "key": "2",
+          "label": "Skip — decide later"
+        },
+        {
+          "key": "3",
+          "label": "Drop"
+        }
+      ],
+      "recommendation": "Apply: about ten lines, and it pins a rule the bundled Next.js 16 docs state. Flip to Drop if you prefer no server-render import in the tests, since the title check already catches the most likely simplification.",
+      "missing_context": "The bundled Next.js 16.3.6 docs: 'Global error UI must define its own <html> and <body> tags' (node_modules/next/dist/docs, error.md and 10-error-handling.md).",
+      "recorded_decisions": "Lap 1 F-5 (CrashPage for all three crash routes; global-error keeps its own html, body and title). This test pins that last part.",
+      "triage_decision": null,
+      "applied_in": null
+    }
+  ],
+  "auto_resolve": [
+    {
+      "id": "AR-3",
+      "source": "engine finding #1 (maintainability, P3, confidence 75; the engine's validator confirmed it; project-standards and julik-frontend-races named the same stale passages)",
+      "what": "The spec still describes the code from before lap 1's two refactors: §1 has no row for web/app/CrashPage.tsx and says the file-type function 'is exported like readNotation' for the drop path; §2.2 describes three separate crash pages, each with its own report; §2.4 lists two open-file catches, 'the same two catches' for E105, and 'The two open-file catches set a flag'.",
+      "fix": "Re-align those passages with the shipped code (openPickedFile, CrashPage). Docs only.",
+      "kind": "ambiguity-only (stale text brought in line with a change already made)",
+      "report_to_owner": [
+        "The engine said 'all 16' catch sites should become 15. The verifier counted 16 at HEAD: lap 1 merged two catches into one, but commit 5dd90efe (before this range) added an E105 catch after the swap, in requestNotation, that the §2.4 table never listed. AR-3 adds that row, so the table lists 16 again, and '16' stays.",
+        "Line 676 ('The open-file catches' → 'The open-file catch') is the verifier's own addition: the test's describe block is now 'the open-file catch'."
+      ],
+      "verified": "pass for every stale passage; the count claim refuted (see report_to_owner)",
+      "before": "docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md:87\n87  | `web/app/global-error.tsx`                 | Catches a crash in the root layout itself. Today there is none, so a root-layout crash shows Next's bare default page.                                              |\n\ndocs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md:114-116\n114    `readNotation` and `LoadedNotation` carry the file's extension (2.3). The function that turns a\n115    file name into that type lives in `OpenFileControl.tsx`, beside the `ACCEPT` list it checks, and\n116    is exported like `readNotation`, so the drop path in `PlayerShell.tsx` uses the same list.\n\ndocs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md:146-162\n146  `web/app/error.tsx` and `web/app/play/error.tsx` receive the crash and currently ignore it. Each gains\n147  one line, and the new `global-error.tsx` carries the same line:\n148  \n149  ```diff\n150  -export default function AppError({ reset }: Readonly<{ error: Error; reset: () => void }>) {\n151  +export default function AppError({ error, reset }: Readonly<{ error: Error; reset: () => void }>) {\n152  +  useEffect(() => reportError(error, { code: ERROR.unexpectedCrash, handled: false }), [error]);\n153  ```\n154  \n155  `global-error.tsx` replaces the root layout when it renders, so it supplies its own\n156  `<html lang=\"en\">` and `<body>` and imports `globals.css` itself. It is a client component\n157  (`'use client'`) that repeats `web/app/error.tsx` as changed by the diff above: `Notation Hero` as\n158  the `h1`, \"Something went wrong\" as an `h2` below it, the same `<main>` classes, the line \"Error\n159  E901 — the page crashed unexpectedly.\", a Try again button wired to `reset`, and the section 3.4\n160  sentence. The other two crash pages have the same shape; `web/app/play/error.tsx` keeps its own\n161  crash title, \"The player stopped unexpectedly\", as its `h2`. It names the tab with a React\n162  `<title>Notation Hero</title>`, because this file does not support metadata exports.\n\ndocs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md:271-272\n271  | `web/app/play/OpenFileControl.tsx:75`, `web/app/play/PlayerShell.tsx:969`                      | the file is too large, or cannot be read                        | E101/E102  | warning, with file type and size                                                                                                    |\n272  | the same two catches, after the file was read                                                  | our own code failed while loading the score into the player     | E105 (new) | error, message kept, with file type and size                                                                                        |\n\ndocs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md:277-279\n277  **Read, then open.** The two open-file catches set a flag between their two steps —\n278  `const loaded = await readNotation(file); read = true; await onNotation(loaded);`\n279  (`requestNotation` in the drop path) — so a failure before it is the visitor's file (E101 or E102,\n\ndocs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md:676\n676  - **The open-file catches**, a test beside `web/app/play/OpenFileControl.tsx`: a read that fails",
+      "after_excerpt": "[docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md]\n| `web/app/CrashPage.tsx`                    | What the three error pages show, written once: the headings, the E901 line, Try again and the section 3.4 sentence. It also sends the E901 report (section 2.2).    |\n…\n[docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md]\n  file name into that type lives in `OpenFileControl.tsx`, beside the `ACCEPT` list it checks. A\n  picked and a dropped file are both opened by `openPickedFile` there, so both use the same list.\n…\n[docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md]\n`web/app/error.tsx` and `web/app/play/error.tsx` receive the crash and currently ignore it. Both now\npass it to one shared component, `web/app/CrashPage.tsx`, and so does the new `global-error.tsx`.\n`CrashPage` sends it with one line:\n```ts\n// web/app/CrashPage.tsx\nuseEffect(() => reportError(error, { code: ERROR.unexpectedCrash, handled: false }), [error]);\n(`'use client'`) that renders `CrashPage` inside them. `CrashPage` holds what all three pages show:\n`Notation Hero` as the `h1`, the page's crash title as an `h2` below it, the line \"Error E901 — the\npage crashed unexpectedly.\", a Try again button wired to `reset`, and the section 3.4 sentence.\n`web/app/error.tsx` and `global-error.tsx` pass \"Something went wrong\" as the crash title, and\n`web/app/play/error.tsx` passes its own, \"The player stopped unexpectedly\". `global-error.tsx`\nnames the tab with a React `<title>Notation Hero</title>`, because this file does not support\nmetadata exports.\n…\n[docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md]\n| `web/app/play/OpenFileControl.tsx`, `openPickedFile`                                           | the file is too large, or cannot be read                        | E101/E102  | warning, with file type and size                                                                                                    |\n| the same catch, after the file was read                                                        | our own code failed while loading the score into the player     | E105 (new) | error, message kept, with file type and size                                                                                        |\n| `web/app/play/PlayerShell.tsx`, `requestNotation` after the swap                               | our own code failed after the new score was on screen           | E105       | error, message kept, with file type and size                                                                                        |\n**Read, then open.** A picked file and a dropped file share one catch, in `openPickedFile`. It sets\na flag between its two steps —\n`const loaded = await readNotation(file); read = true; await load(loaded);`\n(`load` is `requestNotation` for both) — so a failure before it is the visitor's file (E101 or E102,\n…\n[docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md]\n- **The open-file catch**, a test beside `web/app/play/OpenFileControl.tsx`: a read that fails",
+      "after_diff": "spikes/spike-AR-3.diff",
+      "spike": "prettier --write then --check pass (only the new table rows were re-padded; the one replaced code fence keeps its line); markdownlint 0 issues; cspell 0 issues; git apply --check OK.",
+      "applied_in": null
+    },
+    {
+      "id": "AR-4",
+      "source": "engine finding #2 (adversarial, P3, confidence 75; the engine's validator confirmed it)",
+      "what": "One of lap 1's storage tests checks less than its own comment says: the test for a blocked write-back of repaired settings asserts only that no ERROR-level report was sent, so an extra warning from that catch — the alternative spec rule S2b rejects by name — would pass.",
+      "fix": "In web/app/play/PlayerShell.test.tsx, `expect(errorsReported()).toEqual([]);` becomes `expect(vi.mocked(captureException).mock.calls).toEqual(reported('E603'));`, and the title's 'never an error' becomes 'never a report', as its sibling tests say.",
+      "kind": "trivial test fix (two lines): re-aligns the assertion and title with the test's own comment ('the refusal adds no report') and decided rule S2b; no source change",
+      "verified": "pass — proven by mutation",
+      "before": "web/app/play/PlayerShell.test.tsx:574\n574    test('a repaired settings write-back the browser refuses leaves a breadcrumb, never an error', async () => {\n\nweb/app/play/PlayerShell.test.tsx:581-583\n581      // The corrupt document still sends its own E603 warning; the refusal adds no report.\n582      await waitFor(() => expect(reported('E603')).toHaveLength(1));\n583      expect(errorsReported()).toEqual([]);",
+      "after_excerpt": "[web/app/play/PlayerShell.test.tsx]\n  test('a repaired settings write-back the browser refuses leaves a breadcrumb, never a report', async () => {\n…\n[web/app/play/PlayerShell.test.tsx]\n    expect(vi.mocked(captureException).mock.calls).toEqual(reported('E603'));",
+      "after_diff": "spikes/spike-AR-4.diff",
+      "spike": "PlayerShell.test.tsx 21/21; eslint, prettier and cspell pass. Mutation (an uncoded warning added beside noteError in the refusal arm): the new assertion fails, the old one passed, and the whole web suite (227 tests) stayed green — nothing else catches it.",
+      "applied_in": null
+    },
+    {
+      "id": "AR-5",
+      "source": "correctness reviewer (P3, confidence 50 — routed to residual risks by the engine; the verifier confirmed it)",
+      "what": "openPickedFile's doc comment says it returns null 'when the file opened'. It also returns null when `load` stops on its own or shows a failure itself: a cancelled replace, a second open while one runs, E103, E205, and an E105 after the swap.",
+      "fix": "Rewrite the comment in plain words; keep its last sentence. Comment only.",
+      "kind": "ambiguity-only (a misleading comment)",
+      "note": "Nothing misbehaves today: the only caller, the drop handler, announces only a non-null code, which is right in every case. The comment came in with lap 1 (503b0f9e).",
+      "verified": "pass — each case confirmed with file:line in requestNotation (PlayerShell.tsx :872-882 cancel, :1016 second open, :834-849 E205, :903-929 E103, :977-999 E105 after the swap)",
+      "before": "web/app/play/OpenFileControl.tsx:93-94\n93   * Resolves to the error code it reported, or null when the file opened. What else a caller does\n94   * with that code is its own business: the drop handler announces it to screen readers.",
+      "after_excerpt": "[web/app/play/OpenFileControl.tsx]\n * Resolves to the code it reported itself (E101, E102 or E105), or null when it reported nothing.\n * So null does not mean the file opened: `load` may stop on its own (a cancelled replace, or a\n * second open while one runs) or show a failure itself (E103 for a file that is not a score, E205\n * for an engine that never arrived, or an E105 after the new score is on screen). What else a\n * caller does with that code is its own business: the drop handler announces it to screen readers.",
+      "after_diff": "spikes/spike-AR-5.diff",
+      "spike": "eslint 0 errors, prettier pass, cspell 0; a comment only, so no test run was needed.",
+      "applied_in": null
+    },
+    {
+      "id": "AR-6",
+      "source": "part of engine finding #3 (maintainability)",
+      "what": "In the noise-filter test file, one test's local `stack` hides the module-level `stack()` helper, which builds a different thing (a V8 stack string).",
+      "fix": "Rename the local to `webkitStopStack`.",
+      "kind": "ambiguity-only (a confusing name)",
+      "verified": "pass",
+      "before": "web/lib/monitoring/known-engine-noise.test.ts:142\n142      const stack = framesOf(\n\nweb/lib/monitoring/known-engine-noise.test.ts:149\n149        isKnownEngineNoise({ exception: { values: [{ value: stop, stacktrace: stack }] } }),\n\nweb/lib/monitoring/known-engine-noise.test.ts:163\n163  const stack = (...frames: readonly string[]) =>",
+      "after_excerpt": "[web/lib/monitoring/known-engine-noise.test.ts]\n    const webkitStopStack = framesOf(\n      isKnownEngineNoise({ exception: { values: [{ value: stop, stacktrace: webkitStopStack }] } }),",
+      "after_diff": "spikes/spike-AR-6.diff",
+      "spike": "16/16 pass; eslint and prettier pass. F-6's diff applies on top of it.",
+      "applied_in": null
+    },
+    {
+      "id": "AR-8",
+      "source": "the orchestrator, from the reliability reviewer's residual note (the engine dropped the risk itself as settled; this wording mismatch is separate, and the change-log lines came in with 51e71665, inside this range)",
+      "what": "Lap 1's change-log entry says the native-frame rule means 'Firefox and Safari visitors send neither'. The spec's Known limits says the Firefox half rests on an inference: 'That a visitor's Firefox, with no developer tools open, records no async stacks is inferred, not checked in a release build.' The change log states as measured what the spec marks as inferred.",
+      "fix": "Say the Firefox half is inferred, as the spec does. The decision (lap 1 F-4, option 1) does not change.",
+      "kind": "ambiguity-only (a sentence that claims more than the spec it summarizes)",
+      "verified": "pass — both passages read at HEAD (change log lines 62-68; spec lines 793-798)",
+      "before": "docs/decisions/decision-changelog.md:62-68\n62    - **Firefox and Safari** sent the two known engine errors, NH-335 and NH-338, to Sentry as\n63      unhandled crashes, measured against a production build: the known-noise list held only\n64      Chrome's wording, and Safari adds a `[native code]` frame. Chosen over matching the wording\n65      alone: each entry lists every browser's measured wording, and the Sentry filter skips a\n66      browser's own `[native code]` frame, so Firefox and Safari visitors send neither. Firefox with\n67      its developer tools open still sends both, a known limit in the spec. NH-335 fires once per\n68      open, not seven times.\n\ndocs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md:793-798\n793  - **Firefox with its developer tools open.** Under a debugger, Firefox records async stacks: it\n794    adds frames from our own React code to each stack, so NH-335 and NH-338 no longer have\n795    engine-only frames and reach Sentry. With async stacks turned off, every frame is the engine's\n796    and both are dropped. Measured in Firefox 148 run by Playwright on 2026-10-13. That a visitor's\n797    Firefox, with no developer tools open, records no async stacks is inferred, not checked in a\n798    release build.",
+      "after_excerpt": "In the change-log bullet, replace\n'browser's own `[native code]` frame, so Firefox and Safari visitors send neither. Firefox with its developer tools open still sends both, a known limit in the spec.'\nwith\n'browser's own `[native code]` frame, so Safari visitors send neither, and Firefox visitors should send neither too: that a Firefox with no developer tools open records no async stacks is inferred, not yet checked in a release build. Firefox with its developer tools open still sends both, a known limit in the spec.'\nThen re-wrap the bullet to the file's line width.",
+      "after_diff": null,
+      "spike": "(untested) — text only; run prettier and markdownlint on docs/decisions/decision-changelog.md after applying.",
+      "applied_in": null,
+      "also_align": "The PR description's code-review Round 1 line says the same ('Firefox and Safari visitors now send neither known engine error'). Align it in the same PR-description edit, before the push that carries AR-8."
+    }
+  ],
+  "fyi": [
+    "AR-7 (the orchestrator's own read): in web/app/play/OpenFileControl.tsx (lines 64-72), the doc block 'Toast text for a file that never reached the parser…' sits above openFailureCode but describes readFailureMessage. Pre-existing (81f96d7e and 30bcc61e), not from this range; a one-move cleanup later if wanted.",
+    "FYI-a (julik-frontend-races): openPickedFile calls toast.dismiss('notation-load') for read failures too (OpenFileControl.tsx:120). If a second file fails to read during the first open's short window before its parse (2 to 32 frames), it closes the first open's 'Opening…' toast; the loading bar stays. Pre-existing in both copies before lap 1. The guard `if (read) toast.dismiss('notation-load')` would be correct (checked by reading; untested).",
+    "FYI-b (testing): the E101 report (a file over 25 MB) from openPickedFile has no unit test — not its code, warning level, toast id `E101:<name>`, or that the bytes are never read. The end-to-end lane checks only the toast text. It was equally untested before lap 1.",
+    "FYI-c (security, CWE-1333, confidence 50): the Firefox NH-335 pattern `/can't access property \"voices\", .+ is undefined/` slows down sharply on text that repeats its opening words with no ending: 1 MB took 15.7 s, against 11.9 ms for a bounded `.{1,200}`, which also passes the project's 16 noise-filter tests. Not reachable today: no message that keeps its text carries file content (E103 replaces it with a fixed sentence). Sentry 11.4.0 does not shorten exception text unless `maxValueLength` is set, and web/ does not set it; eslint-plugin-regexp does not flag this pattern.",
+    "Spec §2.4's table still cites `PlayerShell.tsx:594` for a storage write that moved to `transport-storage.ts:172`, and every line number in that table has drifted a few lines since the spec was written. Stale before this range; AR-3 names functions instead of line numbers for the rows it touches.",
+    "The design-system CSS check (`node scripts/assert-design-system-css.mjs`, NH-315) sits on the same unpinned build line as the token check. F-7's test could also require it after `next build` (one line); outside NH-124's scope."
+  ],
+  "dropped_findings": [
+    {
+      "title": "Change the spec's 'all 16' catch sites to 15 (part of engine finding #1's suggested fix)",
+      "reason": "Refuted by the verifier: 16 stays true at HEAD (see AR-3's report_to_owner)."
+    },
+    {
+      "title": "The end-to-end lane is Chromium only, and the Firefox/WebKit cases rest on hand-recorded stacks (residual risk from testing, reliability, maintainability and adversarial)",
+      "reason": "Settled: lap 1's FYI list ('the end-to-end lane runs Chromium only, so Firefox and Safari behaviour of the Sentry filter is pinned by unit cases only')."
+    },
+    {
+      "title": "The token script's entry check skips its work for an absolute path through a symlink (residual risk from security, maintainability and testing)",
+      "reason": "Settled: lap 1's FYI list and F-1. The build-line part is kept as F-7."
+    },
+    {
+      "title": "A release Firefox may record async frames, so F-4's Firefox half may drop nothing (reliability residual risk)",
+      "reason": "Settled: lap 1 F-4 option 1 and its recorded known limit. The change log's wording of it is AR-8."
+    }
+  ],
+  "spike_hygiene": "Three throwaway DETACHED worktrees at 51e71665, in a scratch folder outside the repository, each installed with `pnpm install --frozen-lockfile --ignore-scripts` and removed with `git worktree remove` (no --force). The shared git hook checksums are the same before and after, and core.hooksPath is unset. No build and no server were run; every tooling command ran with SENTRY_AUTH_TOKEN and VERCEL_ENV unset. The 8 diffs under spikes/ were cut at 51e71665 (F-6 on top of AR-6); their blank context lines are stored without the leading space (the editorconfig check forbids trailing spaces), and all 8 apply together against 51e71665 (checked in a temporary index). One verifier ran editorconfig-checker once without its version pin; the download failed and left nothing behind.",
+  "exit_signal": {
+    "status": "complete",
+    "verdict": "Ready with fixes",
+    "actionable_findings": [1, 2, 3],
+    "p0": 0,
+    "p1": 0,
+    "p2": 0,
+    "p3": 3,
+    "validator": "3 confirmed, 0 rejected, 0 unresolved",
+    "suppressed_at_50": 2,
+    "settled_discards": 0,
+    "persona_notes_dropped_as_settled": 8,
+    "residual_risks": 3,
+    "testing_gaps": 4,
+    "clean": false,
+    "not_clean_because": "verdict is 'Ready with fixes' and actionable_findings is non-empty",
+    "mapping": {
+      "engine #1": "AR-3",
+      "engine #2": "AR-4",
+      "engine #3": "AR-6 (the rename) + F-6 (the helper)",
+      "residual risk: toast id": "FYI-a",
+      "residual risk: null contract": "AR-5",
+      "residual risk: slow regular expression": "FYI-c",
+      "testing gap: build line": "F-7",
+      "testing gap: drop announcement": "F-8",
+      "testing gap: E101 unit test": "FYI-b",
+      "testing gap: global-error wrapper": "F-9"
+    },
+    "note": "The engine's full JSON stayed in its local run folder (not committed); everything the triage half needs is in this file."
+  }
+}
