@@ -51,7 +51,7 @@ interface OpenFileControlProps {
   onNotation: (notation: LoadedNotation) => void | Promise<void>;
 }
 
-export async function readNotation(file: File): Promise<LoadedNotation> {
+async function readNotation(file: File): Promise<LoadedNotation> {
   if (file.size > MAX_NOTATION_BYTES) {
     // Not user copy: the caller shows readFailureMessage(file) instead.
     throw new Error(`over the ${MAX_NOTATION_MB} MB limit`);
@@ -67,59 +67,73 @@ export async function readNotation(file: File): Promise<LoadedNotation> {
  * changes the message. A file that is read but does not parse gets E103 from requestNotation.
  */
 /** Which read failure this is. The toast id is keyed on it, so it must not drift from the copy. */
-export function openFailureCode(file: File): ErrorCode {
+function openFailureCode(file: File): ErrorCode {
   return file.size > MAX_NOTATION_BYTES ? ERROR.fileTooLarge : ERROR.fileUnreadable;
 }
 
-export function readFailureMessage(file: File): string {
+function readFailureMessage(file: File): string {
   return file.size > MAX_NOTATION_BYTES
     ? `${file.name} is too large to open. The limit is ${MAX_NOTATION_MB} MB. (Error ${ERROR.fileTooLarge})`
     : `${file.name} could not be read. Check that the file still exists, then try again. (Error ${ERROR.fileUnreadable})`;
 }
 
 /** Toast text for a file that was read but could not be loaded: our bug, not the file (E105). */
-export function loadFailureMessage(file: { readonly name: string }): string {
+function loadFailureMessage(file: { readonly name: string }): string {
   return `${file.name} could not be opened. Something went wrong on our side, not with your file. Try again, or reload the page. (Error ${ERROR.openFailedAfterRead})`;
+}
+
+/**
+ * Opens a file the visitor picked or dropped: the ONE boundary both entry points go through, so
+ * the file name is remembered, the instruments tag is held back, and a failure is reported, in
+ * one place. Every failure lands on ONE surface. `void openPickedFile(...)` is the idiom that
+ * silences the floating-promise lint rule — and it would silence a rejection with it, so a file
+ * the browser cannot read (moved, deleted, volume unmounted between the pick and the read) would
+ * produce nothing at all: no toast, no error state, just a control the user keeps pressing.
+ *
+ * Resolves to the error code it reported, or null when the file opened. What else a caller does
+ * with that code is its own business: the drop handler announces it to screen readers.
+ */
+export async function openPickedFile(
+  file: File,
+  load: (notation: LoadedNotation) => void | Promise<void>,
+): Promise<ErrorCode | null> {
+  rememberOpenFile(file.name);
+  // While this open runs, no report carries the instruments tag: a failure while opening must
+  // never carry the last song's instruments. The `finally` puts it back when the open ends.
+  suspendInstruments();
+  // Set between the two steps. Before it, a failure is the visitor's file: E101 or E102, a
+  // warning. After it, our own code failed loading a file that was read fine: E105, an error.
+  let read = false;
+  try {
+    // AWAIT it: `load` is async, so an un-awaited call drops any rejection on the floor.
+    const loaded = await readNotation(file);
+    read = true;
+    await load(loaded);
+    return null;
+  } catch (error) {
+    const code = read ? ERROR.openFailedAfterRead : openFailureCode(file);
+    const facts = { type: fileType(file.name), bytes: file.size };
+    if (read) reportError(error, { code, file: facts });
+    else reportError(error, { code, level: 'warning', file: facts });
+    // Own id, not the spinner's: see the note in PlayerShell. The same file failing the same way
+    // twice refreshes one toast rather than stacking a duplicate.
+    toast.dismiss('notation-load');
+    toast.error(read ? loadFailureMessage(file) : readFailureMessage(file), {
+      id: `${code}:${file.name}`,
+    });
+    return code;
+  } finally {
+    restoreInstruments();
+  }
 }
 
 export function OpenFileControl({ onNotation }: Readonly<OpenFileControlProps>) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const inputId = useId();
 
-  // Every failure on this boundary lands on ONE surface. `void accept(...)` is the idiom that
-  // silences the floating-promise lint rule — and it would silence the rejection with it, so a
-  // file the browser cannot read (moved, deleted, volume unmounted between the pick and the read)
-  // would produce nothing at all: no toast, no error state, just a control the user keeps pressing.
-  const accept = async (file: File | undefined) => {
-    if (!file) return;
-    rememberOpenFile(file.name);
-    // While this open runs, no report carries the instruments tag: a failure while opening must
-    // never carry the last song's instruments. The `finally` puts it back when the open ends.
-    suspendInstruments();
-    // Set between the two steps. Before it, a failure is the visitor's file: E101 or E102, a
-    // warning. After it, our own code failed loading a file that was read fine: E105, an error.
-    let read = false;
-    try {
-      // AWAIT it: onNotation is async, so an un-awaited call drops any rejection on the floor —
-      // the same reason the drag-and-drop twin in PlayerShell awaits requestNotation.
-      const loaded = await readNotation(file);
-      read = true;
-      await onNotation(loaded);
-    } catch (error) {
-      const facts = { type: fileType(file.name), bytes: file.size };
-      // Own id, not the spinner's: see the note in PlayerShell. The same file failing the same way
-      // twice refreshes one toast rather than stacking a duplicate.
-      toast.dismiss('notation-load');
-      if (read) {
-        reportError(error, { code: ERROR.openFailedAfterRead, file: facts });
-        toast.error(loadFailureMessage(file), { id: `${ERROR.openFailedAfterRead}:${file.name}` });
-      } else {
-        reportError(error, { code: openFailureCode(file), level: 'warning', file: facts });
-        toast.error(readFailureMessage(file), { id: `${openFailureCode(file)}:${file.name}` });
-      }
-    } finally {
-      restoreInstruments();
-    }
+  // openPickedFile reports every failure itself, so the `void` here loses nothing.
+  const accept = (file: File | undefined) => {
+    if (file) void openPickedFile(file, onNotation);
   };
 
   return (
@@ -140,7 +154,7 @@ export function OpenFileControl({ onNotation }: Readonly<OpenFileControlProps>) 
         aria-hidden="true"
         onChange={(event) => {
           const file = event.target.files?.[0];
-          void accept(file);
+          accept(file);
           // Reset at the END of every change — cancel, parse failure and success alike. A file
           // input fires no change event when its value is unchanged, so without this a user who
           // cancels and re-picks the SAME file gets nothing, and the natural retry after a failed

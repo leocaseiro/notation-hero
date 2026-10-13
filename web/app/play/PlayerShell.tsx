@@ -42,20 +42,11 @@ import {
   isStorageRefusal,
   noteError,
   reportError,
-  restoreInstruments,
-  suspendInstruments,
   tagInstruments,
 } from '../../lib/monitoring/report';
-import { rememberOpenFile, rememberScore } from '../../lib/monitoring/scrub';
+import { rememberScore } from '../../lib/monitoring/scrub';
 import { NotationSurface } from './NotationSurface';
-import {
-  OpenFileControl,
-  fileType,
-  loadFailureMessage,
-  openFailureCode,
-  readFailureMessage,
-  readNotation,
-} from './OpenFileControl';
+import { OpenFileControl, openPickedFile } from './OpenFileControl';
 import { PlayerHeader } from './PlayerHeader';
 import { SettingsPopover } from './SettingsPopover';
 import { TracksPopover } from './TracksPopover';
@@ -1045,35 +1036,15 @@ function Player() {
     setDragging(false);
   }, []);
 
-  // Same boundary as OpenFileControl's `accept`: the 25 MB check, then the same failure toast
-  // (E101 or E102). Without the try/catch, `void acceptDropped(...)` would hide a rejected read
-  // and show nothing.
+  // The picker's boundary, shared: openPickedFile (OpenFileControl.tsx) checks the 25 MB limit,
+  // reads the file, opens it with requestNotation, and turns a failure — E101, E102 or E105 — into
+  // one report and one toast. Without that catch, `void acceptDropped(...)` would hide a rejected
+  // read and show nothing. The announcement is this path's own: it says the same number aloud.
   const acceptDropped = useCallback(
     async (file: File | undefined) => {
       if (!file) return;
-      rememberOpenFile(file.name);
-      suspendInstruments();
-      // Set between the two steps, as in OpenFileControl's `accept`: before it, the visitor's file
-      // (E101 or E102, a warning); after it, our own code (E105, an error).
-      let read = false;
-      try {
-        const loaded = await readNotation(file);
-        read = true;
-        await requestNotation(loaded);
-      } catch (error) {
-        const code = read ? ERROR.openFailedAfterRead : openFailureCode(file);
-        const facts = { type: fileType(file.name), bytes: file.size };
-        if (read) reportError(error, { code, file: facts });
-        else reportError(error, { code, level: 'warning', file: facts });
-        // Same id as requestNotation's loading toast — see OpenFileControl's `accept`.
-        toast.dismiss('notation-load');
-        toast.error(read ? loadFailureMessage(file) : readFailureMessage(file), {
-          id: `${code}:${file.name}`,
-        });
-        setAnnouncement(`${file.name} could not be opened. Error ${code}.`);
-      } finally {
-        restoreInstruments();
-      }
+      const code = await openPickedFile(file, requestNotation);
+      if (code) setAnnouncement(`${file.name} could not be opened. Error ${code}.`);
     },
     [requestNotation],
   );
