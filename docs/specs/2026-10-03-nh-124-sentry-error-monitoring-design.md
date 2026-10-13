@@ -366,8 +366,9 @@ on 2026-10-03 with the installed ESLint 9.39.4: they flagged exactly `catch { }`
 AlphaTab 1.8.4 throws two errors that break nothing a person can see:
 
 - **NH-335:** `Cannot read properties of undefined (reading 'voices')`, thrown on the main thread by
-  the engine's listener on its worker, on ordinary Guitar Pro files — seven times in one open of
-  `guitar-no-percussion.gp`.
+  the engine's listener on its worker, on ordinary Guitar Pro files — once per open of
+  `guitar-no-percussion.gp` when measured on 2026-10-13; an earlier CI run counted seven in one test
+  case.
 - **NH-338:** `cannot call stop without calling start first`, in 7 of 10 quick Pause clicks.
 
 Sent as they are, a handful of visitors would use hundreds of the 5,000 monthly reports on two bugs
@@ -380,6 +381,13 @@ stack string and the Sentry filter reads it from Sentry's structured frames, so 
 when NH-335 or NH-338 is fixed updates both. Two end-to-end cases need the bugs to happen and
 change in the same step (section 6): when NH-335 is fixed, case 4's first half stops waiting for
 its page error and keeps its `instruments` check; when NH-338 is fixed, case 6 is deleted.
+
+The words above are Chrome's. Firefox and Safari word both errors differently, so each entry also
+lists the wordings measured in Firefox 148 and WebKit 26.5 on 2026-10-13, and any one of them
+matches. Safari also adds a `stop@[native code]` frame to NH-338: the browser's own function,
+neither ours nor the engine's. The Sentry filter skips such a frame, so it neither counts nor
+blocks; an exception still needs at least one frame left, and every frame left must be the
+engine's.
 
 Sentry's default `BrowserApiErrors` integration is removed (section 3.3). It wraps every
 `addEventListener` callback — including the engine's listeners on its worker, where both errors are
@@ -782,6 +790,12 @@ secret. The upload now runs inside Vercel's build, so neither GitHub mechanism a
 
 - **AudioWorklet errors.** A throw inside AlphaTab's sound thread is reported only if AlphaTab
   forwards it through its `error` event. Untested.
+- **Firefox with its developer tools open.** Under a debugger, Firefox records async stacks: it
+  adds frames from our own React code to each stack, so NH-335 and NH-338 no longer have
+  engine-only frames and reach Sentry. With async stacks turned off, every frame is the engine's
+  and both are dropped. Measured in Firefox 148 run by Playwright on 2026-10-13. That a visitor's
+  Firefox, with no developer tools open, records no async stacks is inferred, not checked in a
+  release build.
 - **Engine frames stay minified.** The vendored `alphaTab.core.mjs` is AlphaTab's minified build,
   the whole engine on one 1.1 MB line, and the package ships no source map. Every frame inside it
   reads like `Fi.loadScoreFromBytes` at line 51; only our own frames are mapped. Every E103 starts

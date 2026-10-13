@@ -63,6 +63,102 @@ describe('isKnownEngineNoise, the Sentry filter', () => {
   });
 });
 
+// Firefox and WebKit word both throws differently, and write each stack line as fn@url:line:col.
+// The messages and stacks below were recorded from a production build of this app, opening
+// guitar-no-percussion.gp (NH-335) and pressing Play then Pause (NH-338).
+const FIREFOX_VOICES =
+  'can\'t access property "voices", e.tracks[t.get(...)].staves[t.get(...)].bars[t.get(...)] is undefined';
+const WEBKIT_VOICES =
+  'undefined is not an object (evaluating \'e.tracks[t.get("trackIndex")].staves[t.get("staffIndex")].bars[t.get("barIndex")].voices\')';
+const FIREFOX_STOP =
+  'AudioScheduledSourceNode.stop: Start has not been called on this AudioBufferSourceNode.';
+
+/** A Firefox or WebKit stack's lines, as the Sentry frames it becomes: the file of each `fn@url:line:col`. */
+const framesOf = (...lines: readonly string[]) => ({
+  frames: lines.map((line) => ({
+    filename: line.slice(line.indexOf('@') + 1).replace(/:\d+:\d+$/, ''),
+  })),
+});
+
+const FIREFOX_VOICES_STACK = framesOf(
+  `fromJson@${ENGINE}:51:527535`,
+  `Zu@${ENGINE}:51:530833`,
+  `jn/<@${ENGINE}:51:529858`,
+);
+const WEBKIT_VOICES_STACK = framesOf(`fromJson@${ENGINE}:51:527551`, `Zu@${ENGINE}:51:530841`);
+const FIREFOX_STOP_STACK = framesOf(
+  `pause@${ENGINE}:51:392512`,
+  `pause@${ENGINE}:51:650057`,
+  `handleWorkerMessage@${ENGINE}:51:522462`,
+  `Hn/<@${ENGINE}:51:519570`,
+);
+
+describe('isKnownEngineNoise, in Firefox and WebKit', () => {
+  it("drops NH-335 in each engine's own words when every frame is the engine's", () => {
+    expect(
+      isKnownEngineNoise({
+        exception: { values: [{ value: FIREFOX_VOICES, stacktrace: FIREFOX_VOICES_STACK }] },
+      }),
+    ).toBe(true);
+    expect(
+      isKnownEngineNoise({
+        exception: { values: [{ value: WEBKIT_VOICES, stacktrace: WEBKIT_VOICES_STACK }] },
+      }),
+    ).toBe(true);
+  });
+
+  it("drops Firefox's NH-338 when every frame is the engine's", () => {
+    expect(
+      isKnownEngineNoise({
+        exception: { values: [{ value: FIREFOX_STOP, stacktrace: FIREFOX_STOP_STACK }] },
+      }),
+    ).toBe(true);
+  });
+
+  it('keeps the same words when one frame is our own code', () => {
+    const ours = framesOf(`fromJson@${ENGINE}:51:527535`, `t@${OURS}:1:60471`);
+    expect(
+      isKnownEngineNoise({ exception: { values: [{ value: FIREFOX_VOICES, stacktrace: ours }] } }),
+    ).toBe(false);
+    expect(
+      isKnownEngineNoise({ exception: { values: [{ value: WEBKIT_VOICES, stacktrace: ours }] } }),
+    ).toBe(false);
+  });
+
+  it('keeps another property read on undefined, in every wording', () => {
+    for (const value of [
+      "Cannot read properties of undefined (reading 'notes')",
+      'can\'t access property "notes", e.bars[t] is undefined',
+      "undefined is not an object (evaluating 'e.bars[t].notes')",
+    ])
+      expect(
+        isKnownEngineNoise({
+          exception: { values: [{ value, stacktrace: FIREFOX_VOICES_STACK }] },
+        }),
+      ).toBe(false);
+  });
+
+  it("drops WebKit's NH-338, whose stack starts in the browser's own stop()", () => {
+    const stack = framesOf(
+      'stop@[native code]',
+      `pause@${ENGINE}:51:392516`,
+      `pause@${ENGINE}:51:650062`,
+      `handleWorkerMessage@${ENGINE}:51:522462`,
+    );
+    expect(
+      isKnownEngineNoise({ exception: { values: [{ value: stop, stacktrace: stack }] } }),
+    ).toBe(true);
+  });
+
+  it("keeps a stack of only the browser's own frames: nothing ties it to the engine", () => {
+    expect(
+      isKnownEngineNoise({
+        exception: { values: [{ value: stop, stacktrace: framesOf('stop@[native code]') }] },
+      }),
+    ).toBe(false);
+  });
+});
+
 /** A V8 stack string for the known throw: its first line, then one frame in each file given. */
 const stack = (...frames: readonly string[]) =>
   [`TypeError: ${voices}`, ...frames.map((frame) => `    at Jn.fromJson (${frame}:1:100)`)].join(
