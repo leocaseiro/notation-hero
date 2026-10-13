@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { expect, test, vi } from 'vitest';
 
 import { reportError } from '../lib/monitoring/report';
@@ -30,4 +31,13 @@ test('the root error page reports the crash once, and says what a report leaves 
 
   await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
   expect(reset).toHaveBeenCalledOnce();
+});
+
+// Next.js requires this page to define its own <html> and <body>: it replaces the root layout. The
+// render above mounts it inside a <div>, where the <body> does not show; the server render gives
+// the document exactly as written.
+test('the root error page brings its own <html lang="en"> and <body>', () => {
+  const markup = renderToStaticMarkup(<GlobalError error={new Error('x')} reset={() => {}} />);
+  expect(markup).toMatch(/^<html lang="en">/);
+  expect(markup).toContain('<body>');
 });
