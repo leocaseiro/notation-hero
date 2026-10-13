@@ -1,6 +1,12 @@
 ---
+# spec-triage-loop state. `lap` is the review lap this document has been through;
+# `last_applied` is the highest severity applied on that lap.
 lap: 2
 last_applied: P3
+# The CODE review loop over PR #191 is a separate lane from the doc laps above.
+code_review_lap: 1
+code_review_last_applied: P2
+code_review_findings: .spec-triage-loop/pr-191-sentry-error-monitoring-code/lap-1/findings.json
 ---
 
 # Sentry error monitoring for `web/` — implementation plan (NH-124)

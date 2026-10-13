@@ -57,6 +57,21 @@ entry below; this one says what shipped.
     drawing now stops the clock, and at 60 seconds a loaded font raises E206 instead of E204. Two
     smaller fixes came with it: E203 now fires in Firefox too (its family name carries quotes), and
     the privacy filter now cuts the address and removes names inside stack frames.
+- **Code review, lap 1** (leocaseiro, 2026-10-13). Eight reviewers found five issues, none
+  blocking, and leocaseiro decided each one:
+  - **Firefox and Safari** sent the two known engine errors, NH-335 and NH-338, to Sentry as
+    unhandled crashes, measured against a production build: the known-noise list held only
+    Chrome's wording, and Safari adds a `[native code]` frame. Chosen over matching the wording
+    alone: each entry lists every browser's measured wording, and the Sentry filter skips a
+    browser's own `[native code]` frame, so Firefox and Safari visitors send neither. Firefox with
+    its developer tools open still sends both, a known limit in the spec. NH-335 fires once per
+    open, not seven times.
+  - **Two test gaps closed:** the token check now runs in a test the way the build runs it, and
+    seven cases pin which report each of four storage catches sends.
+  - **Two scope calls reversed.** While building, two sets of copies were kept to keep this PR
+    small: the open-a-file failure handling in the file picker and in drag-and-drop, and a third
+    copy of the crash page. Both grew in this PR, and the merged versions were measured to behave
+    the same, so each now exists once: `openPickedFile()` and `CrashPage`.
 - **Page weight:** a cold `/play` load transfers 274.7 KiB of JavaScript before the SDK and 339.5
   KiB after.
 

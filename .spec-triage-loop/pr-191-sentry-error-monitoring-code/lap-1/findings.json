@@ -63,8 +63,11 @@
     },
     "already_applied_silent_edits": "NONE. ce-code-review in mode:agent applies nothing.",
     "note_for_triage": "Read only this file. Every finding carries its scenario, the verbatim current code (before), the spiked change (after_excerpt, full diff under spikes/), the spike result, the recorded decisions it touches, and the options with a recommendation. Suggested rounds, by area and ordered by impact: round 1 = F-4 (a comparison: options 1-4); round 2 = F-1 + F-3 (tests only); round 3 = F-2 + F-5 (consolidate now / follow-up / keep). Apply each round's Apply decisions as their own commits before the next round, from the spike diffs (re-check them against HEAD first; they were cut at ec7f6619). Report the auto_resolve items in one line each; they need no picker.",
-    "triaged": false,
-    "triage_undecided_remaining": 5
+    "triaged": true,
+    "triaged_on": "2026-10-13",
+    "triage_rounds": 3,
+    "triage_undecided_remaining": 0,
+    "triage_last_applied": "P2"
   },
   "findings": [
     {
@@ -625,8 +628,8 @@
       "also_fold_in": "AR-1 (the 'seven times in one open' comment) lands in the same file; apply it in the same commit.",
       "missing_context": "No recorded decision covers other browsers: spec 2.6 and D2 measured the noise in Chromium only, and both e2e projects are Chromium. The reviewer missed two measured facts that make the suggested fix incomplete. (1) WebKit's NH-338 wording already matches the list ('cannot call stop without calling start first.'), but WebKit adds a `stop@[native code]` frame, so the every-frame rule keeps the event and it is sent anyway. (2) In Firefox run by Playwright (a debugger is attached), each stack also holds async frames that show where the engine's listener was set up: our own React code in _next/static. So the every-frame rule keeps NH-335 and NH-338 there even with the right wording. With async stacks turned off (javascript.options.asyncstack false), which is likely how a visitor's Firefox runs without its developer tools open (not checked in a release Firefox), all frames are the engine's and the wording fix is enough. Also, the finding's guess that Gecko's NH-338 needs a match on the InvalidStateError type is not needed: Firefox's measured message is distinct ('AudioScheduledSourceNode.stop: Start has not been called on this AudioBufferSourceNode.').",
       "recorded_decisions": "Spec decision D2 (drop known engine noise, one list read by Sentry and the e2e gate) — this fix keeps D2; it only makes the list match other browsers. The spec measured the noise in Chromium only.",
-      "triage_decision": null,
-      "applied_in": null
+      "triage_decision": "Apply — option 1, wording + native-frame rule (leocaseiro, 2026-10-13, round 1). AR-1 folded in; spec section 2.6 records the wordings and Known limits records Firefox with its developer tools open.",
+      "applied_in": "0e608cfd"
     },
     {
       "id": "F-1",
@@ -677,8 +680,8 @@
       "recommendation": "Apply: tests only, no runtime change, and it pins the last guard between the token and a browser.",
       "missing_context": "The gap is already known: the implementation ledger lists it as a deferred minor for Task 2 (\"the exit-1 CLI path has no test (only the empty-token exit 0 run); reviewer's probe shows it works\"). No decision says to leave it untested, and the plan's commit table claims Task 2 proves \"a leaked token fails the build\". The finding adds a concrete fix. The spike found one thing the reviewer did not know: the entry check compares process.argv[1] with import.meta.url, and Node resolves symlinks in import.meta.url but not in process.argv[1]. So when the script is started with an absolute path that goes through a symlink, the check never matches and the script exits 0 without checking anything. The build itself is safe: it starts the script as `node scripts/assert-no-auth-token.mjs` from inside web/, and Node's working folder is always the real path (measured from a symlinked folder: exit 1 on a planted leak). But the test exactly as the finding wrote it starts the copy with an absolute path under Node's temp folder, and on macOS that folder sits behind a system symlink, so that test fails on a Mac.",
       "recorded_decisions": "Already a deferred minor in the implementation ledger (Task 2: 'the exit-1 path has no test'); no decision says to leave it untested.",
-      "triage_decision": null,
-      "applied_in": null
+      "triage_decision": "Apply (leocaseiro, 2026-10-13, round 2).",
+      "applied_in": "18b15a17"
     },
     {
       "id": "F-3",
@@ -728,8 +731,8 @@
       "recommendation": "Apply: tests only; it protects decision S2b (a blocked visit costs no quota) at every place that applies it.",
       "missing_context": "Already known: the implementation ledger lists it as a deferred minor for Task 8 (\"only the two transport-storage catches have unit coverage; the four others rely on e2e case 5 (which asserts the settings-read breadcrumb) and a mutation check\"). e2e case 5 (web/e2e/error-reporting.e2e.ts:161-188) pins exactly one arm: the settings read's breadcrumb (it also checks that only the sentinel was sent). So 7 of the 8 arms have no assertion, as the finding says. No decision says to leave them unpinned.",
       "recorded_decisions": "Already a deferred minor in the ledger (Task 8: only the two transport-storage catches have unit coverage). Spec S2b is the rule these tests protect.",
-      "triage_decision": null,
-      "applied_in": null
+      "triage_decision": "Apply (leocaseiro, 2026-10-13, round 2).",
+      "applied_in": "d35f7bd5"
     },
     {
       "id": "F-2",
@@ -793,8 +796,8 @@
       "recommendation": "Apply now: the work is done and proven the same, and this PR is what made both copies grow. Flip to a follow-up if you want this PR to stay surgical — the reason ruling E12 gave.",
       "missing_context": "Recorded decision: ledger ruling E12 (pre-flight scan, before Task 11): \"Task 11's read-flag branching stays in both open paths as written; the twin exists today — cost if wrong: duplicated branching stays.\" So the duplication was a known, accepted cost. What E12 did not weigh: at the base commit each copy was about 10 lines, and this diff grew both to about 28. The stale comment (PlayerShell.tsx:1048-1050 names only E101/E102) is already a deferred minor from Task 11's review. The two drift risks the finding names are already caught by tests on both paths, measured by deleting each call in the copy: drop path without restoreInstruments: 8 PlayerShell tests fail (including 'two opens at once'); drop path without rememberOpenFile: 'a dropped file is remembered by name before it is read' fails; picker without restoreInstruments: OpenFileControl's 'carries no instruments tag on either failure, and puts it back once the open ends' fails (f2-bites.log). The picker's rememberOpenFile is pinned by e2e case 3 (its sentinel quotes the file name and expects [file]); not bite-run here. The warning-versus-error level is pinned on both paths too (OpenFileControl.test.tsx:52-99; PlayerShell.test.tsx:262-276 and 349-360).",
       "recorded_decisions": "Ruling E12 (the controller's pre-flight ruling, reported to the owner, NOT an owner pick): 'Task 11's read-flag branching stays in both open paths as written; the twin exists today — cost if wrong: duplicated branching stays.' New since then: the copies grew about 3x, and a spike shows the merge is cheap and behaves the same.",
-      "triage_decision": null,
-      "applied_in": null
+      "triage_decision": "Apply now, reversing ruling E12 (leocaseiro, 2026-10-13, round 3). The four helpers only OpenFileControl.tsx now uses are no longer exported. End-to-end lane 104 of 104 before the commit. AR-2 folded in.",
+      "applied_in": "503b0f9e"
     },
     {
       "id": "F-5",
@@ -853,8 +856,8 @@
       "recommendation": "Apply now: a privacy promise is the text most worth keeping in one place, and the spike proves the pages render the same. Flip to a follow-up if you want this PR to stay surgical (ruling E11's reason).",
       "missing_context": "Recorded decision: ledger ruling E11 (pre-flight scan): \"Task 7's global-error.tsx keeps its own body as written; refactoring the two existing error pages into a shared panel is outside this PR's scope (surgical changes) — cost if wrong: a third near-copy of the error page.\" So the third copy was a known, accepted cost. At the base commit, error.tsx and play/error.tsx were already twins (without the report effect). The owner's copy decisions of 2026-10-12 (h1 'Notation Hero', the crash title as h2, the E901 line) were applied to all three pages by hand, which is the lock-step edit the finding describes. The finding adds the concrete risk (a privacy promise that goes stale on one page while all tests stay green) but no new defect.",
       "recorded_decisions": "Ruling E11 (the controller's pre-flight ruling, reported to the owner, NOT an owner pick): 'global-error.tsx keeps its own body as written; refactoring the two existing error pages into a shared panel is outside this PR's scope (surgical changes) — cost if wrong: a third near-copy of the error page.' The owner's copy decisions of 2026-10-12 (h1, h2, E901 line) were then applied to all three pages by hand.",
-      "triage_decision": null,
-      "applied_in": null
+      "triage_decision": "Apply now, reversing ruling E11 (leocaseiro, 2026-10-13, round 3). /play's crash page was rendered in the dev server and looked at before the commit.",
+      "applied_in": "ec40dbb6"
     }
   ],
   "auto_resolve": [
@@ -862,13 +865,15 @@
       "id": "AR-1",
       "what": "known-engine-noise.ts (its NH-335 comment) and spec section 2.6 say NH-335 fires 'seven times in one open'. Measured on 2026-10-13: once per open, in Chromium, Firefox and WebKit (an earlier probe during Task 13 also saw once). The earlier e2e comment this was paraphrased from said 'seven throws in one CASE'.",
       "fix": "Reword to 'once per open when measured on 2026-10-13; an earlier CI run counted seven in one test case'. Comment and spec text only; no behaviour change. Fold into F-4's commit if F-4 is applied; otherwise its own commit.",
-      "kind": "ambiguity-only (a wrong fact in a comment)"
+      "kind": "ambiguity-only (a wrong fact in a comment)",
+      "applied_in": "0e608cfd"
     },
     {
       "id": "AR-2",
       "what": "The comment above acceptDropped (web/app/play/PlayerShell.tsx:1048-1050) names only E101 and E102, but the catch below also sends E105 (already a deferred minor from Task 11).",
       "fix": "If F-2 is applied, its diff already rewrites that comment. Otherwise change '(E101 or E102)' to '(E101 or E102 before the read, E105 after it)'.",
-      "kind": "ambiguity-only (a stale comment)"
+      "kind": "ambiguity-only (a stale comment)",
+      "applied_in": "503b0f9e"
     }
   ],
   "fyi": [
