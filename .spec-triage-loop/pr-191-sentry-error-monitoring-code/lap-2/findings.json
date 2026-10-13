@@ -103,7 +103,8 @@
     "triaged_on": "2026-10-13",
     "triage_rounds": 1,
     "triage_undecided_remaining": 0,
-    "triage_last_applied": "P3"
+    "triage_last_applied": "P3",
+    "step7_decision": "Exit the loop and go to merge (leocaseiro, 2026-10-13), overriding the loop's rule to re-lap while the exit signal is not clean: lap 2 changed no runtime code, and every fix was tried first and mutation-checked. Also chosen: rename the PR title to 'feat(web): add Sentry error monitoring to web/ (NH-124)', which passes the pr-title check."
   },
   "findings": [
     {

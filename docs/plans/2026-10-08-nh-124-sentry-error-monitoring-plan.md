@@ -3,7 +3,8 @@
 # `last_applied` is the highest severity applied on that lap.
 lap: 2
 last_applied: P3
-# The CODE review loop over PR #191 is a separate lane from the doc laps above.
+# The CODE review loop over PR #191 is a separate lane from the doc laps above. It ended after
+# lap 2, by the owner's call (2026-10-13), so no lap 3 follows.
 code_review_lap: 2
 code_review_last_applied: P3
 code_review_findings: .spec-triage-loop/pr-191-sentry-error-monitoring-code/lap-2/findings.json

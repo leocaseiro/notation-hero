@@ -84,6 +84,9 @@ entry below; this one says what shipped.
     the file's own helper, and three tests were added: Vercel's build must still run the token
     check after `next build`, a dropped file the browser cannot read is announced with its error
     number, and the root error page keeps its own `<html lang="en">` and `<body>`.
+  - **Loop ended after lap 2** by leocaseiro, overriding its rule to run another lap while the
+    review is not clean: lap 2 changed no runtime code, and every fix was tried first and
+    mutation-checked.
 - **Page weight:** a cold `/play` load transfers 274.7 KiB of JavaScript before the SDK and 339.5
   KiB after.
 
