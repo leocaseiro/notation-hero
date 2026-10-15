@@ -1,0 +1,1 @@
+import{i as e}from"./preload-helper-BI7uX5Yb.js";function t(e,t,n,r){return e.addEventListener(t,n,r),()=>{e.removeEventListener(t,n,r)}}var n=e((()=>{}));export{n,t};
