@@ -11,6 +11,344 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
+### 2026-10-20 — Dependency CVE refresh, round 2: 13 advisories back to zero, inside PR #191 (NH-346)
+
+The `deps-cve` gate (osv-scanner) went red again on 2026-10-13: **13 new advisories across 7
+packages** (top score 9.8). As in round 1, none came from an open PR: `master`'s lockfile already
+held every affected version, and its CI was last green on 2026-10-03. The 2026-09-16 choice stands,
+a **real version fix over an allowlist**, so `osv-scanner.toml` gains no ignores. leocaseiro chose
+(2026-10-20) to carry the fix **inside PR #191 (NH-124)** rather than in a PR of its own, so the
+Sentry work can merge, and to reuse NH-346 for this round instead of filing a new ticket.
+
+- **`next` 16.3.6 → 16.3.8, the only direct dependency,** closes six advisories (top 8.3). 16.3.8
+  is 20 days old, so no `minimumReleaseAgeExclude` entry was needed. `eslint-config-next` stays at
+  16.3.4, as in round 1.
+- **Four floated on a targeted `pnpm update --recursive`**, each inside the range its parent
+  declares: `sharp` 0.35.5 (via `next`), `seroval` 1.6.9 (via TanStack Router in `client/`),
+  `proxy-addr` 2.0.8 (via express in `server/`) and `source-map-js` 1.2.2 (build tools).
+- **Two need an override, because no carrier fixes them yet.** The latest `markdownlint-cli2`
+  (0.23.3) still pins `smol-toml` exactly at 1.8.0, so the existing floor rises to `^1.9.0`. The
+  latest `micromark-extension-math` still wants `katex` `^0.16.0`, so `katex` is pinned at
+  0.18.10: exact, because 0.18.11 is deprecated (published with breaking changes). markdownlint
+  imports only that package's syntax extension, so KaTeX never renders anything.
+- **Targeted updates only.** Nothing else moved, apart from the platform binaries of `next` and
+  `sharp`, and `commander` 15 for KaTeX's command-line tool. All 104 `web/` end-to-end tests pass
+  on the `next` bump, and `lint:md` still reports 0 issues.
+
+**Status:** ✅ decided · 🤖 machine-checked — the `deps-cve` CI job is the enforcement; osv-scanner
+reports no issues, with only NH-347's two time-boxed advisories filtered.
+
+### 2026-10-12 — Sentry error monitoring ships in `web/` (NH-124)
+
+The implementation of the 2026-10-03 design, through the plan in
+`docs/plans/2026-10-08-nh-124-sentry-error-monitoring-plan.md`. The decisions are recorded in the
+entry below; this one says what shipped.
+
+- **SDK:** `@sentry/nextjs` 11.4.0, pinned exactly. `withSentryConfig` comes from
+  `@sentry/nextjs/config` in 11.x. The plan measured 11.1.0; on 11.4.0 the SDK runs the same 12
+  integrations.
+- **Enforced:** every catch in `web/` reports (lint rule + canary); a token in a browser file fails
+  the build; a failed source-map upload fails the production deploy; the reporting and privacy
+  promises are end-to-end cases.
+- **Choices the plan made**, as they stood after the plan review:
+  - _Approved in the plan review_ (leocaseiro; the entry below holds the reasoning): **2** `org` and
+    `project` go into `next.config.ts` once the owner has them, and a production build that has the
+    token but not both slugs fails; **3** the file's type travels as a tag and as a `file` context,
+    with its size rounded up to the next power of two; **4** E101–E103, and an E202 that arrives
+    with an empty message, send a fresh error that holds a fixed sentence and has no `cause`; **12**
+    only a production build on Vercel reads the upload token.
+  - _As the plan proposed_: **1** the SDK is pinned exactly; **5** `isStorageRefusal` and
+    `noteError` read an error's `name`, because jsdom's `DOMException` is not an `Error`; **6** the
+    E601 and E603 reports carry fixed text (and, for E601, the repaired keys' dot-paths), each sent
+    beside its toast; **7** the E204 clock is a one-second counter that counts only while the page
+    is visible; **8** every unit test runs against a replaced `@sentry/nextjs`; **9** the two
+    transport-restore cases that #185 added get the same E601 and E603 assertions as the settings
+    cases; **10** three extra tests (the lint canary checks that the browser's global `reportError`
+    is banned, a test holds the fixed sentences to `docs/reference/error-codes.md`, and the
+    dropped-file twin of the open-file catch has an E105 case); **11** case 7's fragment is
+    `#anchor-probe-456`, not `#frag`.
+- **Changed while building:**
+  - The `instruments` tag keeps only General MIDI programs 000–127. AlphaTab reads a file's program
+    number unbounded, so a damaged file could have put any number in the tag.
+  - The end-to-end case that waited for the engine's NH-335 throw while the bundled beat was held
+    back is now two cases. Measured, NH-335 never fires while the beat is held back: one case
+    proves "NH-335 is never sent", and another proves "the file's instruments win over a late
+    beat". Spec section 6 says so.
+  - Two more changes made while building (a thrown object's copy is dropped; the crash pages' words)
+    are recorded in the entry below.
+  - **E206 — the score could not be drawn** (leocaseiro, 2026-10-13). The final review found that a
+    failure other than the font, such as the built-in score failing to load, was reported after 60
+    seconds as E204, "the music font did not arrive". A spike in Chromium, Firefox and WebKit showed
+    that the font's own status tells the two cases apart reliably, once Firefox's quoted family name
+    is handled, and that in this case nothing else sends a report. So an E202 before the first
+    drawing now stops the clock, and at 60 seconds a loaded font raises E206 instead of E204. Two
+    smaller fixes came with it: E203 now fires in Firefox too (its family name carries quotes), and
+    the privacy filter now cuts the address and removes names inside stack frames.
+- **Code review, lap 1** (leocaseiro, 2026-10-13). Eight reviewers found five issues, none
+  blocking, and leocaseiro decided each one:
+  - **Firefox and Safari** sent the two known engine errors, NH-335 and NH-338, to Sentry as
+    unhandled crashes, measured against a production build: the known-noise list held only
+    Chrome's wording, and Safari adds a `[native code]` frame. Chosen over matching the wording
+    alone: each entry lists every browser's measured wording, and the Sentry filter skips a
+    browser's own `[native code]` frame, so Safari visitors send neither, and Firefox visitors
+    should send neither too: that a Firefox with no developer tools open records no async stacks is
+    inferred, not yet checked in a release build. Firefox with its developer tools open still sends
+    both, a known limit in the spec. NH-335 fires once per open, not seven times.
+  - **Two test gaps closed:** the token check now runs in a test the way the build runs it, and
+    seven cases pin which report each of four storage catches sends.
+  - **Two scope calls reversed.** While building, two sets of copies were kept to keep this PR
+    small: the open-a-file failure handling in the file picker and in drag-and-drop, and a third
+    copy of the crash page. Both grew in this PR, and the merged versions were measured to behave
+    the same, so each now exists once: `openPickedFile()` and `CrashPage`.
+- **Code review, lap 2** (leocaseiro, 2026-10-13), over only what lap 1 changed. Eight reviewers
+  found three small issues and four test gaps, none blocking:
+  - **Fixed without a question**, under leocaseiro's rule for stale text and small test fixes:
+    the spec now describes `openPickedFile` and `CrashPage` as shipped (it still counts 16 catch
+    sites, because a catch it never listed is now in its table); one storage test now checks that
+    no report of any level is sent; a comment says what `null` from `openPickedFile` means; a test
+    name no longer hides a helper; and the Firefox line above now says what is inferred.
+  - **Decided by leocaseiro:** the Firefox and WebKit filter tests now build their events with
+    the file's own helper, and three tests were added: Vercel's build must still run the token
+    check after `next build`, a dropped file the browser cannot read is announced with its error
+    number, and the root error page keeps its own `<html lang="en">` and `<body>`.
+  - **Loop ended after lap 2** by leocaseiro, overriding its rule to run another lap while the
+    review is not clean: lap 2 changed no runtime code, and every fix was tried first and
+    mutation-checked.
+- **Page weight:** a cold `/play` load transfers 274.7 KiB of JavaScript before the SDK and 339.5
+  KiB after.
+
+**Registry:** L11-sentry ✅ 🤖; L11-srcmap ✅ 🟡; F7-sentry ✅ 📄 (the setup is by hand; leocaseiro
+confirmed it on 2026-10-12).
+
+### 2026-10-03 — Sentry error monitoring for `web/`: design approved (NH-124)
+
+leocaseiro approved the design for [NH-124](https://leocaseiro.atlassian.net/browse/NH-124) section
+by section in a brainstorming session: four sections and ten decisions. Spec:
+[`docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md`](../specs/2026-10-03-nh-124-sentry-error-monitoring-design.md).
+Goal, in leocaseiro's words: every error monitored, "both under try/catch, and the ones that
+aren't".
+
+- **S1 — report every error, never the file.** The home page promised "Nothing you open leaves this
+  device" and both error pages "Nothing you opened was sent anywhere". Reports now go out without
+  the file name, title or track names — click breadcrumbs, whose labels carry track names, are off,
+  and a name quoted in an error's message becomes `[file]` before sending — and the copy is
+  reworded to say so. Rejected: an opt-in switch (few people turn it on, which defeats the goal) and
+  sending file names (breaks shipped copy; the ticket itself said "strip filenames").
+- **S2 — Sentry carries errors and warnings only.** leocaseiro wants burn rates but judged that
+  Sentry should not carry them. A rate needs every attempt counted, which is usage tracking, and
+  the free plan's 5,000-a-month error cap would flatten the failure count on the worst day. Burn
+  rates stay with [NH-52](https://leocaseiro.atlassian.net/browse/NH-52); the reasoning is a comment
+  there. Recorded correction: since 2026-05-05 Sentry has generally-available Application Metrics
+  (5 GB free), so Sentry _could_ do it — a candidate for NH-52, not for this ticket.
+- **S2b — storage the browser blocks leaves a breadcrumb only.** It costs no quota and travels
+  inside the next real report. Saved data that is _corrupt_ is different — a bug signal — and sends
+  a warning.
+- **S3 — errors only.** No performance tracing, no Session Replay: replay would record the score
+  drawn on screen.
+- **S4 — Release Health on**, the share of visits per release that ended without an unhandled
+  error, as the interim health number "until we move to AWS burn rates" (leocaseiro). It pings on
+  every visit, so the home page names it: "counts visits and crashes anonymously".
+- **D1 — `@sentry/nextjs`, browser part only.** `web/` has no runtime server code. Rejected:
+  `@sentry/react` plus our own upload script (we would own the step that keeps source maps off the
+  public site) and Sentry's Loader Script (third-party code on every visit).
+- **D2 — known engine noise is dropped**, using one list shared with `web/e2e/page-errors.ts`:
+  NH-335 fires seven times in one ordinary file open and NH-338 in 7 of 10 quick Pause clicks.
+- **D3 — no tunnel.** A visitor's ad blocker is respected, and their reports are lost.
+- **D4 — source maps: Sentry's default, and "Hide source content" off.** leocaseiro asked what the
+  risk of public source maps is. The June reason (rebuilding the source from the maps) no longer
+  applies: the repository is public. Sentry's default — upload, then delete from the deploy —
+  needs no configuration, so it stays. Hiding the code inside Sentry would protect nothing.
+- **D5 — production only.** Preview deployments do not report.
+
+**Changed by the spec review, lap 1** — each approved by leocaseiro in the triage, 2026-10-03/04:
+
+- **S4's number** now counts visits that ended without an _unhandled_ error. Sentry 11 marks a
+  broken browser visit "unhandled", never "crashed", and a report our own code catches is
+  "handled", so a crash-free share could not move. The error pages (E901) and the player failures
+  (E201–E204) report as unhandled. Chosen over the error pages alone, because a health number
+  should drop when the player cannot play; a failed font download on a bad connection lowers it
+  too.
+- **S1's home-page copy** said "anonymous crash statistics", which hid the ping sent on every
+  visit. It now reads "This site counts visits and crashes anonymously, and sends an error report
+  when something goes wrong."
+- **D2 holds by removing a Sentry default.** Sentry 11's `BrowserApiErrors` wraps the engine's
+  worker listeners and adds a frame from our bundle, so the "every frame in the engine bundle" rule
+  would stop matching. It is removed, with the `Console` integration.
+- **Page addresses are cut at `?` or `#`** before sending. Sentry 11's `dataCollection` does not
+  cover the page address or navigation breadcrumbs, so tracking codes such as `fbclid` would leak.
+- **An email alert** fires on a new issue, a regression or an escalation. Sentry's default alert
+  skips warnings, and every file problem is a warning.
+- **Our own failures in the open-file catches get a new code, E105** — an error that keeps its
+  message — instead of hiding behind the visitor's E102. Chosen over tagging them E102 at error
+  level, so each code keeps one meaning and the visitor learns the fault is ours.
+- **S2b is refined, not reversed.** Only storage the browser refuses (`SecurityError`, or full)
+  leaves a breadcrumb; a throw from our own reader or serializer inside the same catch sends an
+  error.
+- **S1 holds by collecting less.** Sentry's click breadcrumbs record each button's label, and the
+  Solo, Mute and Render labels carry the track name — the one place a name reached Sentry. Click
+  breadcrumbs are now off (`dom: false`), and the names filter runs over error messages only:
+  E105, E901 and E201–E204 keep their message, and a future bug can quote a name (V8 writes the key
+  it failed to read into the message). Chosen over keeping the filter on both ends (a click trail,
+  but a list that must catch every name on every click; the review found three ways it missed)
+  and over deleting it (the least code, but nothing would clean an error's message).
+- **Reports carry the score's kinds of instrument**, asked for by leocaseiro in the triage so that
+  errors clustering on one instrument stand out: a Sentry tag `instruments` holding `drums` and
+  General MIDI program numbers, never text from the file. The S1 copy follows: "or what's in it"
+  becomes "or the music in it — only the kinds of instrument it uses" on the home page, and "or the
+  music in it" on the error pages.
+- **A visitor's choice of what to send** — reject all, accept all, errors only — is a follow-up,
+  [NH-349](https://leocaseiro.atlassian.net/browse/NH-349), not part of NH-124.
+- **The home copy is split in two.** The tagline keeps its two lines, and the privacy sentences get
+  their own smaller paragraph below the Play button: as one paragraph the copy would have grown
+  from 119 to 318 characters.
+- **Reports are stored in the EU (Frankfurt).** Sentry has no Australian region, and the choice
+  cannot be changed later. Reports carry no personal data; should a bug ever let something
+  through, the EU is the stricter fallback. Chosen over the US (closer to Australia, and Sentry's
+  default).
+
+**Changed by the spec review, lap 2** — each approved by leocaseiro in the triage, 2026-10-05,
+unless marked as applied without asking:
+
+- **The privacy promise names the file's type and size.** A failed open (E101–E103, E105) sends
+  them, so the home copy now ends "— only the file's type and size, and the kinds of instrument it
+  uses", and the Goal says the same. Chosen over no longer sending them, the one clue to which
+  files fail.
+- **Reports send the `User-Agent` header**, so each issue shows its browser and system; the Release
+  Health ping already carries it. IP address and cookies stay off, and the Referer goes as
+  `[Filtered]`. Chosen over sending no headers.
+- **The visitor's locale and time zone stay in the reports**, from Sentry's default culture
+  context, and section 3.1 now lists them: leocaseiro's choice, against the recommendation to stop
+  sending them.
+- **The `instruments` tag.** Programs are written with three digits (`drums,030`), so one
+  instrument is found with a search such as `instruments:*030*` — chosen over only correcting the
+  claim. The bundled beat that every visit to `/play` loads is tagged `sample`, apart from a
+  visitor's own drum chart: leocaseiro's idea, applied after a spike passed. While a file opens no
+  report carries the tag, and when the open ends it is back to the score on screen — the previous
+  score's after a cancelled or failed open — chosen over never clearing it. The player removes the
+  tag when it unmounts (applied without asking, to complete the `sample` choice).
+- **An E105 also ends the "Loading the player" bar.** A throw after a file parses left the bar
+  pulsing beside the error, a bug that predates the spec. Fixed here, chosen over a separate
+  ticket, because the new E105 message would sit beside it.
+- **E204's 60 seconds count only while the page is visible.** AlphaTab draws nothing in a hidden
+  tab, so a player opened in a background tab sent a false, unhandled E204. Chosen over restarting
+  the clock at each return, which could leave a real hang unreported.
+- **A build check keeps the Sentry auth token out of the page:** the build fails when the token's
+  value is in any file a browser downloads. Raised by leocaseiro; chosen over writing the reasoning
+  down only.
+- **Six smaller changes:** Sentry's tracing integration is filtered out (S3); the names filter also
+  learns a score's instructions and notices; builds without the token print no Sentry warnings; the
+  environment comes from the SDK's default; section 2.6 names the two end-to-end cases that change
+  when NH-335 or NH-338 is fixed; setup step 3 sets Allowed Domains to the production domain.
+- **Applied without asking, each reported:** the names filter also runs over an event's `message`;
+  the names are remembered as soon as a file parses; e2e case 8 covers E201; setup step 6 checks our
+  own frame, and the engine's frames stay minified (a new known limit); and the file lists are
+  complete again.
+
+**Changed by the spec review, lap 3** — each approved by leocaseiro in the triage, 2026-10-05/08,
+unless marked as applied without asking:
+
+- **Crash reports carry the `instruments` tag.** The tag is no longer removed when the player
+  unmounts: React runs that cleanup before the error page reports, so no E901 carried the tag, and
+  it stayed off for the rest of the visit. A one-line Sentry integration now adds it when an error
+  is captured, only on `/play` and only while no file opens, so home-page reports still never
+  carry it. Spiked on the real SDK at leocaseiro's request; chosen over adding it in `beforeSend`,
+  which reads the page late under `next dev`, and over clearing it on navigation. This replaces
+  lap 2's "The player removes the tag when it unmounts".
+- **The site moves to `notationhero.com`.** Allowed Domains lists `*.notationhero.com` and keeps
+  `notation-hero-web.vercel.app`, which will redirect there, so reports arrive whichever lands
+  first: leocaseiro's direction, given instead of either option offered. The domain work is
+  [NH-278](https://leocaseiro.atlassian.net/browse/NH-278); its API half moved to
+  [NH-350](https://leocaseiro.atlassian.net/browse/NH-350).
+- **A failed source-map upload stops the deploy:** `errorHandler` rethrows, so the production
+  build fails and the previous deployment stays live. Chosen over Sentry's default, which logs one
+  line, deploys, and deletes the maps.
+- **Four smaller changes:** reports are kept 30 days, and only a whole issue can be deleted (a
+  known limit); E101–E103 send a fixed sentence instead of no message, so an issue's title says
+  what failed; two existing end-to-end cases assert the E601 and E603 warnings; `web/AGENTS.md`
+  states the rule that every catch reports.
+- **Applied without asking, each reported:** the token check also reads the prerendered pages
+  under `.next/server` and the files in `public/`, which browsers download too; a failed
+  music-font download (E203) stops the E204 clock, so it sends no false E204.
+
+**The spec review ends after lap 3** (leocaseiro, 2026-10-08). The loop's rule would review
+again, because lap 3's review was not clean, but nothing above P2 remained, and every lap-3
+change was spiked or type-checked before it landed. The implementation plan and its own review
+loop come next.
+
+**Changed by the plan review, lap 1** — each approved by leocaseiro in the triage, 2026-10-09:
+
+- **Only a production build on Vercel reads the upload token.** `next.config.ts` hands
+  `SENTRY_AUTH_TOKEN` to Sentry only when `VERCEL_ENV` is `production`, where section 4's snippet
+  read the token alone. Sentry's own command-line tools read a variable of that name from a
+  developer's shell, and Playwright passes the shell's variables to the build it starts, so a
+  token exported for reading issues would have turned every local build and end-to-end run into an
+  upload attempt. The token check still reads the raw variable. Production already exposes
+  `VERCEL_ENV` to its build: on 2026-10-09 its bundle carried a `v0.` version, which only a
+  production build prints.
+- **A production build with the token but no `org` and `project` slugs fails.** Sentry's plugin
+  only warns about a missing project, then deploys with the maps deleted, which `errorHandler`
+  never sees. The build now throws instead, carrying lap 3's "a failed source-map upload stops the
+  deploy" to that one quiet path.
+- **An E202 that arrives with no message sends E202's meaning instead.** A SoundFont network
+  failure reaches AlphaTab's `error` event with an empty message, which titled its Sentry issue and
+  alert email only "Error". `reportError` now sends E202's sentence from the reference page in that
+  one case; an E202 with a message keeps it, and no text from the visitor is added.
+- **The file size is rounded up to the next power of two.** The spec sent the exact byte count, and
+  with the type an exact size could single out a widely shared tab file. A 48,213-byte file is now
+  sent as 65,536; 0 stays 0, and a file over the limit already has its own code, E101.
+- **An E105 after the swap says the file opened.** A bug of ours in the steps after the new score
+  is on screen (the "loaded" toast, the announcement, moving focus) no longer says the file "could
+  not be opened": a catch around those steps reports E105 and says `riff.gp opened, but something
+went wrong on our side. If the player misbehaves, reload the page. (Error E105)`. leocaseiro's
+  choice over keeping one message, which the review had recommended as the cheaper path (lap 3's
+  Q12).
+- **Kept: a picked file's E105 is announced by its toast alone,** as E101 and E102 are. The toast is
+  a polite live region, so the sentence is heard once (lap 3's Q13).
+- **`AGENTS.md` says that Prettier formats the code fences inside Markdown.** This lap's review found
+  a JSX snippet in the plan that Prettier had turned into statements, which would have put a stray
+  `;` on the home page. The note was a machine-local agent memory until leocaseiro asked for it in
+  the repository, where every agent session reads it.
+
+**The plan review runs a focused lap 2** (leocaseiro, 2026-10-09): the loop's rule re-laps because
+lap 1 applied a P1 fix. The reviewers read only what lap 1 changed, and a verifier runs Task 11's
+new tests, the one change the triage could not run.
+
+**Changed by the plan review, lap 2** — approved by leocaseiro in the triage, 2026-10-10:
+
+- **A `web/.env` file cannot open the upload gate.** `next build` loads `web/.env*` files before it
+  reads `next.config.ts` and fills in each variable the shell lacks, so a `VERCEL_ENV="production"`
+  line opened the gate on a local build (tested with a real `next build`). A production
+  `vercel env pull` writes that line, according to the Vercel CLI's source code. The build script
+  now hands `next build` the shell's own value, `VERCEL_ENV=$VERCEL_ENV next build`, which a `.env`
+  file never replaces, even when it is empty; on Vercel the real value passes through. The README
+  also warns against pulling Production variables into `web/`: they include the production DSN, so
+  `pnpm dev` would report into the production project.
+
+**The plan review ends after lap 2** (leocaseiro, 2026-10-10). Neither lap left a P0 or P1 open,
+so the loop's no-progress rule stopped it and asked; lap 2's review was not clean only because of
+the pin above, which was run both ways before it landed. Every change in both laps was checked by
+running code. NH-124 moves to implementation.
+
+**The privacy popup is NH-51, not NH-349** (leocaseiro, 2026-10-11). NH-349 was narrowed on
+2026-10-05 to a "Privacy choices" link for changing an answer later, and NH-51 (Google Analytics
+plus the privacy popup) builds the popup. The spec's Non-goals and Known limits now say so; the
+follow-up line above keeps the wording of its day.
+
+**A thrown object's copy is dropped** (leocaseiro, 2026-10-11). Sentry 11 copies a thrown non-`Error` object — a plain object or a browser `Event` — whole into `extra.__serialized__`, which the names filter never read, so a name or the file's contents inside it would have left. The privacy filter's task review found it; leocaseiro chose to delete the field in `beforeSend`, over filtering the strings inside it (the file's contents would still leave) and over wrapping non-errors in `reportError` (an unhandled rejection never passes through it). Spec section 3.2 now says so.
+
+**The crash pages name the site and say what E901 means** (leocaseiro, 2026-10-12). Looking at the
+three crash pages, leocaseiro asked that each show "Notation Hero" as its heading, with the crash
+title below it, and that the code line read "Error E901 — the page crashed unexpectedly." rather
+than the bare code. This replaces the headings and the "Error E901" line that spec section 3.4
+describes; the home page's new paragraph keeps its width.
+
+**Registry:** L11-sentry points at the spec; L11-srcmap reworded (D4); L11-envsecret ⛔ superseded
+and F7-sentry rewritten, because the source-map upload runs inside Vercel's build rather than a
+GitHub Actions job.
+
+**Status:** ✅ decided · 📄 prose-only — the spec is the contract until the implementation PR, which
+flips L11-sentry from ⏳ pending.
+
 ### 2026-09-29 — One maintainer's folder layout is out of the public repo, and a gate keeps it out (NH-345)
 
 **270 lines across 64 tracked files named the maintainer's local folder layout.** The handle is

@@ -1,0 +1,71 @@
+{
+  "reviewer": "security-lens",
+  "findings": [
+    {
+      "title": "A shell-held SENTRY_AUTH_TOKEN turns local builds into uploads",
+      "severity": "P2",
+      "section": "Task 1 — Install @sentry/nextjs, wrap the build (Step 4, the withSentryConfig options); echoed by Task 16's README text",
+      "why_it_matters": "If the owner exports SENTRY_AUTH_TOKEN, every local build and every e2e run tries to create a release and upload source maps. The installed `sentry` skill tells the owner to set a variable with exactly that name, system-wide, holding a read-only API token, and Playwright 1.61.1's web server passes the shell's environment into its `pnpm build`. With that read-only token, Sentry refuses the release and `errorHandler` rethrows, so local builds and the whole e2e lane fail. With a broader token, local and agent builds upload maps as release `local` into the production project, using the owner's credential, which the spec's rule that an agent may not handle the token exists to prevent. `web/scripts/app-version.mjs` already trusts VERCEL_ENV to tell a production build from a local one. Gating the token on it makes 'only Vercel's production build uploads' true by construction, not just when the shell happens to be clean.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "In Task 1 Step 4, read the token through a production gate and use the result for all three options: `const uploadToken = process.env.VERCEL_ENV === 'production' ? process.env.SENTRY_AUTH_TOKEN : undefined;`, then `authToken: uploadToken`, `sourcemaps: { disable: !uploadToken }` and `useRunAfterProductionCompileHook: Boolean(uploadToken)`. Add a comment that Sentry's own API tooling reads the same variable name from a developer's shell. Leave `assert-no-auth-token.mjs` reading SENTRY_AUTH_TOKEN as it does now. Record the change from spec section 4's snippet in the plan, as its Spec line requires.",
+      "confidence": 75,
+      "evidence": [
+        "sourcemaps: { disable: !process.env.SENTRY_AUTH_TOKEN },",
+        "useRunAfterProductionCompileHook: Boolean(process.env.SENTRY_AUTH_TOKEN),",
+        "Only Vercel's Production environment holds SENTRY_AUTH_TOKEN, so previews, CI and local builds upload nothing",
+        "previews, CI and local builds have neither, so they send nothing and upload nothing",
+        "Expected: PASS, with nothing printed by the new step (no token, nothing to check)."
+      ]
+    },
+    {
+      "title": "Nothing pins the anonymous promise: IP inference stays untested",
+      "severity": "P3",
+      "section": "Task 6 — Start Sentry in the browser, and the envelope recorder (the integrations case); Task 17 — Before code review, Step 7",
+      "why_it_matters": "Task 1 lets pnpm install a newer 11.x. If that version changed what `userInfo: false` covers, Sentry could start inferring visitors' IP addresses and every case would still pass: the only SDK check reads `sdk.integrations`, and `dataCollection` keys left unset default to permissive. The server half, 'Prevent Storing of IP Addresses', is only asked about in Task 17 Step 1, and Step 7's first-deploy checks never look for an IP. So the home page's 'anonymously' rests on two settings nothing verifies. I relied on the 11.1.0 event the plan-time spike recorded: it carries `sdk.settings.infer_ip: 'never'` and no `user`. Two assertions in the existing integrations case would pin the browser half, the same way Review Focus 5 pins renamed integrations, and one Step 7 line would check the server half.",
+      "finding_type": "omission",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "In Task 6's integrations case, add `expect(sentinel.sdk?.settings?.infer_ip).toBe('never');` and `expect(sentry.raw().join('\\n')).not.toContain('ip_address');`, and give `RecordedEvent.sdk` a `settings?: { readonly infer_ip?: string }` field. Add a Task 17 Step 7 bullet: 'The event's User section shows no IP address.'",
+      "confidence": 50,
+      "evidence": [
+        "expect([...(sentinel.sdk?.integrations ?? [])].toSorted()).toEqual(EXPECTED_INTEGRATIONS);",
+        "readonly sdk?: { readonly integrations?: readonly string[] };",
+        "Every key is optional and an unset key falls back to a permissive default (`true`).",
+        "An E103 warning appears in Sentry, with `file_type` and the size and without the name; its alert email arrives.",
+        "This site counts visits and crashes anonymously"
+      ]
+    },
+    {
+      "title": "Catch rule for agents omits the file-content constraint",
+      "severity": "P3",
+      "section": "Task 15 — The lint rule that keeps every catch reporting, Step 5 (the web/AGENTS.md bullet)",
+      "why_it_matters": "The lint rule makes every future catch call reportError. reportError keeps the error's own message for every code except E101–E103, and the names filter removes remembered names, not a file's contents. The next likely new catch is the cached-score load that E104 is already reserved for (docs/reference/error-codes.md). An agent following the bullet as written would send AlphaTab's parse message, which spec 2.3 says can quote text from inside the file. One sentence in the bullet carries a rule that no lint selector can check.",
+      "finding_type": "omission",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "Add this to the web/AGENTS.md bullet in Task 15 Step 5: 'reportError keeps the error's message for every code except E101–E103, and the names filter removes names, not a file's contents. A catch around code that reads or parses the visitor's file, such as the cached-score path E104 is reserved for, needs a fixed sentence: add its code to FIXED_MESSAGES in web/lib/monitoring/report.ts.'",
+      "confidence": 50,
+      "evidence": [
+        "**Every `catch` reports.** Each `catch` clause and `.catch()` callback in `web/` calls `reportError` or `noteError` from `web/lib/monitoring/report.ts` inside the catch itself",
+        "// E101–E103 send one of these in place of the exception's own message, which can quote text from inside the file.",
+        "The names filter: a file name, a score's title or credits, or a track name quoted in an error's message becomes `[file]`."
+      ]
+    },
+    {
+      "title": "Exact byte count fingerprints the file (Q8)",
+      "severity": "P3",
+      "section": "Left open for the plan review — Lap 2's Q8, the file size (sent by Task 5's reportError)",
+      "why_it_matters": "A report with the file name removed can still say which song failed to open. An exact byte count plus the extension is close to a unique key for a tab file that many visitors download from the same site. These reports are kept for 30 days and can only be deleted as a whole issue. For E101–E103 and E105, the useful distinctions are empty, tiny, ordinary and over the limit, and a coarse size keeps all four. Rounding once inside reportError, which every report passes through, needs no change at the call sites, and the home page's 'the file's type and size' stays true.",
+      "finding_type": "omission",
+      "autofix_class": "manual",
+      "suggested_fix": "Round the size inside reportError before it is sent: `contexts.file.bytes` becomes the next power of two at or above the real size (0 stays 0). Update the expected sizes in report.test.ts (31 → 32), OpenFileControl.test.tsx (5 → 8) and end-to-end case 2 (29 → 32).",
+      "confidence": 50,
+      "evidence": [
+        "The spec sends the exact byte count. An exact size and the extension together could identify a well-known downloaded tab file. Option: round it into ranges.",
+        "const facts = { type: fileType(file.name), bytes: file.size };",
+        "file: { type: next.type, bytes: next.bytes.byteLength },"
+      ]
+    }
+  ],
+  "residual_risks": [],
+  "deferred_questions": []
+}

@@ -1,0 +1,21 @@
+diff --git a/web/lib/monitoring/known-engine-noise.test.ts b/web/lib/monitoring/known-engine-noise.test.ts
+index a20e2976..4d1270ea 100644
+--- a/web/lib/monitoring/known-engine-noise.test.ts
++++ b/web/lib/monitoring/known-engine-noise.test.ts
+@@ -139,14 +139,14 @@ describe('isKnownEngineNoise, in Firefox and WebKit', () => {
+   });
+
+   it("drops WebKit's NH-338, whose stack starts in the browser's own stop()", () => {
+-    const stack = framesOf(
++    const webkitStopStack = framesOf(
+       'stop@[native code]',
+       `pause@${ENGINE}:51:392516`,
+       `pause@${ENGINE}:51:650062`,
+       `handleWorkerMessage@${ENGINE}:51:522462`,
+     );
+     expect(
+-      isKnownEngineNoise({ exception: { values: [{ value: stop, stacktrace: stack }] } }),
++      isKnownEngineNoise({ exception: { values: [{ value: stop, stacktrace: webkitStopStack }] } }),
+     ).toBe(true);
+   });
+

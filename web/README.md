@@ -31,6 +31,27 @@ Hosted on **Vercel Hobby** ($0, non-commercial) at <https://notation-hero-web.ve
 The Vercel GitHub integration auto-deploys on push to `master` and creates preview deploys for
 PR branches. Configuration: [`vercel.json`](vercel.json).
 
+**Error monitoring (Sentry).** Two environment variables, both in Vercel's **Production**
+environment only — previews, CI and local builds have neither, so they send nothing and upload
+nothing:
+
+| Variable                 | What it is                                                                                                                                                                      |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_SENTRY_DSN` | Where error reports go. Public by design: it ships inside the page.                                                                                                             |
+| `SENTRY_AUTH_TOKEN`      | The organization token the production build uses to upload source maps. Marked **Secret** (Vercel's name for what it called Sensitive). Never in chat, never in the repository. |
+
+A production deploy **fails**, and the previous one stays live, when the source-map upload fails —
+Sentry is down, or the token was revoked or has expired — when the token is set but
+`next.config.ts` names no Sentry `org` and `project`, and when the token's value reaches a file a
+browser downloads (`scripts/assert-no-auth-token.mjs`). Redeploy once Sentry answers; replace the
+token in Vercel if it was revoked. Only a production build reads the token (`VERCEL_ENV` is
+`production`), so a `SENTRY_AUTH_TOKEN` in your own shell — Sentry's command-line tools read that
+name — never makes a local build upload: the build script hands `next build` your shell's
+`VERCEL_ENV`, so a `web/.env` file cannot make it `production`. Do not pull Production variables
+into `web/` (`vercel env pull --environment=production`): they include the production DSN, so
+`pnpm dev` would report into the production project. The one-time setup is section 5 of
+[the spec](../docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md).
+
 ## Design-system boundary
 
 Components come from `@notation-hero/client` through its **package barrel**. **Phase 1 exposes only

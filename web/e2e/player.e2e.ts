@@ -3,6 +3,7 @@ import path from 'node:path';
 import { expect, test } from '@playwright/test';
 
 import { failOnUnexpectedPageErrors } from './page-errors';
+import { handledFlags, recordSentry, withCode } from './sentry-envelopes';
 
 import type { Locator, Page } from '@playwright/test';
 
@@ -215,11 +216,15 @@ test('a score with no percussion staff opens on the first track', async ({ page 
 test('a failed music-font download shows the engine error, not an endless Skeleton', async ({
   page,
 }) => {
+  const sentry = await recordSentry(page);
   await page.route('**/alphatab/font/**', (route) => route.abort());
   await page.goto('/play');
   await expect(page.getByTestId('engine-error')).toBeVisible({ timeout: 15_000 });
   await expect(page.getByTestId('engine-error')).toContainText('Error E203');
   await expect(page.getByTestId('notation-skeleton')).toBeHidden();
+  await expect.poll(() => withCode(sentry, 'E203').length).toBeGreaterThan(0);
+  expect(withCode(sentry, 'E203')[0]?.level).toBe('error');
+  expect(handledFlags(withCode(sentry, 'E203')[0])).toEqual([false]);
 });
 
 // The other half of that backstop. The 60 s timer and the font race each other, and the font can
@@ -242,11 +247,12 @@ test('a music font that arrives after the 60 s backstop clears the error', async
   // frozen, AlphaTab's own timers never advance and the render could not finish.
   await page.clock.install();
   await page.goto('/play');
-  // RETRY the fast-forward. The backstop is armed in an effect keyed on the api, which does not
-  // exist until the engine module has imported — fast-forwarding before that moment advances past
-  // nothing, and the timer is then armed against the new clock.
+  // RETRY the run. The backstop is armed in an effect keyed on the api, which does not exist until
+  // the engine module has imported — running the clock before that moment advances past nothing,
+  // and the counter then starts against the new clock. runFor, not fastForward: the backstop is a
+  // one-second tick that counts visible seconds, and fastForward fires a due timer at most once.
   await expect(async () => {
-    await page.clock.fastForward(61_000);
+    await page.clock.runFor(61_000);
     await expect(page.getByTestId('engine-error')).toContainText('Error E204', { timeout: 1000 });
   }).toPass({ timeout: 20_000 });
   await page.clock.resume();
@@ -264,10 +270,13 @@ test('a music font that arrives after the 60 s backstop clears the error', async
 // comment on the 60s-backstop test above) — the same class of engine-runtime error Defect 1's
 // crash also raised.
 test('opening a new file clears a stale engine-error banner', async ({ page }) => {
+  const sentry = await recordSentry(page);
   await page.route('**/alphatab/soundfont/**', (route) => route.abort());
   await page.goto('/play');
   await expect(page.getByTestId('engine-error')).toBeVisible({ timeout: 15_000 });
   await expect(page.getByTestId('engine-error')).toContainText('Error E202');
+  await expect.poll(() => withCode(sentry, 'E202').length).toBeGreaterThan(0);
+  expect(handledFlags(withCode(sentry, 'E202')[0])).toEqual([false]);
 
   await page.unroute('**/alphatab/soundfont/**');
   await page.getByTestId('open-file-input').setInputFiles('e2e/fixtures/1-beat.gpx');
@@ -1853,6 +1862,7 @@ test('a changed setting survives a reload', async ({ page }) => {
 // outside Zoom's 0.25-3 range, and the field clamps only on blur/Enter, so closing a tab mid-edit
 // is a real way to store it.
 test('a single out-of-range setting is corrected and the warning NAMES it', async ({ page }) => {
+  const sentry = await recordSentry(page);
   await page.addInitScript(() => {
     globalThis.localStorage.setItem(
       'notation-hero.player-settings',
@@ -1867,6 +1877,9 @@ test('a single out-of-range setting is corrected and the warning NAMES it', asyn
   // It must NOT claim a reset: the other settings were untouched, and Zoom landed on its maximum
   // rather than its default.
   await expect(toast).not.toContainText('reset to the defaults');
+  await expect
+    .poll(() => withCode(sentry, 'E601').map((event) => event.level))
+    .toEqual(['warning']);
   await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
   // Clamped to the maximum, not dropped to the default of 1.
   await expect
@@ -1882,6 +1895,7 @@ test('a single out-of-range setting is corrected and the warning NAMES it', asyn
 test('a corrupt stored value resets with a toast, and the player still starts', async ({
   page,
 }) => {
+  const sentry = await recordSentry(page);
   await page.addInitScript(() => {
     globalThis.localStorage.setItem('notation-hero.player-settings', '{broken');
   });
@@ -1889,6 +1903,9 @@ test('a corrupt stored value resets with a toast, and the player still starts', 
 
   await expect(page.locator('[data-sonner-toast]')).toContainText('reset to the defaults');
   await expect(page.locator('[data-sonner-toast]')).toContainText('Error E603');
+  await expect
+    .poll(() => withCode(sentry, 'E603').map((event) => event.level))
+    .toEqual(['warning']);
   await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
   await expect
     .poll(async () => {
@@ -1911,6 +1928,7 @@ test('a corrupt stored value resets with a toast, and the player still starts', 
 test('a single out-of-range transport value is corrected and the warning NAMES it', async ({
   page,
 }) => {
+  const sentry = await recordSentry(page);
   await page.addInitScript(() => {
     globalThis.localStorage.setItem(
       'notation-hero.transport',
@@ -1925,6 +1943,9 @@ test('a single out-of-range transport value is corrected and the warning NAMES i
   // It must NOT claim a reset: Loop was untouched, and the metronome landed on its maximum rather
   // than on its default of off.
   await expect(toast).not.toContainText('reset to the defaults');
+  await expect
+    .poll(() => withCode(sentry, 'E601').map((event) => event.level))
+    .toEqual(['warning']);
   await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
 
   // Clamped to the top of its range — 1, where the shipped default is 0 — and Loop survived intact.
@@ -1945,6 +1966,7 @@ test('a single out-of-range transport value is corrected and the warning NAMES i
 test('a corrupt stored transport resets with a toast, and the player still starts', async ({
   page,
 }) => {
+  const sentry = await recordSentry(page);
   await page.addInitScript(() => {
     globalThis.localStorage.setItem('notation-hero.transport', '{broken');
   });
@@ -1952,6 +1974,9 @@ test('a corrupt stored transport resets with a toast, and the player still start
 
   await expect(page.locator('[data-sonner-toast]')).toContainText('reset to the defaults');
   await expect(page.locator('[data-sonner-toast]')).toContainText('Error E603');
+  await expect
+    .poll(() => withCode(sentry, 'E603').map((event) => event.level))
+    .toEqual(['warning']);
   await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
 
   await expect(page.getByTestId('toggle-loop')).toHaveAttribute('aria-pressed', 'false');

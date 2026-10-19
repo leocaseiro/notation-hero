@@ -1,0 +1,36 @@
+{
+  "reviewer": "coherence",
+  "findings": [
+    {
+      "title": "Two rules still say only E101–E103 replace a message",
+      "severity": "P3",
+      "section": "Global Constraints, the 'Fixed sentences' bullet (and Task 15 Step 5, the web/AGENTS.md rule bullet)",
+      "why_it_matters": "A later code review that applies Global Constraints to Task 5 will read E202's empty-message sentence as a violation, because the bullet says E201–E204 keep their message while Choice 4 (E202 sends its own sentence when its message is empty) and Task 5's new test require the opposite. The new web/AGENTS.md bullet repeats the gap in guidance that stays in the repository after the plan is done: it says reportError keeps the message for every code except E101–E103. Reading the bullet as a spec quotation that Choice 4 overrides does not hold, because the section says every task's requirements include it and the bullet names no exception.",
+      "finding_type": "error",
+      "autofix_class": "safe_auto",
+      "suggested_fix": "In Global Constraints, end the 'Fixed sentences' bullet with: 'E105, E901 and E201–E204 keep their message, except that an E202 whose message is empty sends E202's sentence instead (Choice 4).' In Task 15 Step 5's web/AGENTS.md bullet, change 'keeps the error's message for every code except E101–E103' to 'keeps the error's message for every code except E101–E103, and an E202 whose message is empty'.",
+      "confidence": 75,
+      "evidence": [
+        "E105, E901 and E201–E204 keep their message.",
+        "E202 does the same only when its error arrives with an empty message, as a SoundFont network failure does, so its issue is not titled just `Error`; a non-empty E202 keeps its own words.",
+        "`reportError` keeps the error's message for every code except E101–E103, and the names filter removes names, not a file's contents."
+      ]
+    },
+    {
+      "title": "Q13 row contradicts the after-swap catch on drop announcements",
+      "severity": "P3",
+      "section": "Questions the spec left to the plan, the Q13 row (against Task 11 Step 6, the catch around the steps after the swap)",
+      "why_it_matters": "A reader of the decision record will take it that a dropped file's E105 is always written into the player's announcement, while the new catch writes none for an E105 raised after the swap, for a picked or a dropped file, and says so only in a code comment. A later code review can then flag the missing announcement as a defect and spend a triage round on a choice the plan already made. The catch follows Q13's own reasoning (the toast is a polite live region, so the sentence is heard once), so the row only needs to say that its last sentence covers the E105 raised before the swap; this does not reopen the picker decision.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "End the Q13 row with: 'A drop also writes the \"could not be opened\" E105, raised before the swap, into the player's announcement; the E105 raised after the swap (Q12) is announced by its toast alone, for a picked and a dropped file alike.'",
+      "confidence": 50,
+      "evidence": [
+        "A drop also writes it into the player's announcement.",
+        "No announcement: the toast is a polite live region, as the picker's E105 already relies on."
+      ]
+    }
+  ],
+  "residual_risks": [],
+  "deferred_questions": []
+}
