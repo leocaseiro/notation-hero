@@ -541,6 +541,8 @@
     "valuenow",
     "fontconfig",
     "buildx",
-    "imagetools"
+    "imagetools",
+    "katex",
+    "micromark"
   ]
 }

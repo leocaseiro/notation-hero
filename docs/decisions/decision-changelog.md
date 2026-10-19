@@ -11,6 +11,33 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
+### 2026-10-20 — Dependency CVE refresh, round 2: 13 advisories back to zero, inside PR #191 (NH-346)
+
+The `deps-cve` gate (osv-scanner) went red again on 2026-10-13: **13 new advisories across 7
+packages** (top score 9.8). As in round 1, none came from an open PR: `master`'s lockfile already
+held every affected version, and its CI was last green on 2026-10-03. The 2026-09-16 choice stands,
+a **real version fix over an allowlist**, so `osv-scanner.toml` gains no ignores. leocaseiro chose
+(2026-10-20) to carry the fix **inside PR #191 (NH-124)** rather than in a PR of its own, so the
+Sentry work can merge, and to reuse NH-346 for this round instead of filing a new ticket.
+
+- **`next` 16.3.6 → 16.3.8, the only direct dependency,** closes six advisories (top 8.3). 16.3.8
+  is 20 days old, so no `minimumReleaseAgeExclude` entry was needed. `eslint-config-next` stays at
+  16.3.4, as in round 1.
+- **Four floated on a targeted `pnpm update --recursive`**, each inside the range its parent
+  declares: `sharp` 0.35.5 (via `next`), `seroval` 1.6.9 (via TanStack Router in `client/`),
+  `proxy-addr` 2.0.8 (via express in `server/`) and `source-map-js` 1.2.2 (build tools).
+- **Two need an override, because no carrier fixes them yet.** The latest `markdownlint-cli2`
+  (0.23.3) still pins `smol-toml` exactly at 1.8.0, so the existing floor rises to `^1.9.0`. The
+  latest `micromark-extension-math` still wants `katex` `^0.16.0`, so `katex` is pinned at
+  0.18.10: exact, because 0.18.11 is deprecated (published with breaking changes). markdownlint
+  imports only that package's syntax extension, so KaTeX never renders anything.
+- **Targeted updates only.** Nothing else moved, apart from the platform binaries of `next` and
+  `sharp`, and `commander` 15 for KaTeX's command-line tool. All 104 `web/` end-to-end tests pass
+  on the `next` bump, and `lint:md` still reports 0 issues.
+
+**Status:** ✅ decided · 🤖 machine-checked — the `deps-cve` CI job is the enforcement; osv-scanner
+reports no issues, with only NH-347's two time-boxed advisories filtered.
+
 ### 2026-10-12 — Sentry error monitoring ships in `web/` (NH-124)
 
 The implementation of the 2026-10-03 design, through the plan in
