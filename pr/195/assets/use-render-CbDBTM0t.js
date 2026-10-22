@@ -1,0 +1,1 @@
+import{i as e}from"./preload-helper-6G3mt1Xn.js";import{n as t,t as n}from"./useRenderElement-DE_aztIh.js";function r(e){return t(e.defaultTagName??`div`,e,e)}var i=e((()=>{n()})),a=e((()=>{i()}));export{i as n,r,a as t};
