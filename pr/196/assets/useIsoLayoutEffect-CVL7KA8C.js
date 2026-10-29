@@ -1,0 +1,1 @@
+import{i as e,s as t}from"./preload-helper-D00wbStk.js";import{t as n}from"./react-Brqn4BaE.js";var r,i,a,o=e((()=>{r=t(n(),1),i=()=>{},a=typeof document<`u`?r.useLayoutEffect:i}));export{a as n,o as t};
