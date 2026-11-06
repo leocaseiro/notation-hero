@@ -1,0 +1,64 @@
+Document review complete (non-interactive mode).
+
+Applied 5 fixes:
+- Task 14, Step 3: the existing 60-second backstop e2e case now advances the fake clock with runFor, so the one-second font clock can reach 60; Choice 7 says why (design-lens, feasibility, adversarial, scope-guardian)
+- Task 5, Step 2: the reporting test clears the stand-in SDK's recorded calls before each case (feasibility, adversarial, scope-guardian)
+- Task 14, Step 1: the font-clock test's stand-in player carries an empty track list, and the event is delivered in a lint-clean way (design-lens, feasibility, adversarial, scope-guardian)
+- Tasks 2, 3, 5, 6, 11, 13 and 14: nine snippets rewritten so the package's lint passes (feasibility, scope-guardian)
+- Task 7, Step 6: the home page is given as the whole file, so the formatter cannot turn it into statements ending in a semicolon (design-lens, feasibility, adversarial, scope-guardian)
+
+Proposed fixes (nothing here has landed; awaiting the same grouped confirmation):
+
+[P2] Section: Task 1, Step 4 — A token exported in a developer's shell makes every local build try to upload (security-lens, confidence 75)
+  Recommendation: Apply
+  Consequence if unchanged: Local builds and the whole end-to-end lane fail, or upload into the production project with the owner's credential, whenever the variable is set in the shell.
+  Change: Read the token only when Vercel says the build is a production one, and record the change from the spec's snippet.
+  Basis: The owner's own command-line Sentry skill tells them to set a variable of that exact name, and the browser-test runner passes the shell's environment to the build it starts.
+
+[P2] Section: Task 1, Step 4 — A token with no project name deploys with unreadable stack traces and no warning anyone sees (adversarial residual, lead fix, confidence 75)
+  Recommendation: Apply
+  Consequence if unchanged: If the token reaches Vercel before the project name reaches the code, production deploys pass with source maps deleted and never uploaded.
+  Change: Fail the production build when the upload token is present but the organization or project name is missing.
+  Basis: Sentry's build plugin treats a missing project as a warning and returns, so the error handler that stops a failed upload never runs.
+
+[P2] Section: Task 7, Step 8 — Following the error-page check literally wipes the new home-page copy (design-lens, confidence 75)
+  Recommendation: Apply
+  Consequence if unchanged: The landing screenshot is committed beside a page that no longer has the copy it shows, and the pixel job fails.
+  Change: Undo the temporary line by hand in the home page, and give the root-layout step its own explicit undo.
+  Basis: The home page still holds that task's uncommitted copy when the check runs, and a file checkout restores the last commit.
+
+Decisions (requires user judgment):
+
+[P3] Section: Questions left for the plan review — An empty sound-font error message makes a Sentry issue titled only "Error" (plan, confidence 100)
+  Recommendation: Apply
+  Consequence if unchanged: Sound-font download failures are listed and emailed as "Error", findable only by their code tag.
+  Change: When a reported error arrives with an empty message, send its code's documented sentence instead.
+  Basis: The engine raises a network failure of the sound-font download with an empty message, measured at plan time.
+
+[P3] Section: Questions left for the plan review — An exact byte count can identify a well-known file (plan, with security-lens, confidence 50)
+  Recommendation: Apply
+  Consequence if unchanged: A report keeps the exact size of a widely shared file for 30 days, close to naming the song.
+  Change: Round the size up to the next power of two inside the one reporting function.
+  Basis: The spec sends a size in bytes; the extension plus an exact size is close to a unique key.
+
+[P3] Section: Questions left for the plan review — The our-side failure message can follow a score that did open (plan, confidence 100)
+  Recommendation: Skip
+  Consequence if unchanged: In a rare case the toast says a file could not be opened while it is on screen.
+  Change: none
+  Basis: Only a toast, an announcement and a focus call run after the swap, so the case is very unlikely.
+
+[P3] Section: Questions left for the plan review — A picked file's our-side failure is announced only by its toast (plan, confidence 100)
+  Recommendation: Skip
+  Consequence if unchanged: The two ways of opening a file announce a failure in different places.
+  Change: none
+  Basis: The toast is already read aloud; a second announcement could repeat it.
+
+FYI observations (anchor 50, no decision required):
+
+[P3] Section: Task 6 and Task 17 — Nothing checks that reports stay anonymous if a later SDK version changes its defaults (security-lens, confidence 50)
+[P3] Section: Task 15, Step 5 — The agents' catch rule does not say that kept messages can quote a file's contents (security-lens, confidence 50)
+
+Residual concerns:
+- With the production gate applied, switching off Vercel's system environment variables would silently skip the upload; the setup check and the first deploy's readable-frame check guard it (verification)
+
+Review complete

@@ -1,0 +1,85 @@
+{
+  "reviewer": "scope-guardian",
+  "findings": [
+    {
+      "title": "One-second font clock fails the existing 60-second backstop case",
+      "severity": "P2",
+      "section": "Task 14 - The music-font clock, and AlphaTab's own error event (Step 3, end-to-end assertions); Choice 7 - the one-second counter",
+      "why_it_matters": "The existing end-to-end case 'a music font that arrives after the 60 s backstop clears the error' (web/e2e/player.e2e.ts) fails once Task 14 lands: it jumps the fake clock with `page.clock.fastForward(61_000)` inside a 20-second retry loop, and Playwright fires an interval at most once per fast-forward (measured on the repository's Playwright 1.61.1: one tick per call, and a 20-second replay of that loop counted 33 of the 60 seconds that E204, the music-font timeout code, needs). Step 3's 'Expected: PASS — including the existing 60-second backstop case' is therefore wrong, and the merge-blocking `web` job would go red on a case the plan never edits. Stepping the fake clock one second per call keeps Choice 7's design and restores the case.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "In Task 14 Step 3, also edit the existing case `a music font that arrives after the 60 s backstop clears the error` in web/e2e/player.e2e.ts: inside its `toPass` retry loop replace the single `await page.clock.fastForward(61_000);` with 61 consecutive `await page.clock.fastForward(1_000);` calls, keep the `Error E204` assertion and the 20-second budget, add the case to the task's Files list, and add one sentence to Choice 7 saying the counter is stepped, never jumped, under Playwright's clock.",
+      "confidence": 100,
+      "evidence": [
+        "Expected: PASS — including the existing 60-second backstop case, which headless Chromium runs in a",
+        "const clock = globalThis.setInterval(() => {",
+        "if (visibleSeconds < 60) return;",
+        "7. **The E204 clock is a one-second counter** that counts a second only while"
+      ]
+    },
+    {
+      "title": "report.test.ts: SDK mock calls leak between cases, nine fail",
+      "severity": "P2",
+      "section": "Task 5 - The reporting functions, report.ts (Step 2 test file; Step 5 and Step 6 expected results)",
+      "why_it_matters": "Run under the repository's Vitest 4.1.11, the plan's `report.test.ts` has nine failing cases, not 'PASS — 22 tests'. `vi.resetModules()` re-evaluates `report.ts`, but Vitest keeps a factory-mocked module across it, so the stand-in `captureException` and `addBreadcrumb` from `vitest.setup.ts` keep every call from earlier cases, and each exact `toEqual` list and each `captured()[0]` read sees them. The comment claiming every case starts from a fresh stand-in SDK is the false premise; Step 6's whole-lane run fails too, while the plan's other new tests clear these mocks themselves.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "In Task 5 Step 2, add `vi.mocked(sentry.captureException).mockClear();` and `vi.mocked(sentry.addBreadcrumb).mockClear();` to the `beforeEach` of `report.test.ts` right after the two dynamic imports, and replace the comment above it with: `vi.resetModules()` gives a fresh `report.ts`, but Vitest keeps a mocked module across it, so the stand-in SDK's calls are cleared by hand.",
+      "confidence": 100,
+      "evidence": [
+        "// copy of it — and of the stand-in SDK from web/vitest.setup.ts, whose two mocks it calls.",
+        "sentry = await import('@sentry/nextjs');",
+        "Expected: PASS — 22 tests."
+      ]
+    },
+    {
+      "title": "NotationSurface test stand-in api has no tracks; one case throws",
+      "severity": "P2",
+      "section": "Task 14 - The music-font clock, and AlphaTab's own error event (Step 1 test file; Step 2 expected result)",
+      "why_it_matters": "The case 'once a render has finished, hiding and showing the tab raises nothing a minute later' delivers `renderFinished`, whose handler reads `api?.tracks.length`; with the plan's `STAND_IN_API = {}` that throws `Cannot read properties of undefined (reading 'length')` inside `act`. Running the plan's test together with the planned component changes under Vitest 4.1.11 gives five passing cases of six, not 'PASS — 6 tests'. An empty `tracks` array on the stand-in makes all six pass.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "In Task 14 Step 1, change `const STAND_IN_API: unknown = {};` to `const STAND_IN_API: unknown = { tracks: [] };` and extend the comment above it to say the stand-in carries the one member the render-finished handler reads.",
+      "confidence": 100,
+      "evidence": [
+        "const STAND_IN_API: unknown = {};",
+        "act(() => handlers.get('renderFinished')?.(undefined));",
+        "Expected: PASS — 6 tests."
+      ]
+    },
+    {
+      "title": "Eight new files fail the repository's own ESLint run",
+      "severity": "P2",
+      "section": "Tasks 2, 3, 5, 6, 11, 13 and 14 - the new scripts, helpers and test files",
+      "why_it_matters": "Linting the plan's code blocks with the repository's web ESLint config (the config that `pnpm --filter @notation-hero/web run lint` and the lefthook pre-commit hook both use; rules that need type information were not run) reports errors in eight of them, so each task's 'Lint, types, commit' step stops until they are reworked. Most are shapes `--fix` cannot repair (`unicorn/no-array-callback-reference`, `unicorn/consistent-function-scoping`), and the auto-fix for `?.(undefined)` turns it into `?.()`, which TypeScript rejects (TS2554) only later at `typecheck`. An implementer left to find these one by one is tempted to add `eslint-disable` comments.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "Edit the blocks as follows. Task 2, web/scripts/assert-no-auth-token.mjs: `.flatMap(filesUnder)` becomes `.flatMap((folder) => filesUnder(folder))`. Task 3, known-engine-noise.ts: `frames.every(isEngineFile)` becomes `frames.every((frame) => isEngineFile(frame))`; in known-engine-noise.test.ts move the `stack` helper out of its describe block to module scope. Task 5, report.test.ts: move `track` and `tagOn` to module scope, and write the two strings that contain a backslash with `String.raw`. Task 6, sentry-envelopes.ts: `bodies.flatMap(eventsIn)` becomes `bodies.flatMap((body) => eventsIn(body))`. Task 13: move `tagNow` in OpenFileControl.test.tsx to module scope, and declare both `release` variables in PlayerShell.test.tsx as `let release!: (value: ArrayBuffer) => void;`. Task 14, NotationSurface.test.tsx: type the `handlers` map values as `(args?: unknown) => void`, call `handlers.get('renderFinished')?.()`, and write `pass(5000)`. Then run `pnpm --filter @notation-hero/web exec eslint --fix` once for the import order in Task 11's PlayerShell.test.tsx header (`node:fs` and `node:path` belong before the third-party imports).",
+      "confidence": 100,
+      "evidence": [
+        ".flatMap(filesUnder)",
+        "frames.every(isEngineFile)",
+        "events: () => bodies.flatMap(eventsIn)",
+        "const stack = (...frames: readonly string[]) =>",
+        "const track = (program: number) => ({ program, isPercussion: false });",
+        "const tagOn = (pathname: string): unknown => {",
+        "const tagNow = () => {",
+        "let release: (value: ArrayBuffer) => void = () => {};",
+        "pass(5_000);"
+      ]
+    },
+    {
+      "title": "Home page paragraph snippet carries a stray semicolon",
+      "severity": "P3",
+      "section": "Task 7 - The three error pages, and the copy (Step 6, the home page paragraph)",
+      "why_it_matters": "Pasted as written after `</Button>`, the second Step 6 snippet puts a literal `;` into the page: it is two JSX statements, so the repository's Prettier (which formats code fences in markdown) rewrote it as a block followed by `<p ...>...</p>;`. Step 7 then regenerates the landing baseline from that page, and the stray character is committed unless the person reading the screenshot spots it. Deleting the `;` from the plan does not stick, because Prettier puts it back on the next commit of the plan, whereas a fence holding one element or one fragment is left alone.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "Replace the second Step 6 fence with a single fragment that holds the comment and the paragraph: an opening `<>`, then the `{/* ... */}` comment, then `<p className=\"text-sm text-muted-foreground\">...</p>`, then a closing `</>`. Prettier leaves a lone fragment unchanged, and it can be pasted after `</Button>` exactly as it stands.",
+      "confidence": 75,
+      "evidence": ["</p>;", "and, after the closing `</Button>`:"]
+    }
+  ],
+  "residual_risks": [],
+  "deferred_questions": []
+}

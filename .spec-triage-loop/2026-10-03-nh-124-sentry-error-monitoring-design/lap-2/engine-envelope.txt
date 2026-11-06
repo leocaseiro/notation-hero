@@ -1,0 +1,155 @@
+Document review complete (headless mode).
+
+Proposed fixes (concrete fix, requires user confirmation):
+
+[P1] Section: §3.4 The copy; §3.1 What could leave the device — The home page says only the kinds of instrument are sent, but every failed open also sends the file's type and size (adversarial, product-lens, security-lens (+1 anchor), confidence 100)
+  Recommendation: Apply
+  Consequence if unchanged: Visitors are told less than what actually leaves their device, on the page whose job is to tell them.
+  Change: End the home-page privacy sentence with the file's type and size as well as the kinds of instrument, add a §3.1 row for type and size, and update the character count in the §3.4 note.
+  Basis: The open-file failure codes (E101–E103, and E105, our own failure after a file is read) send the file's extension and byte size by design (§2.3), and e2e case 2 asserts it. The word "only" arrived in lap 1 with the instruments wording.
+
+[P2] Section: Goal — The Goal still promises that nothing from inside the file leaves the device (product-lens, scope-guardian, adversarial (+1 anchor), confidence 100)
+  Recommendation: Apply
+  Consequence if unchanged: Whoever writes the plan's privacy checks from the Goal will treat the settled instruments tag as a leak.
+  Change: Reword the Goal's privacy half in the approved home-copy wording.
+  Basis: The instruments tag is read from inside the score and is sent on purpose (§3.1), but the Goal says "nor anything in it".
+
+[P2] Section: §3.2 The names filter — A track name in an error that reaches Sentry as plain text skips the names filter (security-lens, feasibility, adversarial (+1 anchor), confidence 100)
+  Recommendation: Apply
+  Consequence if unchanged: An error from the engine's background thread, or any text passed to the report function, can carry a track or song name to Sentry.
+  Change: Run the filter over the event's top-level message as well as each exception's message, clear that message too where E101–E103 drop theirs, and add a unit case.
+  Basis: Sentry 11 builds an event from text by writing it to both the exception and the event's top-level message; the filter covers only the first. The breadcrumb Sentry records for each sent event copies that message into the next report.
+
+[P2] Section: §3.2 The names filter; §1 Changed files — The opened score's names are remembered only after the one report that needs them can fire (security-lens, adversarial (+1 anchor), confidence 100)
+  Recommendation: Apply
+  Consequence if unchanged: An E105 report (our own code failing after the file is read) that quotes a track name leaves with the name intact.
+  Change: Remember the score's names as soon as the file is parsed, before anything else runs; keep the score-loaded call for the bundled sample.
+  Basis: E105 can only fire between the parse and the engine's score-loaded event, and the names are remembered only at that event.
+
+[P2] Section: §2.3 The reporting functions (instruments); §1 Changed files — A late load of the bundled sample can leave its drum tag on the visitor's own score (adversarial, feasibility (+1 anchor), confidence 100)
+  Recommendation: Apply
+  Consequence if unchanged: A visitor who opens a file while the player is still loading reports "drums" for a guitar score, and e2e case 4 reads "drums" instead of 25.
+  Change: State that the score-loaded handler reads the score on screen, not the event's argument.
+  Basis: The player re-shows the visitor's file from inside the sample's own score-loaded event, so a handler that trusts the event's argument writes the sample last.
+
+[P2] Section: §6 Testing; §1 Changed files — The engine-failure check (E201) is pinned to a shared navigation helper, not to a test (scope-guardian, feasibility (+1 anchor), confidence 100)
+  Recommendation: Apply
+  Consequence if unchanged: The check either runs inside the screenshot and accessibility lanes that share the helper, or has no test to live in.
+  Change: Give E201 its own case in the new error-reporting test file and drop the helper file from §1.
+  Basis: The cited line is a helper that only the axe case and one pixel shot call; no behaviour test aborts the engine module today.
+
+[P2] Section: §1 New files; §6 Unit — Two helpers with unit tests have no named home (scope-guardian, confidence 75)
+  Recommendation: Apply
+  Consequence if unchanged: An implementer builds the file-type mapping beside the reporting code and must either copy the list of accepted extensions or create an import cycle.
+  Change: Name the storage-refusal check in the reporting file's row, and place the file-type mapping beside the open-file control's list of accepted extensions.
+  Basis: §6 tests both helpers "beside each lib/monitoring file", but the accepted-extension list lives in the open-file control, which itself imports the reporting code.
+
+[P2] Section: §2.4 Read, then open — After our own failure while opening a file, the loading bar keeps pulsing (design-lens, confidence 75)
+  Recommendation: Apply
+  Consequence if unchanged: A visitor who meets E105 sees the error message beside a "Loading the player" bar that never stops.
+  Change: End the opening state on every exit of the open request, and add a test that a failure after the parse leaves no loading bar.
+  Basis: The player raises the opening state before the parse and lowers it only on success and on the not-a-score return. Ask for the call-path detail.
+
+[P2] Section: §2.4 Failures that never throw (E204) — A player opened in a background tab reports a font failure that never happened (adversarial, confidence 75)
+  Recommendation: Apply
+  Consequence if unchanged: Background-tab visits are counted as broken in the interim health number, use quota, and send alert emails.
+  Change: Run the 60-second font clock only while the page is visible.
+  Basis: The engine waits for an animation frame before its first render, and browsers pause animation frames in hidden tabs while the clock keeps running.
+
+[P2] Section: §5 Setup, step 6 — The source-map check asks for readable frames that the engine's own code can never give (adversarial, confidence 75)
+  Recommendation: Apply
+  Consequence if unchanged: A working source-map upload looks broken on the first test, and gets debugged as a failure.
+  Change: Require our own frame to be readable, say the engine's frames stay minified, and add that as a known limit.
+  Basis: The engine is vendored as its minified build with no source map, and a not-a-score error starts inside it.
+
+[P2] Section: §3.3 SDK settings — The settings shape is called confirmed, but the same check is listed as not yet run (coherence, confidence 100)
+  Recommendation: Apply
+  Consequence if unchanged: Readers disagree on whether the data-collection settings were checked against the installed types.
+  Change: Say the shape is checked against the installed types at plan time.
+  Basis: §3.3 says "is confirmed", and the To-verify list says no one has run it yet.
+
+Decisions (requires user judgment):
+
+[P1] Section: §3.1 headers row; §3.3 SDK settings; §3.4 The copy — Turning headers off hides every issue's browser and system, while the per-visit ping still sends the browser's user agent (adversarial, confidence 75)
+  Recommendation: Apply
+  Consequence if unchanged: Every issue arrives without its browser, system and device, and the spec misdescribes what the per-visit ping carries.
+  Change: Allow only the User-Agent header in reports, and describe the ping as carrying the browser's user agent.
+  Basis: In the browser SDK the header setting removes only User-Agent and Referer, which cannot carry an IP address; Sentry derives browser and system from that header. The session ping reads the user agent itself.
+
+[P2] Section: §2.3 The reporting functions (instruments); §6 Testing — After a cancelled or failed open, the score still on screen has no instruments tag (feasibility, product-lens, adversarial (+1 anchor), confidence 100)
+  Recommendation: Apply
+  Consequence if unchanged: Every later report from the song still playing arrives without its instruments, for the rest of the visit.
+  Change: Keep the tag naming the score on screen, and leave it off the reports of a failed open.
+  Basis: The tag is cleared when a file is picked, and only a successful load sets it again.
+  Conflict: feasibility and adversarial recommend never clearing the tag and leaving it off file-open reports; product-lens recommends setting it again from the still-open score. Agent's recommendation: Apply (the first design).
+
+[P2] Section: §2.3 The reporting functions (instruments) — One combined tag value cannot show a spike on one instrument (product-lens, adversarial (+1 anchor), confidence 100)
+  Recommendation: Apply
+  Consequence if unchanged: A bug tied to one instrument spreads over many line-up values in the Tags panel, so the spike the owner wants to see never forms one bar.
+  Change: Say what the panel will show, and make one instrument findable by a tag search with fixed-width numbers.
+  Basis: Sentry counts each whole tag value separately.
+
+[P2] Section: §2.3 The reporting functions (instruments) — The bundled sample is tagged "drums" just like a visitor's drum chart (product-lens, adversarial (+1 anchor), confidence 75)
+  Recommendation: Apply
+  Consequence if unchanged: The most common tag value means two different things, so a spike on visitors' drum files cannot stand out.
+  Change: Set the tag only from a score the visitor opened.
+  Basis: The player loads a one-track drum beat on every visit to the player page, and it fires the same score-loaded event.
+
+FYI observations (anchor 50, no decision required): 8
+- The tracing integration Sentry adds by default stays in, though tracing was rejected; it ships in the download and adds trace headers to our own requests. (adversarial)
+- The names list leaves out two of the score's free-text fields, instructions and notices. (adversarial)
+- Builds without the upload token still print two Sentry warnings, though §4 says the wrapper is told. (feasibility)
+- The explicit environment setting repeats what the SDK already does, and costs one To-verify item. (scope-guardian)
+- The two engine-noise end-to-end cases can only run while those engine bugs exist; removing a list entry must also delete its case. (scope-guardian)
+- Anyone can post events with the public address; limiting the project's allowed domains to the production site costs nothing. (security-lens)
+- The E202 row points two lines above the line that raises the error. (feasibility)
+- The E105 text promises a screen-reader announcement that only the drag-and-drop path has. (design-lens)
+
+Residual concerns: 21
+- Internal SDK errors skip the send hook, so they skip the scrub and the noise filter. (security-lens)
+- A stack frame from an inline or injected script, or Sentry's fallback frame, carries the full page address with its query. (security-lens)
+- The names list does not cover lyrics, section markers, chord names or beat text. (security-lens)
+- Plain-text matching misses URL-encoded or JSON-escaped names. (security-lens)
+- The upload token has no rotation or revocation step. (security-lens)
+- The instrument program number is not range-checked. (security-lens)
+- Sentry's default culture integration adds the visitor's locale and time zone to every event; §3.1 does not list them. (adversarial)
+- Engine errors group on minified names that change with every engine upgrade, so the new-issue alert can fire again. (adversarial)
+- Client-report envelopes are also sent; the e2e recorder must ignore them like session envelopes. (adversarial)
+- A local run can reuse a server built without the fake address, and the new cases then time out with no clear cause. (adversarial)
+- Every not-a-score report looks alike; only the file type tells an importer crash from a wrong file. (adversarial)
+- There is no baseline for an "unusual" instrument share, because attempts are not counted. (product-lens)
+- Published instrument tables count from 1, the tag from 0; a lookup by hand can be off by one. (product-lens)
+- The error pages do not mention the instruments, though their reports can carry the tag. (product-lens)
+- The new home paragraph has no width cap, unlike the tagline above it. (design-lens)
+- The new root error page may lose the viewport tag after a crash, so a phone can render it zoomed out. (design-lens)
+- The E105 message does not say whether the current score is still open. (design-lens)
+- The Try again buttons call the reset that Next 16.3 now calls the variant, not retry. (design-lens)
+- The drag-and-drop twin of the open-file catch has no unit or end-to-end case. (scope-guardian)
+- An install script in the new dependency's tree may need approval in the workspace file. (feasibility, scope-guardian)
+- §2.1 routes a throw in a React effect to the global handler, but React sends it to the error pages. (feasibility)
+
+Deferred questions: 6
+- How will the plan show the three error pages in a real browser, at desktop and phone width? (design-lens)
+- How should the plan key E105's toast and announcement on the read flag? (design-lens)
+- If a later engine wraps parse errors in a cause chain, should E101–E103 blank every linked message? (security-lens)
+- Should the file size be rounded into ranges rather than sent exact? (security-lens)
+- Which tests install the envelope fixture, given that the rest send their pings to the fake host unrouted? (feasibility, adversarial)
+- How does the Sentry package resolve in the unit-test environment, and should it be mocked for every test? (feasibility)
+
+Dropped: 0 (anchors 0/25 suppressed)
+Restated: 13 (residual/deferred items suppressed as duplicates of findings, or merged with a twin)
+
+Coverage:
+| Persona | Status | Raw | Attributed after merge | Proposed fixes | Decisions | FYI |
+| --- | --- | --- | --- | --- | --- | --- |
+| coherence | completed | 1 | 1 | 1 | 0 | 0 |
+| feasibility | completed | 6 | 3 | 0 | 1 | 2 |
+| security-lens | completed | 4 | 3 | 2 | 0 | 1 |
+| adversarial | completed | 11 | 7 | 4 | 1 | 2 |
+| product-lens | completed | 5 | 3 | 1 | 2 | 0 |
+| design-lens | completed | 2 | 2 | 1 | 0 | 1 |
+| scope-guardian | completed | 5 | 4 | 2 | 0 | 2 |
+Cross-model pass: skipped — it would send the document to an outside AI provider, which the owner has not authorized.
+One residual dropped as already covered by the document (the coherence note that cases 5–7 lack a sentinel: the bullet after case 7 requires one).
+
+Review complete

@@ -64,6 +64,10 @@ export default defineConfig({
       // under this env rather than only `pnpm start`. Debug prints the visitor's user agent,
       // window size and screen size, so it is never the shipped default — only this lane's build.
       NEXT_PUBLIC_ALPHATAB_LOG_LEVEL: 'Debug',
+      // So the real Sentry SDK runs in every build of this lane: CI, local, and the Docker
+      // baseline update. `.invalid` never resolves; web/e2e/sentry-envelopes.ts routes and answers
+      // it where a case reads what was sent, and elsewhere the session ping goes nowhere.
+      NEXT_PUBLIC_SENTRY_DSN: 'https://public@sentry.invalid/1',
     },
   },
 });

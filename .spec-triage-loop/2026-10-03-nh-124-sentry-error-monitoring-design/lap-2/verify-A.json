@@ -1,0 +1,590 @@
+{
+  "area": "A",
+  "spec_commit": "78e35627",
+  "method": "Read the spec in full at 78e35627, the lap-1 outcomes in docs/decisions/decision-changelog.md, and the spec's git history (cea5a76d, 6b0e1e65) for when each sentence arrived. Checked every quote with the brief's fixed-string script (44/44 verbatim). Read the Sentry 11.0.0 mirror (core, browser, browser-utils, react, nextjs client) and fetched the 11.0.0 nextjs config folder and bundler-plugins core with `gh api`; read Relay at c4e99303 (user-agent normalization, inbound filters, allowed domains), Sentry's settings UI at a86c9bd3, and docs.sentry.io / develop.sentry.dev pages on contexts, inbound filters and tree-shaking. Spikes: a tsc 5.9.3 type-check of `dataCollection` shapes against the 11.0.0 types; 11.0.0's header filter run on the two browser headers; 11.0.0's browser event builder bundled with esbuild and run on worker-style strings, ErrorEvents, objects and Errors, against the spec's filter and the drafted one; the 11.0.0 build plugin's option normalization run for token-less builds; the environment default chain replicated in Node; character counts for the copy. Every draft was applied to scratch copies of the spec (recommended options, and the option-2 sets) and passed Prettier, markdownlint and cspell with the repo configs. No package was installed and nothing in the repository was edited.",
+  "items": [
+    {
+      "id": "F-17",
+      "verdict": "pass",
+      "checks": {
+        "section_exists": "Yes: Goal (lines 14-17), §2.3 FileFacts (151-183), §3.1 table (289-298), §3.4 The copy (353-382).",
+        "quotes": "11/11 verbatim (spec lines 362, 207, 208, 486, 17, 296, 433, 209; \"warning, with file type and size\" occurs twice, at 207 and 208)",
+        "fix_consistent": "Consistent with S1 (\"reword the privacy copy\") and with every place that already says type and size are sent (2.3, 2.4, §5 step 6, e2e case 2). Text that changes with it: the §3.4 count (371), a new §3.4 line for type and size (after 382), a new §3.1 row (after 296), and the Goal (F-19). The lap-1 changelog bullet that quotes the old copy and \"119 to 318\" is history and stays; a lap-2 entry records the change. Option 2 instead touches §1 (101-104), §2.3 (153-154, 158, 176-183), §2.4 (207-209), §5 step 6 (432-436) and §6 (454, 486)."
+      },
+      "central_claim": {
+        "status": "confirmed",
+        "evidence": [
+          "docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md:362 — the home paragraph ends \"— only the kinds of instrument it uses.\"",
+          "docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md:176-177, 207-209 — E101, E102, E103 and E105 all send \"the file's type and size\"; no other code does.",
+          "docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md:153, 178-183 — FileFacts is the lower-case extension (an accepted one, else `other`) and `bytes`, an exact byte count.",
+          "docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md:432-433, 486 — §5 step 6 and e2e case 2 depend on type and size reaching Sentry.",
+          "git history of the spec: FileFacts and the \"with file type and size\" rows are in the approved design (cea5a76d, 2026-10-03); the \"only\" clause arrived in lap 1 (6b0e1e65), so the contradiction is new in lap 1."
+        ]
+      },
+      "spike": {
+        "status": "run",
+        "what": "Python character count, counted the way the spec does (the new tagline + one space + the new paragraph, plain text, len() in code points); greedy word-wrap at 60-80 characters per line; then Prettier 3 (repo config), markdownlint-cli2 (repo config) and cspell (repo config, via stdin) over a scratch copy of the spec with the drafts applied.",
+        "result": "Reproduced the spec: tagline 119 + 1 + current paragraph 198 = 318. Drafted paragraph 228 → 348. PRO-1's shorter wording (\"only its type and size, and the kinds…\") gives 341, so its figure is right for its wording; SEC-3's gives 346. Wrapped at 60-80 characters, both 318 and 348 take 5-6 lines, so \"about five lines\" can stay. The patched spec is Prettier-stable and passes markdownlint and cspell, for option 1 and for option 2."
+      },
+      "before": [
+        {
+          "lines": "296",
+          "text": "| kinds of instrument                            | the `instruments` tag (2.3) — sent on purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                       | only `drums` and the General MIDI numbers 0–127 can be sent, never text from the file, so no name can reach the tag                                                  |"
+        },
+        {
+          "lines": "360-362",
+          "text": "                              This site counts visits and crashes anonymously, and sends an error\n                              report when something goes wrong. Neither includes your file, its\n                              name, or the music in it — only the kinds of instrument it uses."
+        },
+        {
+          "lines": "371",
+          "text": "The tagline keeps its two lines. As one paragraph, the copy would grow from 119 to 318 characters,"
+        },
+        {
+          "lines": "381-382",
+          "text": "\"The kinds of instrument\" is the `instruments` tag (2.3): `drums` and General MIDI numbers, never\na name."
+        },
+        {
+          "lines": "101-104",
+          "text": "- `web/app/play/OpenFileControl.tsx` and `web/app/play/PlayerShell.tsx`, beyond their catch sites:\n  picking or dropping a file remembers its name (3.2) and clears the `instruments` tag (2.3); the\n  score-loaded handler remembers the score's names and sets the tag; `readNotation` and\n  `LoadedNotation` carry the file's extension (2.3)."
+        },
+        {
+          "lines": "153-154",
+          "text": "type FileFacts = { readonly type: string; readonly bytes: number }; // the extension, never the name\n"
+        },
+        {
+          "lines": "158",
+          "text": "  options?: { code?: ErrorCode; level?: 'error' | 'warning'; file?: FileFacts; handled?: false },"
+        },
+        {
+          "lines": "176-183",
+          "text": "- **E101, E102 and E103 drop the exception message** and keep its type, its stack, and the file's\n  type and size. The engine's parse message can quote text from inside the file (section 3.1).\n- **`FileFacts.type` is the file's extension**, lower-case, read from the name when the file is\n  read and carried on `LoadedNotation`: browsers give `.gp`, `.gp5`, `.gpx` and `.atex` files an\n  empty MIME type, and the code that reports E103 holds only the name and the bytes. Only an\n  extension the open-file picker accepts is sent (`ACCEPT` in `web/app/play/OpenFileControl.tsx`:\n  `gp`, `gp3`, `gp4`, `gp5`, `gpx`, `musicxml`, `mxl`, `xml`, `capx`, `atex`, `alphatex`); any\n  other, or none, becomes `other`. It says what kind of file it is, never what it is called."
+        },
+        {
+          "lines": "207-209",
+          "text": "| `web/app/play/PlayerShell.tsx:872`                                                             | the file is not a score                                         | E103       | warning, with file type and size                                                                                                    |\n| `web/app/play/OpenFileControl.tsx:75`, `web/app/play/PlayerShell.tsx:969`                      | the file is too large, or cannot be read                        | E101/E102  | warning, with file type and size                                                                                                    |\n| the same two catches, after the file was read                                                  | our own code failed while loading the score into the player     | E105 (new) | error, message kept, with file type and size                                                                                        |"
+        },
+        {
+          "lines": "432-436",
+          "text": "6. After the first production deploy, open a file that is not a score. An E103 warning appearing in\n   Sentry, with the file's type and size and without its name, proves the whole path — and its\n   email (step 2) proves the alert. Its stack must show readable file and function names with the\n   code around each line, which proves the source maps, and its release must equal the version in\n   the wordmark's tooltip."
+        },
+        {
+          "lines": "454",
+          "text": "  - the file type: `Song.GP5` gives `gp5`; `notes.txt` and a name with no extension give `other`;"
+        },
+        {
+          "lines": "486",
+          "text": "    2. Opening a file that is not a score sends an E103 `warning` with its type and size, and no name."
+        }
+      ],
+      "after_draft": [
+        {
+          "replaces_lines": "296",
+          "option": "1 (recommended)",
+          "text": "| kinds of instrument                            | the `instruments` tag (2.3) — sent on purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                       | only `drums` and the General MIDI numbers 0–127 can be sent, never text from the file, so no name can reach the tag                                                  |\n| the file's type and size                       | `FileFacts` (2.3) on E101–E103 and E105 — sent on purpose                                                                                                                                                                                                                                                                                                                                                                                                                                           | only an extension the open-file picker accepts, or `other`, and a size in bytes; never the file name                                                                 |",
+          "note": "insertion: line 296 is kept unchanged as the first line"
+        },
+        {
+          "replaces_lines": "360-362",
+          "option": "1 (recommended)",
+          "text": "                              This site counts visits and crashes anonymously, and sends an error\n                              report when something goes wrong. Neither includes your file, its\n                              name, or the music in it — only the file's type and size, and the\n                              kinds of instrument it uses."
+        },
+        {
+          "replaces_lines": "371",
+          "option": "1 (recommended)",
+          "text": "The tagline keeps its two lines. As one paragraph, the copy would grow from 119 to 348 characters,"
+        },
+        {
+          "replaces_lines": "381-382",
+          "option": "1 (recommended)",
+          "text": "\"The kinds of instrument\" is the `instruments` tag (2.3): `drums` and General MIDI numbers, never\na name.\n\n\"The file's type and size\" is `FileFacts` (2.3): an extension the open-file picker accepts, or\n`other`, and a size in bytes. Only E101–E103 and E105 send them."
+        },
+        {
+          "replaces_lines": "101-104",
+          "option": "2",
+          "text": "- `web/app/play/OpenFileControl.tsx` and `web/app/play/PlayerShell.tsx`, beyond their catch sites:\n  picking or dropping a file remembers its name (3.2) and clears the `instruments` tag (2.3); the\n  score-loaded handler remembers the score's names and sets the tag."
+        },
+        {
+          "replaces_lines": "153-154",
+          "option": "2",
+          "text": "",
+          "note": "delete these lines"
+        },
+        {
+          "replaces_lines": "158",
+          "option": "2",
+          "text": "  options?: { code?: ErrorCode; level?: 'error' | 'warning'; handled?: false },"
+        },
+        {
+          "replaces_lines": "176-183",
+          "option": "2",
+          "text": "- **E101, E102 and E103 drop the exception message** and keep its type and its stack. The engine's\n  parse message can quote text from inside the file (section 3.1)."
+        },
+        {
+          "replaces_lines": "207-209",
+          "option": "2",
+          "text": "| `web/app/play/PlayerShell.tsx:872`                                                             | the file is not a score                                         | E103       | warning                                                                                                                             |\n| `web/app/play/OpenFileControl.tsx:75`, `web/app/play/PlayerShell.tsx:969`                      | the file is too large, or cannot be read                        | E101/E102  | warning                                                                                                                             |\n| the same two catches, after the file was read                                                  | our own code failed while loading the score into the player     | E105 (new) | error, message kept                                                                                                                 |"
+        },
+        {
+          "replaces_lines": "432-436",
+          "option": "2",
+          "text": "6. After the first production deploy, open a file that is not a score. An E103 warning appearing in\n   Sentry, without the file's name, proves the whole path — and its email (step 2) proves the\n   alert. Its stack must show readable file and function names with the code around each line,\n   which proves the source maps, and its release must equal the version in the wordmark's tooltip."
+        },
+        {
+          "replaces_lines": "454",
+          "option": "2",
+          "text": "",
+          "note": "delete these lines"
+        },
+        {
+          "replaces_lines": "486",
+          "option": "2",
+          "text": "    2. Opening a file that is not a score sends an E103 `warning` with no file name."
+        }
+      ],
+      "scenario": "You open `notes.txt` on /play by mistake. The player shows E103, and Sentry receives a warning that carries the type `other` and the size 1,532 bytes. The home page you just left told you that only the kinds of instrument would be sent, so it promised less than what left your browser.",
+      "corrections": "None in substance. Two wording notes: \"its type and size\" after \"the music in it\" can be read as the music's type (its genre), so the draft says \"the file's type and size\" (348 characters, not PRO-1's 341). ADV-1's Goal wording belongs to F-19.",
+      "notes_for_triage": "Option 1 (all three reviewers) rewords lap-1 copy; option 2 (named by ADV-1 as \"the owner's call\") removes a diagnostic the owner approved on 2026-10-03, and per the adversarial reviewer's residual risk every E103 report otherwise looks the same (message dropped, default name, minified frames), so the type is what tells an importer crash on a valid .gp file from a wrong file. Pair with F-19 (option 1 ↔ option 1). Security reviewer's open question, as a note only: should `FileFacts.bytes` be bucketed (rounded into ranges)? An exact byte count plus the extension can identify a well-known downloaded tab file. Collisions if option 2 is chosen: lines 176-177 are also edited by F-20 (merged text: \"- **E101, E102 and E103 drop the exception message** — from the exception's value and from the\n  event's `message` — and keep its type and its stack. The engine's parse message can quote text\n  from inside the file (section 3.1).\"); lines 101-104 are also edited by F-21, F-22, F-23, F-25 (verify-B) and F-27 (verify-C) — drop the \"`readNotation` and `LoadedNotation` carry the file's extension (2.3)\" clause from whatever wording they settle on; lines 432-436 are also rewritten by F-30 (verify-C) — in its text, replace \"with the file's type and size and without its name\" with \"without the file's name\"; line 454 is also deleted by F-27 (same action). A Drop leaves the home page stating less than E101-E103 and E105 send."
+    },
+    {
+      "id": "F-18",
+      "verdict": "pass",
+      "checks": {
+        "section_exists": "Yes: §3.1 row \"IP address, cookies, headers\" (297) and the note under it (300-301), §3.3 SDK settings (330-351), §3.4 the ping paragraph (377-379).",
+        "quotes": "3/3 verbatim (spec lines 337, 301, 378)",
+        "fix_consistent": "Both options keep lines 300-301 true (the IP address is still stopped on both sides: `userInfo: false` sets `infer_ip: never`, and \"Prevent Storing of IP Addresses\" stays on). Option 1 changes §3.3 line 337 and the §3.1 row 297 and adds a §3.1 row; option 2 keeps the config and adds a §3.1 row. Both must fix §3.4 (377-379). AMB-5's \"To verify\" item then covers the allow-list shape (it type-checks against 11.0.0). No e2e case is affected: case 7 opens `/?fbclid=probe123#frag` directly, so there is no referrer, and option 1 sends the Referer as `[Filtered]` anyway."
+      },
+      "central_claim": {
+        "status": "confirmed",
+        "evidence": [
+          "getsentry/sentry-javascript@11.0.0:packages/browser/src/helpers.ts:225-241 — (a) the browser SDK collects exactly two headers: `Referer` (document.referrer, when not empty) and `User-Agent` (navigator.userAgent).",
+          "getsentry/sentry-javascript@11.0.0:packages/browser/src/integrations/httpcontext.ts:19-36 — filters them with `dataCollection.httpHeaders.request`; an empty result sets `request.headers` to undefined. The page address is always kept (line 32).",
+          "getsentry/sentry-javascript@11.0.0:packages/core/src/utils/data-collection/filterKeyValueData.ts:38-51 and shouldFilterDataKey 8-28 — `false` drops the record; `{ allow }` keeps every key and replaces a value that matches no allow term with `[Filtered]` (case-insensitive substring match).",
+          "getsentry/sentry-javascript@11.0.0:packages/core/src/types/datacollection.ts:9, 16-19, 45 — (b) `CollectBehavior = boolean | { allow: string[] } | { deny: string[] }`; `httpHeaders?: CollectBehavior | { request?, response? }`. resolveDataCollectionOptions.ts:26-39 applies a bare behaviour to both directions.",
+          "getsentry/sentry-javascript@11.0.0:packages/core/src/exports.ts:243-255 and core/src/session.ts:98-100, 152-157 — (c) startSession reads `navigator.userAgent` into the session, serialized as `attrs.user_agent`; nothing in dataCollection gates it. browser/src/integrations/browsersession.ts:41, 49-57 starts and sends it on every page load.",
+          "getsentry/sentry-javascript@11.0.0:packages/browser/src/client.ts:114-123, 149-151 — with `userInfo: false` the SDK sets `infer_ip: never` and adds no `{{auto}}` IP to sessions.",
+          "getsentry/relay@c4e99303:relay-event-normalization/src/normalize/user_agent.rs:25-38 — (d) Sentry's server builds the browser, device and OS contexts only from the event's own `request.headers`; with no headers it returns and adds none.",
+          "getsentry/relay@c4e99303:relay-event-normalization/src/event.rs:285, 330, 389-417 and relay-server/src/processing/utils/event.rs:265-276 — the User-Agent of the HTTP request that delivered the envelope is copied into the event only for security (CSP) reports, so there is no fallback for an error event.",
+          "getsentry/relay@c4e99303:relay-event-schema/src/protocol/event.rs:547-559 and relay-filter/src/interface.rs:125-130, 211-216 — the \"web crawlers\" and \"legacy browsers\" inbound filters read the UA from the event's headers (errors) or `attrs.user_agent` (sessions).",
+          "develop.sentry.dev, event payloads → contexts: for a JavaScript event the server creates the OS context from the incoming User-Agent (corroborates the Relay code).",
+          "getsentry/sentry-javascript@11.0.0:packages/browser/src/integrations/culturecontext.ts:10-19, 53-66 and browser/src/sdk.ts:45 — the default CultureContext integration adds `contexts.culture` = locale, time zone and calendar (from Intl.DateTimeFormat().resolvedOptions()) to every error event; not to the session ping."
+        ]
+      },
+      "spike": {
+        "status": "run",
+        "what": "(1) tsc 5.9.3 (strict) type-check of `{ allow: ['User-Agent'] }`, `{ request: { allow: ['User-Agent'] } }` and `false` against the mirrored 11.0.0 `DataCollection` type, plus three wrong shapes under @ts-expect-error. (2) Ran 11.0.0's resolveDataCollectionOptions + filterKeyValueData (Node 24 type stripping) on the two headers getHttpRequestData collects. (3) Relay's user-agent path by code reading at c4e99303; not tested against sentry.io.",
+        "result": "(1) tsc exit 0: all three valid shapes compile and all three wrong shapes are rejected. (2) `false` → no headers on the event; `{ allow: ['User-Agent'] }` (and the per-direction form) → `{\"Referer\":\"[Filtered]\",\"User-Agent\":\"Mozilla/5.0 …\"}`; `true` → both raw. (3) Settled by code: no headers, no browser/OS/device contexts, no fallback for error events."
+      },
+      "before": [
+        {
+          "lines": "297",
+          "text": "| IP address, cookies, headers                   | collected by Sentry's defaults                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | `dataCollection` turns each one off, **and** the project setting \"Prevent Storing of IP Addresses\" is on (section 5)                                                 |"
+        },
+        {
+          "lines": "337",
+          "text": "  dataCollection: { userInfo: false, cookies: false, httpHeaders: false, urlQueryParams: false },"
+        },
+        {
+          "lines": "377-379",
+          "text": "\"Counts visits\" is Release Health (S4): a small ping on every visit, not only on a crash. It carries\nthe release, the environment and whether the visit ended in an unhandled error — no file data.\nThat is why the home page names it."
+        }
+      ],
+      "after_draft": [
+        {
+          "replaces_lines": "297",
+          "option": "1 (recommended)",
+          "text": "| IP address, cookies, the Referer header        | collected by Sentry's defaults                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | `dataCollection` turns off each one — the Referer is sent as `[Filtered]` — **and** the project setting \"Prevent Storing of IP Addresses\" is on (section 5)          |\n| the browser's user-agent string                | the `User-Agent` header on each report, and the Release Health ping on every visit (S4) — sent on purpose                                                                                                                                                                                                                                                                                                                                                                                           | it names the browser, its version and the operating system, which Sentry shows on each issue; it holds no IP address and nothing from the file                       |"
+        },
+        {
+          "replaces_lines": "337",
+          "option": "1 (recommended)",
+          "text": "  dataCollection: {\n    userInfo: false,\n    cookies: false,\n    httpHeaders: { allow: ['User-Agent'] }, // the browser and OS; the Referer goes as [Filtered]\n    urlQueryParams: false,\n  },"
+        },
+        {
+          "replaces_lines": "377-379",
+          "option": "1 (recommended)",
+          "text": "\"Counts visits\" is Release Health (S4): a small ping on every visit, not only on a crash. It carries\nthe release, the environment, the browser's user-agent string and whether the visit ended in an\nunhandled error — no file data. That is why the home page names it."
+        },
+        {
+          "replaces_lines": "297",
+          "option": "2",
+          "text": "| IP address, cookies, headers                   | collected by Sentry's defaults                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | `dataCollection` turns each one off, **and** the project setting \"Prevent Storing of IP Addresses\" is on (section 5)                                                 |\n| the browser's user-agent string                | the Release Health ping on every visit (S4): Sentry 11 adds it to each session, whatever `dataCollection` says                                                                                                                                                                                                                                                                                                                                                                                      | sent with the ping only; error reports carry no headers, so an issue shows no browser or operating system                                                            |",
+          "note": "insertion: line 297 is kept unchanged as the first line"
+        },
+        {
+          "replaces_lines": "377-379",
+          "option": "2",
+          "text": "\"Counts visits\" is Release Health (S4): a small ping on every visit, not only on a crash. It carries\nthe release, the environment, the browser's user-agent string and whether the visit ended in an\nunhandled error — no file data. That is why the home page names it."
+        }
+      ],
+      "scenario": "You open a Sentry issue for E202 (the SoundFont failed to load) to see whether it only happens in Safari. The issue shows no browser and no operating system, because the reports carry no User-Agent header. Yet every visit's Release Health ping did send the full user-agent string, which the home page's description of the ping leaves out.",
+      "corrections": "None in the claims. Precision: with `{ allow: ['User-Agent'] }` the Referer is not removed — its key stays on the event with the value `[Filtered]` (Sentry keeps key names). \"Neither header can carry an IP address\" holds for the visitor's address; the Referer holds the linking page's address.",
+      "notes_for_triage": "Option 1 is the reviewer's recommendation (ADV-2, the only contributor). Withholding the Referer matters: a same-origin referrer can hold the previous page's query string (`fbclid`), which §3.1's address scrub does not cover. Option 2's cost: no browser, OS or device on any issue, and Sentry's crawler and legacy-browser filters cannot match error events (sessions are still filtered). Both options must fix §3.4: the ping sends the user agent whatever `dataCollection` says. A third path, proposed by no reviewer and untested: strip it in a `client.on('beforeSendSession', …)` hook (core/src/client.ts:618, 758) — then the crawler filter no longer applies to sessions and bot visits count in the health number. The ping also carries a random per-page-load id (`sid`), start and update times and an error count; no `did` (no user is set) and no IP. Separate from this item: every error event also carries the visitor's locale and time zone (`contexts.culture`, on by default), which §3.1 does not list (also the adversarial reviewer's residual risk); add a row, or filter out `CultureContext` too. The home copy's \"only\" clause is about the file, so it stays true under both options."
+    },
+    {
+      "id": "F-19",
+      "verdict": "pass",
+      "checks": {
+        "section_exists": "Yes: Goal (lines 14-17); §2.3 instruments bullet (186-194); §3.1 kinds-of-instrument row (296).",
+        "quotes": "10/10 verbatim (spec lines 17, 296, 186, 153, 362, 207, 208, 486)",
+        "fix_consistent": "Consistent once it matches F-17's outcome: option 1 here pairs with F-17 option 1 (type, size and instruments are sent), option 2 with F-17 option 2 (only instruments are sent). It also matches S1 (\"remove file names and contents before sending\") and lap 1's instruments decision. Nothing else quotes the Goal."
+      },
+      "central_claim": {
+        "status": "confirmed",
+        "evidence": [
+          "docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md:16-17 — \"nor anything in it leaves the device\".",
+          "docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md:186-194, 296 — the `instruments` tag (General MIDI numbers read from the score's tracks) is sent on purpose.",
+          "docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md:153, 176-177 — E101-E103 and E105 also send the extension (part of the file name) and the exact size.",
+          "git history of the spec: the Goal line is unchanged since cea5a76d; lap 1 narrowed the home copy (6b0e1e65) but not the Goal. docs/decisions/decision-changelog.md lap-1 bullet \"Reports carry the score's kinds of instrument\" records the owner's request."
+        ]
+      },
+      "spike": {
+        "status": "run",
+        "what": "Prettier, markdownlint and cspell (repo configs) over the patched spec copy, for both Goal options.",
+        "result": "Clean; every line is 100 characters or fewer."
+      },
+      "before": [
+        {
+          "lines": "16-17",
+          "text": "Every error a visitor meets in `web/` reaches Sentry — whether our code catches it or not — and\nneither the score, nor its file name, nor anything in it leaves the device."
+        }
+      ],
+      "after_draft": [
+        {
+          "replaces_lines": "16-17",
+          "option": "1 (recommended)",
+          "text": "Every error a visitor meets in `web/` reaches Sentry — whether our code catches it or not — and\nneither the score, nor its file name, nor the music in it leaves the device. Reports carry only the\nfile's type and size, and the kinds of instrument it uses."
+        },
+        {
+          "replaces_lines": "16-17",
+          "option": "2",
+          "text": "Every error a visitor meets in `web/` reaches Sentry — whether our code catches it or not — and\nneither the score, nor its file name, nor the music in it leaves the device. Reports carry only the\nkinds of instrument it uses."
+        }
+      ],
+      "scenario": "You write the plan's privacy checks from the Goal: nothing in the score leaves the device. Your first check fails, because a report carries the tag `instruments: drums,30`, read from inside the file, and the file's type and size. You cannot tell whether the tag or the Goal is the mistake.",
+      "corrections": "PRO-2's wording (\"— only the kinds of instrument it uses\") would still be wrong while FileFacts are sent; SCO-4's (\"nor its file name leaves the device\") would read as forbidding the extension, which is part of the name. The drafts name exactly what is sent.",
+      "notes_for_triage": "Decide F-17 first; pick the matching option here. The draft uses a second sentence instead of a third dash, because the first line already has two. A Drop leaves the first privacy promise a reader meets contradicting the settled instruments tag."
+    },
+    {
+      "id": "F-20",
+      "verdict": "pass-with-correction",
+      "checks": {
+        "section_exists": "Yes: §3.2 The names filter (303-328), §2.1 worker row (127), §2.3 E101-E103 bullet (176-177), §6 unit cases (444-460), To verify (556).",
+        "quotes": "8/8 verbatim (spec lines 315, 127, 556, 176)",
+        "fix_consistent": "Consistent with lap 1's \"the names filter runs over error messages only\": for a string-built event, `message` is the error's message. Text that changes with it: §3.2 bullet (312-315), the E101-E103 bullet (176-177), and two §6 unit lines (after 450, and 453). The §2 diagram and e2e case 3 stay as they are. Option 2's removal of `extra.__serialized__` is a removal, not filtering; it goes one step past lap 1's wording, inside S1."
+      },
+      "central_claim": {
+        "status": "confirmed",
+        "evidence": [
+          "getsentry/sentry-javascript@11.0.0:packages/core/src/instrument/globalError.ts:19-46 and browser/src/integrations/globalhandlers.ts:53-78 — the page's `error` handler gets (msg, url, line, column, error) and builds the event from `error || msg`; a worker error arrives with no Error object, so the string `msg` is used.",
+          "getsentry/sentry-javascript@11.0.0:packages/browser/src/eventbuilder.ts:333-340, 343-373 — a string goes through eventFromString, which sets `event.message`; addExceptionTypeValue (core/src/utils/misc.ts:90-100) puts the same text in the exception value. A template string from `Sentry.parameterize` fills `logentry` instead (361-369).",
+          "getsentry/sentry-javascript@11.0.0:packages/browser/src/eventbuilder.ts:52-99, 312-321, 375-394 — a plain object, or an ErrorEvent with no `.error`, goes through eventFromPlainObject: the exception value becomes \"Object captured as exception with keys: …\" or \"Event `ErrorEvent` captured as exception with message `…`\", and the whole value lands in `extra.__serialized__`.",
+          "getsentry/sentry-javascript@11.0.0:packages/core/src/client.ts:1530-1600, 571-573 — beforeSend runs first; sendEvent then emits `beforeSendEvent` with the processed event.",
+          "getsentry/sentry-javascript@11.0.0:packages/browser/src/integrations/breadcrumbs.ts:54-61, 78-79, 90-104 and core/src/utils/misc.ts:67-71 — the default `sentry` breadcrumb is built from that processed event with getEventDescription, which returns `event.message` first. So it is built AFTER beforeSend.",
+          "getsentry/sentry-javascript@11.0.0:packages/browser/src/helpers.ts:150-176 — the only other writer of `extra` on this path is wrap() (`extra.arguments`), used by BrowserApiErrors, which §3.3 removes; Sentry 11 puts nothing else in `extra` that the app needs.",
+          "@coderline/alphatab@1.8.4:dist/alphaTab.d.ts:2503 types the `error` event as `IEventEmitterOfT<Error>`, and dist/alphaTab.core.mjs:34499-34500, 50203-50209 re-trigger a worker render error as the thrown value (context for the open \"To verify\" item, not settled here)."
+        ]
+      },
+      "spike": {
+        "status": "run",
+        "what": "Bundled 11.0.0's browser eventbuilder with esbuild (a shim re-exporting the same core source files) and fed it: the string window.onerror passes for a worker throw, a string as captureException input, a message-only ErrorEvent, a plain object and an Error, each quoting \"Lead Guitar\". Then applied a filter over exception values only (the spec) and the drafted filter (values + `message`), and took getEventDescription (the `sentry.event` breadcrumb text) of each result.",
+        "result": "Worker string and captured string: the text is in both `message` and the exception value. With the spec's filter, `message` and the breadcrumb text still read \"Lead Guitar\"; with the draft, both read \"[file]\". ErrorEvent without `.error`: the text is only inside the exception value (the spec already covers it). Plain object: the whole object, name included, is in `extra.__serialized__`. Error: exception value only. (The fake ErrorEvent declared `message` as its own field, so its `__serialized__` showed it; a real ErrorEvent keeps `message` on its prototype.)"
+      },
+      "before": [
+        {
+          "lines": "176-177",
+          "text": "- **E101, E102 and E103 drop the exception message** and keep its type, its stack, and the file's\n  type and size. The engine's parse message can quote text from inside the file (section 3.1)."
+        },
+        {
+          "lines": "312-315",
+          "text": "- **Error messages only.** Click breadcrumbs are off (section 3.3), so no button label — and no\n  track name in one — is ever recorded. What is left is an error's own message: none quotes a name\n  today, but a future bug could, and E105, E901 and E201–E204 keep their message. So when an event\n  is sent (`beforeSend`), the filter runs over each exception's message, and over nothing else."
+        },
+        {
+          "lines": "450",
+          "text": "    `Drums (Left Kit)` comes out with `[file]`, not `[file]t Kit)`;"
+        },
+        {
+          "lines": "453",
+          "text": "  - `reportError`: the default level, the `code` tag, and E101–E103 dropping the message;"
+        }
+      ],
+      "after_draft": [
+        {
+          "replaces_lines": "312-315",
+          "option": "1 (recommended)",
+          "text": "- **Error messages only.** Click breadcrumbs are off (section 3.3), so no button label — and no\n  track name in one — is ever recorded. What is left is an error's own message: none quotes a name\n  today, but a future bug could, and E105, E901 and E201–E204 keep their message. A thrown `Error`\n  puts its message in the exception's value. A string, or a Web Worker error that reaches the page\n  without an `Error` object, puts it in the event's `message` as well, and the breadcrumb Sentry\n  adds for each sent report repeats `message` in every later report. So when an event is sent\n  (`beforeSend`), the filter runs over each exception's value and the event's `message`, and over\n  nothing else. The breadcrumb is made after `beforeSend`, so it repeats the cleaned text."
+        },
+        {
+          "replaces_lines": "176-177",
+          "option": "1 and 2",
+          "text": "- **E101, E102 and E103 drop the exception message** — from the exception's value and from the\n  event's `message` — and keep its type, its stack, and the file's type and size. The engine's parse\n  message can quote text from inside the file (section 3.1)."
+        },
+        {
+          "replaces_lines": "450",
+          "option": "1 (recommended)",
+          "text": "    `Drums (Left Kit)` comes out with `[file]`, not `[file]t Kit)`;\n  - the names filter, over an event Sentry built from text (a string passed to `reportError`, or a\n    Web Worker error that reached the page without an `Error` object): a remembered track name in\n    the event's `message` and in its exception's value comes out as `[file]` in both;",
+          "note": "insertion: line 450 is kept unchanged as the first line"
+        },
+        {
+          "replaces_lines": "453",
+          "option": "1 and 2",
+          "text": "  - `reportError`: the default level, the `code` tag, and E101–E103 dropping the message, also from\n    the event's `message`;"
+        },
+        {
+          "replaces_lines": "312-315",
+          "option": "2",
+          "text": "- **Error messages only.** Click breadcrumbs are off (section 3.3), so no button label — and no\n  track name in one — is ever recorded. What is left is an error's own message: none quotes a name\n  today, but a future bug could, and E105, E901 and E201–E204 keep their message. A thrown `Error`\n  puts its message in the exception's value. A string, or a Web Worker error that reaches the page\n  without an `Error` object, puts it in the event's `message` as well, and the breadcrumb Sentry\n  adds for each sent report repeats `message` in every later report. So when an event is sent\n  (`beforeSend`), the filter runs over each exception's value and the event's `message`, and over\n  nothing else. The breadcrumb is made after `beforeSend`, so it repeats the cleaned text.\n  Separately, `scrubEvent` deletes `extra.__serialized__`: the copy Sentry keeps of a captured value\n  that is not an `Error`, such as a plain object, which can hold any text."
+        },
+        {
+          "replaces_lines": "450",
+          "option": "2",
+          "text": "    `Drums (Left Kit)` comes out with `[file]`, not `[file]t Kit)`;\n  - the names filter, over an event Sentry built from text (a string passed to `reportError`, or a\n    Web Worker error that reached the page without an `Error` object): a remembered track name in\n    the event's `message` and in its exception's value comes out as `[file]` in both;\n  - a captured plain object that holds a remembered track name is sent without\n    `extra.__serialized__`;",
+          "note": "insertion: line 450 is kept unchanged as the first line"
+        }
+      ],
+      "scenario": "A score with a track named \"Lead Guitar\" is open, and a bug in AlphaTab's Web Worker throws `Cannot read properties of undefined (reading 'Lead Guitar')`. The error reaches the page as text only, so Sentry puts it both in the exception and in the event's `message`. The names filter cleans the exception, but the report still carries \"Lead Guitar\" in `message`, and the breadcrumb Sentry adds for it repeats the name in every later report from that tab.",
+      "corrections": "SEC-1 conflates two paths: a worker throw reaches Sentry through window.onerror as a string (→ `message` + exception value), not as an ErrorEvent object; a message-only ErrorEvent passed to captureException puts its text only in the exception value, which the spec already filters. SEC-1's \"delete `event.extra`\" is broader than needed: `extra.__serialized__` is the only key Sentry writes there in this setup, and deleting all of `extra` would also delete anything the plan puts there (the spec does not say where `FileFacts` travel). `logentry.message` (SEC-1, ADV-5) is filled only by `Sentry.parameterize` template strings, which the app never creates; it is left out of the draft (cspell also flags `logentry`, which is not in cspell.json).",
+      "notes_for_triage": "Option 1 is what all three reviewers agree on (FEA-2 and ADV-5 propose exactly this). Option 2 adds SEC-1's fuller fix, narrowed to `extra.__serialized__`. Collisions: lines 176-177 are also edited by F-17 option 2 (merged text in F-17's notes); line 453 is also rewritten by F-23 option 1 (verify-B) — merged: \"  - `reportError`: the default level, the `code` tag, E101–E103 dropping the message (also from the\n    event's `message`), and a report with `file` sent without the `instruments` tag while the next\n    report still carries it;\". No e2e case covers the `message` path (case 3 throws an Error on the main thread); the drafted unit case does. A Drop leaves a name quoted in a worker error, or in a string passed to reportError, reaching Sentry in `message` and in the next reports' breadcrumbs."
+    },
+    {
+      "id": "AMB-5",
+      "verdict": "pass",
+      "checks": {
+        "section_exists": "Yes: §3.3 (349-351) and \"To verify at plan time\" (543-558; the reviewer calls it section 8, the spec heading has no number).",
+        "quotes": "3/3 verbatim (spec lines 350-351, 545, 550)",
+        "fix_consistent": "Consistent: the To-verify item (550) stays, because the plan installs whatever 11.x pnpm resolves. No other text claims the shape is confirmed."
+      },
+      "central_claim": {
+        "status": "confirmed",
+        "evidence": [
+          "docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md:350-351 says \"is confirmed against the installed types\"; 545 says each To-verify item is \"a claim … no one has run yet\"; 550 lists the same shape. Nothing is installed: web/package.json has no @sentry dependency.",
+          "getsentry/sentry-javascript@11.0.0:packages/core/src/types/datacollection.ts:26-123 — the spec's current `dataCollection` (and F-18 option 1's allow-list) match the 11.0.0 type (see spike)."
+        ]
+      },
+      "spike": {
+        "status": "run",
+        "what": "The F-18 type-check: the spec's `{ userInfo: false, cookies: false, httpHeaders: false, urlQueryParams: false }` against the mirrored 11.0.0 `DataCollection` type with tsc 5.9.3 (strict).",
+        "result": "Compiles (tsc exit 0), so the draft can say it matches 11.0.0 and still leave the installed-version check to the plan."
+      },
+      "before": [
+        {
+          "lines": "349-351",
+          "text": "`dom: false` turns off click and key-press breadcrumbs (section 3.2); navigation, fetch and xhr\nbreadcrumbs stay. The exact shape of `dataCollection` is confirmed against the installed types\n(see \"To verify\")."
+        }
+      ],
+      "after_draft": [
+        {
+          "replaces_lines": "349-351",
+          "option": "only",
+          "text": "`dom: false` turns off click and key-press breadcrumbs (section 3.2); navigation, fetch and xhr\nbreadcrumbs stay. The shape of `dataCollection` matches the types of Sentry 11.0.0; the plan checks\nit again against the version pnpm installs (see \"To verify\")."
+        }
+      ],
+      "scenario": "You implement section 3.3 and read that the shape of `dataCollection` \"is confirmed against the installed types\", so you skip checking it. Later you reach \"To verify at plan time\" and find the same check listed as not yet run. You cannot tell which of the two lines to trust.",
+      "corrections": "none",
+      "notes_for_triage": "If F-18 option 1 lands, this is the line that tells the plan to check the `{ allow: [...] }` shape in the installed version. Lines 349-351 are not touched by any other area-A draft; FYI-9 inserts its paragraph just above them."
+    },
+    {
+      "id": "FYI-9",
+      "verdict": "pass-with-correction",
+      "checks": {
+        "section_exists": "Yes: §3.3 SDK settings (330-351) and Decisions S3 (66).",
+        "quotes": "2/2 verbatim (spec lines 340, 66)",
+        "fix_consistent": "The runtime half is consistent with S3 and the Non-goals (\"no performance tracing\"). The build half (`bundleSizeOptimizations.excludeTracing` in §4) would be a no-op in this build and is not drafted. The §6 download-size measurement still includes the tracing code."
+      },
+      "central_claim": {
+        "status": "confirmed",
+        "evidence": [
+          "getsentry/sentry-javascript@11.0.0:packages/nextjs/src/client/index.ts:64-69, 106-112 — the client defaults get `browserTracingIntegration()` unless `__SENTRY_TRACING__` is replaced with false; core/src/integration.ts:59-63 passes those defaults to a function `integrations` option.",
+          "getsentry/sentry-javascript@11.0.0:packages/browser/src/tracing/browserTracingIntegration.ts:56, 427, 739-747 — its name is `BrowserTracing`; it instruments outgoing requests. nextjs/src/client/browserTracingIntegration.ts:27-48 adds page-load and navigation instrumentation.",
+          "getsentry/sentry-javascript@11.0.0:packages/browser/src/tracing/request.ts:274-313, 415-420 and core/src/fetch.ts:123-136 — `sentry-trace` and `baggage` go on every same-origin fetch and XHR whether or not spans are enabled (\"TWP\"); default `tracePropagationTargets` is same origin.",
+          "@coderline/alphatab@1.8.4:dist/alphaTab.core.mjs:49227-49241 — the SoundFont loads by XMLHttpRequest on the main thread; web/lib/alphatab/defaults.ts:23 — from the same origin (`/alphatab/soundfont/sonivox.sf3`).",
+          "getsentry/sentry-javascript@11.0.0:packages/nextjs/src/config/webpack.ts:907-909 — Next.js's documented switch is `webpack.treeshake.removeTracing`, which defines `__SENTRY_TRACING__ = false` for webpack builds only.",
+          "getsentry/sentry-javascript@11.0.0:packages/nextjs/src/config/getBuildPluginOptions.ts:352-354 and nextjs/src/config/handleRunAfterProductionCompile.ts:46-89 — `bundleSizeOptimizations` only reaches the build plugin, which under Turbopack runs after compilation (release, debug IDs, upload, delete) and transforms no code.",
+          "docs.sentry.io, Next.js tree-shaking page: \"Tree-shaking options are not supported for Turbopack builds at the moment.\"",
+          "next@16.3.6:dist/docs/01-app/01-getting-started/01-installation.md:156 — Turbopack is the default bundler for `next build`; web/package.json:6 runs plain `next build`."
+        ]
+      },
+      "spike": {
+        "status": "untested",
+        "what": "Headers and bundle contents at runtime.",
+        "result": "Not run: it needs @sentry/nextjs installed and a build, which this verifier may not do. Settled by reading the 11.0.0 source and Sentry's docs; the Prettier layout of the changed filter line was taken from Prettier itself."
+      },
+      "before": [
+        {
+          "lines": "340",
+          "text": "      (integration) => !['Console', 'BrowserApiErrors', 'Breadcrumbs'].includes(integration.name),"
+        },
+        {
+          "lines": "347",
+          "text": "```"
+        }
+      ],
+      "after_draft": [
+        {
+          "replaces_lines": "340",
+          "option": "only",
+          "text": "      (integration) =>\n        !['Console', 'BrowserApiErrors', 'Breadcrumbs', 'BrowserTracing'].includes(\n          integration.name,\n        ),"
+        },
+        {
+          "replaces_lines": "347",
+          "option": "only",
+          "text": "```\n\nThe filter also removes `BrowserTracing` (S3: errors only). `@sentry/nextjs` adds it to the\ndefaults, and even with no `tracesSampleRate` it adds `sentry-trace` and `baggage` headers to every\nsame-origin request, such as the SoundFont download. Its code still ships: Sentry's options that\nremove it at build time work with webpack only, and `next build` uses Turbopack.",
+          "note": "insertion: line 347 is kept unchanged as the first line"
+        }
+      ],
+      "scenario": "You open /play with the browser's Network panel. The SoundFont request (`/alphatab/soundfont/sonivox.sf3`) carries `sentry-trace` and `baggage` headers, although the spec says errors only (S3) and sets no `tracesSampleRate`. The tracing code also counts in the download size you record in the pull request.",
+      "corrections": "The suggested `bundleSizeOptimizations: { excludeTracing: true }` would not remove the code here: `next build` uses Turbopack, Sentry's tree-shaking options are webpack-only, and the Next.js option is `webpack.treeshake.removeTracing` anyway. Filtering `BrowserTracing` by name stops the hooks and headers at runtime; the code still ships.",
+      "notes_for_triage": "An untested way to drop the code under Turbopack would be Next's `compiler.define` for `__SENTRY_TRACING__`; it is not drafted (the value format and Turbopack support are unverified). The security reviewer's residual risk applies: if tracing were ever turned on, INP spans would name clicked elements (the Solo button's label) and bypass beforeSend; removing the integration closes that path at runtime. A Drop leaves trace headers on every same-origin request."
+    },
+    {
+      "id": "FYI-11",
+      "verdict": "pass-with-correction",
+      "checks": {
+        "section_exists": "Yes: §4 Releases, environments and source maps (384-410).",
+        "quotes": "2/2 verbatim (spec lines 396, 406)",
+        "fix_consistent": "Consistent with D4 and D5: the production build (token present) keeps the default post-build step — release, upload, delete. `sourcemaps.disable` must stay: it is what stops the wrapper from turning on `productionBrowserSourceMaps` for token-less Turbopack builds (getFinalConfigObjectBundlerUtils.ts:242-279), and with the post-build step off nothing would delete them. Fits the existing To-verify build check."
+      },
+      "central_claim": {
+        "status": "confirmed",
+        "evidence": [
+          "getsentry/sentry-javascript@11.0.0:packages/nextjs/src/config/withSentryConfig/getFinalConfigObject.ts:56 and getFinalConfigObjectUtils.ts:222-233 — the \"ACTION REQUIRED … onRouterTransitionStart\" warning prints on every config load unless the instrumentation-client file contains the text `onRouterTransitionStart` or `suppressOnRouterTransitionStartWarning` is set (nextjs/src/config/types.ts:280-282).",
+          "getsentry/sentry-javascript@11.0.0:packages/bundler-plugins/src/core/build-plugin-manager.ts:412-426, 448, 217 — createRelease checks the name, then dev mode (NODE_ENV=development), then the token — warning \"No auth token provided. Will not create release.\" — before it reads `release.create`.",
+          "getsentry/sentry-javascript@11.0.0:packages/bundler-plugins/src/core/options-mapping.ts:113 and utils.ts:202-213, 219-309 — a missing release name is filled from SENTRY_RELEASE, CI variables (GITHUB_SHA, VERCEL_GIT_COMMIT_SHA, …) or `git rev-parse HEAD`.",
+          "getsentry/sentry-javascript@11.0.0:packages/nextjs/src/config/withSentryConfig/getFinalConfigObjectUtils.ts:22-27 and getBuildPluginOptions.ts:225-246 — with `create: false` the wrapper itself does not fall back to git and passes no name, but the plugin fills one in (above).",
+          "getsentry/sentry-javascript@11.0.0:packages/nextjs/src/config/withSentryConfig/getFinalConfigObjectBundlerUtils.ts:153-159, 183-185 and handleRunAfterProductionCompile.ts:59 — with `useRunAfterProductionCompileHook: false` no post-build step is registered, so createRelease never runs (types.ts:353-359: \"For Turbopack no sourcemaps will be uploaded\").",
+          "getsentry/sentry-javascript@11.0.0:packages/bundler-plugins/src/core/logger.ts:23-28 and nextjs/src/config/buildLogger.ts:15-18 — `silent: true` mutes both loggers (an alternative)."
+        ]
+      },
+      "spike": {
+        "status": "run",
+        "what": "Bundled 11.0.0's bundler-plugins normalizeUserOptions with esbuild and fed it what @sentry/nextjs passes for a token-less build under the reviewer's fix (`release: { create: false }`, no name): once with GITHUB_SHA set, once with VERCEL_GIT_COMMIT_SHA set, once in a local git checkout. A full build was not run (needs the package installed).",
+        "result": "`release.name` came back set every time (the CI SHA, the Vercel SHA, the HEAD commit) with `create: false`, so createRelease's guard order reaches the \"No auth token\" warning in CI, on previews and locally. The reviewer's `{ create: false }` fix does not silence it."
+      },
+      "before": [
+        {
+          "lines": "395-397",
+          "text": "- **No upload without a token.** `SENTRY_AUTH_TOKEN` exists only in Vercel's Production environment.\n  Preview builds, CI builds and local builds skip the upload, and the wrapper is told so rather than\n  left to warn."
+        },
+        {
+          "lines": "407",
+          "text": "  sourcemaps: { disable: !process.env.SENTRY_AUTH_TOKEN },"
+        }
+      ],
+      "after_draft": [
+        {
+          "replaces_lines": "395-397",
+          "option": "only",
+          "text": "- **No upload without a token.** `SENTRY_AUTH_TOKEN` exists only in Vercel's Production environment.\n  Preview builds, CI builds and local builds skip the upload and the release step\n  (`useRunAfterProductionCompileHook` is off without a token), so they print no \"No auth token\"\n  warning. A release with no name would not stop it: Sentry's build plugin then names the release\n  after the git commit, and it checks the token before it reads `release.create`.\n- **No navigation-tracing prompt.** `suppressOnRouterTransitionStartWarning: true` stops the\n  \"ACTION REQUIRED … `onRouterTransitionStart`\" line that the wrapper prints on every build. That\n  hook is for navigation tracing, which S3 rules out."
+        },
+        {
+          "replaces_lines": "407",
+          "option": "only",
+          "text": "  sourcemaps: { disable: !process.env.SENTRY_AUTH_TOKEN },\n  useRunAfterProductionCompileHook: Boolean(process.env.SENTRY_AUTH_TOKEN),\n  suppressOnRouterTransitionStartWarning: true,",
+          "note": "insertion: line 407 is kept unchanged as the first line"
+        }
+      ],
+      "scenario": "You run the web build on your laptop or in CI, where there is no token. The log prints \"No auth token provided. Will not create release.\" and \"[@sentry/nextjs] ACTION REQUIRED: To instrument navigations…\". The second line asks you to add navigation tracing, which S3 rejected, and both appear on every pull request.",
+      "corrections": "The claim holds, but FEA-5's fix for the release warning is wrong: \"with `create: false` and no name, the wrapper neither falls back to git nor warns\" is true of the wrapper only. Sentry's build plugin then names the release from GITHUB_SHA, VERCEL_GIT_COMMIT_SHA or git, and createRelease warns about the token before it reads `create` (spike). The draft turns the post-build step off when there is no token instead. `suppressOnRouterTransitionStartWarning: true` is correct as suggested.",
+      "notes_for_triage": "Alternatives: `silent: !process.env.SENTRY_AUTH_TOKEN` silences both warnings on token-less builds, and every other Sentry build message there; a comment that mentions `onRouterTransitionStart` in instrumentation-client.ts would also silence the second (the check is a plain text search) — not recommended. Untested end to end: the existing To-verify item \"One build with `withSentryConfig`…\" is where to confirm no Sentry warning is printed. A Drop leaves both lines on every CI and preview build, and the ACTION REQUIRED line on production builds too."
+    },
+    {
+      "id": "FYI-12",
+      "verdict": "pass",
+      "checks": {
+        "section_exists": "Yes: §3.3 (336), §4 Environment bullet (389), To verify (555).",
+        "quotes": "3/3 verbatim (spec lines 336, 389, 555)",
+        "fix_consistent": "Consistent with D5 and with §3.4 (the ping still carries the environment, now from the SDK default). The §4 bullet is reworded rather than deleted, so the section title \"Releases, environments and source maps\" still has its bullet."
+      },
+      "central_claim": {
+        "status": "confirmed",
+        "evidence": [
+          "getsentry/sentry-javascript@11.0.0:packages/nextjs/src/client/index.ts:64-69 — `environment: options.environment || process.env.SENTRY_ENVIRONMENT || getClientVercelEnv() || process.env.NODE_ENV`, with `...options` spread after it.",
+          "getsentry/sentry-javascript@11.0.0:packages/nextjs/src/common/getVercelEnv.ts:5-7 — getClientVercelEnv() is `NEXT_PUBLIC_VERCEL_TARGET_ENV || NEXT_PUBLIC_VERCEL_ENV`.",
+          "getsentry/sentry-javascript@11.0.0:packages/nextjs/src/config/withSentryConfig/buildTime.ts:36-80 — the wrapper exposes only `_sentry*` variables to the client, so SENTRY_ENVIRONMENT never reaches the browser bundle.",
+          "getsentry/sentry-javascript@11.0.0:packages/core/src/utils/prepareEvent.ts:158, core/src/constants.ts:1 and core/src/client.ts:599 — an unset environment becomes `production` on events and sessions."
+        ]
+      },
+      "spike": {
+        "status": "run",
+        "what": "Replicated the two expressions (nextjs client/index.ts:64-69 and core prepareEvent.ts:158) in Node for three environments, with and without the spec's line 336.",
+        "result": "Vercel production: `production` either way. CI or local `next build`: `production` either way. Local `next dev`: `production` with line 336 (an explicit `undefined` overrides the chain) but `development` without it."
+      },
+      "before": [
+        {
+          "lines": "336",
+          "text": "  environment: process.env.NEXT_PUBLIC_VERCEL_ENV,"
+        },
+        {
+          "lines": "389",
+          "text": "- **Environment** = `NEXT_PUBLIC_VERCEL_ENV`. With D5 only `production` reports."
+        },
+        {
+          "lines": "555",
+          "text": "- That `NEXT_PUBLIC_VERCEL_ENV` is exposed on Vercel for this project."
+        }
+      ],
+      "after_draft": [
+        {
+          "replaces_lines": "336",
+          "option": "only",
+          "text": "",
+          "note": "delete these lines"
+        },
+        {
+          "replaces_lines": "389",
+          "option": "only",
+          "text": "- **Environment** is not set in `Sentry.init`; the SDK default applies:\n  `NEXT_PUBLIC_VERCEL_TARGET_ENV`, else `NEXT_PUBLIC_VERCEL_ENV`, else `NODE_ENV`. With D5 only\n  `production` reports."
+        },
+        {
+          "replaces_lines": "555",
+          "option": "only",
+          "text": "",
+          "note": "delete these lines"
+        }
+      ],
+      "scenario": "You add a DSN to `web/.env.local` to try the setup, and run `pnpm dev`. Because `environment` is set from `NEXT_PUBLIC_VERCEL_ENV`, which is empty on your laptop, your test error arrives in Sentry labelled `production`, mixed in with real visitors' reports. Without that line, the SDK's own default labels it `development`.",
+      "corrections": "Minor: the chain also includes SENTRY_ENVIRONMENT (not exposed to the browser), and the explicit option does more than repeat the default — when the variable is empty it overrides the chain with `undefined`, which becomes `production`.",
+      "notes_for_triage": "The default chain needs no Vercel setting for D5: if the Vercel system variables are not exposed, production still falls back to `NODE_ENV=production`, so the To-verify item can go. A Drop keeps one config line, one bullet and one open check for no gain, and mislabels local test events."
+    },
+    {
+      "id": "FYI-14",
+      "verdict": "pass-with-correction",
+      "checks": {
+        "section_exists": "Yes: §5 Setup (412-436), step 3 (427) and step 5 (429-431); Known limits, the quota (535-540).",
+        "quotes": "2/2 verbatim (spec lines 430, 535)",
+        "fix_consistent": "Consistent with D3 (no tunnel) and D5 (only production holds the DSN). No other text changes. Step 3 names the Security & Privacy page, but Allowed Domains is on another page, so the draft names that page."
+      },
+      "central_claim": {
+        "status": "confirmed",
+        "evidence": [
+          "getsentry/relay@c4e99303:relay-dynamic-config/src/project.rs:23-24, 143-146 — `allowed_domains` (\"URLs that are permitted for cross original JavaScript requests\") defaults to `[\"*\"]`.",
+          "getsentry/relay@c4e99303:relay-server/src/services/projects/project/info.rs:140-143, 216-235 — an envelope whose origin matches no allowed domain is discarded (DiscardReason::Cors); a request with no origin is always accepted.",
+          "getsentry/relay@c4e99303:relay-server/src/extractors/request_meta.rs:646-647 — the origin is the `Origin` header, else the `Referer` header.",
+          "getsentry/sentry@a86c9bd3:static/app/views/settings/projectGeneralSettings/index.tsx:828-862 — \"Allowed Domains\" sits under Project Settings (General Settings) → Client Security, and \"will restrict requests based on the Origin and Referer headers\".",
+          "docs.sentry.io, Inbound Filters: requests from unrecognized origins are rejected and appear as \"Disallowed Domain\" in Stats; requests without an Origin or Referer header are always accepted.",
+          "getsentry/sentry-javascript@11.0.0:packages/browser/src/transports/fetch.ts:26-27 — the SDK posts with `referrerPolicy: 'strict-origin'`, so our own reports carry our origin."
+        ]
+      },
+      "spike": {
+        "status": "untested",
+        "what": "Posting to a real Sentry project from another origin.",
+        "result": "Not run: needs a Sentry project, which only the owner may create (§5). Settled by Relay's source, Sentry's UI source and Sentry's docs."
+      },
+      "before": [
+        {
+          "lines": "427",
+          "text": "3. Project settings → Security & Privacy → turn on **\"Prevent Storing of IP Addresses\"**."
+        }
+      ],
+      "after_draft": [
+        {
+          "replaces_lines": "427",
+          "option": "only",
+          "text": "3. Project settings → Security & Privacy → turn on **\"Prevent Storing of IP Addresses\"**. Then\n   Project settings → General Settings → Client Security → **Allowed Domains**: replace the default\n   `*` with the production domain. Sentry then rejects a report that a browser sends with this DSN\n   from any other site. A request with no `Origin` or `Referer` header still gets through, so this\n   limits misuse of the public DSN; it does not stop it."
+        }
+      ],
+      "scenario": "Another website copies `NEXT_PUBLIC_SENTRY_DSN` from your page's source and sends made-up errors from its own visitors' browsers. Each new message opens a new issue and sends you an email (step 2), and after 5,000 events in a month Sentry refuses your real reports. With Allowed Domains set to your production domain, Sentry drops those reports and lists them as \"Disallowed Domain\" in Stats.",
+      "corrections": "The setting is not on step 3's \"Security & Privacy\" page: it is Project settings → General Settings → Client Security → Allowed Domains. Everything else holds, including \"a forged server-side request still gets through\".",
+      "notes_for_triage": "A production deployment's own unique Vercel URL would also be rejected; visitors use the production domain, so that is acceptable under D5. If a custom domain is ever configured, it must be added too. Whether rejected events count against the quota is not verified here. A Drop leaves the public DSN open to any website, at no cost to fix."
+    }
+  ]
+}

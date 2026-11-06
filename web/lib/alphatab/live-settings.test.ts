@@ -1,3 +1,4 @@
+import { captureException } from '@sentry/nextjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -455,6 +456,29 @@ describe('applyThenPersist — apply BEFORE persist', () => {
     expect(committed).toBe(false);
     expect(persist).not.toHaveBeenCalled();
     expect(onRejected).toHaveBeenCalledTimes(1);
+  });
+
+  // A refusal means our own checks let through a value the engine cannot use: a warning, so the
+  // missing check gets written.
+  it('reports the refusal to Sentry as an E602 warning', () => {
+    vi.mocked(captureException).mockClear();
+    const api = createFakeApi();
+    const refusal = new Error('Missing font list');
+    api.settings.fillFromJson.mockImplementation(() => {
+      throw refusal;
+    });
+
+    applyThenPersist({
+      api: api as unknown as AlphaTab.AlphaTabApi,
+      next: { display: { resources: { graceFont: 'bold' } } },
+      apply: 'render',
+      onRejected: vi.fn(),
+      persist: vi.fn(),
+    });
+
+    expect(vi.mocked(captureException).mock.calls).toEqual([
+      [refusal, { captureContext: { level: 'warning', tags: { code: 'E602' } } }],
+    ]);
   });
 
   // Before the engine has loaded there is nothing to ask, and the edit must still be kept: the

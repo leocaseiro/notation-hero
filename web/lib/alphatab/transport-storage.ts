@@ -1,3 +1,4 @@
+import { isStorageRefusal, noteError, reportError } from '../monitoring/report';
 import { loadStoredSettings, serializeSettings } from './settings-storage';
 
 /**
@@ -126,10 +127,13 @@ export function loadStoredTransport(raw: string | null): StoredTransport {
 export function readStoredTransport(): StoredTransport {
   try {
     return loadStoredTransport(globalThis.localStorage.getItem(TRANSPORT_STORAGE_KEY));
-  } catch {
+  } catch (error) {
     // A fresh object rather than the shared DEFAULT_TRANSPORT_VALUES, so the two paths agree about
     // whether the caller may hold on to what it got. Storage being unreadable is not a repair:
     // nothing was corrected, so `reset` stays false and no warning fires.
+    if (isStorageRefusal(error))
+      noteError(error, 'Transport values could not be read from storage');
+    else reportError(error);
     return { values: { ...DEFAULT_TRANSPORT_VALUES }, reset: false, repaired: [] };
   }
 }
@@ -165,8 +169,10 @@ export function persistTransport(change: Partial<TransportValues>): void {
       TRANSPORT_STORAGE_KEY,
       serializeTransport({ ...readStoredTransport().values, ...change }),
     );
-  } catch {
+  } catch (error) {
     // Private browsing and a full quota both throw here. Losing persistence is survivable; losing
-    // the transport is not, so swallow it rather than breaking the toggle.
+    // the transport is not, so the toggle carries on either way.
+    if (isStorageRefusal(error)) noteError(error, 'Transport values could not be saved');
+    else reportError(error);
   }
 }

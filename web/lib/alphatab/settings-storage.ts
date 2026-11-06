@@ -192,6 +192,7 @@ export function loadStoredSettings(
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
+    // eslint-disable-next-line no-restricted-syntax -- an unreadable document returns reset: true, and both callers turn that into the E603 warning and its report
   } catch {
     return { settings: defaults, reset: true, repaired: [] };
   }

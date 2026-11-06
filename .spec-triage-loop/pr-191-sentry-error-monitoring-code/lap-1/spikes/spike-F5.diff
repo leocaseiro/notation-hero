@@ -1,0 +1,160 @@
+diff --git a/web/app/CrashPage.tsx b/web/app/CrashPage.tsx
+new file mode 100644
+index 00000000..95ddf284
+--- /dev/null
++++ b/web/app/CrashPage.tsx
+@@ -0,0 +1,37 @@
++'use client';
++
++import { Button } from '@notation-hero/client';
++import { ERROR } from '@notation-hero/shared/error-codes';
++import { useEffect } from 'react';
++
++import { reportError } from '../lib/monitoring/report';
++
++/**
++ * What a visitor sees when the page crashes, written once for the three places a crash lands:
++ * web/app/error.tsx, web/app/play/error.tsx and web/app/global-error.tsx. Only the second heading
++ * differs. It also sends the E901 report, once for each error.
++ */
++export function CrashPage({
++  error,
++  reset,
++  heading,
++}: Readonly<{ error: Error; reset: () => void; heading: string }>) {
++  useEffect(() => reportError(error, { code: ERROR.unexpectedCrash, handled: false }), [error]);
++  return (
++    <main className="mx-auto flex min-h-dvh max-w-3xl flex-col items-center justify-center gap-6 p-8 text-center">
++      <h1 className="text-3xl font-bold">Notation Hero</h1>
++      <h2 className="text-xl font-semibold">{heading}</h2>
++      {/* Not "a report was sent": an ad blocker may have stopped it, and this page cannot know. */}
++      <p className="max-w-prose text-muted-foreground">
++        Errors are reported automatically — without your file, its name, or the music in it. Try
++        again, or reload the page.
++      </p>
++      <p className="text-sm text-muted-foreground">
++        Error {ERROR.unexpectedCrash} — the page crashed unexpectedly.
++      </p>
++      <Button className="min-h-11 px-8" onClick={reset}>
++        Try again
++      </Button>
++    </main>
++  );
++}
+diff --git a/web/app/error.tsx b/web/app/error.tsx
+index 31d56250..c3e48df4 100644
+--- a/web/app/error.tsx
++++ b/web/app/error.tsx
+@@ -1,28 +1,7 @@
+ 'use client';
+
+-import { Button } from '@notation-hero/client';
+-import { ERROR } from '@notation-hero/shared/error-codes';
+-import { useEffect } from 'react';
+-
+-import { reportError } from '../lib/monitoring/report';
++import { CrashPage } from './CrashPage';
+
+ export default function AppError({ error, reset }: Readonly<{ error: Error; reset: () => void }>) {
+-  useEffect(() => reportError(error, { code: ERROR.unexpectedCrash, handled: false }), [error]);
+-  return (
+-    <main className="mx-auto flex min-h-dvh max-w-3xl flex-col items-center justify-center gap-6 p-8 text-center">
+-      <h1 className="text-3xl font-bold">Notation Hero</h1>
+-      <h2 className="text-xl font-semibold">Something went wrong</h2>
+-      {/* Not "a report was sent": an ad blocker may have stopped it, and this page cannot know. */}
+-      <p className="max-w-prose text-muted-foreground">
+-        Errors are reported automatically — without your file, its name, or the music in it. Try
+-        again, or reload the page.
+-      </p>
+-      <p className="text-sm text-muted-foreground">
+-        Error {ERROR.unexpectedCrash} — the page crashed unexpectedly.
+-      </p>
+-      <Button className="min-h-11 px-8" onClick={reset}>
+-        Try again
+-      </Button>
+-    </main>
+-  );
++  return <CrashPage error={error} reset={reset} heading="Something went wrong" />;
+ }
+diff --git a/web/app/global-error.tsx b/web/app/global-error.tsx
+index 50336083..41f45750 100644
+--- a/web/app/global-error.tsx
++++ b/web/app/global-error.tsx
+@@ -1,10 +1,6 @@
+ 'use client';
+
+-import { Button } from '@notation-hero/client';
+-import { ERROR } from '@notation-hero/shared/error-codes';
+-import { useEffect } from 'react';
+-
+-import { reportError } from '../lib/monitoring/report';
++import { CrashPage } from './CrashPage';
+
+ import './globals.css';
+
+@@ -16,26 +12,11 @@ export default function GlobalError({
+   error,
+   reset,
+ }: Readonly<{ error: Error; reset: () => void }>) {
+-  useEffect(() => reportError(error, { code: ERROR.unexpectedCrash, handled: false }), [error]);
+   return (
+     <html lang="en">
+       <body>
+         <title>Notation Hero</title>
+-        <main className="mx-auto flex min-h-dvh max-w-3xl flex-col items-center justify-center gap-6 p-8 text-center">
+-          <h1 className="text-3xl font-bold">Notation Hero</h1>
+-          <h2 className="text-xl font-semibold">Something went wrong</h2>
+-          {/* Not "a report was sent": an ad blocker may have stopped it, and this page cannot know. */}
+-          <p className="max-w-prose text-muted-foreground">
+-            Errors are reported automatically — without your file, its name, or the music in it. Try
+-            again, or reload the page.
+-          </p>
+-          <p className="text-sm text-muted-foreground">
+-            Error {ERROR.unexpectedCrash} — the page crashed unexpectedly.
+-          </p>
+-          <Button className="min-h-11 px-8" onClick={reset}>
+-            Try again
+-          </Button>
+-        </main>
++        <CrashPage error={error} reset={reset} heading="Something went wrong" />
+       </body>
+     </html>
+   );
+diff --git a/web/app/play/error.tsx b/web/app/play/error.tsx
+index 501fb6ed..a76e5c6d 100644
+--- a/web/app/play/error.tsx
++++ b/web/app/play/error.tsx
+@@ -1,31 +1,10 @@
+ 'use client';
+
+-import { Button } from '@notation-hero/client';
+-import { ERROR } from '@notation-hero/shared/error-codes';
+-import { useEffect } from 'react';
+-
+-import { reportError } from '../../lib/monitoring/report';
++import { CrashPage } from '../CrashPage';
+
+ export default function PlayerError({
+   error,
+   reset,
+ }: Readonly<{ error: Error; reset: () => void }>) {
+-  useEffect(() => reportError(error, { code: ERROR.unexpectedCrash, handled: false }), [error]);
+-  return (
+-    <main className="mx-auto flex min-h-dvh max-w-3xl flex-col items-center justify-center gap-6 p-8 text-center">
+-      <h1 className="text-3xl font-bold">Notation Hero</h1>
+-      <h2 className="text-xl font-semibold">The player stopped unexpectedly</h2>
+-      {/* Not "a report was sent": an ad blocker may have stopped it, and this page cannot know. */}
+-      <p className="max-w-prose text-muted-foreground">
+-        Errors are reported automatically — without your file, its name, or the music in it. Try
+-        again, or reload the page.
+-      </p>
+-      <p className="text-sm text-muted-foreground">
+-        Error {ERROR.unexpectedCrash} — the page crashed unexpectedly.
+-      </p>
+-      <Button className="min-h-11 px-8" onClick={reset}>
+-        Try again
+-      </Button>
+-    </main>
+-  );
++  return <CrashPage error={error} reset={reset} heading="The player stopped unexpectedly" />;
+ }

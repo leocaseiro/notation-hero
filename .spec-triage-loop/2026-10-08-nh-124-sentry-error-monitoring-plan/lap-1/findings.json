@@ -1,0 +1,623 @@
+{
+  "header": {
+    "artifact_path": "docs/plans/2026-10-08-nh-124-sentry-error-monitoring-plan.md",
+    "artifact_worktree": "nh-320-vr-spec-lap-4-92e22a",
+    "artifact_path_from_root": ".claude/worktrees/nh-320-vr-spec-lap-4-92e22a/docs/plans/2026-10-08-nh-124-sentry-error-monitoring-plan.md",
+    "artifact_permalink": "https://github.com/leocaseiro/notation-hero/blob/47827227995746a00cc363134151c8658deaf17b/docs/plans/2026-10-08-nh-124-sentry-error-monitoring-plan.md",
+    "permalink_sha": "47827227995746a00cc363134151c8658deaf17b",
+    "permalink_note": "The plan as reviewed (fc745806) plus the five fixes the review applied (this sha, 47827227). This findings file is committed on top of it; the plan is identical at both.",
+    "branch": "claude/sentry-error-monitoring-89abc2",
+    "pr": "https://github.com/leocaseiro/notation-hero/pull/191",
+    "jira": "https://leocaseiro.atlassian.net/browse/NH-124 (status PLAN REVIEW)",
+    "spec": "docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md (settled; reviewed in three laps, ended 2026-10-08)",
+    "lap": 1,
+    "review_skill": "compound-engineering:ce-doc-review 3.30.4",
+    "review_mode": "mode:headless (the deprecated alias of mode:non-interactive)",
+    "state_store": "The plan's YAML frontmatter (lap, last_applied). The plan has none yet: the triage half adds it at step 6.",
+    "document_type": "plan",
+    "review_baseline_commit": "fc745806",
+    "line_numbers_note": "Line numbers in reviewer text refer to the plan at fc745806. The applied fixes moved later text by a few lines; every item below names its task and step, which do not move.",
+    "id_note": "This plan's review has its own ids, so none clashes with the spec review's F-1–F-34: PF-n are findings, PO-n are observations, PQ-n are the plan's own open questions put to the owner, R-n are residual concerns.",
+    "reviewers_dispatched": {
+      "coherence": "always on; cheapest tier (haiku) — 0 findings",
+      "feasibility": "always on; parent model — 5 findings",
+      "scope-guardian": "every plan; 17 tasks (sonnet) — 5 findings",
+      "security-lens": "an auth token, the privacy of visitors' files, a third-party service — 4 findings",
+      "adversarial": "privacy and an outside service are high-stakes — 4 findings, 1 residual",
+      "design-lens": "error pages, home copy, toasts, the loading bar, announcements (sonnet) — 4 findings",
+      "product-lens": "NOT activated: the plan implements an approved spec; its own choices are mechanisms, not product positions"
+    },
+    "reviewer_context": "Each reviewer got ce-doc-review's subagent template filled with its persona and the findings schema, the settled-decisions list (the spec's S1–S4/D1–D5 and every spec-lap outcome), and plan-review notes: the checkout holds the code the plan changes; @sentry/nextjs is not installed here; out of scope (NH-349, NH-278/350, Dependabot #93, the cross-model pass, a server SDK, retry() vs reset, PR #193); the plan's Choices and its four open questions are fair game. The 4,791-line plan was read from disk, not inlined.",
+    "coverage_notes": [
+      "Cross-model peer pass SKIPPED: it would send the plan to an outside AI provider, which the owner has not authorized.",
+      "No finding re-raises a settled spec decision. Every finding is about the plan's own code, steps or choices.",
+      "Agreement: PF-1, PF-3 and PF-5 were raised independently by four reviewers each, PF-2 by three, PF-4 by two (both ran the repository's ESLint over the plan's code).",
+      "Prettier is the root cause of PF-5: it formats the code blocks inside this plan and rewrote a two-fragment JSX snippet as statements. A before/after diff of the whole plan found 44 changes inside code blocks; 43 are harmless reflow or re-indentation, PF-5 was the one harmful change."
+    ],
+    "finding_counts": {
+      "raw_from_reviewers": 22,
+      "merged_items": 10,
+      "applied_by_the_review": 5,
+      "proposed_fixes_undecided": 3,
+      "plan_questions_undecided": 4,
+      "fyi_observations": 2,
+      "residual_concerns": 1,
+      "dropped_anchor_0_25": 0,
+      "verified_items": 10,
+      "verified_pass": 8,
+      "verified_pass_with_correction": 2,
+      "verified_fail_dropped": 0,
+      "note": "PF-8 is the lead's proposed fix for the adversarial reviewer's verified residual; security-lens's byte-count finding (anchor 50) is folded into PQ-2, the plan's own Q8. Items for triage: PF-6, PF-7, PF-8, PQ-1–PQ-4 (7), plus PO-1 and PO-2 (2 observations) = 9."
+    },
+    "exit_signal_raw": "NOT CLEAN — the headless envelope carries a Proposed fixes section (3) and a Decisions section (4, the plan's own open questions). See engine-envelope.txt.",
+    "silent_autofixes_by_engine": "PF-1–PF-5, applied in commit 47827227 after verification (verify-A ran the code, verify-B checked the text). Each is revertable with `git revert 47827227`, or by hand per item below.",
+    "verification": "Two dispatched subagents. verify-A ran the plan's own code in a throwaway worktree with @sentry/nextjs 11.1.0 installed only there: PF-2 9 of 22 tests failed as written, 22 of 22 with the fix; PF-3 5 of 6 as written, 6 of 6 with the fix (and which way to deliver the event lints and type-checks); PF-4 9 ESLint errors as written, 0 after, with every test still passing; PF-5 the whole page.tsx is stable under Prettier inside a tsx fence. verify-B checked every item's section and quotes against the plan (all present; two quotes differ only by a comment marker at a line wrap) and the facts: Playwright 1.61.1's clock source and a measured scratch page (PF-1), the plan's Task 7 order (PF-6), app-version.mjs, Playwright's webServer environment, the user-level sentry skill and Vercel's docs (PF-7), and @sentry/bundler-plugins 11.0.0/11.1.0 source (the residual, now PF-8). Nothing failed verification.",
+    "artifact_files": [
+      "findings.json",
+      "engine-envelope.txt",
+      "verify-A.json",
+      "verify-B.json",
+      "raw/<reviewer>.json (the six reviewers' JSON)"
+    ],
+    "triaged": true,
+    "triage_cap": "12 findings or 5 picker rounds, whichever first; a finding that needs two rounds counts twice",
+    "severity_scale": {
+      "P0": "immediate critical harm",
+      "P1": "ships broken — following the plan produces a red build or a broken promise",
+      "P2": "a real gap an implementer will hit",
+      "P3": "worth fixing — small, cheap"
+    },
+    "triage_progress": {
+      "undecided": [],
+      "decided": ["PF-7", "PF-8", "PQ-1", "PQ-2", "PQ-3", "PQ-4", "PF-6", "PO-1", "PO-2"]
+    },
+    "triaged_on": "2026-10-09",
+    "triage_summary": {
+      "rounds": 4,
+      "decided": 9,
+      "applied": [
+        "PF-7",
+        "PF-8",
+        "PQ-1 (option 1)",
+        "PQ-2 (option 1)",
+        "PQ-3 (option 2, the owner over the recommendation)",
+        "PF-6",
+        "PO-1",
+        "PO-2"
+      ],
+      "kept_as_written": ["PQ-4 (option 1)"],
+      "dropped": [],
+      "left_open": [],
+      "state_written": "plan frontmatter lap: 1, last_applied: P1 (PF-1, applied by the review)",
+      "memory": "notation_hero_jsonc_fence_prettier.md extended with the JSX lesson (approved on its own card); the owner asked why it lives outside the repo, answered at step 7"
+    }
+  },
+  "already_applied": [
+    {
+      "id": "PF-1",
+      "severity": "P1",
+      "confidence": 100,
+      "reviewers": ["design-lens", "feasibility", "adversarial", "scope-guardian"],
+      "title": "The one-second font clock broke an existing e2e case; it now advances the fake clock with runFor",
+      "scenario": "You follow Task 14, push, and the merge-blocking web job goes red on \"a music font that arrives after the 60 s backstop clears the error\" — a case the plan never touched, and whose Expected line said it passes.",
+      "whats_wrong": "That case jumps Playwright's fake clock with page.clock.fastForward(61_000). fastForward fires a due timer at most once, so the new one-second counter (Choice 7) gained one second per jump and never reached 60 inside the 20-second retry.",
+      "what_changed": "Task 14 Step 3 now edits that case: fastForward(61_000) becomes runFor(61_000), with its comment reworded; the Files list names it; Choice 7 says the counter is advanced with runFor under Playwright's clock.",
+      "verification": "Measured on Playwright 1.61.1 with a scratch page: repeated fastForward(61_000) counted 40 of 60 in 20 s and raised no E204; one runFor(61_000) counted 60 and raised E204 in 0.33 s. The clock is installed with page.clock.install(), which runFor works with.",
+      "competing_fix_not_taken": "scope-guardian: 61 calls of fastForward(1_000) — same effect, longer."
+    },
+    {
+      "id": "PF-2",
+      "severity": "P2",
+      "confidence": 100,
+      "reviewers": ["feasibility", "adversarial", "scope-guardian"],
+      "title": "report.test.ts cleared nothing between cases; it now clears the stand-in SDK's calls",
+      "scenario": "You run Task 5's test file and 9 of its 22 cases fail, each seeing the reports of the cases before it.",
+      "whats_wrong": "vi.resetModules() gives a fresh report.ts but keeps mocked modules (Vitest 4.1.11 skips ids starting with mock:), so the setup file's two mocks kept every earlier call.",
+      "what_changed": "The beforeEach clears both mocks after the dynamic imports; its comment says why.",
+      "verification": "9 of 22 failed as written; 22 of 22 pass with the fix."
+    },
+    {
+      "id": "PF-3",
+      "severity": "P2",
+      "confidence": 100,
+      "reviewers": ["design-lens", "feasibility", "adversarial", "scope-guardian"],
+      "title": "The font-clock test's stand-in api lacked tracks; one case threw",
+      "scenario": "You run Task 14's new test file: the \"once a render has finished\" case throws a TypeError before it asserts anything.",
+      "whats_wrong": "The renderFinished handler ends with setRenderedTrackCount(api?.tracks.length ?? 0), and the stand-in api was {}.",
+      "what_changed": "const STAND_IN_API: unknown = { tracks: [] }; the event is delivered as handlers.get('renderFinished')?.(null) (the undefined form fails unicorn/no-useless-undefined).",
+      "verification": "5 of 6 as written; 6 of 6 with the fix; the null form passes ESLint and tsc."
+    },
+    {
+      "id": "PF-4",
+      "severity": "P2",
+      "confidence": 100,
+      "reviewers": ["feasibility", "scope-guardian"],
+      "title": "Nine snippets failed web/'s lint in ways --fix cannot repair; rewritten",
+      "scenario": "You reach a task's \"Lint, types, commit\" step and ESLint stops the commit with errors --fix cannot repair.",
+      "whats_wrong": "unicorn/no-array-callback-reference (three callbacks passed by name), unicorn/consistent-function-scoping (helpers declared inside describe blocks or tests), unicorn/prefer-string-raw (two backslash strings), sonarjs/no-alphabetical-sort (a bare toSorted()), import/order (node: imports after third-party), unicorn/numeric-separators-style (5_000).",
+      "what_changed": "Tasks 2, 3, 5, 6, 11, 13 and 14: arrow callbacks; stack, track, tagOn and tagNow at module scope; String.raw; .toSorted((a, b) => a.localeCompare(b)); node: imports first; let release!: …; pass(5000).",
+      "verification": "9 errors as written; 0 after; every test still passes (known-engine-noise 8/8, scrub 11/11, report 22/22, fileType 2/2, NotationSurface 6/6, the token-check test 8/8)."
+    },
+    {
+      "id": "PF-5",
+      "severity": "P2",
+      "confidence": 100,
+      "promotion": "anchor 75 -> 100: four independent reviewers, plus the before/after Prettier diff of the plan",
+      "reviewers": ["design-lens", "feasibility", "adversarial", "scope-guardian"],
+      "title": "The home-page snippet carried a stray `;`; the step now gives the whole file",
+      "scenario": "You paste Task 7 Step 6's snippet after the Play button, and a lone `;` appears under the new privacy paragraph — then Step 7 bakes it into the landing screenshot.",
+      "whats_wrong": "Prettier, which formats this plan's code blocks, rewrote the two-fragment snippet (a JSX comment, then <p>) as statements: the comment became a { } block and </p> gained a `;`.",
+      "what_changed": "Step 6 gives the complete new web/app/page.tsx, which Prettier leaves unchanged.",
+      "verification": "Prettier --write on the plan now changes nothing; the file passes Prettier and ESLint."
+    }
+  ],
+  "ambiguity_fixes": [],
+  "undecided_findings": [],
+  "fyi_observations": [],
+  "rejected_findings": [],
+  "residual_concerns": [
+    {
+      "id": "R-1",
+      "concern": "If PF-7 is applied: with Vercel's \"Enable access to System Environment Variables\" off, VERCEL_ENV is unset — no maps are built, nothing uploads, nothing warns. Guarded by Task 17 Step 1's check of the setting and Step 7's readable-frame check after the first production deploy.",
+      "source": "verify-B (correction to PF-7)",
+      "status": "Checked 2026-10-09 during triage: production already exposes VERCEL_ENV to its build (its bundle prints a v0. version). Task 17 Step 1 now re-checks the wordmark before code review."
+    }
+  ],
+  "deferred_questions": [],
+  "dedup_notes": [
+    "PF-1 merges design-lens F1, feasibility F1, adversarial F1 and scope-guardian F1 (one fix resolves all four).",
+    "PF-2 merges feasibility F2, adversarial F2 and scope-guardian F2.",
+    "PF-3 merges design-lens F2, feasibility F3 (with the lint-clean delivery form), adversarial F3 and scope-guardian F3.",
+    "PF-4 merges feasibility F4 and scope-guardian F4 (the union of their edits).",
+    "PF-5 merges design-lens F4, feasibility F5, adversarial F4 and scope-guardian F5; the whole-file remedy (feasibility) was chosen over a wrapping fragment (scope-guardian) and a rewritten fragment (design-lens, adversarial), because a lone JSX comment plus an element is exactly what Prettier rewrites.",
+    "security-lens F4 (round the byte count, anchor 50) is folded into PQ-2, the plan's own Q8.",
+    "adversarial's residual risk becomes PF-8 (the lead's proposed fix), after verify-B confirmed it in source."
+  ],
+  "cross_fix_conflicts": [
+    "PF-8 is written against PF-7's uploadToken; if PF-7 is dropped, PF-8 reads process.env.SENTRY_AUTH_TOKEN instead. Decide them in one round."
+  ],
+  "carry_forward_constraints": [
+    "The spec's ten decisions (S1, S2, S2b, S3, S4, D1–D5) and every outcome in the NH-124 changelog entry (spec laps 1–3) are settled, not re-asked.",
+    "An approved item that changes a settled detail (PF-7 changes spec section 4's snippet; PQ-1 and PQ-2 change what a report sends) is recorded in the NH-124 entry of docs/decisions/decision-changelog.md, under a new \"Changed by the plan review, lap 1\" list.",
+    "The red pr-checklist / CI Green on the draft is expected — never enable Auto-fix.",
+    "Write the PR body BEFORE every push (a body edit cancels a running CI).",
+    "Apply as you go: one commit per picker round, each revertable.",
+    "Dependabot alert #93 is separate work; NH-349, NH-278 and NH-350 are out of scope.",
+    "The cross-model pass stays skipped: no consent to send the plan to an outside AI provider.",
+    "Never ask for, read, print or test SENTRY_AUTH_TOKEN; the owner does spec section 5 by hand.",
+    "Public repo: no personal data and no machine paths in committed files.",
+    "Prettier formats this plan's code blocks: give JSX as whole files, and diff code blocks before and after formatting when editing snippets."
+  ],
+  "triage_plan": {
+    "auto_resolve_first": "None left: PF-1–PF-5 were applied by the review (commit 47827227); report them in one short list at the start of triage, each revertable.",
+    "rounds": [
+      "Round 1 — the build's token and slugs (one area, web/next.config.ts): PF-7 and PF-8, then [Q-add].",
+      "Round 2 — what a report says: PQ-1 (an empty E202 message) and PQ-2 (the byte count), then [Q-add].",
+      "Round 3 — the open-file experience and a step's wording: PQ-3, PQ-4 and PF-6, then [Q-add].",
+      "Round 4 — the two observations PO-1 and PO-2 on one multi-select card (unchecked = left open, never dropped), then [Q-add]."
+    ],
+    "cap_note": "7 decisions + 2 observations in 4 rounds: under the 12-finding / 5-round cap, one invocation.",
+    "finally": "Write the plan's frontmatter (`lap: 1`, `last_applied:` the highest severity applied this lap — P1, because the review applied PF-1), mark this file triaged, add the approved changes that touch settled details to the NH-124 changelog entry (\"Changed by the plan review, lap 1\"), commit, PR body, push — then step 7.",
+    "step7_heads_up": "A P1 was applied this lap (PF-1, by the review itself), and the exit signal was not clean, so the rule as written re-laps: lap 2 of the plan review, as a new review half. Put the choice to the owner with the evidence: every applied fix was reproduced and confirmed by running code; the open items are a build guard, wording, and four product questions."
+  },
+  "notes": [
+    "The plan-time spike's raw evidence (runtime.json, envelopes.json, vitest-resolve.json and the build logs) lives in the session scratchpad, not in the repository; the plan's \"What was verified\" table carries its results.",
+    "Triage round 3 (2026-10-09): the owner said improvements that only remove ambiguity may be auto-resolved: applied and reported, not put to a picker. This carries into the next lap's triage.",
+    "Triage round 4 (2026-10-09): the owner approved the memory update and asked why the memory must live outside the repository; the answer and the offer to add the lesson to the repository go with step 7."
+  ],
+  "resume": {
+    "triage_half": "NEXT: lap 1 TRIAGE half — run spec-triage-loop:doc-review-loop on the plan (artifact_path_from_root, prefixed with your repo root). The entry rule starts at step 4: PF-7, PF-8, PQ-1–PQ-4, PF-6, PO-1 and PO-2 are undecided.",
+    "plan_permalink": "https://github.com/leocaseiro/notation-hero/blob/47827227995746a00cc363134151c8658deaf17b/docs/plans/2026-10-08-nh-124-sentry-error-monitoring-plan.md",
+    "plan_path_from_root": ".claude/worktrees/nh-320-vr-spec-lap-4-92e22a/docs/plans/2026-10-08-nh-124-sentry-error-monitoring-plan.md",
+    "artifact_path_from_root": ".claude/worktrees/nh-320-vr-spec-lap-4-92e22a/.spec-triage-loop/2026-10-08-nh-124-sentry-error-monitoring-plan/lap-1/findings.json"
+  },
+  "decided_findings": [
+    {
+      "id": "PF-7",
+      "kind": "proposed fix",
+      "severity": "P2",
+      "severity_meaning": "a real gap an implementer will hit",
+      "confidence": 75,
+      "confidence_meaning": "double-checked by one reviewer; the facts behind it verified in source and docs; not run against a real token (none may be used)",
+      "reviewers": ["security-lens"],
+      "section": "Task 1 Step 4 (the withSentryConfig options); Choice 2; Task 16's README; Task 17 Step 1",
+      "title": "A SENTRY_AUTH_TOKEN in a developer's shell turns every local build into an upload attempt",
+      "terms_first": "SENTRY_AUTH_TOKEN: the secret that lets a build upload source maps to Sentry. VERCEL_ENV: a variable Vercel sets at build time — production, preview or development; web/scripts/app-version.mjs already relies on it.",
+      "scenario": "You (or an agent) follow your own sentry skill's advice and export SENTRY_AUTH_TOKEN in your shell, so you can read Sentry's issues from the terminal. From then on, every local `pnpm build` and every end-to-end run tries to create a release and upload source maps. With that read-only token, Sentry refuses, the plan's errorHandler rethrows, and every local build and the whole e2e lane fail. With a broader token, local builds upload maps named `local` into the production project, using your credential — which the spec's \"an agent may not handle the token\" exists to prevent.",
+      "whats_wrong": "The plan uses the token's presence as the only gate. The user-level sentry skill tells the owner to set exactly that variable; Playwright's webServer passes the shell's environment into its `pnpm build`.",
+      "before_after": [
+        {
+          "where": "Task 1 Step 4, web/next.config.ts",
+          "before": "// Sentry's build step: it uploads the production build's source maps to Sentry, then deletes them\n// from the deploy. Only Vercel's Production environment holds SENTRY_AUTH_TOKEN, so previews, CI\n// and local builds upload nothing — and, with the hook off, print nothing about it either.\nexport default withSentryConfig(nextConfig, {\n  authToken: process.env.SENTRY_AUTH_TOKEN,\n  ...\n  sourcemaps: { disable: !process.env.SENTRY_AUTH_TOKEN },\n  useRunAfterProductionCompileHook: Boolean(process.env.SENTRY_AUTH_TOKEN),",
+          "after": "// Sentry's build step: it uploads the production build's source maps to Sentry, then deletes them\n// from the deploy. Only a production build on Vercel reads the token: Sentry's own command-line\n// tools read a variable of the same name from a developer's shell, and a local build must never\n// upload with it. VERCEL_ENV needs Vercel's system environment variables on, which the version\n// in the wordmark (web/scripts/app-version.mjs) already relies on.\nconst uploadToken =\n  process.env.VERCEL_ENV === 'production' ? process.env.SENTRY_AUTH_TOKEN : undefined;\n\nexport default withSentryConfig(nextConfig, {\n  authToken: uploadToken,\n  ...\n  sourcemaps: { disable: !uploadToken },\n  useRunAfterProductionCompileHook: Boolean(uploadToken),"
+        }
+      ],
+      "proposed_fix": "Gate the token on VERCEL_ENV === 'production' for all three options; keep assert-no-auth-token.mjs reading SENTRY_AUTH_TOKEN directly (a leaked shell token is still worth catching); add a plan Choice (12) recording the departure from spec section 4's snippet; Task 17 Step 1 asks the owner to confirm Vercel's \"Enable access to System Environment Variables\" is on (the wordmark tooltip reads v0.… on production, not `local`); the README sentence names the gate.",
+      "why_it_works": "\"Only Vercel's production build uploads\" becomes true by construction instead of depending on a clean shell. Vercel documents VERCEL_ENV as available at build time with the value production for production deployments.",
+      "new_risk": "With Vercel's system variables switched off, VERCEL_ENV is unset: no maps are built, nothing uploads, nothing warns, and errorHandler never fires — production frames stay unreadable. Guards: Task 17 Step 1's check of the setting, and Step 7's readable-frame check after the first deploy. (verify-B's correction.)",
+      "spec_change": "Yes — spec section 4's snippet gates on the token alone. If approved, record it in the NH-124 changelog entry under a \"Changed by the plan review, lap 1\" list.",
+      "drop_consequence": "Drop it: a developer who exports the token for the sentry skill gets failing local builds and e2e runs, or quiet uploads into production under their credential.",
+      "options": [
+        {
+          "label": "Apply (recommended)",
+          "what": "The gate as above, plus the Choice entry, the Task 17 check and the README line."
+        },
+        {
+          "label": "Skip — decide later",
+          "what": "Leave it open; nothing changes now."
+        },
+        {
+          "label": "Drop",
+          "what": "Keep the token-only gate the spec wrote."
+        }
+      ],
+      "recommendation": "Apply. The owner's own sentry skill makes the exported variable likely, and the fix is one line.",
+      "verification": "verify-B: app-version.mjs reads VERCEL_ENV; Playwright 1.61.1 merges process.env into the webServer command's environment; the user-level sentry skill says to set SENTRY_AUTH_TOKEN as an environment variable; Vercel docs: VERCEL_ENV is available at build and runtime. next.config.ts with the gate passes ESLint. Not run against a real token.",
+      "evidence_quotes": [
+        "sourcemaps: { disable: !process.env.SENTRY_AUTH_TOKEN },",
+        "useRunAfterProductionCompileHook: Boolean(process.env.SENTRY_AUTH_TOKEN),",
+        "Only Vercel's Production environment holds SENTRY_AUTH_TOKEN, so previews, CI and local builds upload nothing",
+        "previews, CI and local builds have neither, so they send nothing and upload nothing",
+        "Expected: PASS, with nothing printed by the new step (no token, nothing to check)."
+      ],
+      "raw_reviewer_findings": [
+        {
+          "title": "A shell-held SENTRY_AUTH_TOKEN turns local builds into uploads",
+          "severity": "P2",
+          "section": "Task 1 — Install @sentry/nextjs, wrap the build (Step 4, the withSentryConfig options); echoed by Task 16's README text",
+          "why_it_matters": "If the owner exports SENTRY_AUTH_TOKEN, every local build and every e2e run tries to create a release and upload source maps. The installed `sentry` skill tells the owner to set a variable with exactly that name, system-wide, holding a read-only API token, and Playwright 1.61.1's web server passes the shell's environment into its `pnpm build`. With that read-only token, Sentry refuses the release and `errorHandler` rethrows, so local builds and the whole e2e lane fail. With a broader token, local and agent builds upload maps as release `local` into the production project, using the owner's credential, which the spec's rule that an agent may not handle the token exists to prevent. `web/scripts/app-version.mjs` already trusts VERCEL_ENV to tell a production build from a local one. Gating the token on it makes 'only Vercel's production build uploads' true by construction, not just when the shell happens to be clean.",
+          "finding_type": "error",
+          "autofix_class": "gated_auto",
+          "suggested_fix": "In Task 1 Step 4, read the token through a production gate and use the result for all three options: `const uploadToken = process.env.VERCEL_ENV === 'production' ? process.env.SENTRY_AUTH_TOKEN : undefined;`, then `authToken: uploadToken`, `sourcemaps: { disable: !uploadToken }` and `useRunAfterProductionCompileHook: Boolean(uploadToken)`. Add a comment that Sentry's own API tooling reads the same variable name from a developer's shell. Leave `assert-no-auth-token.mjs` reading SENTRY_AUTH_TOKEN as it does now. Record the change from spec section 4's snippet in the plan, as its Spec line requires.",
+          "confidence": 75,
+          "evidence": [
+            "sourcemaps: { disable: !process.env.SENTRY_AUTH_TOKEN },",
+            "useRunAfterProductionCompileHook: Boolean(process.env.SENTRY_AUTH_TOKEN),",
+            "Only Vercel's Production environment holds SENTRY_AUTH_TOKEN, so previews, CI and local builds upload nothing",
+            "previews, CI and local builds have neither, so they send nothing and upload nothing",
+            "Expected: PASS, with nothing printed by the new step (no token, nothing to check)."
+          ]
+        }
+      ],
+      "decision": "Apply",
+      "decided_on": "2026-10-09",
+      "triage_round": 1,
+      "decision_note": "Applied. Task 1 Step 4's next.config.ts gates the token on VERCEL_ENV === 'production' (uploadToken); Choice 12 added; Task 16's README and Task 17 Step 1 (the wordmark check) updated; changelog line under 'Changed by the plan review, lap 1'. Spiked during triage: the production bundle (deployed 2026-10-04) carries the version v0.26.10.04-0821.2f83752, which app-version.mjs prints only when VERCEL_ENV is production at build time, so R-1's precondition holds today. The final snippet (with PF-8) passes tsc, ESLint (--max-warnings 0) and Prettier with @sentry/nextjs 11.1.0 installed in a throwaway worktree, and the full web build passes with no Sentry output and 0 .map files."
+    },
+    {
+      "id": "PF-8",
+      "kind": "proposed fix (the lead's, from a verified residual)",
+      "severity": "P2",
+      "severity_meaning": "a real gap an implementer will hit",
+      "confidence": 75,
+      "confidence_meaning": "raised by the adversarial reviewer as a residual risk; verified in @sentry/bundler-plugins 11.0.0 and 11.1.0 source by verify-B; the fix itself not run",
+      "reviewers": ["adversarial (residual)", "lead (fix)"],
+      "section": "Task 1 Step 4 (web/next.config.ts); Task 17 Step 2; Choice 2",
+      "title": "A production build with the token but no project slug deploys with unreadable frames, silently",
+      "terms_first": "Slug: the short name Sentry gives an organization or project (not secret). Choice 2 leaves `org` and `project` out of next.config.ts until the owner has them.",
+      "scenario": "You add SENTRY_AUTH_TOKEN to Vercel (as the registry row F7-sentry asks, before the code merges), but next.config.ts still has no `project` slug. The production build passes; Sentry's plugin only warns \"No project provided. Will not upload source maps\", builds the maps anyway and deletes them. Every production error then shows minified frames — exactly the outcome the owner rejected when choosing \"a failed upload stops the deploy\".",
+      "whats_wrong": "errorHandler fires only on a thrown error; a missing project is a warning and a quiet return (canUploadSourceMaps and createRelease in build-plugin-manager). Task 17 Step 2 — committing the slugs first — is the only guard, and it is a person remembering an order.",
+      "before_after": [
+        {
+          "where": "Task 1 Step 4, web/next.config.ts (the options object moves into a named const sentryBuildOptions so it can be checked)",
+          "before": "(absent — nothing checks the slugs)",
+          "after": "if (uploadToken && !(sentryBuildOptions.org && sentryBuildOptions.project)) {\n  // Sentry's plugin only warns about a missing slug, then deploys with the maps deleted: the very\n  // outcome errorHandler exists to prevent. Fail the production build instead.\n  throw new Error('web/next.config.ts: set org and project before SENTRY_AUTH_TOKEN reaches a production build.');\n}"
+        }
+      ],
+      "proposed_fix": "In next.config.ts, name the options object, and throw when an upload token is present (after PF-7, a production build with the token) but org or project is missing. Choice 2 and Task 17 Step 2 say the build now enforces the order.",
+      "why_it_works": "The spec chose a failing deploy over a silent one; this extends that choice to the one silent path errorHandler cannot see. A missing slug becomes a red production build with a message saying what to set.",
+      "depends_on": "Written against PF-7's uploadToken. Without PF-7, the same check reads process.env.SENTRY_AUTH_TOKEN.",
+      "drop_consequence": "Drop it: if the token reaches Vercel before the slugs reach the code, production deploys succeed with unreadable stack traces, and nothing says so until someone opens an issue.",
+      "options": [
+        {
+          "label": "Apply (recommended)",
+          "what": "The build check above; Choice 2 and Task 17 Step 2 updated."
+        },
+        {
+          "label": "Skip — decide later",
+          "what": "Leave it open."
+        },
+        {
+          "label": "Drop",
+          "what": "Rely on Task 17 Step 2's ordering alone."
+        }
+      ],
+      "recommendation": "Apply: four lines that turn a silent failure into a loud one, in line with the decision the owner already made.",
+      "verification": "verify-B, in @sentry/bundler-plugins 11.0.0 (the lap-3 spike install) and 11.1.0 (GitHub tag): canUploadSourceMaps warns \"No project provided. Will not upload source maps\" and returns false; createRelease warns and returns; errorHandler is called only from catch blocks and validateOptions, which does not reject a missing project; deleteArtifacts runs whether or not anything uploaded. The fix is untested.",
+      "evidence_quotes": [
+        "A production build that has SENTRY_AUTH_TOKEN but no `project` slug skips both the release and the source-map upload, with only a warning. In @sentry/bundler-plugins 11.0.0 (read from the lap-3 spike install), canUploadSourceMaps and createRelease warn and return, so errorHandler never fires. With an organization token (sntrys_), `org` is optional; `project` is the slug that matters. The registry row F7-sentry asks for the token in Vercel before NH-124 merges. If the merged next.config.ts lacks the slugs, production deploys succeed with unreadable frames, which is exactly the failure spec section 4 rejects. Task 17 Step 2 is the only guard against it."
+      ],
+      "decision": "Apply",
+      "decided_on": "2026-10-09",
+      "triage_round": 1,
+      "decision_note": "Applied. The options move into const sentryBuildOptions: SentryBuildOptions (exported as a type from @sentry/nextjs/config in 11.1.0, checked in the package); a production build with the token but without org and project throws, naming them. Choice 2, Task 1's org/project note, Task 17 Step 2 and the README's failure list updated; changelog line added. The throw itself was not exercised: that needs SENTRY_AUTH_TOKEN set, which no agent may do."
+    },
+    {
+      "id": "PQ-1",
+      "kind": "decision (the plan's open question QP-1)",
+      "severity": "P3",
+      "section": "Questions the spec left to the plan — QP-1; Task 5 (report.ts); Task 14 (the error event)",
+      "title": "An E202 whose message is empty is titled only \"Error\" in Sentry",
+      "scenario": "A visitor on a flaky network opens /play and the SoundFont download fails. The banner reads \"Error E202: Error\". In Sentry, the issue's title — and the alert email's subject — is just \"Error\", with an empty message. The code:E202 tag still finds it, but the list of issues tells you nothing at a glance.",
+      "whats_wrong": "AlphaTab raises a SoundFont network failure as an error whose message is \"\" (measured in the plan-time spike). The spec says E201–E204 keep their message.",
+      "before_after": [
+        {
+          "where": "Task 5 report.ts, plus one report.test.ts case",
+          "before": "E202 sends whatever AlphaTab passed — here an empty message, so the issue title is \"Error\".",
+          "after": "In report.ts, a code whose error arrives with an empty message sends that code's sentence from docs/reference/error-codes.md instead, e.g. `E202: AlphaTab raised its own error event — in practice, the soundfont download.` (E101–E103 keep their fixed sentences as now; a non-empty E202 keeps its own message.)"
+        }
+      ],
+      "options": [
+        {
+          "label": "1 — Fill an empty message with the code's sentence (recommended)",
+          "pros": "Readable issue titles and alert subjects; removes no text, so no privacy cost; a few lines in report.ts",
+          "cons": "One more rule in report.ts, and the sentence must stay in step with the reference page (the existing test pattern covers it)"
+        },
+        {
+          "label": "2 — Keep the spec as written",
+          "pros": "Zero change",
+          "cons": "An \"Error\" issue with an empty value, found only by the code tag"
+        }
+      ],
+      "recommendation": "1 — it only ever replaces nothing with something.",
+      "drop_consequence": "Leaving it: SoundFont failures stay titled \"Error\" in the issue list and the alert email.",
+      "decision": "Option 1 — fill an empty message with the code's sentence",
+      "decided_on": "2026-10-09",
+      "triage_round": 2,
+      "decision_note": "Applied. report.ts gains SENTENCES_WHEN_EMPTY (E202 only), messageOf and fixedSentence: an E202 whose message is empty is sent through withFixedMessage with E202's sentence; a non-empty E202 keeps its message; E101-E103 unchanged. New report.test.ts case (with an eslint-disable for unicorn/error-message, which rejects new Error('') — the input under test); Choice 4, the Questions table, Task 5's Interfaces and Task 14's comment updated; changelog line added. Run during triage with @sentry/nextjs 11.1.0 in a throwaway worktree: report.test.ts 24/24, ESLint 0 (--max-warnings 0), tsc and Prettier pass."
+    },
+    {
+      "id": "PQ-2",
+      "kind": "decision (the plan's open question Q8, with security-lens's recommendation)",
+      "severity": "P3",
+      "section": "Questions the spec left to the plan — Q8; Task 5 (reportError's file context)",
+      "title": "The exact byte count can identify a well-known file",
+      "scenario": "A visitor downloads a popular tab file from a big tab site — thousands of people have the same file, byte for byte — and it fails to open. The report says gp5 and, say, 48,213 bytes, and Sentry keeps it for 30 days. The name never leaves the device, but someone who knows that site could match the exact size and work out which song it was.",
+      "whats_wrong": "The spec sends \"a size in bytes\" — exact. The extension plus an exact size is close to a unique key for a widely shared file.",
+      "before_after": [
+        {
+          "where": "Task 5 reportError, one place every report passes through; tests change 31→32, 5→8, 29→32",
+          "before": "file: { type: 'gp5', bytes: 48213 }",
+          "after": "file: { type: 'gp5', bytes: 65536 } — rounded up to the next power of two (0 stays 0)"
+        }
+      ],
+      "options": [
+        {
+          "label": "1 — Round up to the next power of two (recommended by security-lens)",
+          "pros": "One line in reportError, no call site changes; still tells empty, tiny, ordinary and over-the-limit apart; the home copy's \"type and size\" stays true",
+          "cons": "Loses exact sizes, which nothing uses today"
+        },
+        {
+          "label": "2 — Keep exact bytes (the spec)",
+          "pros": "No change",
+          "cons": "An exact size plus the type can point at one known file"
+        },
+        {
+          "label": "3 — Named buckets (e.g. under 16 KB, under 256 KB, under 1 MB, under 25 MB, over)",
+          "pros": "Readable at a glance",
+          "cons": "A table to keep in step with the 25 MB limit"
+        }
+      ],
+      "recommendation": "1 — the same protection as buckets for one line of code. Flip to 2 if exact sizes ever turn out to be needed to tell two importer failures apart.",
+      "spec_change": "Yes — \"a size in bytes\" becomes a rounded size; record it in the changelog entry if chosen.",
+      "raw_reviewer_findings": [
+        {
+          "title": "Exact byte count fingerprints the file (Q8)",
+          "severity": "P3",
+          "section": "Left open for the plan review — Lap 2's Q8, the file size (sent by Task 5's reportError)",
+          "why_it_matters": "A report with the file name removed can still say which song failed to open. An exact byte count plus the extension is close to a unique key for a tab file that many visitors download from the same site. These reports are kept for 30 days and can only be deleted as a whole issue. For E101–E103 and E105, the useful distinctions are empty, tiny, ordinary and over the limit, and a coarse size keeps all four. Rounding once inside reportError, which every report passes through, needs no change at the call sites, and the home page's 'the file's type and size' stays true.",
+          "finding_type": "omission",
+          "autofix_class": "manual",
+          "suggested_fix": "Round the size inside reportError before it is sent: `contexts.file.bytes` becomes the next power of two at or above the real size (0 stays 0). Update the expected sizes in report.test.ts (31 → 32), OpenFileControl.test.tsx (5 → 8) and end-to-end case 2 (29 → 32).",
+          "confidence": 50,
+          "evidence": [
+            "The spec sends the exact byte count. An exact size and the extension together could identify a well-known downloaded tab file. Option: round it into ranges.",
+            "const facts = { type: fileType(file.name), bytes: file.size };",
+            "file: { type: next.type, bytes: next.bytes.byteLength },"
+          ]
+        }
+      ],
+      "decision": "Option 1 — round up to the next power of two",
+      "decided_on": "2026-10-09",
+      "triage_round": 2,
+      "decision_note": "Applied. report.ts gains roundedSize (an integer loop, no floating point; 0 stays 0) used for contexts.file.bytes. Tests: report.test.ts 31->32 plus a new rounding case (0,1,5,32,48_213 -> 0,1,8,32,65_536); Task 10's e2e case 2 29->32; Task 11's OpenFileControl E105 case 5->8 (its E102 case stays 1). Choice 3, the Questions table, Task 5's Interfaces and Task 17 Step 7 updated; changelog line added. Over-the-limit keeps its own code (E101), checked in docs/reference/error-codes.md."
+    },
+    {
+      "id": "PQ-3",
+      "kind": "decision (the plan's open question Q12, lap 3 of the spec)",
+      "severity": "P3",
+      "section": "Questions the spec left to the plan — Q12; Task 11 (the E105 toast)",
+      "title": "An E105 after the new score is on screen says it \"could not be opened\"",
+      "scenario": "A visitor opens riff.gp. It parses, appears on screen and plays — then a bug of ours in the few lines after the swap (the success toast, the announcement, the focus) throws. The toast says \"riff.gp could not be opened. Something went wrong on our side…\" while the score is right there, playable.",
+      "whats_wrong": "The read flag tells the visitor's file from our bug, but not before the swap from after it; one E105 message covers both.",
+      "options": [
+        {
+          "label": "1 — Keep one message (recommended)",
+          "pros": "No new code path; after the swap only a toast, an announcement and a focus call can throw, so it is very unlikely",
+          "cons": "In that rare case the toast is wrong about the score on screen"
+        },
+        {
+          "label": "2 — A second message after the swap",
+          "pros": "Accurate: \"riff.gp opened, but something went wrong on our side. If the player misbehaves, reload the page. (Error E105)\"",
+          "cons": "A swap flag threaded from runRequestNotation to both open paths, a second toast id, and tests for both"
+        }
+      ],
+      "recommendation": "1 for now; flip to 2 if Sentry ever shows E105s from after the swap (their tag would carry the new score's instruments).",
+      "decision": "Option 2 — a second message after the swap (the owner's choice over the recommended option 1)",
+      "decided_on": "2026-10-09",
+      "triage_round": 3,
+      "decision_note": "Applied in Task 11, more simply than the option's estimate: one try/catch around the steps after setNotation in runRequestNotation (toast.success, setAnnouncement, dismissErrors, focus), which both open paths call, so no swap flag and no prop change are needed. The catch reports E105 with the file facts, dismisses notation-load and raises 'X opened, but something went wrong on our side. If the player misbehaves, reload the page. (Error E105)' under the existing E105 id for that file; no announcement (the toast is a polite live region). Two new PlayerShell.test.tsx cases (picked and dropped) make toast.success throw. Prettier-stable; NOT run during triage: the cases need Tasks 5, 10 and 11 applied first, so the plan review's next lap or the implementation runs them first. Questions table and changelog updated."
+    },
+    {
+      "id": "PQ-4",
+      "kind": "decision (the plan's open question Q13, lap 3 of the spec)",
+      "severity": "P3",
+      "section": "Questions the spec left to the plan — Q13; Task 11 (the picker's catch)",
+      "title": "A picked file's E105 is announced by the toast only; a dropped file's also by the player",
+      "scenario": "A screen-reader user opens a file with the Open button, and it fails with E105. The toast is read aloud (Sonner's toaster is a polite live region). Had they dropped the same file, the player's own announcement would also say \"riff.gp could not be opened. Error E105.\"",
+      "whats_wrong": "OpenFileControl receives only onNotation, so it cannot write the player's announcement; E101 and E102 behave the same way today.",
+      "options": [
+        {
+          "label": "1 — Keep the toast only for the picker (recommended)",
+          "pros": "Consistent with E101/E102; no duplicate speech",
+          "cons": "The two open paths announce differently"
+        },
+        {
+          "label": "2 — Pass an announce callback to OpenFileControl",
+          "pros": "Both paths say the same thing in the same place",
+          "cons": "A new prop, and the toast plus the announcement may read the same sentence twice"
+        }
+      ],
+      "recommendation": "1 — the toast is already spoken; flip to 2 if a screen-reader test shows the toast is missed.",
+      "decision": "Option 1 — keep the toast only for the picker",
+      "decided_on": "2026-10-09",
+      "triage_round": 3,
+      "decision_note": "Kept as written. Task 11 Step 3's note and the Questions table record the decision; a changelog line says it was kept."
+    },
+    {
+      "id": "PF-6",
+      "kind": "proposed fix",
+      "severity": "P2",
+      "severity_meaning": "a real gap an implementer will hit",
+      "confidence": 75,
+      "confidence_meaning": "one reviewer; verify-B confirmed the order of the steps",
+      "reviewers": ["design-lens"],
+      "section": "Task 7 Step 8 (the error pages in a real browser), items 3 and 4",
+      "title": "Task 7's \"undo it the same way\" wipes the new home-page copy",
+      "scenario": "You follow Task 7 Step 8. Item 3 adds a throw to web/app/page.tsx and says \"Undo it the same way\" — item 2's `git checkout --`. That also wipes Step 6's uncommitted new copy. Step 9 then commits a landing screenshot showing copy the page no longer has, and the pixel job fails.",
+      "before_after": [
+        {
+          "where": "Task 7 Step 8",
+          "before": "3. Add the same line as the first line of `Home()` in `web/app/page.tsx`, open `/`, and screenshot\n   `web/app/error.tsx` the same way. Undo it the same way.\n4. Add the same line as the first line of `RootLayout()` in `web/app/layout.tsx`, open `/`, and\n   screenshot `global-error.tsx` the same way. Undo it the same way.",
+          "after": "3. Add the same line as the first line of `Home()` in `web/app/page.tsx`, open `/`, and screenshot\n   `web/app/error.tsx` the same way. Undo it by deleting the line you added — not with\n   `git checkout`, because `web/app/page.tsx` also holds Step 6's uncommitted copy.\n4. Add the same line as the first line of `RootLayout()` in `web/app/layout.tsx`, open `/`, and\n   screenshot `global-error.tsx` the same way. Undo it: `git checkout -- web/app/layout.tsx`."
+        },
+        {
+          "where": "Task 7 Step 8, Expected",
+          "before": "Expected: … `git status` is clean of all three temporary lines.",
+          "after": "Expected: … `git status` is clean of all three temporary lines, and `git diff web/app/page.tsx` shows only Step 6's copy change."
+        }
+      ],
+      "proposed_fix": "As shown: item 3 deletes the line by hand; item 4 gets its own explicit undo (verify-B's correction, since its \"the same way\" would now point at item 3).",
+      "why_it_works": "Only the throw is removed, so Step 6's copy survives into Step 9's commit beside the screenshot that shows it.",
+      "drop_consequence": "Drop it: an implementer following the step literally loses the copy and commits a screenshot that no longer matches the page.",
+      "options": [
+        {
+          "label": "Apply (recommended)",
+          "what": "The two wording changes and the Expected line."
+        },
+        {
+          "label": "Skip — decide later",
+          "what": "Leave it open."
+        },
+        {
+          "label": "Drop",
+          "what": "Leave the step as it is."
+        }
+      ],
+      "recommendation": "Apply — a wording fix with one right answer, raised at anchor 75 by one reviewer, so it waits for approval rather than being applied silently.",
+      "raw_reviewer_findings": [
+        {
+          "title": "Step 8's 'undo the same way' discards the home-page copy",
+          "severity": "P2",
+          "section": "Task 7 - The three error pages, and the copy (Step 8, look at the three error pages, item 3)",
+          "why_it_matters": "Following Step 8 literally loses the new home-page copy. By then `web/app/page.tsx` holds Step 6's uncommitted tagline and privacy paragraph, and 'Undo it the same way' for item 3 means `git checkout -- web/app/page.tsx`, which restores the file to HEAD and discards both. Step 9 then commits the regenerated `landing-chromium-linux.png` (showing the new copy) beside a page that no longer has it, so the `web` visual-regression job fails at the landing shot, and Step 8's 'git status is clean' check cannot reveal it. Items 1 and 4 touch files nothing earlier edited, so only item 3 needs a different undo.",
+          "finding_type": "error",
+          "autofix_class": "gated_auto",
+          "suggested_fix": "In Task 7 Step 8, change item 3's closing sentence 'Undo it the same way.' to 'Undo it by deleting the line you added; do not use `git checkout` here, because `web/app/page.tsx` also holds Step 6's uncommitted copy.' and add to the Expected paragraph that `git diff web/app/page.tsx` shows only Step 6's copy change.",
+          "confidence": 75,
+          "evidence": [
+            "`web/app/error.tsx` the same way. Undo it the same way.",
+            "2. Undo it: `git checkout -- web/app/play/PlayerShell.tsx`.",
+            "In `web/app/page.tsx`, the tagline's second sentence changes, and a new paragraph follows the Play"
+          ]
+        }
+      ],
+      "decision": "Apply",
+      "decided_on": "2026-10-09",
+      "triage_round": 3,
+      "decision_note": "Applied as proposed (with verify-B's correction): Task 7 Step 8 item 3 deletes the line by hand, item 4 names git checkout -- web/app/layout.tsx, and Expected checks git diff web/app/page.tsx. Re-checked during triage: Task 7 changes page.tsx in Step 6 and commits it in Step 9, and never changes layout.tsx or PlayerShell.tsx."
+    },
+    {
+      "id": "PO-1",
+      "severity": "P3",
+      "confidence": 50,
+      "reviewer": "security-lens",
+      "section": "Task 6 (the integrations case); Task 17 Step 7",
+      "title": "Nothing pins the \"anonymous\" promise: IP inference stays untested",
+      "scenario": "A later 11.x changes what `userInfo: false` covers, and Sentry starts inferring visitors' IP addresses. Every test still passes, and the home page still says \"anonymously\".",
+      "suggestion": "Two assertions in the existing integrations case — sdk.settings.infer_ip is \"never\" (the 11.1.0 spike recorded exactly that) and no envelope contains \"ip_address\" — plus a Task 17 Step 7 bullet: the event's User section shows no IP address. RecordedEvent.sdk gains settings?: { readonly infer_ip?: string }.",
+      "recommended": "approve",
+      "drop_consequence": "Leave it: the browser half of \"anonymous\" rests on an SDK default nothing checks.",
+      "raw_reviewer_findings": [
+        {
+          "title": "Nothing pins the anonymous promise: IP inference stays untested",
+          "severity": "P3",
+          "section": "Task 6 — Start Sentry in the browser, and the envelope recorder (the integrations case); Task 17 — Before code review, Step 7",
+          "why_it_matters": "Task 1 lets pnpm install a newer 11.x. If that version changed what `userInfo: false` covers, Sentry could start inferring visitors' IP addresses and every case would still pass: the only SDK check reads `sdk.integrations`, and `dataCollection` keys left unset default to permissive. The server half, 'Prevent Storing of IP Addresses', is only asked about in Task 17 Step 1, and Step 7's first-deploy checks never look for an IP. So the home page's 'anonymously' rests on two settings nothing verifies. I relied on the 11.1.0 event the plan-time spike recorded: it carries `sdk.settings.infer_ip: 'never'` and no `user`. Two assertions in the existing integrations case would pin the browser half, the same way Review Focus 5 pins renamed integrations, and one Step 7 line would check the server half.",
+          "finding_type": "omission",
+          "autofix_class": "gated_auto",
+          "suggested_fix": "In Task 6's integrations case, add `expect(sentinel.sdk?.settings?.infer_ip).toBe('never');` and `expect(sentry.raw().join('\\n')).not.toContain('ip_address');`, and give `RecordedEvent.sdk` a `settings?: { readonly infer_ip?: string }` field. Add a Task 17 Step 7 bullet: 'The event's User section shows no IP address.'",
+          "confidence": 50,
+          "evidence": [
+            "expect([...(sentinel.sdk?.integrations ?? [])].toSorted()).toEqual(EXPECTED_INTEGRATIONS);",
+            "readonly sdk?: { readonly integrations?: readonly string[] };",
+            "Every key is optional and an unset key falls back to a permissive default (`true`).",
+            "An E103 warning appears in Sentry, with `file_type` and the size and without the name; its alert email arrives.",
+            "This site counts visits and crashes anonymously"
+          ]
+        }
+      ],
+      "decision": "Approve",
+      "decided_on": "2026-10-09",
+      "triage_round": 4,
+      "decision_note": "Applied, after a spike the owner asked for. Spike (2026-10-09, Chromium, @sentry/browser 11.1.0 bundled from the @sentry/nextjs 11.1.0 install, every envelope recorded): with the plan's dataCollection (userInfo: false) infer_ip is 'never' and no envelope carries ip_address; with the userInfo line deleted (Sentry 11's default) or userInfo: true, infer_ip is 'auto' and the session envelope carries ip_address '{{auto}}'. So the default collects visitor IPs, userInfo: false is the only guard, and both assertions discriminate. Task 6's integrations case gains the two assertions with that reason; RecordedEvent.sdk gains settings.infer_ip; Review Focus 5 and Task 17 Step 7 gain a line."
+    },
+    {
+      "id": "PO-2",
+      "severity": "P3",
+      "confidence": 50,
+      "reviewer": "security-lens",
+      "section": "Task 15 Step 5 (the web/AGENTS.md bullet)",
+      "title": "The agents' rule omits that kept messages can quote a file's contents",
+      "scenario": "A future agent adds the cached-score load that E104 is reserved for. The lint rule makes its catch call reportError, which keeps the message — and the parse message can quote text from inside the visitor's file.",
+      "suggestion": "One sentence in the bullet: reportError keeps the message for every code except E101–E103, and the names filter removes names, not contents; a catch around code that reads or parses the visitor's file needs a fixed sentence — add its code to FIXED_MESSAGES in web/lib/monitoring/report.ts (and a row in the sentence test).",
+      "recommended": "approve",
+      "drop_consequence": "Leave it: the next file-reading catch could send file text, and no lint rule can see that.",
+      "raw_reviewer_findings": [
+        {
+          "title": "Catch rule for agents omits the file-content constraint",
+          "severity": "P3",
+          "section": "Task 15 — The lint rule that keeps every catch reporting, Step 5 (the web/AGENTS.md bullet)",
+          "why_it_matters": "The lint rule makes every future catch call reportError. reportError keeps the error's own message for every code except E101–E103, and the names filter removes remembered names, not a file's contents. The next likely new catch is the cached-score load that E104 is already reserved for (docs/reference/error-codes.md). An agent following the bullet as written would send AlphaTab's parse message, which spec 2.3 says can quote text from inside the file. One sentence in the bullet carries a rule that no lint selector can check.",
+          "finding_type": "omission",
+          "autofix_class": "gated_auto",
+          "suggested_fix": "Add this to the web/AGENTS.md bullet in Task 15 Step 5: 'reportError keeps the error's message for every code except E101–E103, and the names filter removes names, not a file's contents. A catch around code that reads or parses the visitor's file, such as the cached-score path E104 is reserved for, needs a fixed sentence: add its code to FIXED_MESSAGES in web/lib/monitoring/report.ts.'",
+          "confidence": 50,
+          "evidence": [
+            "**Every `catch` reports.** Each `catch` clause and `.catch()` callback in `web/` calls `reportError` or `noteError` from `web/lib/monitoring/report.ts` inside the catch itself",
+            "// E101–E103 send one of these in place of the exception's own message, which can quote text from inside the file.",
+            "The names filter: a file name, a score's title or credits, or a track name quoted in an error's message becomes `[file]`."
+          ]
+        }
+      ],
+      "decision": "Approve",
+      "decided_on": "2026-10-09",
+      "triage_round": 4,
+      "decision_note": "Applied: Task 15 Step 5's web/AGENTS.md bullet gains the sentence that reportError keeps the message for every code except E101-E103, the names filter removes names not contents, and a catch around code that reads or parses the visitor's file needs a FIXED_MESSAGES entry plus the fixed-sentence test. Guidance text; nothing to run."
+    }
+  ],
+  "step7": {
+    "decided_on": "2026-10-09",
+    "rule": "Re-lap: lap 1 applied a P1 (PF-1, by the review itself) and the exit signal was not clean. Bound not reached (lap 1 of 5); lap 1 has no previous set, so the no-progress check does not apply.",
+    "owner_decision": "A focused lap 2 (option 1 of 3; the others were a full lap 2 and stopping for CODE).",
+    "lap2_scope": "The reviewers read only what lap 1 changed: git diff fc745806..HEAD -- docs/plans/2026-10-08-nh-124-sentry-error-monitoring-plan.md (the review fixes in 47827227 and the triage commits 82d11a95, df7e287b, a33cc454, a3ad4ace), reading surrounding text only for context. Team: the always-on coherence and feasibility reviewers, plus security-lens (the token gate, the slug check, the IP test, the web/AGENTS.md rule) and design-lens (the new E105 toast). One verifier applies Tasks 5, 10 and 11 from the plan in a throwaway worktree (pnpm install and pnpm add with --ignore-scripts, @sentry/nextjs 11.1.0) and runs report.test.ts, OpenFileControl.test.tsx and PlayerShell.test.tsx: PQ-3's two new cases were not run in lap 1.",
+    "carry_forward_undecided": []
+  },
+  "also_decided": [
+    {
+      "id": "MEM-1",
+      "what": "The Prettier code-fence lesson (PF-5) went into the agent memory notation_hero_jsonc_fence_prettier.md (round 4), and then, at the owner's request, into AGENTS.md's Linting & formatting paragraph in this PR.",
+      "decided_on": "2026-10-09"
+    }
+  ]
+}

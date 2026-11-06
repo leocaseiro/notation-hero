@@ -1,0 +1,66 @@
+{
+  "reviewer": "design-lens",
+  "findings": [
+    {
+      "title": "One-second counter breaks existing 60-second backstop e2e case",
+      "severity": "P1",
+      "section": "Task 14 - The music-font clock, and AlphaTab's own error event (Step 3, the end-to-end assertions)",
+      "why_it_matters": "The existing end-to-end case 'a music font that arrives after the 60 s backstop clears the error' (web/e2e/player.e2e.ts:230) goes red after this task, while Step 3 tells the implementer it passes. That case jumps the page clock with `page.clock.fastForward(61_000)`, and the installed Playwright 1.61.1 documents that call as firing due timers 'at most once', so Choice 7's one-second counter (the E204 clock; E204 is the 60-second music-font timeout) gains one second per jump, not sixty, and cannot reach 60 inside the case's 20-second retry window. The result is an unexplained failure in a merge-blocking lane, with no step naming which side to change. Advancing the fake clock with `page.clock.runFor(61_000)` fires the tick sixty-one times, so Choice 7 and the unit tests stand as written.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "In Task 14 Step 3, add an edit to the existing case 'a music font that arrives after the 60 s backstop clears the error' in web/e2e/player.e2e.ts: inside its `toPass` block replace `await page.clock.fastForward(61_000);` with `await page.clock.runFor(61_000);`, keep the rest of the case, and change the 'Expected' sentence to say that this case is edited because `fastForward` fires an interval at most once.",
+      "confidence": 100,
+      "evidence": [
+        "Expected: PASS — including the existing 60-second backstop case, which headless Chromium runs in a",
+        "visibleSeconds += 1;",
+        "**The E204 clock is a one-second counter** that counts a second only while"
+      ]
+    },
+    {
+      "title": "Render-finished unit test throws on its own stand-in api",
+      "severity": "P2",
+      "section": "Task 14 - The music-font clock, and AlphaTab's own error event (Step 1, the 'once a render has finished' test)",
+      "why_it_matters": "The 'once a render has finished, hiding and showing the tab raises nothing a minute later' case throws before it asserts anything. Its stand-in api is `{}`, and the component's renderFinished handler (web/app/play/NotationSurface.tsx:166) ends with `setRenderedTrackCount(api?.tracks.length ?? 0)`; the `?.` guards only `api`, so `{}.tracks.length` raises a TypeError that escapes `act` and fails the case. Step 2's 'Expected: PASS — 6 tests' is therefore wrong, and the spec's promise that a finished render stops the clock for good has no passing test. Adding `tracks: []` to the stand-in fixes it; the alternative of loosening the production line to `api?.tracks?.length` is rejected because it would put a test accommodation into shipped code.",
+      "finding_type": "error",
+      "autofix_class": "safe_auto",
+      "suggested_fix": "In Task 14 Step 1, change `const STAND_IN_API: unknown = {};` to `const STAND_IN_API: unknown = { tracks: [] };` and extend the comment above it to say the component reads `api.tracks.length` when a render finishes.",
+      "confidence": 100,
+      "evidence": [
+        "const STAND_IN_API: unknown = {};",
+        "act(() => handlers.get('renderFinished')?.(undefined));",
+        "Expected: PASS — 6 tests."
+      ]
+    },
+    {
+      "title": "Step 8's 'undo the same way' discards the home-page copy",
+      "severity": "P2",
+      "section": "Task 7 - The three error pages, and the copy (Step 8, look at the three error pages, item 3)",
+      "why_it_matters": "Following Step 8 literally loses the new home-page copy. By then `web/app/page.tsx` holds Step 6's uncommitted tagline and privacy paragraph, and 'Undo it the same way' for item 3 means `git checkout -- web/app/page.tsx`, which restores the file to HEAD and discards both. Step 9 then commits the regenerated `landing-chromium-linux.png` (showing the new copy) beside a page that no longer has it, so the `web` visual-regression job fails at the landing shot, and Step 8's 'git status is clean' check cannot reveal it. Items 1 and 4 touch files nothing earlier edited, so only item 3 needs a different undo.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "In Task 7 Step 8, change item 3's closing sentence 'Undo it the same way.' to 'Undo it by deleting the line you added; do not use `git checkout` here, because `web/app/page.tsx` also holds Step 6's uncommitted copy.' and add to the Expected paragraph that `git diff web/app/page.tsx` shows only Step 6's copy change.",
+      "confidence": 75,
+      "evidence": [
+        "`web/app/error.tsx` the same way. Undo it the same way.",
+        "2. Undo it: `git checkout -- web/app/play/PlayerShell.tsx`.",
+        "In `web/app/page.tsx`, the tagline's second sentence changes, and a new paragraph follows the Play"
+      ]
+    },
+    {
+      "title": "Home-page snippet printed as statements would render a stray semicolon",
+      "severity": "P3",
+      "section": "Task 7 - The three error pages, and the copy (Step 6, the home page copy)",
+      "why_it_matters": "The privacy-paragraph snippet in Step 6 was formatted as a standalone program, so it ends `</p>;` and wraps its comment as a braced block on separate lines. Pasted after `</Button>` as printed, the `;` becomes a text child of `<main>` and shows as a lone semicolon under the privacy paragraph; lint and typecheck accept it, and the landing baseline regenerated in Step 7 would record it unless the implementer spots it in the image. Giving the snippet in the form it takes in the file (a `{/* ... */}` comment and no trailing semicolon) removes the trap.",
+      "finding_type": "error",
+      "autofix_class": "safe_auto",
+      "suggested_fix": "Replace the Step 6 snippet with its in-file form: the comment as `{/* \"Counts visits\" is Release Health: ... that fails to open. */}` on one JSX comment, followed by `<p className=\"text-sm text-muted-foreground\">...</p>` with no trailing semicolon.",
+      "confidence": 50,
+      "evidence": [
+        "</p>;",
+        "/* \"Counts visits\" is Release Health: a small ping on every visit, not only on a crash. The"
+      ]
+    }
+  ],
+  "residual_risks": [],
+  "deferred_questions": []
+}

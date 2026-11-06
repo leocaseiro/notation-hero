@@ -9,6 +9,7 @@ import {
   TRANSPORT_STORAGE_KEY,
 } from '../../lib/alphatab/transport-storage';
 import { setAlphaTabValue } from '../../lib/alphatab/useAlphaTab';
+import { isStorageRefusal, noteError, reportError } from '../../lib/monitoring/report';
 import type { TransportValues } from '../../lib/alphatab/transport-storage';
 import type * as AlphaTab from '@coderline/alphatab';
 
@@ -111,8 +112,11 @@ export function useRestoredTransport(
     if (repaired === null || !toRestore) return;
     try {
       globalThis.localStorage.setItem(TRANSPORT_STORAGE_KEY, serializeTransport(toRestore));
-    } catch {
+    } catch (error) {
       // Storage is unavailable or full. The warning is still worth showing.
+      if (isStorageRefusal(error))
+        noteError(error, 'Repaired transport values could not be written back');
+      else reportError(error);
     }
   }, [repaired, toRestore]);
 

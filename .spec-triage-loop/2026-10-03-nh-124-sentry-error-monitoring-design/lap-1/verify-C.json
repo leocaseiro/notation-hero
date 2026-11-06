@@ -1,0 +1,332 @@
+[
+  {
+    "id": "F-5",
+    "section_exists": true,
+    "quotes": [
+      {
+        "quote": "sends anonymous crash statistics, and an error report when it",
+        "found": true,
+        "lines": "266"
+      },
+      {
+        "quote": "a small ping on every visit, not only on a crash.",
+        "found": true,
+        "lines": "279"
+      },
+      {
+        "quote": "The home-page copy says so.",
+        "found": true,
+        "lines": "382"
+      },
+      {
+        "quote": "Starts Sentry before the page becomes interactive.",
+        "found": true,
+        "lines": "74"
+      }
+    ],
+    "before_verbatim": [
+      {
+        "lines": "265-267",
+        "text": "After:                        …and play along. Your scores never leave this device. The player\n                              sends anonymous crash statistics, and an error report when it\n                              breaks — never your file, its name, or what's in it."
+      },
+      {
+        "lines": "279-281",
+        "text": "\"Crash statistics\" is Release Health (S4): a small ping on every visit, not only on a crash. It\ncarries the release, the environment and whether the visit crashed — no file data. That is why the\nhome page names it."
+      }
+    ],
+    "claims": [
+      {
+        "claim": "(a) The spec claims the home page discloses the every-visit ping.",
+        "verdict": "confirmed",
+        "evidence": "Spec 280-281: \"That is why the home page names it.\" Spec 382 (Known limits): \"**Release Health pings on every visit**, not only on a crash. The home-page copy says so.\" But the copy it points to (265-267) says \"The player sends anonymous crash statistics\" - no word about visits, and it names \"The player\" as the sender. So the claim is made, and the copy's words do not carry it."
+      },
+      {
+        "claim": "(b) web/instrumentation-client.ts runs on every route, including `/`, so the ping is sent from the home page before anyone opens the player.",
+        "verdict": "confirmed",
+        "evidence": "Bundled docs (next 16.3.6): web/node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/instrumentation-client.md:6 \"...other side-effects that run before your application becomes interactive.\"; :8 \"place the file in the **root** of your application\"; 01-app/02-guides/analytics.md:13 \"...runs before your application's frontend code starts executing. This is ideal for setting up global analytics, error tracking, or performance monitoring tools.\" The docs never say \"every route\" in those words; the source settles it: web/node_modules/next/dist/client/app-next-turbopack.js:11 \"const instrumentationModules = require('../lib/require-instrumentation-client');\" and :15 \"hydrate(instrumentationModules, assetPrefix);\" - the one App Router client entry, so it runs on `/` and `/play` alike (app-next.js:9-10 does the same for webpack). Sentry side (docs.sentry.io/platforms/javascript/guides/nextjs/configuration/releases/, via WebFetch): \"JavaScript Browser SDKs track sessions by default.\" / \"A session starts on page load and continues across client-side navigations. A hard reload or navigation starts a new session.\" / \"Before SDK version 11, the SDK started a new session on each client-side navigation by default.\" getsentry/sentry-javascript develop, packages/browser/src/integrations/browsersession.ts: setup calls startSession({ ignoreDuration: true }) and sends it with captureSession() inside whenIdleOrHidden(...) - from whichever page loaded first, `/` included. This also answers the spec's own plan-time item \"That the browser SDK sends Release Health sessions by default\" (line 392): yes, per the docs."
+      },
+      {
+        "claim": "(c) The current home copy at web/app/page.tsx:9.",
+        "verdict": "confirmed",
+        "evidence": "The sentence spans lines 9-10, not 9 alone: web/app/page.tsx:9 \"        Open a score from your own computer, read it as standard notation, and play along. Nothing\" and :10 \"        you open leaves this device.\" Collapsed: \"Open a score from your own computer, read it as standard notation, and play along. Nothing you open leaves this device.\" (119 characters)."
+      }
+    ],
+    "spike": {
+      "ran": false,
+      "what": "Not needed: Next source + bundled docs + Sentry docs settle it. No app build or browser run.",
+      "result": "n/a"
+    },
+    "fix_conflicts_with_other_sections": "One section must change with it: 3.4 lines 279-281 open with '\"Crash statistics\" is Release Health (S4)' and end 'That is why the home page names it.' - the new copy no longer contains that phrase. Known limits line 382 needs no edit (it becomes literally true). Outside the spec, the 2026-10-03 entry in docs/decisions/decision-changelog.md:38-40 quotes the old copy (\"It pings on every visit, so the home page names it: \\\"anonymous crash statistics\\\".\") and must change in the same PR. No contradiction with S2/S4: S4 already counts visits (\"the crash-free share of visits per release\"), and S2 rejects counting attempts, not visits - but \"counts visits\" puts that counting in public copy, which the person may want to read beside S2. The fix text is LONGER than the spec's After (276 vs 245 characters; today 119) - see FYI-1.",
+    "fix_correction": "None to the proposed sentence. It must travel with (1) a reword of spec 3.4 lines 279-281, which quote the old phrase \"Crash statistics\", and (2) the changelog S4 bullet at docs/decisions/decision-changelog.md:38-40.",
+    "verdict": "pass",
+    "notes": "The fix also changes the sender from \"The player\" to \"This site\", which matches where the code runs (every route). Release Health is production-only (D5), so the ping exists only on production visits."
+  },
+  {
+    "id": "F-6",
+    "section_exists": true,
+    "quotes": [
+      {
+        "quote": "nothing tells us a failure happened unless the visitor writes to us",
+        "found": true,
+        "lines": "37-38"
+      },
+      {
+        "quote": "That is a bug signal, so it sends a warning.",
+        "found": true,
+        "lines": "175"
+      },
+      {
+        "quote": "Create a Sentry account on the free Developer plan, and a project with the platform **Next.js**.",
+        "found": true,
+        "lines": "315"
+      }
+    ],
+    "before_verbatim": [
+      {
+        "lines": "315-316",
+        "text": "1. Create a Sentry account on the free Developer plan, and a project with the platform **Next.js**.\n   Note the organization and project slugs for `next.config.ts`."
+      }
+    ],
+    "claims": [
+      {
+        "claim": "(a) Sentry's project-creation flow offers an alert option such as \"Alert me on high priority issues\" by default.",
+        "verdict": "confirmed",
+        "evidence": "getsentry/sentry master, static/app/views/projectInstall/issueAlertOptions.tsx (via WebFetch): \"[RuleAction.DEFAULT_ALERT, t('Alert me on high priority issues')]\", \"tct('When there are more than [threshold][metric] a unique error [interval]', ...)\", \"[RuleAction.CREATE_ALERT_LATER, t(\\\"I'll create my own alerts later\\\")]\", and the default \"DEFAULT_ISSUE_ALERT_OPTIONS_VALUES = { alertSetting: RuleAction.DEFAULT_ALERT, ... }\". Sentry changelog 2024-09-16 (sentry.io/changelog/issue-alerts-now-have-priority-conditions): \"Default alerts in Sentry have been updated to use our new high priority conditions.\""
+      },
+      {
+        "claim": "(b) Warning-level issues get medium priority by default, so a high-priority-only alert skips them.",
+        "verdict": "confirmed",
+        "evidence": "docs.sentry.io/product/issues/issue-priority/ (via WebFetch): \"**High**: Issues that are likely to be actionable and require immediate attention, such as `ERROR` and `FATAL` events.\" / \"**Medium**: Issues that are likely to be actionable and require attention in the near future, including `WARNING` events.\" Consequence (reasoned): every warning in the spec - E103 (line 158), E101/E102 (159), E602 (157), E601/E603 (171) - opens as a medium issue and never fires the default rule; that includes the E103 warning setup step 5 waits for. The same page adds that for \"Python or JavaScript projects\" the enhanced priority considers \"whether or not the error is handled\", so even handled error-level reports (every reportError call) may rate below high - the direction is not documented (unverified)."
+      },
+      {
+        "claim": "(c) The free Developer plan includes issue alerts by email.",
+        "verdict": "confirmed",
+        "evidence": "sentry.io/pricing (via WebFetch): the Developer plan's feature bullets include \"Alerts and notifications via email\" (present on all four plans); \"Alerts and notifications via integrated tools\" starts at Team."
+      },
+      {
+        "claim": "(d) The exact trigger name \"A new issue is created\".",
+        "verdict": "confirmed",
+        "evidence": "docs.sentry.io/product/monitors-and-alerts/alerts/create-alerts/ and /product/alerts/create-alerts/issue-alert-config/ (via WebFetch) list the triggers \"A new issue is created\", \"An issue escalates\", \"A resolved issue regresses\", \"An issue is resolved\", \"An event or issue activity is captured\", \"Seer runs on an issue and reaches the stage...\". The action is \"Notify on preferred channel\" to \"Suggested Assignees\", a \"Team\", or a \"Member\", delivered \"via each recipient's notification settings\"; no action is named \"email\"."
+      }
+    ],
+    "spike": {
+      "ran": false,
+      "what": "Public docs and Sentry source only.",
+      "result": "n/a"
+    },
+    "fix_conflicts_with_other_sections": "None. Keep the new instruction inside or after step 1, so line 302 (\"filled in from section 5, step 1\") still points at the slugs step.",
+    "fix_correction": "Two wording corrections. (1) The project-creation form cannot create this rule: its only choices are \"Alert me on high priority issues\" (default), \"When there are more than [threshold][metric] a unique error [interval]\" and \"I'll create my own alerts later\". So the step should read: when creating the project, choose \"I'll create my own alerts later\"; then create one alert with the trigger \"A new issue is created\", no level filter, and the action \"Notify on preferred channel\" -> Member: leocaseiro (on the Developer plan it arrives by email). (2) Say \"Notify on preferred channel -> Member\", not \"email leocaseiro\" - the alert form has no action named email.",
+    "verdict": "pass",
+    "notes": "Trade-off for the person, not a correction: the default rule also fires when an EXISTING issue becomes high priority (escalation). A new-issue-only rule drops that; the same rule can also take \"An issue escalates\" and \"A resolved issue regresses\" if wanted. Alerts use no event quota."
+  },
+  {
+    "id": "F-12",
+    "section_exists": true,
+    "quotes": [
+      {
+        "quote": "`global-error.tsx` replaces the root layout when it renders, so it supplies its own `<html>` and",
+        "found": true,
+        "lines": "122"
+      },
+      {
+        "quote": "`<body>` and imports `globals.css` itself.",
+        "found": true,
+        "lines": "123"
+      },
+      {
+        "quote": "After (both, and the new global-error.tsx):",
+        "found": true,
+        "lines": "271"
+      }
+    ],
+    "before_verbatim": [
+      {
+        "lines": "122-123",
+        "text": "`global-error.tsx` replaces the root layout when it renders, so it supplies its own `<html>` and\n`<body>` and imports `globals.css` itself."
+      }
+    ],
+    "claims": [
+      {
+        "claim": "(a) Next 16 bundled docs: global-error must be a Client Component, must define its own <html> and <body>, does not support metadata exports, and suggests a React <title>.",
+        "verdict": "confirmed",
+        "evidence": "web/node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/error.md:163 \"Global error UI must define its own `<html>` and `<body>` tags, global styles, fonts, or other dependencies that your error page requires. This file replaces the root layout or template when active.\" error.md:167 \"> **Good to know**: Error boundaries must be [Client Components](/docs/app/getting-started/server-and-client-components#using-client-components), which means that [`metadata` and `generateMetadata`](/docs/app/getting-started/metadata-and-og-images) exports are not supported in `global-error.jsx`. As an alternative, you can use the React [`<title>`](https://react.dev/reference/react-dom/components/title) component.\" error.md:170 \"'use client' // Error boundaries must be Client Components\". error.md:165 \"`global-error` and the built-in 500 page render their own document and do **not** include your global styles\". 01-app/01-getting-started/10-error-handling.md:397 \"Global error UI must define its own `<html>` and `<body>` tags, since it is replacing the root layout or template when active.\" Related: error.md:157 on `reset`: \"In most cases, you should use [`retry()`](#retry) instead.\" and :331 \"`v16.3.0` | `retry` prop became stable.\" (installed next 16.3.6). Both are passed: next/dist/client/components/error-boundary.js:113-114 \"reset: this.reset, retry: this.retry\", and global-error goes through the same boundary (app-router.js:413-414 -> errors/root-error-boundary.js:27)."
+      },
+      {
+        "claim": "(b) web/app/error.tsx structure: heading, <main> classes, the \"Error E901\" line, Try again wired to reset.",
+        "verdict": "confirmed",
+        "evidence": "web/app/error.tsx:1 \"'use client';\"; :7 \"export default function AppError({ reset }: Readonly<{ error: Error; reset: () => void }>) {\"; :9 \"<main className=\\\"mx-auto flex min-h-dvh max-w-3xl flex-col items-center justify-center gap-6 p-8 text-center\\\">\"; :10 \"<h1 className=\\\"text-2xl font-bold\\\">Something went wrong</h1>\"; :12 \"Nothing you opened was sent anywhere. Try again, or reload the page.\"; :14 \"<p className=\\\"text-sm text-muted-foreground\\\">Error {ERROR.unexpectedCrash}</p>\" (shared/src/error-codes.ts:73 \"unexpectedCrash: 'E901',\"); :15-17 \"<Button className=\\\"min-h-11 px-8\\\" onClick={reset}>\" / \"Try again\" / \"</Button>\"."
+      },
+      {
+        "claim": "(c) web/app/layout.tsx sets <html lang=\"en\"> and a metadata title.",
+        "verdict": "confirmed",
+        "evidence": "web/app/layout.tsx:5 \"import './globals.css';\"; :7-10 \"export const metadata: Metadata = { title: 'Notation Hero', description: 'Learn an instrument by playing real notation.', };\"; :14 \"<html lang=\\\"en\\\">\"; :15 \"<body>\". The only component it renders is \"<Toaster closeButton duration={5000} />\" (:26)."
+      },
+      {
+        "claim": "Finding title: global-error.tsx is specified ONLY by its privacy sentence.",
+        "verdict": "partly",
+        "evidence": "Overstated. The spec also gives it a job (section 1, line 75), the reportError line (2.2, lines 113-114 \"the new `global-error.tsx` carries the same line\"), and its own <html>/<body> plus globals.css (122-123). What is missing is what the fix adds: 'use client', heading, <main> classes, the E901 line, the Try again button and its callback, lang, and a title."
+      }
+    ],
+    "spike": {
+      "ran": false,
+      "what": "Bundled docs and installed Next source only.",
+      "result": "n/a"
+    },
+    "fix_conflicts_with_other_sections": "None. Consistent with section 1 (line 75), 2.2 (113-123) and 3.4 (271-273); the fix extends lines 122-123 rather than replacing them.",
+    "fix_correction": "Small precisions, central claim stands. (1) \"Repeats web/app/error.tsx exactly\" should say \"as changed by the 2.2 diff\", so the reportError useEffect line (2.2 lines 117-119) is plainly part of it. (2) The title string is 'Notation Hero' (web/app/layout.tsx:8). (3) Retitle the finding: global-error's visible structure is unspecified, not its whole spec. Optional: Next 16.3's bundled docs say \"In most cases, you should use retry() instead\" of reset; the fix mirrors error.tsx's reset, so parity holds - moving to retry would be a separate decision for all three error pages.",
+    "verdict": "pass",
+    "notes": "Reasoned, not verified: the root layout renders exactly one component from @notation-hero/client (the Toaster), and global-error would import Button from the same package; only a module-load failure of that package would take both down, in which case Next falls back to its default global error."
+  },
+  {
+    "id": "FYI-1",
+    "section_exists": true,
+    "quotes": [
+      {
+        "quote": "…and play along. Your scores never leave this device. The player",
+        "found": true,
+        "lines": "265"
+      },
+      {
+        "quote": "breaks — never your file, its name, or what's in it.",
+        "found": true,
+        "lines": "267"
+      }
+    ],
+    "before_verbatim": [
+      {
+        "lines": "265-267",
+        "text": "After:                        …and play along. Your scores never leave this device. The player\n                              sends anonymous crash statistics, and an error report when it\n                              breaks — never your file, its name, or what's in it."
+      }
+    ],
+    "claims": [
+      {
+        "claim": "Character count of today's tagline vs the After text; width of the `/` baselines.",
+        "verdict": "confirmed",
+        "evidence": "Today (web/app/page.tsx:9-10, collapsed): 119 characters, 21 words. Spec After (with the unchanged lead restored for the ellipsis): 245 characters, 44 words = 2.06x. F-5's proposed After: 276 characters, 47 words = 2.32x. There is ONE `/` baseline: web/e2e/pages.vr.ts-snapshots/landing-chromium-linux.png, 1280x900 (viewport set at web/playwright.e2e.config.ts:51 \"viewport: { width: 1280, height: 900 }\"; shot taken at web/e2e/pages.vr.ts:169). In that baseline today's text wraps to 2 lines (the first line holds 75 characters). Estimate, not rendered: about 4 lines for either After. The only 900-wide shot (player-narrow) is of /play, so `/` has no narrow shot."
+      }
+    ],
+    "spike": {
+      "ran": true,
+      "what": "Python character/word counts of the collapsed strings; sips read of every baseline's pixel size; visual read of landing-chromium-linux.png; greedy 75-character wrap estimate.",
+      "result": "119 / 245 / 276 characters; 1280x900; 2 lines today, about 4 lines after (estimate)."
+    },
+    "fix_conflicts_with_other_sections": "n/a (FYI, no fix proposed). Accuracy note: spec lines 85-86 (\"the `/` screenshot baselines\") and line 354 (\"changes the `/` shots\") use the plural; there is exactly one `/` shot.",
+    "fix_correction": "n/a",
+    "verdict": "pass",
+    "notes": "F-5's fix makes this worse by 31 characters; the two should be decided together."
+  },
+  {
+    "id": "FYI-2",
+    "section_exists": true,
+    "quotes": [
+      {
+        "quote": "home page names it.",
+        "found": true,
+        "lines": "281"
+      }
+    ],
+    "before_verbatim": [
+      {
+        "lines": "279-281",
+        "text": "\"Crash statistics\" is Release Health (S4): a small ping on every visit, not only on a crash. It\ncarries the release, the environment and whether the visit crashed — no file data. That is why the\nhome page names it."
+      }
+    ],
+    "claims": [
+      {
+        "claim": "/play has no standing privacy text today.",
+        "verdict": "confirmed",
+        "evidence": "web/app/play/page.tsx renders only \"<PlayerShell />\" (:7). A search of web/app, web/lib and client/src for the privacy wording finds it only at web/app/page.tsx:9-10 and the two error pages (web/app/error.tsx:12, web/app/play/error.tsx:12) - and play/error.tsx shows only after a crash. web/app/play/PlayerShell.tsx:81-82: \"The player ALWAYS has a score open (decided 2026-09-18), which is why there is no empty state anywhere in the player\". A visitor who lands on /play directly (bookmark, shared link) never sees the disclosure, yet the session ping goes out from /play too (instrumentation-client runs on every route - see F-5 claim b)."
+      }
+    ],
+    "spike": {
+      "ran": false,
+      "what": "grep only.",
+      "result": "n/a"
+    },
+    "fix_conflicts_with_other_sections": "n/a (FYI, no fix proposed).",
+    "fix_correction": "n/a",
+    "verdict": "pass",
+    "notes": ""
+  },
+  {
+    "id": "FYI-7",
+    "section_exists": true,
+    "quotes": [
+      {
+        "quote": "An E103 warning appearing in Sentry, with the file's type and size and without its name, proves the whole path.",
+        "found": true,
+        "lines": "322-323"
+      },
+      {
+        "quote": "Preview builds, CI builds and local builds skip the upload",
+        "found": true,
+        "lines": "295"
+      }
+    ],
+    "before_verbatim": [
+      {
+        "lines": "322-323",
+        "text": "5. After the first production deploy, open a file that is not a score. An E103 warning appearing in\n   Sentry, with the file's type and size and without its name, proves the whole path."
+      }
+    ],
+    "claims": [
+      {
+        "claim": "An E103 event arrives whether or not source maps resolve (reasoned).",
+        "verdict": "confirmed",
+        "evidence": "Reasoned: ingestion does not depend on source maps; they only change how the stack is shown. Sentry's troubleshooting page (docs.sentry.io/platforms/javascript/guides/nextjs/sourcemaps/troubleshooting_js/, via WebFetch) implies it: it describes a \"Sentry not part of build pipeline\" error shown when deployed code lacks Debug IDs, and says to \"Verify your artifacts are being uploaded to Sentry. You can find them at [Settings] > Projects > Select your project > [Source Maps].\" Nuance: a HARD upload failure stops the build by default in Sentry's bundler plugins (@sentry/esbuild-plugin 5.4.0 README: \"By default, the plugin will simply throw an error, thereby stopping the bundling process.\"); whether the Next.js Turbopack post-build upload does the same is unverified. A SOFT failure (maps uploaded but not matched to the code) passes step 5 unseen. And since preview, CI and local builds skip the upload (line 295), the first production deploy is the first time the upload runs at all."
+      }
+    ],
+    "spike": {
+      "ran": false,
+      "what": "Reasoning plus public docs.",
+      "result": "n/a"
+    },
+    "fix_conflicts_with_other_sections": "n/a (FYI). An implied fix would add to step 5: the E103 event's stack shows our source file names (for example PlayerShell.tsx) with the code around the line, and the project's Source Maps settings page lists the release - no conflict with section 4.",
+    "fix_correction": "n/a",
+    "verdict": "pass",
+    "notes": ""
+  },
+  {
+    "id": "FYI-8",
+    "section_exists": true,
+    "quotes": [
+      {
+        "quote": "After a month, Release Health's session count against Vercel's visit count shows how many are missed.",
+        "found": true,
+        "lines": "374-375"
+      }
+    ],
+    "before_verbatim": [
+      {
+        "lines": "374-375",
+        "text": "- **Ad-blocked visitors.** Their reports never arrive (D3). After a month, Release Health's session\n  count against Vercel's visit count shows how many are missed."
+      }
+    ],
+    "claims": [
+      {
+        "claim": "web/package.json has no @vercel/analytics.",
+        "verdict": "confirmed",
+        "evidence": "web/package.json dependencies (:17-25) and devDependencies (:26-44) list none; 0 matches for \"@vercel/analytics\" in web/package.json, package.json and pnpm-lock.yaml; no web/node_modules/@vercel directory."
+      },
+      {
+        "claim": "web/app/layout.tsx renders no Analytics component.",
+        "verdict": "confirmed",
+        "evidence": "web/app/layout.tsx renders {children} and \"<Toaster closeButton duration={5000} />\" (:26) only; no \"analytics\" match anywhere in web/app, web/lib, web/next.config.ts or web/README.md."
+      },
+      {
+        "claim": "What Vercel shows without Web Analytics on a Hobby plan.",
+        "verdict": "confirmed",
+        "evidence": "The project ships on Vercel Hobby (docs/decisions/2026-07-08-fe-nextjs-vercel-aws-bff-adr.md:33 \"Ship on Vercel Hobby ($0, best DX)\"). Without Web Analytics, only Observability remains: vercel.com/docs/observability/observability-plus Limitations table, \"Data Retention | Hobby: 12 hours\" and \"CDN Requests | No breakdown by path\"; vercel.com/docs/observability counts requests, not visits (\"1 CDN request event if it's a static asset.\"). So no month-long visit count exists. Web Analytics would give one, but needs enabling in the dashboard plus @vercel/analytics plus <Analytics /> in the root layout (vercel.com/docs/analytics/quickstart: \"Once your app is deployed, it will start tracking visitors and page views.\"); free on Hobby with \"50,000 events / month included\" and \"Reporting Window | 1 Month\" (vercel.com/docs/analytics/limits-and-pricing)."
+      }
+    ],
+    "spike": {
+      "ran": false,
+      "what": "grep plus public docs.",
+      "result": "n/a"
+    },
+    "fix_conflicts_with_other_sections": "n/a (FYI). Note: adding Web Analytics would be a new dependency and a second visit counter, so the home-page privacy copy (3.4) would have to name it too.",
+    "fix_correction": "n/a",
+    "verdict": "pass",
+    "notes": ""
+  }
+]

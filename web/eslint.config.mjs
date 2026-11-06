@@ -72,6 +72,30 @@ const eslintConfig = defineConfig([
           message:
             'Do not dynamically import @coderline/alphatab. It bundles AlphaTab a second time just as a value import does, and the no-restricted-imports fence cannot see it. Get runtime values from the namespace object returned by loadAlphaTabEngine() in lib/alphatab/engine.ts.',
         },
+        // Every catch in web/ reports. A catch clause, or a .catch() callback, calls reportError
+        // or noteError from lib/monitoring/report.ts INSIDE it: a call hidden in a helper is
+        // invisible to these selectors. Run against ESLint 9.39.4 on 2026-10-03, they flagged
+        // exactly `catch { }` and `.catch(() => null)`, and passed every form that calls either.
+        // tooling/silent-catch-fence.test.sh proves they still fire.
+        {
+          selector:
+            'CatchClause:not(:has(CallExpression[callee.name=/^(reportError|noteError)$/]))',
+          message:
+            'This catch reports nothing. Call reportError or noteError from lib/monitoring/report.ts inside it, or mark a deliberate silence: // eslint-disable-next-line no-restricted-syntax -- <reason>',
+        },
+        {
+          selector:
+            "CallExpression[callee.property.name='catch'] > :function:not(:has(CallExpression[callee.name=/^(reportError|noteError)$/]))",
+          message:
+            'This .catch() callback reports nothing. Call reportError or noteError from lib/monitoring/report.ts inside it, or mark a deliberate silence: // eslint-disable-next-line no-restricted-syntax -- <reason>',
+        },
+      ],
+      // The browser has its own global reportError, so a call whose import was forgotten still
+      // type-checks — and reaches no one. Banning the global makes that a lint error; the imported
+      // function shadows it and stays allowed. Nothing set this rule before.
+      'no-restricted-globals': [
+        'error',
+        { name: 'reportError', message: 'Import reportError from lib/monitoring/report.ts.' },
       ],
       'no-restricted-imports': 'off',
       '@typescript-eslint/no-restricted-imports': [

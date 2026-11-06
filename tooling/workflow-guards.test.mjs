@@ -238,6 +238,25 @@ test('every web/ Playwright script names its project', () => {
   );
 });
 
+// The auth-token leak check protects production only while the build Vercel runs reaches it, and
+// every test of the script runs it by hand. So nothing else fails if an edit drops it from web's
+// build, moves it ahead of the `next build` whose output it reads, or calls it by an absolute path,
+// which its entry check does not recognize through a symlink: it then exits 0 having checked
+// nothing. A deliberate change to either build line has to update this test.
+test("Vercel's build runs the auth-token leak check after next build, by its relative path", () => {
+  const { buildCommand } = JSON.parse(
+    readFileSync(fileURLToPath(new URL('../web/vercel.json', import.meta.url)), 'utf8'),
+  );
+  assert.match(buildCommand, /(?:^|&& )pnpm run build$/, 'vercel.json no longer runs web build');
+  const steps = packageJson('web/package.json').scripts.build.split(' && ');
+  const nextBuild = steps.findIndex((step) => /\bnext build\b/.test(step));
+  const tokenCheck = steps.indexOf('node scripts/assert-no-auth-token.mjs');
+  assert.ok(
+    nextBuild !== -1 && tokenCheck > nextBuild,
+    `web's build must run "node scripts/assert-no-auth-token.mjs" after next build: ${steps.join(' && ')}`,
+  );
+});
+
 // The container tag has three homes once web/'s browser lane moves into a container of its own:
 // tooling/docker-playwright.sh and the `container:` lines of the `vr` and `web` CI jobs. A partial
 // bump is invisible — baselines then compare under a renderer they were not made with, and the

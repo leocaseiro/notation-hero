@@ -1,0 +1,228 @@
+{
+  "area": "C",
+  "spec_commit": "2f68d380",
+  "method": "Read the brief, the whole spec at 2f68d380 (docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md), the lap-3 review context and the NH-124 changelog entry (docs/decisions/decision-changelog.md:14-144). Checked the 12 evidence quotes with the shared quote script: 12/12 verbatim. Read web/app/play/NotationSurface.tsx, PlayerShell.tsx (the open, drop and both restore paths), OpenFileControl.tsx, web/lib/alphatab/settings-storage.ts, transport-storage.ts, web/app/play/useRestoredTransport.ts, web/e2e/player.e2e.ts (the font, SoundFont, E601 and E603 cases), web/AGENTS.md, web/eslint.config.mjs, web/vitest.config.ts, web/vitest.setup.ts, web/scripts/vendor-alphatab.mjs, shared/src/error-codes.ts, docs/reference/error-codes.md and tooling/check-error-codes.mjs. Read AlphaTab 1.8.4's FontLoadingChecker, render gating and error classes in @coderline/alphatab@1.8.4:dist/alphaTab.core.mjs and the minified alphaTab.core.min.mjs. Read Sentry 11.0.0's browser event builder, session update and linked-error ordering (getsentry/sentry-javascript@11.0.0), and Sentry's server code for the issue title and the email subject (getsentry/sentry, default branch, fetched 2026-10-05). Ran a jsdom 29.1.1 model of the font clock with fake time (F-34), checked that jsdom has no document.fonts, and applied every drafted change to a copy of the spec, then ran Prettier, markdownlint-cli2 and cspell over it with the repository's configs (0 issues). Nothing in the repository was changed apart from this file.",
+  "items": [
+    {
+      "id": "F-34",
+      "verdict": "pass",
+      "checks": {
+        "section_exists": "Yes: section 2.4 'E204 counts visible time only' (spec lines 283-290) and the section 6 bullet 'The font clock' (lines 600-604).",
+        "quotes": "3/3 verbatim (spec lines 288, 278, 285).",
+        "fix_consistent": "Consistent. It also needs the section 6 'The font clock' bullet (lines 600-604, drafted). Nothing else in the spec says when the clock ends: the section 2.4 rows for E203 and E204 ('error, unhandled', lines 278-279) and the lap-2 changelog bullet ('Chosen over restarting the clock at each return, which could leave a real hang unreported') stay true. The lap-2 plan note for F-29 (the first renderFinished also removes the visibilitychange listener) now applies at all three end events. The existing e2e case 'a music font that arrives after the 60 s backstop clears the error' (web/e2e/player.e2e.ts:230-258) still holds: ending the clock at E204 does not touch the renderFinished handler that clears the banner."
+      },
+      "central_claim": {
+        "status": "confirmed",
+        "evidence": [
+          "web/app/play/NotationSurface.tsx:115-120 — the loadingerror listener (the E203 site, :117) sets the banner text and setDismissed(false), and never clears timeoutRef: the 60-second timer keeps running after an E203.",
+          "web/app/play/NotationSurface.tsx:125-130 — the timer (the E204 site, :126) sets the E204 text and setDismissed(false), so it replaces the E203 text and shows a dismissed banner again. Section 2.4 puts the E204 report in this same callback.",
+          "web/app/play/NotationSurface.tsx:155-160 — only renderFinished clears the timer and the font error.",
+          "web/app/play/NotationSurface.tsx:211-213 and :223-229 — one banner (role=alert), text = runtimeError ?? fontError, inside 'The player engine could not start. Reload the page to try again. (…)'.",
+          "@coderline/alphatab@1.8.4:dist/alphaTab.core.mjs:30530-30539 — FontLoadingChecker's error handler, with one family left, logs 'Loading Failed, rendering cannot start' and stops; :30544 — isFontLoaded becomes true only in the success handler; :41065 — the music font's checker has exactly one family, so there is no fallback.",
+          "@coderline/alphatab@1.8.4:dist/alphaTab.core.mjs:40817-40830 and :46050-46053 — render() runs only when every font checker has loaded, and otherwise waits on canRenderChanged, which a failed font never triggers: after a failed music-font download no render starts, so renderFinished never fires. The component comment at web/app/play/NotationSurface.tsx:110-114 says the same, and that the browser raises `loadingerror` at once (verified in Chromium).",
+          "docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md:286-289 — the text ends the clock only at the first renderFinished; once E204 has fired, 'the time left' is not defined, so whether a later tab switch arms it again is left to the implementer.",
+          "getsentry/sentry-javascript@11.0.0:packages/core/src/client.ts:1360-1369 — a second unhandled error in a session that is already unhandled sends no session update, so the duplicate E204 does not lower the health number a second time. Its cost is a second issue (with its first new-issue email), one more event per failed visit, and an E204 count that overstates hangs."
+        ]
+      },
+      "spike": {
+        "status": "run",
+        "what": "A Node model run in jsdom 29.1.1 (the version the web package's Vitest 4.1.11 lane resolves; pretendToBeVisual on, as Vitest sets it), with a hand-made fake clock, a stub document.fonts EventTarget that raises a real 'loadingerror' event, and real visibilitychange events. Three models: TODAY, a transcription of web/app/play/NotationSurface.tsx:107-136 and :155-167; SPEC, the section 2.4 text (visible-time clock, only renderFinished ends it, the reports where the section 2.4 table puts them), with 'the time left' after a firing read two literal ways — (a) the stored time left, (b) 60 s minus the visible time so far; FIX, SPEC plus the reviewer's end states at E203 and E204. The real component was not mounted: the visible-time clock is not written yet, and running Vitest would write its cache inside the worktree.",
+        "result": "Font fails at 2 s, banner dismissed at 10 s: TODAY shows the banner again at 60 s with the E204 text; SPEC (both readings) sends E203 at 2 s and E204 at 60 s and shows the dismissed banner again with the E204 text; FIX sends E203 only and the banner stays dismissed. Download hangs, E204 at 60 s, tab hidden at 90 s and shown at 100 s: SPEC sends a second E204 (reading a at 160 s, reading b at 100 s); FIX sends one. The same with a pause before the firing (E204 at 120 s, hide/show at 130/140 s): SPEC sends a second E204 (160 s / 140 s); FIX one. The three section 6 cases (two hidden minutes; 40 s visible, 60 s hidden, 20 s visible; a render, then hide and show) give the same result in SPEC and FIX: none, one at 120 s, none. A font that arrives at 70 s after an E204 still clears the banner in FIX. jsdom 29.1.1 has no document.fonts (typeof is 'undefined'). The drafted text, applied to a copy of the spec, passes Prettier (prettier.config.mjs), markdownlint-cli2 (.markdownlint.yaml) and cspell (cspell.json) with 0 issues, and every `before` matches the spec at 2f68d380 line for line."
+      },
+      "before": [
+        {
+          "lines": "283-290",
+          "text": "**E204 counts visible time only.** AlphaTab 1.8.4 starts its first render from an animation\nframe, and a browser runs none in a hidden tab, so a player opened in a background tab draws\nnothing there while a plain timer keeps counting. The 60 seconds therefore run only while\n`document.visibilityState` is `visible`: a player opened in a background tab starts the clock when\nthe tab is first shown, a `visibilitychange` to `hidden` stops it, it continues with the time left\nwhen the page is visible again, and the first `renderFinished` stops it for good, so a later tab\nswitch never starts it again. Without this, a background tab left for a minute sends an unhandled\nE204 that lowers the health number although nothing failed."
+        },
+        {
+          "lines": "600-604",
+          "text": "- **The font clock**, a test beside `web/app/play/NotationSurface.tsx`, with fake timers and a\n  stubbed `document.visibilityState`: two hidden minutes raise no E204; 40 visible seconds, a hidden\n  minute, then 20 more visible seconds raise one; and once a render has finished, hiding and showing\n  the tab raises none a minute later. The end-to-end lane cannot cover this: headless Chromium keeps\n  every page visible."
+        }
+      ],
+      "after_draft": [
+        {
+          "replaces_lines": "283-290",
+          "option": "1 (recommended by verification: DES-1's rule, plus why an E203 ends the clock and the banner sentence)",
+          "text": "**E204 counts visible time only.** AlphaTab 1.8.4 starts its first render from an animation\nframe, and a browser runs none in a hidden tab, so a player opened in a background tab draws\nnothing there while a plain timer keeps counting. The 60 seconds therefore run only while\n`document.visibilityState` is `visible`: a player opened in a background tab starts the clock when\nthe tab is first shown, a `visibilitychange` to `hidden` stops it, and it continues with the time\nleft when the page is visible again. Without this, a background tab left for a minute sends an\nunhandled E204 that lowers the health number although nothing failed.\n\n**Three events stop the clock permanently.** The first finished render, an E203, or the E204\nitself stops it, and after that a tab switch never starts it again. An E203 stops it because\nAlphaTab never draws once the font download has failed: without this, every E203 would be\nfollowed by a second unhandled report when the 60 visible seconds end, an E204 that says the font\nis late when it has already failed. The same clock also sets the banner's E204 text, so after an\nE203 the banner keeps its E203 text, and the clock does not show it again after the visitor\ndismisses it."
+        },
+        {
+          "replaces_lines": "283-290",
+          "option": "2 (DES-1's own suggested wording, in place: the reviewers' recommendation)",
+          "text": "**E204 counts visible time only.** AlphaTab 1.8.4 starts its first render from an animation\nframe, and a browser runs none in a hidden tab, so a player opened in a background tab draws\nnothing there while a plain timer keeps counting. The 60 seconds therefore run only while\n`document.visibilityState` is `visible`: a player opened in a background tab starts the clock when\nthe tab is first shown, a `visibilitychange` to `hidden` stops it, it continues with the time left\nwhen the page is visible again, and the clock ends for good at the first of three events: a\nfinished render, the E203 report (that failure is already known and reported), or the E204 report\nitself, so a later tab switch can never start it again. Without this, a background tab left for a\nminute sends an unhandled E204 that lowers the health number although nothing failed."
+        },
+        {
+          "replaces_lines": "600-604",
+          "option": "only (goes with option 1 or option 2 above)",
+          "text": "- **The font clock**, a test beside `web/app/play/NotationSurface.tsx`, with fake timers, a stubbed\n  `document.visibilityState` and a stub `document.fonts` (jsdom has none): two hidden minutes raise\n  no E204; 40 visible seconds, a hidden minute, then 20 more visible seconds raise one; once a\n  render has finished, hiding and showing the tab raises none a minute later; after an E203, 60\n  visible seconds raise no E204 and the banner still shows E203; and once an E204 has been raised,\n  hiding and showing the tab raises no second one. The end-to-end lane cannot cover the hidden-tab\n  cases: headless Chromium keeps every page visible."
+        }
+      ],
+      "scenario": "You open /play on a weak hotel network, the music-font download fails, and the banner reads 'Error E203: the music font could not be downloaded'; you dismiss it. About a minute later the banner returns, now reading 'Error E204: the music font did not arrive within 60 seconds', and the owner's Sentry gains a second issue, with its own email, saying the download hung when it failed. On another visit the download really hangs and E204 is sent at 60 seconds; you switch to another tab and back, and a literal reading of 'it continues with the time left' sends E204 again.",
+      "corrections": "None of substance. Two precisions: the second new-issue email arrives once, when the E204 issue is first created (later failed visits add events to that issue); and the health number does not drop twice, because the session is already unhandled after the E203. Whether a second E204 follows a tab switch depends on how the implementer reads 'the time left' (the model shows both natural readings send it), so it is a gap in the text rather than a certain bug.",
+      "notes_for_triage": "Completes F-29 (lap 2), whose text named only renderFinished. The reviewers recommended the rule in DES-1's own words (option 2). Verification recommends option 1, which makes the same rule but gives it its own paragraph, says why an E203 ends the clock, and adds the banner sentence the scope-guardian's note asks for; option 2 keeps the idiom 'for good' and puts two colons in one sentence. The banner sentence matters because one timer drives both the report and the banner (web/app/play/NotationSurface.tsx:125-130): without it, an implementer could keep a wall-clock timer for the banner and change only the report, and the section 6 case could not tell. The fix changes what a visitor sees: today, before this spec, the banner already switches from E203 to E204 after 60 s and returns after a dismissal (the TODAY model); with the fix it keeps the E203 text. No e2e case waits 60 s after a font abort (web/e2e/player.e2e.ts:215-223 checks E203 soon after load), so none breaks. Reverse order stays as it is: a download that hangs past 60 visible seconds and then fails sends E204, then E203, both true, and the banner switches to E203. The section 6 draft also adds 'a stub document.fonts (jsdom has none)': that is a verification addition, not part of DES-1 — the component's effect calls document.fonts.addEventListener on mount (NotationSurface.tsx:121), which throws in jsdom without a stub, for the three existing cases as well; the stub is also how the new E203 case raises its event. 'Permanently' means for the life of that player, as 'for good' does today: the clock lives in an effect keyed on the AlphaTab api (NotationSurface.tsx:107-136), so a new player after leaving /play and coming back starts a new clock. What a Drop leaves: every failed font download sends a false E204 when the 60 visible seconds end, and the clock's behaviour after an E204 is left to the implementer."
+    },
+    {
+      "id": "FYI-17",
+      "verdict": "pass-with-correction",
+      "checks": {
+        "section_exists": "Yes: section 2.3, the bullet 'E101, E102 and E103 drop the exception message' (spec lines 199-201); the email is section 5, step 2 (line 532).",
+        "quotes": "3/3 verbatim (spec lines 199, 197, 532).",
+        "fix_consistent": "Consistent with S1 and with lap 1's privacy rule: the sentence is fixed text of ours, so nothing from the file is sent. The reviewer's fix names section 2.3 and the section 6 reportError unit case; two more places say 'drop' and must change with it: the section 3.1 row 'the score's contents' (line 357) and the section 6 open-file case (lines 584-588, 'reports a warning without the message'). All four are drafted; the table row keeps its exact width, so Prettier does not re-pad the table. Section 3.2's 'E105, E901 and E201–E204 keep their message' stays true."
+      },
+      "central_claim": {
+        "status": "confirmed",
+        "evidence": [
+          "web/app/play/OpenFileControl.tsx:36-39 — E101 is a plain `new Error` whose text reads 'over the 25 MB limit': type `Error`.",
+          "web/app/play/OpenFileControl.tsx:40 — E102 is the rejection of file.arrayBuffer(), a DOMException such as NotFoundError or NotReadableError; getsentry/sentry-javascript@11.0.0:packages/browser/src/eventbuilder.ts:288 uses its own name as the type when it carries a stack (:37, :180), and otherwise sends type `Error` with the name inside the value (:300-303).",
+          "@coderline/alphatab@1.8.4:dist/alphaTab.core.mjs:176-182 and :14964-14968 — E103 is UnsupportedFormatError('No compatible importer found for file') (:30232), a subclass of AlphaTabError, and neither sets `name`. The vendored minified build (dist/alphaTab.core.min.mjs, copied as esm/alphaTab.core.mjs by web/scripts/vendor-alphatab.mjs:25) mangles the class names (`class r extends Error{type;constructor(t,e=\"\",s){super(e??\"\",{cause:s}),this.type=t}}`) but adds no `name` either. Sentry reads `ex.name`, never the class name, so the type is `Error`. Any other importer error is rethrown as it is (alphaTab.core.mjs:30223-30228): a crash keeps its own type, such as TypeError, and AlphaTab's own FormatError is again `Error`.",
+          "getsentry/sentry@master:src/sentry/eventtypes/error.py:77-90 (fetched 2026-10-05) — the issue title is the type, plus ': ' and the value's first line only when the value is not empty; an empty value leaves the title `Error`.",
+          "getsentry/sentry@master:src/sentry/services/eventstore/models.py:492-500 and :856 — the default email subject template is `$shortID - $title`; src/sentry/notifications/notifications/rules.py:137-138 uses it for issue-alert emails, and src/sentry/mail/notifications.py:50-63 may add a subject prefix. The code tag appears in neither.",
+          "shared/src/error-codes.ts:16-21 and docs/reference/error-codes.md:27-29 — the one-line meanings exist as a doc table and as code comments only; no runtime string holds them."
+        ]
+      },
+      "spike": {
+        "status": "run",
+        "what": "Read the open paths and the vendored minified AlphaTab build for an explicit `name`; read Sentry's server code for the issue title and the email subject (getsentry/sentry, default branch, fetched 2026-10-05) and Sentry 11's browser event builder for the exception type.",
+        "result": "Confirmed: E101 and E103 carry type `Error`, so with the value dropped their titles, and their email subjects (for example `WEB-4 - Error`), name nothing; E102 usually carries the DOMException's own name. Sentry titles a chained error from the last value in exception.values, which is the thrown error itself (getsentry/sentry-javascript@11.0.0:packages/core/src/utils/aggregate-errors.ts:22; getsentry/sentry@master:src/sentry/eventtypes/error.py:115-126), so that is where the fixed sentence must go. The drafted text, applied to a copy of the spec, passes Prettier (prettier.config.mjs), markdownlint-cli2 (.markdownlint.yaml) and cspell (cspell.json) with 0 issues, and every `before` matches the spec at 2f68d380 line for line."
+      },
+      "before": [
+        {
+          "lines": "199-201",
+          "text": "- **E101, E102 and E103 drop the exception message** — from the exception's value and from the\n  event's `message` — and keep its type, its stack, and the file's type and size. The engine's parse\n  message can quote text from inside the file (section 3.1)."
+        },
+        {
+          "lines": "357",
+          "text": "| the score's contents — notes, lyrics, alphaTex | AlphaTab's console logs, and its parse messages, can quote a broken alphaTex line                                                                                                                                                                                                                                                                                                                                                                                                                   | console breadcrumbs are off: the default `Console` integration is removed (3.3), since Sentry 11 has no `console` switch; E101–E103 drop the exception message (2.3) |"
+        },
+        {
+          "lines": "567-568",
+          "text": "  - `reportError`: the default level, the `code` tag, and E101–E103 dropping the message, also from\n    the event's `message`;"
+        },
+        {
+          "lines": "584-588",
+          "text": "- **The open-file catches**, a test beside `web/app/play/OpenFileControl.tsx`: a read that fails\n  shows E102 and reports a warning without the message; an `onNotation` that fails shows E105 and\n  reports an error that keeps its message; neither report carries the `instruments` tag, and once\n  the open ends the tag is back to the value for the score on screen; and the file type:\n  `Song.GP5` gives `gp5`, while `notes.txt` and a name with no extension give `other`."
+        }
+      ],
+      "after_draft": [
+        {
+          "replaces_lines": "199-201",
+          "option": "only",
+          "text": "- **E101, E102 and E103 replace the exception message** — in the exception's value and in the\n  event's `message` — with a fixed sentence of ours: the code, then its meaning from\n  `docs/reference/error-codes.md`, such as `E103: No AlphaTab importer accepts the bytes.` They keep\n  the type, the stack, and the file's type and size. The engine's parse message can quote text\n  from inside the file (section 3.1), so none of the original message is sent. Sentry titles an\n  issue with the exception's type and then its value, and the alert email's subject repeats that\n  title: without the sentence, E101 and E103 would read only `Error`."
+        },
+        {
+          "replaces_lines": "357",
+          "option": "only",
+          "text": "| the score's contents — notes, lyrics, alphaTex | AlphaTab's console logs, and its parse messages, can quote a broken alphaTex line                                                                                                                                                                                                                                                                                                                                                                                                                   | console breadcrumbs are off: the default `Console` integration is removed (3.3), since Sentry 11 has no `console` switch; E101–E103 send our own fixed message (2.3) |"
+        },
+        {
+          "replaces_lines": "567-568",
+          "option": "only",
+          "text": "  - `reportError`: the default level, the `code` tag, and E101–E103 replacing the message with the\n    code's fixed sentence, also in the event's `message`;"
+        },
+        {
+          "replaces_lines": "584-588",
+          "option": "only",
+          "text": "- **The open-file catches**, a test beside `web/app/play/OpenFileControl.tsx`: a read that fails\n  shows E102 and reports a warning whose message is E102's fixed sentence; an `onNotation` that\n  fails shows E105 and reports an error that keeps its message; neither report carries the\n  `instruments` tag, and once the open ends the tag is back to the value for the score on screen;\n  and the file type: `Song.GP5` gives `gp5`, while `notes.txt` and a name with no extension give\n  `other`."
+        }
+      ],
+      "scenario": "You, the owner, scan your inbox for Sentry alerts and find two new-issue emails whose subjects read 'WEB-4 - Error' and 'WEB-7 - Error' (the short IDs here are examples). One is a file over 25 MB (E101) and one a file that is not a score (E103), but nothing in the subject says which. You open each email or issue and look for the `code` tag before you can decide which one needs you.",
+      "corrections": "The fix must also change section 3.1's row 'the score's contents' (line 357) and section 6's open-file case (lines 584-588), which the reviewer did not name; both are drafted. 'In the words docs/reference/error-codes.md already uses' needs new runtime strings: shared/src/error-codes.ts holds the meanings only as comments, and tooling/check-error-codes.mjs compares codes, not wording, so nothing would catch the sentences drifting from the page. The reviewer's title claim is right for E101 and E103, as stated; E102's title is usually the DOMException's name, which names the kind of failure but not the code.",
+      "notes_for_triage": "Overlaps residual R29 (lap 2, adversarial: every E103 looks alike — default name 'Error', message dropped); the new part is the issue title and the email subject. E101's own message (web/app/play/OpenFileControl.tsx:38) and E102's (browser text) never quote the file; only E103's can, and the spec drops all three for one simple rule, which the fix keeps. Q7 (lap 2: blank every linked exception's value) stays open; the fixed sentence belongs on the last value. The names filter (section 3.2) also runs over the fixed sentence, so a remembered name equal to one of its words (a track called 'file', say) becomes [file] in it — cosmetic, since the sentence is ours. Considered and not drafted: Sentry's per-project email subject template accepts `${tag:code}` (EventSubjectTemplate, models.py:814-815), but an event with no code tag — every uncaught error — would then show the literal text `${tag:code}` (the lookup raises KeyError and safe_substitute keeps the placeholder), and it changes no issue title. Grouping should not change (a constant sentence; reasoned, not checked). What a Drop leaves: E101 and E103 issues titled `Error`, found only by the code tag (search `code:E103`) or by opening them; nothing breaks."
+    },
+    {
+      "id": "FYI-18",
+      "verdict": "pass-with-correction",
+      "checks": {
+        "section_exists": "Yes: the section 2.4 'Failures that never throw' row (spec line 281), the section 6 bullet 'Cases that already force a failure' (lines 619-622), and section 1's player.e2e.ts bullet (lines 114-115).",
+        "quotes": "4/4 verbatim (spec lines 281, 281, 619-621, 301).",
+        "fix_consistent": "Consistent: section 2.4 already lists E601/E603 as warnings from both restore paths, and section 1's player.e2e.ts bullet must change with section 6 (both drafted). Q9 (lap 2: which tests install the envelope fixture) stays with the plan; if the recorder is a Playwright fixture it is in place before the test body, so before these cases' page.goto, which they need because the warning is raised while /play first mounts."
+      },
+      "central_claim": {
+        "status": "confirmed",
+        "evidence": [
+          "web/e2e/player.e2e.ts:1855-1878 — 'a single out-of-range setting is corrected and the warning NAMES it' plants `{ settings: { display: { scale: 99 } } }` under notation-hero.player-settings with addInitScript (:1856) and asserts the toast reads 'Error E601' (:1866).",
+          "web/e2e/player.e2e.ts:1882-1899 — 'a corrupt stored value resets with a toast, and the player still starts' plants '{broken' (:1885-1887) and asserts 'Error E603' (:1891).",
+          "web/app/play/PlayerShell.tsx:216-259 — the settings restore effect: E601 when keys were repaired, E603 when the document could not be read (after the opt-out catch at web/lib/alphatab/settings-storage.ts:195). Both cases force this one effect.",
+          "web/app/play/PlayerShell.tsx:561-572 — the transport restore effect raises the same two codes for the notation-hero.transport document (web/lib/alphatab/transport-storage.ts:25); no case in player.e2e.ts stores a bad transport value.",
+          "Neither effect has a catch clause, so the section 2.5 lint rule never sees these reports; section 6 pins E201, E202, E203 and E204 but not E601/E603."
+        ]
+      },
+      "spike": {
+        "status": "untested",
+        "what": "Read the two cases and both restore effects. The new assertions cannot run yet: the envelope fixture (web/e2e/sentry-envelopes.ts) and the reportError calls do not exist.",
+        "result": "The cases exist and force E601 and E603 through the settings restore only. The drafted text, applied to a copy of the spec, passes Prettier (prettier.config.mjs), markdownlint-cli2 (.markdownlint.yaml) and cspell (cspell.json) with 0 issues, and every `before` matches the spec at 2f68d380 line for line."
+      },
+      "before": [
+        {
+          "lines": "114-115",
+          "text": "- `web/e2e/player.e2e.ts` — one assertion each on the font and SoundFont failures it already\n  forces (section 6)."
+        },
+        {
+          "lines": "619-622",
+          "text": "  - **Cases that already force a failure** get one extra assertion each: the font abort\n    (`web/e2e/player.e2e.ts:218`) must produce E203, and the SoundFont abort\n    (`web/e2e/player.e2e.ts:267`) E202. No case in `player.e2e.ts` aborts the engine module, so\n    E201 gets a case of its own (case 8 below)."
+        }
+      ],
+      "after_draft": [
+        {
+          "replaces_lines": "114-115",
+          "option": "only",
+          "text": "- `web/e2e/player.e2e.ts` — one assertion each on the failures it already forces: the font and\n  SoundFont downloads, and the out-of-range and corrupt stored settings (section 6)."
+        },
+        {
+          "replaces_lines": "619-622",
+          "option": "only",
+          "text": "  - **Cases that already force a failure** get one extra assertion each: the font abort\n    (`web/e2e/player.e2e.ts:218`) must produce E203, the SoundFont abort\n    (`web/e2e/player.e2e.ts:267`) E202, the out-of-range stored Zoom\n    (`web/e2e/player.e2e.ts:1856`) one E601 `warning`, and the corrupt stored settings\n    (`web/e2e/player.e2e.ts:1885`) one E603 `warning`. No case in `player.e2e.ts` aborts the\n    engine module, so E201 gets a case of its own (case 8 below), and none stores a bad transport\n    value, so the transport restore's E601/E603 stays untested."
+        }
+      ],
+      "scenario": "Next year you, the implementer, move the two settings-restore effects in web/app/play/PlayerShell.tsx into a hook and lose the reportError call for E601. The toast still reads 'Error E601', so the e2e case at web/e2e/player.e2e.ts:1855 stays green, lint stays green because no catch is involved, and Sentry never again hears that a visitor's saved settings were repaired.",
+      "corrections": "The two cases force only one of the two restore paths, the settings restore (web/app/play/PlayerShell.tsx:216-259), where they reach both codes; they do not cover 'the two settings-restore effects'. The transport restore (PlayerShell.tsx:561-572) raises the same codes and stays untested; the draft says so in one clause.",
+      "notes_for_triage": "Same cheap pattern lap 2 used for E201 (F-26). The assertion also pins the level: a report sent as `error` instead of `warning` fails it. A transport case would be new but equally cheap — plant a bad notation-hero.transport value with addInitScript — and is not drafted, since it is a new case rather than an extra assertion. The related note stands: E205, E401 (both sites), E602 and the settings-apply catch (web/app/play/PlayerShell.tsx:309) are also pinned only by the lint rule, which proves a catch reports something, not its code or level; each needs its own harness. What a Drop leaves: a refactor can drop or mis-level the E601/E603 report with every check green."
+    },
+    {
+      "id": "FYI-19",
+      "verdict": "pass",
+      "checks": {
+        "section_exists": "Yes: section 7 'Documents that change' (spec lines 661-671), section 1 'Changed files' (lines 99-104), section 2.5 'The lint rule' (lines 299-320).",
+        "quotes": "2/2 verbatim (spec lines 102-104, 313).",
+        "fix_consistent": "Consistent: section 2.5 already states the rule and the opt-out comment, and the drafted bullet repeats them. Section 1 must gain web/AGENTS.md as well, because lap 1 made section 1's file lists complete (both drafted)."
+      },
+      "central_claim": {
+        "status": "confirmed",
+        "evidence": [
+          "web/AGENTS.md:7-12 — the 'This package' list records the AlphaTab import fence the same way: 'Type-only imports are the rule here and a lint fence enforces it (`web/eslint.config.mjs`)'.",
+          "docs/specs/2026-10-03-nh-124-sentry-error-monitoring-design.md — the spec never names web/AGENTS.md (no match for 'AGENTS'); section 7 lists the changelog, the registry, web/README.md, the error-code pair and Jira.",
+          "web/AGENTS.md:29-37 — the Next.js-managed block is separate; the 'This package' list is outside it, so a bullet there survives next dev and next build."
+        ]
+      },
+      "spike": {
+        "status": "untested",
+        "what": "A documentation change: nothing to run beyond checking the drafted spec text.",
+        "result": "The drafted text, applied to a copy of the spec, passes Prettier (prettier.config.mjs), markdownlint-cli2 (.markdownlint.yaml) and cspell (cspell.json) with 0 issues, and every `before` matches the spec at 2f68d380 line for line."
+      },
+      "before": [
+        {
+          "lines": "99-104",
+          "text": "**Changed files:** `web/next.config.ts` (the `withSentryConfig` wrapper), `web/package.json` (the\ndependency, and the token check at the end of its `build` script), both `error.tsx` files, the 16\ncatch sites and 4 failure paths listed in section 2.4, `web/app/page.tsx` (copy),\n`web/eslint.config.mjs` (the rule), `web/e2e/page-errors.ts` (reads the shared list), the `/`\nscreenshot baseline, `web/README.md` (the environment variables), `web/playwright.e2e.config.ts`\n(a fake DSN), `cspell.json`, and the decision registry and changelog. Also:"
+        },
+        {
+          "lines": "667",
+          "text": "- `web/README.md` — the Deploy section names both environment variables."
+        }
+      ],
+      "after_draft": [
+        {
+          "replaces_lines": "99-104",
+          "option": "only",
+          "text": "**Changed files:** `web/next.config.ts` (the `withSentryConfig` wrapper), `web/package.json` (the\ndependency, and the token check at the end of its `build` script), both `error.tsx` files, the 16\ncatch sites and 4 failure paths listed in section 2.4, `web/app/page.tsx` (copy),\n`web/eslint.config.mjs` (the rule), `web/AGENTS.md` (the rule, in words), `web/e2e/page-errors.ts`\n(reads the shared list), the `/` screenshot baseline, `web/README.md` (the environment variables),\n`web/playwright.e2e.config.ts` (a fake DSN), `cspell.json`, and the decision registry and\nchangelog. Also:"
+        },
+        {
+          "replaces_lines": "667",
+          "option": "only",
+          "text": "- `web/README.md` — the Deploy section names both environment variables.\n- `web/AGENTS.md` — one bullet in its \"This package\" list, beside the AlphaTab import fence: every\n  `catch` and `.catch()` callback in `web/` calls `reportError` or `noteError` from\n  `web/lib/monitoring/report.ts`, a deliberate silence is\n  `// eslint-disable-next-line no-restricted-syntax -- <reason>`, and lint enforces the rule\n  (section 2.5)."
+        }
+      ],
+      "scenario": "You, the next agent, add `try { … } catch { setFailed(true) }` to a new component in web/. You read web/AGENTS.md, the package's own contract, and it lists the AlphaTab import fence but nothing about catches, so you learn the rule only when pnpm run lint fails with no-restricted-syntax, and the exact opt-out comment is written only in this spec.",
+      "corrections": "none",
+      "notes_for_triage": "Optional, not in the reviewer's text: the bullet could also say that the browser's own global reportError is banned (no-restricted-globals, section 2.5), the other trap an agent meets. What a Drop leaves: nothing breaks; the rule is learned from a lint failure."
+    }
+  ]
+}

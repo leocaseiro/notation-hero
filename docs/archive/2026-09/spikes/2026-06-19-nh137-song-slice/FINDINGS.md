@@ -8,6 +8,8 @@
 > **The evidence behind a decision that already shipped.**
 >
 > NH-137 settled on positions-only slice storage (`sourcePlayableId` + `barStart` + `barEnd`, with alphaTex and sync points derivable at runtime). This document is the four-approach comparison that led there, and its _proved by running_ versus _concluded from source_ table is the part worth keeping.
+>
+> The spike's `slice.mjs` and `checksync.mjs` were archived beside it on 2026-11-06, copied unchanged from `worktree-agent-a6595b9997a45d9bc`.
 
 **Ticket:** [NH-137](https://leocaseiro.atlassian.net/browse/NH-137) (builds on [NH-196](https://leocaseiro.atlassian.net/browse/NH-196) — GP→tonal parser, which gives the `sections[]` `barStart`/`barEnd` source for the A–B picker)
 **Date:** 2026-06-19

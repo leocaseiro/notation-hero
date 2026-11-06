@@ -1,7 +1,12 @@
 import '@testing-library/jest-dom/vitest';
 
 import { cleanup } from '@testing-library/react';
-import { afterEach } from 'vitest';
+import { afterEach, vi } from 'vitest';
+
+// No unit test talks to Sentry. Under jsdom, Vitest loads @sentry/nextjs's Node build, so every
+// test file gets this stand-in instead. web/lib/monitoring/report.ts is the only module that calls
+// the SDK at runtime, and it calls only these two; a test that needs to see a report reads them.
+vi.mock('@sentry/nextjs', () => ({ addBreadcrumb: vi.fn(), captureException: vi.fn() }));
 
 // Testing Library only self-registers its afterEach cleanup when the runner exposes test globals.
 // This lane deliberately does not (`globals` is off, so web/tsconfig.json needs no vitest types

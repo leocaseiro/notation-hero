@@ -1,0 +1,141 @@
+Document review complete (headless mode).
+
+Proposed fixes (concrete fix, requires user confirmation):
+
+[P1] Section: §3.3 SDK settings (also the §3.1 "score's contents" row and §6 e2e case 3) — The setting that should keep console lines out of reports does not exist in Sentry 11 (feasibility, security-lens, adversarial, confidence 100)
+  Recommendation: Apply
+  Consequence if unchanged: The spec's code fails the type-check, and whoever fixes that by deleting the option ships console lines — which can quote a broken file — inside every report.
+  Change: Remove the default `Console` integration with the function form of `integrations`; say so in the §3.1 row; extend e2e case 3 so a console line logged before the error must not appear in the envelope.
+  Basis: Sentry 11.0.0 moved console breadcrumbs into their own default integration; breadcrumbsIntegration has no console option (model tsc: TS2353).
+
+[P1] Section: §2.6 Known engine noise; §3.3 SDK settings; §6 e2e — Sentry's own error catcher would break the known-noise filter — and the CI job that blocks merging (adversarial, feasibility, confidence 100)
+  Recommendation: Apply
+  Consequence if unchanged: The merge-blocking `web` job fails on the Guitar Pro cases as soon as the fake address is set, and production sends both known engine errors.
+  Change: Remove `BrowserApiErrors` in the same `integrations` filter as `Console`; explain why in §2.6; add an e2e case that first makes NH-338 happen, then checks nothing was sent. (The wrong 'inside the worker' wording is corrected separately, whatever is decided here — AMB-3.)
+  Basis: BrowserApiErrors wraps the engine's worker listeners and adds a frame from our bundle; the engine-only frame rule then never matches (static analysis of Sentry 11.0.0 + the engine bundle).
+
+[P1] Section: §3.1 What could leave the device (query-strings row); §3.3; §6 — Tracking codes in the page address still reach Sentry (security-lens, feasibility, confidence 100)
+  Recommendation: Apply
+  Consequence if unchanged: A visitor who arrives from a Facebook or email link sends that link's tracking code with any error, while the home page says 'anonymous'.
+  Change: Cut every address at its first `?` or `#` in `scrub.ts` (the event's address, navigation breadcrumbs, fetch/xhr breadcrumbs); correct the §3.1 row; add a unit case and an e2e case that covers both `/` and /play. `urlQueryParams: false` (line 252) can stay — harmless.
+  Basis: Sentry 11's HttpContext copies location.href unfiltered and navigation breadcrumbs keep the query; dataCollection's urlQueryParams only touches spans.
+
+[P1] Section: §3.4 The copy (and Known limits, last bullet) — The new home-page sentence does not say a ping goes out on every visit (design-lens, confidence 75)
+  Recommendation: Apply
+  Consequence if unchanged: The home page under-describes what is sent, while the spec claims it discloses the per-visit ping.
+  Change: Use design-lens's wording (above), or your own — it must say a ping goes out on every visit.
+  Basis: Release Health pings from every route, including `/`; "crash statistics" does not say so.
+
+[P1] Section: §5 Setup — done by leocaseiro, by hand — Nothing tells you when a new error arrives (product-lens, confidence 75)
+  Recommendation: Apply
+  Consequence if unchanged: Reports pile up in a dashboard nobody opens; no warning ever notifies anyone.
+  Change: Add the alert step to §5.
+  Basis: The project-creation default alerts only on high priority, and Sentry ranks warnings medium.
+
+[P2] Section: §1 Changed files; §1 new-files table; §6 end to end — Set the fake Sentry address in the Playwright config, so local test runs match CI (scope-guardian, feasibility, adversarial (+1 anchor), confidence 100)
+  Recommendation: Apply
+  Consequence if unchanged: Local e2e runs build without Sentry, so the new cases only mean something in CI.
+  Change: Set the fake DSN in `webServer.env` of web/playwright.e2e.config.ts; update §1 and §6 to say so.
+  Basis: Every lane run builds through webServer.env; a CI-only variable leaves local and Docker runs with Sentry off.
+
+[P2] Section: §2.4 (the OpenFileControl / drag-and-drop row); §2.3; §6 unit — A bug in our open-file code would be filed as the visitor's unreadable file (feasibility, confidence 75)
+  Recommendation: Apply
+  Consequence if unchanged: Bugs in our open code reach Sentry as 'visitor's unreadable file' warnings with no message.
+  Change: Split read failures from post-read failures with a flag; report post-read failures as errors with their message.
+  Basis: Both catches wrap the whole open flow, and every non-size failure becomes E102 with its message dropped.
+
+[P2] Section: §2.4 (the two storage rows; "Blocked is not corrupt") — The 'storage blocked' catches would also hide bugs in our own settings reader (adversarial, confidence 75)
+  Recommendation: Apply
+  Consequence if unchanged: A bug in our settings or transport reader looks exactly like a private window, and returning visitors lose their settings silently.
+  Change: Each storage catch tells a refused store from our own failure: refused → breadcrumb (S2b), anything else → error.
+  Basis: The "blocked" catches wrap the whole reader and serializer, not just the storage call.
+
+[P2] Section: §3.2 The names filter; §6 unit — The names filter would miss track names that have spaces at the ends (security-lens, adversarial (+1 anchor), confidence 100)
+  Recommendation: Apply
+  Consequence if unchanged: Any track name with spaces at its ends reaches Sentry whole.
+  Change: Trim before storing; apply the 3-character floor after trimming; add the unit case.
+  Basis: Labels use the trimmed name; the filter would store the raw one.
+
+[P2] Section: §2.2 The error pages — The new root-level error page's layout is not specified — only its sentence and its report line (design-lens, confidence 75)
+  Recommendation: Apply
+  Consequence if unchanged: The root-level crash page is whatever the implementer guesses, with no language or tab title.
+  Change: Spell out global-error.tsx against app/error.tsx, plus the three framework requirements.
+  Basis: Next 16 requires a client component with its own html/body and no metadata export; the visible layout is unspecified.
+
+[P2] Section: §3.2 The names filter; §6 unit — The names filter can leave part of a name behind when one name sits inside another (security-lens, confidence 75)
+  Recommendation: Apply
+  Consequence if unchanged: Overlapping names — routine, because the engine makes short names from the first 10 characters — leak in pieces.
+  Change: Replace longest first; add the overlap unit case.
+  Basis: No replacement order + a list that never forgets + automatic prefix short names.
+
+[P2] Section: §6 Testing — the new e2e cases 1, 3, 4, 5 — Some new end-to-end tests can pass without testing anything, and two cannot pass as written (adversarial, confidence 75)
+  Recommendation: Apply
+  Consequence if unchanged: Case 1 fails on day one; cases 3–5 stay green even when nothing is being sent.
+  Change: Give every negative case a positive control (a sentinel the test waits for), read event envelopes only, defer case 1's throw, and make case 4 wait for NH-335.
+  Basis: Absence-only assertions pass on an empty recorder; a throw inside page.evaluate never reaches the page (spiked).
+
+[P2] Section: §6 Testing; §2.2 The error pages — No test renders the three error pages (design-lens, confidence 75)
+  Recommendation: Apply
+  Consequence if unchanged: A dropped reportError line in any error page ships green, and those crashes never reach Sentry.
+  Change: Add one Vitest file per page (or one shared) that renders it with a stub error and checks the sentence, E901, reset and the report call.
+  Basis: No planned test covers the error pages; the infrastructure already exists.
+
+[P3] Section: §2.5 The lint rule — `reportError` has the same name as a browser built-in, so a missing import goes unnoticed (feasibility, adversarial (+1 anchor), confidence 75)
+  Recommendation: Apply
+  Consequence if unchanged: A forgotten import silently routes a report through the browser's global handler, without its code or message removal.
+  Change: Add a `no-restricted-globals` entry for `reportError` in web/eslint.config.mjs.
+  Basis: A global reportError exists in lib.dom; the selectors match by name only.
+
+Decisions (requires user judgment):
+
+[P1] Section: Non-goals (first bullet); S4; §2.2; §2.3; §3.4 (the "Crash statistics" paragraph) — The 'crash-free' health number cannot move in Sentry 11 browsers (adversarial, feasibility, product-lens (+1 anchor), confidence 100)
+  Recommendation: Apply
+  Consequence if unchanged: The interim health number reads 100% whatever the player does, until NH-52 replaces it.
+  Change: 2️⃣, narrowly — a health number should go down when the player cannot play. Flip to 1️⃣ if a slow connection should never lower it.
+  Basis: Sentry 11 browser sessions are 'unhandled', never 'crashed', and reportError's captures are handled; error-page crashes never touch the number.
+
+[P2] Section: §3.1 (track-names row); §3.2 The names filter — The names filter mostly protects click notes — keep it, or switch click notes off? (scope-guardian, confidence 75)
+  Recommendation: Apply
+  Consequence if unchanged: §3.2 stays exactly as written — then F-11 and F-13 still need deciding.
+  Change: 2️⃣ — the one channel that leaks today closes for good, and this ticket's goal (every error reaches Sentry) does not need click notes: each handled failure already carries its E-code. Flip to 1️⃣ if knowing what was clicked before an error matters more to you than a smaller design with no list.
+  Basis: Only track names reach a recorded attribute; dom:false closes that channel without a names list.
+
+FYI observations (anchor 50, no decision required): 8
+- [P3] §3.4 The copy — The new home copy is about twice today's tagline (119 → 245 characters; 276 with F-5's wording) — about 4 lines on desktop. Only one `/` baseline exists (1280×900), so phone width is never pictured. (design-lens)
+- [P3] §3.4 The copy — The privacy note appears only on `/`. A returning visitor who opens /play directly is counted on every visit and reads nothing about it (the logo links home). (design-lens)
+- [P3] §2.3 The reporting functions — `FileFacts.type` has no source at the E103 site: the parsed input holds only a name and bytes (PlayerShell.tsx:68-72), and browsers give an empty MIME type for .gp/.gp5/.gpx/.atex. (feasibility (+ a product-lens question))
+- [P3] §2.5 The lint rule — The test-file exemption has no consumer: no test, e2e or setup file under web/ has a catch today, and the existing lint block already covers test files. (scope-guardian)
+- [P3] §6 Testing (lint canary) — A closer model for the lint canary exists: tooling/alphatab-import-fence.test.sh (an expect_rejected helper over the same no-restricted-syntax array; runs in the quality job). check-core-purity-canary.sh would need its own script and CI step. (scope-guardian)
+- [P3] §6 Testing (download size) — Next 16 removed "First Load JS" from `next build` output (bundled docs version-16.md:989), so the before/after size needs a named method. (feasibility)
+- [P3] §5 Setup — Setup step 5 proves an event arrives, not that source maps work: an E103 arrives whether or not its stack resolves. (adversarial)
+- [P3] Known limits — The ad-block comparison has no visit count to compare against: web/ has no Vercel Web Analytics, and Vercel Hobby Observability keeps 12 hours with no per-path view. Adding Web Analytics would be a new visit counter needing its own privacy decision (S2 / NH-52). (adversarial (+ a product-lens question))
+
+Residual concerns: 18
+- R1 (security-lens): the DSN is public and the free plan has no spike protection — set the project's "Allowed Domains" to the production host (cheap partial guard); §5 has no rotation or expiry note for SENTRY_AUTH_TOKEN.
+- R2 (security-lens, feasibility): httpHeaders:false also strips User-Agent, so reports may lose browser/OS context unless Sentry falls back to the ingest request's own User-Agent (not verified) — matters for browser-specific audio failures.
+- R3 (security-lens, feasibility): the default LinkedErrors integration sends each error.cause message; the E101–E103 message drop should cover every exception value (latent with the engine 1.8.4).
+- R4 (feasibility): Sentry 11 defaults include cultureContextIntegration — locale and time zone on every event; check against "anonymous".
+- R5 (security-lens, feasibility, adversarial): @sentry/nextjs 11 installs browserTracingIntegration by default unless bundleSizeOptimizations.excludeTracing is set — dead code in the measured bundle, and trace headers on same-origin requests. Can bundleSizeOptimizations run under Turbopack?
+- R6 (product-lens, feasibility): the lint selectors miss `.catch(namedHandler)`, `.then(ok, onRejected)`, element onerror listeners and Promise.allSettled.
+- R7 (scope-guardian): dedupe drops only an event identical to the one just before it; two errors alternating in a loop are all sent — a per-page-load counter in beforeSend is a few lines if the quota matters.
+- R8 (feasibility, adversarial): if scrubEvent rewrites every string, a remembered name equal to a structural value (level, breadcrumb category) corrupts the event — limit it to free-text fields (F-10 option 1 only).
+- R9 (adversarial): an event with no frames must never match the noise list — add that unit case.
+- R10 (adversarial): the storage-blocked breadcrumb is recorded at page load and can fall out of the 100-breadcrumb buffer before a later error.
+- R11 (adversarial): the lint canary covers only the CatchClause selector; the `.catch(() => …)` selector has none (folded into FYI-5's suggestion).
+- R12 (adversarial): releases are stamped per build to the minute, so each release has few sessions and its Release Health share is noisy.
+- R13 (adversarial): §2.6's quota estimate ignores dedupe — NH-335's seven identical throws per open collapse to one event; the noise list is justified more by a clean issue list than by the quota.
+- R14 (design-lens): the 3-character floor lets a 2-character track name (e.g. "Dr") through in a Solo label, while the copy promises "never ... its name" (F-10 option 1 only).
+- R15 (design-lens): neither page says WHO receives the reports (a third-party service), so a visitor cannot check the claim.
+- R16 (security-lens): files also arrive by drag-and-drop (acceptDropped), not only by picking — rememberOpenFile must be fed from both (latent; F-10 option 1 only).
+- R17 (verify-C): Next 16.3 docs prefer retry() over reset in most cases — a separate decision for all three error pages.
+- R18 (security-lens): if tracing is ever turned on, INP and web-vital spans are named with the same aria-labels and bypass beforeSend/beforeBreadcrumb — a beforeSendSpan would be needed.
+
+Deferred questions: 4
+- Q1 (security-lens) — fold into §5 step 1 at triage? Which data storage region (US or EU) should the Sentry organization use? Sentry asks at organization creation and the choice cannot be changed later.
+- Q2 (security-lens): pnpm's build-script approval (allowBuilds) will need an entry for any install script in @sentry/nextjs 11's dependency tree (e.g. a CLI binary); Vercel's production install runs with SENTRY_AUTH_TOKEN in its environment — approve those scripts or leave them blocked? (plan)
+- Q3 (feasibility, adversarial): only 11.0.0 is past the 7-day release-age gate today (11.1-11.4 published 2026-09-28 to 10-02). The plan should re-check the Console integration, BrowserApiErrors wrapping and "unhandled" sessions against the exact version it resolves, and read the browser sections of the v11 MIGRATION.md (attachStacktrace now true, the "page" session lifecycle, permissive dataCollection defaults for unset keys). (plan)
+- Q4 (product-lens): does Sentry email the account owner when the 5,000-error monthly quota runs out? Monitoring stops for the rest of that month.
+
+Restated: 16 (residual/deferred items suppressed as duplicates of actionable findings)
+
+Review complete

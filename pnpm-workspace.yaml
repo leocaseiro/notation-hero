@@ -69,7 +69,8 @@ overrides:
   'brace-expansion@5': ^5.0.12 # the same six — via minimatch@10
   'fast-uri@3': ^3.1.8 # GHSA-4c8g-83qw-93j6 + GHSA-v2hh-gcrm-f6hx + GHSA-7p8r-x3mc-p8w7 + GHSA-f65p-4m7j-42xc + GHSA-fph4-wmhf-6fwf + GHSA-jqff-g426-hqxp + GHSA-hrr3-gc8f-f4qj — via ajv@8
   'qs@6': ^6.16.0 # GHSA-4mjr-xmp4-gh2g + GHSA-x5fp-wj9c-mxmx — via express@5 and body-parser@2
-  smol-toml: ^1.7.1 # GHSA-7w5x-hrqm-74c2 — a floor guard: markdownlint-cli2 pinned smol-toml 1.7.0 exactly up to 0.23.2 (0.23.3 pins a patched 1.8.0)
+  smol-toml: ^1.9.0 # GHSA-7w5x-hrqm-74c2 + GHSA-r4xh-jqrq-34v2 — markdownlint-cli2 pins smol-toml EXACTLY (1.8.0 at 0.23.3, its latest), so only a floor reaches it
+  katex: 0.18.10 # GHSA-238p-pmpm-9mq7 — dev-only via micromark-extension-math (markdownlint), whose latest still wants ^0.16.0; markdownlint imports only its syntax extension, so KaTeX never renders anything. Exact, because 0.18.11 is deprecated (published with breaking changes)
 
 
   # No undici override: jsdom@29 (client tests) needs undici 7.x; master's 6.27.0 pin

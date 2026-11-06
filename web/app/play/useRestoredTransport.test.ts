@@ -1,3 +1,4 @@
+import { addBreadcrumb, captureException } from '@sentry/nextjs';
 import { renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
@@ -83,6 +84,8 @@ const seed = (stored: string) => {
 beforeEach(() => {
   globalThis.localStorage.clear();
   storageReads.mockClear();
+  vi.mocked(addBreadcrumb).mockClear();
+  vi.mocked(captureException).mockClear();
 });
 
 afterEach(() => {
@@ -237,4 +240,36 @@ test('a blocked write-back keeps the restore and the warning', () => {
   expect(restoredValues(result.current)).toEqual({ ...STORED, masterVolume: 1 });
   expect(engine).toEqual({ ...STORED, masterVolume: 1 });
   expect(result.current.repaired).toEqual(['masterVolume']);
+  // The visitor's browser, not our bug: a breadcrumb that travels with the next real report.
+  expect(vi.mocked(addBreadcrumb).mock.calls).toEqual([
+    [
+      {
+        category: 'notation-hero',
+        level: 'warning',
+        message: 'Repaired transport values could not be written back',
+        data: { error: 'QuotaExceededError' },
+      },
+    ],
+  ]);
+  expect(captureException).not.toHaveBeenCalled();
+});
+
+// The same catch, when the write-back fails for any other reason: our own serializer, so an error.
+test('a write-back that fails for any other reason reports an error, never a breadcrumb', () => {
+  seed(JSON.stringify({ version: 1, settings: { ...STORED, masterVolume: 9 } }));
+  const bug = new TypeError('our bug');
+  vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+    throw bug;
+  });
+  const { result, arrive } = renderTransport();
+
+  expect(() => {
+    arrive();
+  }).not.toThrow();
+
+  expect(result.current.repaired).toEqual(['masterVolume']);
+  expect(addBreadcrumb).not.toHaveBeenCalled();
+  expect(vi.mocked(captureException).mock.calls).toEqual([
+    [bug, { captureContext: { level: 'error', tags: {} } }],
+  ]);
 });

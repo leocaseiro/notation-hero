@@ -1,0 +1,548 @@
+[
+  {
+    "id": "F-1",
+    "section_exists": true,
+    "quotes": [
+      {
+        "quote": "integrations: [breadcrumbsIntegration({ console: false })],",
+        "found": true,
+        "lines": "253"
+      },
+      {
+        "quote": "console breadcrumbs are off entirely; E101–E103 drop the exception message (2.3)",
+        "found": true,
+        "lines": "221"
+      },
+      {
+        "quote": "One new dependency: `@sentry/nextjs` (major version 11), in `web/package.json` only.",
+        "found": true,
+        "lines": "67"
+      }
+    ],
+    "before_verbatim": [
+      {
+        "lines": "221",
+        "text": "| the score's contents — notes, lyrics, alphaTex | AlphaTab's console logs, and its parse messages, can quote a broken alphaTex line                                                                                                                                                                                                                            | console breadcrumbs are off entirely; E101–E103 drop the exception message (2.3)                                     |"
+      },
+      {
+        "lines": "253",
+        "text": "  integrations: [breadcrumbsIntegration({ console: false })],"
+      },
+      {
+        "lines": "349-350",
+        "text": "    3. Open a sample whose name, title and track names are known, click Solo, then cause an error:\n       the raw envelope contains none of those strings."
+      }
+    ],
+    "claims": [
+      {
+        "claim": "(a) @sentry/browser 11.0.0 BreadcrumbsOptions has no `console` key (only dom, fetch, history, sentry, xhr)",
+        "verdict": "confirmed",
+        "evidence": "getsentry/sentry-javascript @ 11.0.0 (commit 3e02c87c), fetched first-hand with gh api; cached scratchpad copies were byte-identical: packages/browser/src/integrations/breadcrumbs.ts:35-46 declares exactly dom, fetch, history, sentry, xhr; defaults at :54-61; setup() at :65-81 never touches console. At runtime an extra `console` key is spread into _options and ignored. A tsc 5.9.3 check on a model copying those declarations plus defineIntegration (packages/core/src/integration.ts:170-174) rejects the spec line with TS2353 \"'console' does not exist in type 'Partial<BreadcrumbsOptions>'\" (model only; the published .d.ts was not installed)."
+      },
+      {
+        "claim": "(b) console breadcrumbs come from a separate default integration named exactly 'Console', and MIGRATION.md says to filter it out",
+        "verdict": "confirmed",
+        "evidence": "packages/core/src/integrations/console.ts:26 `const INTEGRATION_NAME = 'Console' as const;`, :47 `name: INTEGRATION_NAME`; breadcrumb built at :71-80 with `category: 'console'`, `data.arguments: args` (the raw console arguments) and `message: formatConsoleArgs(args)`. packages/browser/src/sdk.ts:40 lists `consoleIntegration()` in getDefaultIntegrations. MIGRATION.md:1593: the `console` option was removed from breadcrumbsIntegration; console breadcrumbs now come from the default consoleIntegration — 'filter out the `Console` integration to disable them'."
+      },
+      {
+        "claim": "(c) @sentry/nextjs 11.0.0 client init accepts `integrations` as a function `(defaults) => …` and its defaults include Console",
+        "verdict": "confirmed",
+        "evidence": "packages/nextjs/src/client/index.ts:64-69 builds `{ defaultIntegrations: getDefaultIntegrations(options), …, ...options }` and :80 calls reactInit(opts); :106-107 takes the React defaults, and packages/react/src/index.ts:4 `export * from '@sentry/browser'` makes them the browser defaults (sdk.ts:34-47, Console at :40). browser sdk.ts:113-116 -> packages/core/src/integration.ts:61-63 `typeof userIntegrations === 'function'` -> `userIntegrations(defaultIntegrations)`. Option type packages/core/src/types/options.ts:664 `integrations?: Integration[] | ((integrations: Integration[]) => Integration[])`."
+      },
+      {
+        "claim": "(d) AlphaTab logs import failures with the error object through console.error, and web/ sets a production log level that lets it print",
+        "verdict": "confirmed",
+        "evidence": "web/node_modules/@coderline/alphatab/dist/alphaTab.core.mjs (1.8.4):30224-30227 — any importer error that is not UnsupportedFormatError goes to `Logger.error(\"ScoreLoader\", \"Score import failed due to unexpected error: \", e)` then rethrows; Logger.error (:1686-1687) -> ConsoleLogger.error (:1665) `console.error(ConsoleLogger._format(category, msg), ...details)`; _shouldLog (:1674-1675) is `level >= Logger.logLevel`. web/app/play/PlayerShell.tsx:871 calls `ScoreLoader.loadScoreFromBytes` on the MAIN thread, so Sentry's console instrumentation sees it, before the E103 catch at :872. web/lib/alphatab/engine.ts:57-60 returns LogLevel.Info unless NEXT_PUBLIC_ALPHATAB_LOG_LEVEL is \"Debug\"; web/lib/alphatab/defaults.ts:22 applies it and the API copies it to Logger.logLevel (alphaTab.core.mjs:45539). Error (4) >= Info (2), so it prints. Sentry's breadcrumb message for an Error argument is \"name: message\" (packages/core/src/utils/string.ts:105-108) — the same message E101-E103 drop."
+      }
+    ],
+    "spike": {
+      "ran": true,
+      "what": "Extra, not listed: tsc 5.9.3 (web/node_modules/.bin/tsc) over a model file that copies the 11.0.0 BreadcrumbsOptions and defineIntegration declarations, calling breadcrumbsIntegration({ console: false }) and breadcrumbsIntegration({ dom: false }). Files in scratchpad verify-A/ts-f1/.",
+      "result": "{ console: false } -> error TS2353 (unknown property); { dom: false } -> compiles. Model only — the real @sentry/nextjs types are not installed."
+    },
+    "fix_conflicts_with_other_sections": "No contradiction. Changes together: 3.3 integrations line (253), the 3.1 \"score's contents\" row (221), and section 6 e2e case 3 (349-350). F-2 edits the same `integrations` line, so the two filters should land as one function: `(defaults) => defaults.filter((i) => i.name !== 'Console' && i.name !== 'BrowserApiErrors')`.",
+    "fix_correction": null,
+    "verdict": "pass",
+    "notes": "The spec's line is worse than ineffective: under tsc it should fail the web typecheck (model-verified), and if forced through, console breadcrumbs stay on. The proposed scrubBreadcrumb guard matches the real category ('console', console.ts:73)."
+  },
+  {
+    "id": "F-2",
+    "section_exists": true,
+    "quotes": [
+      {
+        "quote": "in the engine bundle `/alphatab/esm/alphaTab.core.mjs`; the same words thrown from our own code still fail.",
+        "found": true,
+        "lines": "208-209"
+      },
+      {
+        "quote": "The e2e gate reads it from a stack string and the Sentry filter reads it from Sentry's structured frames",
+        "found": true,
+        "lines": "209-210"
+      },
+      {
+        "quote": "It reaches the page's `error` handler. Evidence: that is how the e2e lane caught NH-335's worker TypeError (`web/e2e/page-errors.ts`).",
+        "found": true,
+        "lines": "107"
+      },
+      {
+        "quote": "**NH-335:** `Cannot read properties of undefined (reading 'voices')`, from inside its worker",
+        "found": true,
+        "lines": "200"
+      }
+    ],
+    "before_verbatim": [
+      {
+        "lines": "107",
+        "text": "| a throw inside AlphaTab's Web Worker           | It reaches the page's `error` handler. Evidence: that is how the e2e lane caught NH-335's worker TypeError (`web/e2e/page-errors.ts`).          |"
+      },
+      {
+        "lines": "198-202",
+        "text": "AlphaTab 1.8.4 throws two errors that break nothing a person can see:\n\n- **NH-335:** `Cannot read properties of undefined (reading 'voices')`, from inside its worker, on\n  ordinary Guitar Pro files — seven times in one open of `guitar-no-percussion.gp`.\n- **NH-338:** `cannot call stop without calling start first`, in 7 of 10 quick Pause clicks."
+      },
+      {
+        "lines": "207-211",
+        "text": "`web/e2e/page-errors.ts` already excuses exactly these two, and only when **every** stack frame sits\nin the engine bundle `/alphatab/esm/alphaTab.core.mjs`; the same words thrown from our own code still\nfail. That list moves to `web/lib/monitoring/known-engine-noise.ts`. The e2e gate reads it from a\nstack string and the Sentry filter reads it from Sentry's structured frames, so removing one entry\nwhen NH-335 or NH-338 is fixed updates both."
+      },
+      {
+        "lines": "253",
+        "text": "  integrations: [breadcrumbsIntegration({ console: false })],"
+      },
+      {
+        "lines": "346-353",
+        "text": "  - **New cases in `web/e2e/error-reporting.e2e.ts`:**\n    1. A throw injected by the test (`page.evaluate`) sends an `error`.\n    2. Opening a file that is not a score sends an E103 `warning` with its type and size, and no name.\n    3. Open a sample whose name, title and track names are known, click Solo, then cause an error:\n       the raw envelope contains none of those strings.\n    4. Opening `guitar-no-percussion.gp` (the NH-335 file) sends no error.\n    5. With storage blocked by an init script, nothing is sent until a real error, and that report\n       carries the storage breadcrumb."
+      }
+    ],
+    "claims": [
+      {
+        "claim": "(a) BrowserApiErrors is a default v11 browser integration and wraps addEventListener callbacks on EventTarget/Worker — catching, capturing and rethrowing",
+        "verdict": "confirmed",
+        "evidence": "getsentry/sentry-javascript @ 11.0.0 (commit 3e02c87c), fetched first-hand with gh api; cached scratchpad copies were byte-identical: packages/browser/src/sdk.ts:38 `browserApiErrorsIntegration()` in the defaults. packages/browser/src/integrations/browserapierrors.ts:6-9 DEFAULT_EVENT_TARGET includes 'EventTarget' and 'Worker'; :142-197 fills prototype addEventListener and registers `wrap(fn, { mechanism: { handled: false, type: 'auto.browser.browserapierrors.addEventListener' } })` (Worker.prototype has no own addEventListener, :147-149, so the EventTarget.prototype patch is what covers Worker objects). It also wraps setTimeout/setInterval/requestAnimationFrame/XHR callbacks (:48-62). packages/browser/src/helpers.ts:144-183: `sentryWrapped` calls fn in try; on catch `ignoreNextOnError()`, `captureException(ex)` inside withScope with the mechanism, then `throw ex`."
+      },
+      {
+        "claim": "(b) AlphaTab attaches its Worker 'message' handlers with addEventListener, so NH-335 and NH-338 are thrown on the MAIN thread inside that listener, not inside the worker",
+        "verdict": "confirmed",
+        "evidence": "alphaTab.core.mjs (1.8.4): AlphaTabWorkerScoreRenderer (main-thread class, :34424) constructor :34436 `this._worker.addEventListener(\"message\", (e) => this._handleWorkerMessage(e))`; on \"alphaTab.postRenderFinished\" it calls `BoundsLookup.fromJson(data.boundsLookup, this._api.score)` (:34494), whose :34221 indexes `…bars[barIndex].voices[…]` — the NH-335 \"reading 'voices'\" TypeError. The recorded NH-335 stack (web/e2e/page-errors.ts:46-48, commit fafe3912) is `Jn.fromJson` / `jn.Zu` / `Worker.<anonymous>`, and in the served minified copy (alphaTab.core.min.mjs, vendored as /alphatab/esm/alphaTab.core.mjs by web/scripts/vendor-alphatab.mjs:25) `Zu(t){…case\"alphaTab.postRenderFinished\":…Jn.fromJson(e.boundsLookup,this.qu.score)…}` is that main-thread renderer; the receiver `Worker.<anonymous>` is the listener on the page's Worker object. NH-338: AlphaSynthWebWorkerApi (:33477) constructor :33640 `this._synth.addEventListener(\"message\", (e) => this.handleWorkerMessage(e))`; case \"alphaSynth.output.pause\" (:33782-33783) -> `this._output.pause()` -> AlphaSynthAudioWorkletOutput.pause -> AlphaSynthWebAudioOutputBase.pause `this.source.stop(0)` (:24880-24883), while `this.source.start(0)` only runs inside the async worklet promise (:41601). Default outputMode is AudioWorklets (:28673), and web/lib/alphatab/defaults.ts does not override it."
+      },
+      {
+        "claim": "(c) Sentry strips its wrapper frame only by a function-name match on 'sentryWrapped', and a minified build renames that function (Sentry says so itself)",
+        "verdict": "confirmed",
+        "evidence": "packages/core/src/utils/stacktrace.ts:93-95 `if (/sentryWrapped/.test(getLastStackFrame(localStack).function || '')) { localStack.pop(); }` — the only wrapper-stripping rule. packages/browser/src/helpers.ts:145-147: depth is tracked on GLOBAL_OBJ so the third-party filter can detect a sentryWrapped call 'even with minified/bundled code'; packages/core/src/integrations/third-party-errors-filter.ts:41-42 (in minified bundles the wrapper frame 'is detected heuristically') and :137-139 (the outermost frame is the sentryWrapped function 'with a mangled name'). helpers.ts:203-213 redefines `name` with a getter; V8 frame names come from the function's inferred name, not an accessor (reasoned, not measured). thirdPartyErrorFilterIntegration is not a default."
+      },
+      {
+        "claim": "(d) web/e2e/page-errors.ts excuses an error only when EVERY frame is in the engine bundle",
+        "verdict": "confirmed",
+        "evidence": "web/e2e/page-errors.ts:79-82 `frames.length > 0 && frames.every((frame) => frame.includes(origin))` with origin '/alphatab/esm/alphaTab.core.mjs' (:22); applied at :97-105."
+      },
+      {
+        "claim": "(e) Frame depth: does the outermost wrapper frame fall inside the stack-trace window for NH-335 and NH-338?",
+        "verdict": "confirmed",
+        "evidence": "NH-335: recorded stack = 3 engine frames (page-errors.ts:46-48; commit fafe3912 message), so with the wrapper it is 4 frames. NH-338: no recorded stack in the repo or git history (git log --all --grep=NH-338 shows only the message string); traced chain = AlphaSynthWebAudioOutputBase.pause <- AlphaSynthAudioWorkletOutput.pause <- AlphaSynthWebWorkerApi.handleWorkerMessage <- arrow listener = 4 engine frames (5 if V8 lists the native stop() call), so 5-6 with the wrapper. Both are inside V8's default 10, and Sentry raises the limit anyway: packages/browser/src/integrations/globalhandlers.ts:36 `Error.stackTraceLimit = 50;` in setupOnce. So the wrapper frame (file: the Next.js chunk that bundles Sentry, not the engine bundle) appears in both. Consequences: (1) the e2e gate reads error.stack, which keeps that frame whatever its name, so framesAreAllEngine fails in the CI build — that build has a DSN, and integrations are set up only when a transport exists (packages/core/src/client.ts:515-525, :1398-1400); (2) in a minified production build the renamed wrapper escapes stacktrace.ts:93, so the structured-frame check also fails and NH-335 (7 throws per open) and NH-338 are sent. Static analysis only — not run."
+      },
+      {
+        "claim": "(f) Without BrowserApiErrors, an uncaught throw in such a listener still reaches Sentry's GlobalHandlers `error` handler with its full stack (same-origin script)",
+        "verdict": "confirmed",
+        "evidence": "packages/core/src/instrument/globalError.ts:24-46 hooks GLOBAL_OBJ.onerror and forwards the 5th `error` argument; packages/browser/src/integrations/globalhandlers.ts:53-79 builds the event from `error || msg` with eventFromUnknownInput (stack parsed from error.stack) and mechanism handled:false. The engine is served from the same origin (web/lib/alphatab/engine.ts:13, web/scripts/vendor-alphatab.mjs), so the browser does not mute the error object. The lane already receives these throws with their full 3-frame engine stack (page-errors.ts:46-48). Untested at runtime."
+      }
+    ],
+    "spike": {
+      "ran": false,
+      "what": "Runtime spike not possible (no install allowed). Settled by static analysis of the 11.0.0 source, the 1.8.4 bundle (unminified and minified) and the recorded NH-335 stack.",
+      "result": "Wrapper frame falls inside the window for both errors (see claim e). Untested at runtime."
+    },
+    "fix_conflicts_with_other_sections": "No contradiction. Changes together: 2.1 worker row (107), 2.6 (198-211), 3.3 integrations line (253, merged with F-1's filter), section 6 e2e list (346-353). Section 6 case 4 (NH-335 file sends no error) and the page-errors.ts gate both fail as the spec stands; the fix makes them consistent again.",
+    "fix_correction": "(1) The 2.1 row's Evidence sentence has to go, not just be reworded: NH-335 is a main-thread throw, so the lane has no evidence about a throw INSIDE the worker. Mark that channel untested (Known limits or To verify). (2) The new NH-338 case must first see the throw: one Play-then-Pause burst reproduces only about 7 times in 10 (page-errors.ts:61). Repeat bursts until a pageerror with that message arrives (bounded), then assert no envelope carries it; otherwise 'sends no error' can pass without the throw ever happening.",
+    "verdict": "pass",
+    "notes": "The page-errors.ts comments (:26, :44-45, 'inside a Worker') repeat the same misplacement; fix them when the list moves to known-engine-noise.ts. Removing BrowserApiErrors also stops the wrapping of timers, rAF and XHR callbacks. Their throws still reach window.onerror, and every script in web/ is same-origin."
+  },
+  {
+    "id": "F-3",
+    "section_exists": true,
+    "quotes": [
+      {
+        "quote": "IP address, cookies, headers, query strings",
+        "found": true,
+        "lines": "222"
+      },
+      {
+        "quote": "`dataCollection` turns each one off, **and** the project setting \"Prevent Storing of IP Addresses\" is on (section 5)",
+        "found": true,
+        "lines": "222"
+      },
+      {
+        "quote": "dataCollection: { userInfo: false, cookies: false, httpHeaders: false, urlQueryParams: false },",
+        "found": true,
+        "lines": "252"
+      },
+      {
+        "quote": "The copy says \"anonymous\", so the IP address must be stopped on **both** sides",
+        "found": true,
+        "lines": "224"
+      }
+    ],
+    "before_verbatim": [
+      {
+        "lines": "222",
+        "text": "| IP address, cookies, headers, query strings    | collected by Sentry's defaults                                                                                                                                                                                                                                                                               | `dataCollection` turns each one off, **and** the project setting \"Prevent Storing of IP Addresses\" is on (section 5) |"
+      },
+      {
+        "lines": "224-225",
+        "text": "The copy says \"anonymous\", so the IP address must be stopped on **both** sides: Sentry's docs warn\nthat with `userInfo` off, an IP address can still arrive through headers, cookies or query strings."
+      },
+      {
+        "lines": "252",
+        "text": "  dataCollection: { userInfo: false, cookies: false, httpHeaders: false, urlQueryParams: false },"
+      },
+      {
+        "lines": "331-336",
+        "text": "- **Unit (Vitest), beside each `lib/monitoring` file:**\n  - the names filter: the file name, the title and every track name become `[file]`; strings shorter\n    than 3 characters are left alone; stack frames are untouched;\n  - `reportError`: the default level, the `code` tag, and E101–E103 dropping the message;\n  - known engine noise: a throw whose frames all sit in the engine bundle is dropped; the same\n    message with one frame from our code is kept."
+      },
+      {
+        "lines": "346-353",
+        "text": "  - **New cases in `web/e2e/error-reporting.e2e.ts`:**\n    1. A throw injected by the test (`page.evaluate`) sends an `error`.\n    2. Opening a file that is not a score sends an E103 `warning` with its type and size, and no name.\n    3. Open a sample whose name, title and track names are known, click Solo, then cause an error:\n       the raw envelope contains none of those strings.\n    4. Opening `guitar-no-percussion.gp` (the NH-335 file) sends no error.\n    5. With storage blocked by an init script, nothing is sent until a real error, and that report\n       carries the storage breadcrumb."
+      }
+    ],
+    "claims": [
+      {
+        "claim": "(a) httpcontext.ts at 11.0.0 sets event.request.url from location.href and says the URL isn't gated by `dataCollection`",
+        "verdict": "confirmed",
+        "evidence": "getsentry/sentry-javascript @ 11.0.0 (commit 3e02c87c), fetched first-hand with gh api; cached scratchpad copies were byte-identical: packages/browser/src/integrations/httpcontext.ts:19 `const { url, headers: collectedHeaders } = getHttpRequestData();`, :31-33 `event.request = { // The URL isn't gated by \\`dataCollection\\`, same as on the server.\\n url, …`. packages/browser/src/helpers.ts:225-227 url = getLocationHref(); packages/browser-utils/src/getLocationHref.ts:8 returns `WINDOW.document?.location.href` (query and fragment included)."
+      },
+      {
+        "claim": "(b) `urlQueryParams` only filters span URLs",
+        "verdict": "confirmed",
+        "evidence": "Grep of every packages/browser, browser-utils and core source file at 11.0.0 (392 files, plus nextjs client/common and react): in the browser and Next.js client SDK every consumer writes a span attribute — browserTracingIntegration.ts:371, tracing/request.ts:170/393/398, fetchStreamPerformance.ts:91, httpcontext.ts:76 (processSpan only), browser-utils performance/entries.ts:374/408/481 and interactions.ts:223, core fetch.ts:384-398 (getFetchSpanAttributes), core utils/url.ts:229-234, nextjs appRouterRoutingInstrumentation.ts:38. Nuance: core integrations/fetch.ts:163-166 (fetchIntegration) does filter its own fetch breadcrumb, and requestdata.ts filters server request data. Neither is a browser default. The browser's fetch/xhr breadcrumbs come from breadcrumbsIntegration, which copies the URL unfiltered (breadcrumbs.ts:191-197, :250, :260-263)."
+      },
+      {
+        "claim": "(c) The history (navigation) breadcrumb records from/to including search and hash",
+        "verdict": "confirmed",
+        "evidence": "packages/browser/src/integrations/breadcrumbs.ts:289-321: from/to become `parsedFrom.relative` / `parsedTo.relative`; packages/core/src/utils/url.ts:272-293 parseUrl sets `relative: match[5] + query + fragment, // everything minus origin` (query keeps its \"?\", fragment its \"#\"). Fed by packages/browser-utils/src/instrumentation/history.ts:56-83 (pushState/replaceState and popstate)."
+      },
+      {
+        "claim": "(d) web/app/page.tsx's Play control is a client-side next/link Link",
+        "verdict": "confirmed",
+        "evidence": "web/app/page.tsx:2 `import Link from 'next/link';`, :19 `<Button render={<Link href=\"/play\" />} …>Play</Button>`. A client-side navigation goes through history.pushState, so it records a navigation breadcrumb with from=\"/?…\"."
+      },
+      {
+        "claim": "(e) web/ reads no query strings anywhere",
+        "verdict": "confirmed",
+        "evidence": "grep -rnE \"useSearchParams|searchParams|location\\.search|location\\.hash|URLSearchParams|location\\.href|window\\.location\" web (excluding node_modules, .next, public): one hit, web/app/play/PlayerShell.test.tsx:26, a test mock of next/navigation. No production read. The spec's Non-goals (line 24) already says no searchParams under web/app."
+      }
+    ],
+    "spike": {
+      "ran": false,
+      "what": "None listed. Static source analysis only.",
+      "result": "n/a"
+    },
+    "fix_conflicts_with_other_sections": "No contradiction. Changes: 3.1 row (222) and its follow-up paragraph (224-225). Section 6 unit list (331-336) and e2e list (346-353) each gain a case. 3.2's 'Both ends' rule (beforeBreadcrumb + beforeSend) applies to the URL scrub as well. `urlQueryParams: false` (252) can stay: it is harmless, and spans are off anyway.",
+    "fix_correction": null,
+    "verdict": "pass",
+    "notes": "The proposed e2e case (open /?fbclid=probe123, click Play, force an error) exercises only the navigation breadcrumb. Link drops the query, so event.request.url on /play is already clean. A second forced error while still on /?fbclid=…#frag would also exercise event.request.url. With httpHeaders:false the Referer header is already dropped (httpcontext.ts:23-29)."
+  },
+  {
+    "id": "F-4",
+    "section_exists": true,
+    "quotes": [
+      {
+        "quote": "Until NH-52 lands, Sentry Release Health — the crash-free share of visits per release — is the interim front-end health number.",
+        "found": true,
+        "lines": "18-19"
+      },
+      {
+        "quote": "It carries the release, the environment and whether the visit crashed — no file data.",
+        "found": true,
+        "lines": "279-280"
+      },
+      {
+        "quote": "Release Health on, as the interim health number until NH-52",
+        "found": true,
+        "lines": "58"
+      },
+      {
+        "quote": "useEffect(() => reportError(error, { code: ERROR.unexpectedCrash }), [error]);",
+        "found": true,
+        "lines": "119"
+      }
+    ],
+    "before_verbatim": [
+      {
+        "lines": "16-20",
+        "text": "- **No burn rates, no SLOs.** A rate needs every attempt counted, not only the failures, and that is\n  usage tracking. It belongs to [NH-52](https://leocaseiro.atlassian.net/browse/NH-52) (\"[H-7]\n  CloudWatch + X-Ray SLOs\"). Until NH-52 lands, Sentry Release Health — the crash-free share of\n  visits per release — is the interim front-end health number. The reasoning is recorded as a\n  comment on NH-52, dated 2026-10-03."
+      },
+      {
+        "lines": "58",
+        "text": "| S4  | Release Health on, as the interim health number until NH-52                                                    | off                                                                         |"
+      },
+      {
+        "lines": "116-120",
+        "text": "```diff\n-export default function AppError({ reset }: Readonly<{ error: Error; reset: () => void }>) {\n+export default function AppError({ error, reset }: Readonly<{ error: Error; reset: () => void }>) {\n+  useEffect(() => reportError(error, { code: ERROR.unexpectedCrash }), [error]);\n```"
+      },
+      {
+        "lines": "131-141",
+        "text": "/** An error or a warning: one event against the monthly quota. */\nexport function reportError(\n  error: unknown,\n  options?: { code?: ErrorCode; level?: 'error' | 'warning'; file?: FileFacts },\n): void;\n\n/** A breadcrumb: never sent alone; it travels inside the next real report. Costs no quota. */\nexport function noteError(error: unknown, what: string): void;\n```\n\n- `level` defaults to `error`."
+      },
+      {
+        "lines": "279-281",
+        "text": "\"Crash statistics\" is Release Health (S4): a small ping on every visit, not only on a crash. It\ncarries the release, the environment and whether the visit crashed — no file data. That is why the\nhome page names it."
+      }
+    ],
+    "claims": [
+      {
+        "claim": "(a) In 11.0.0 the browser client records a session hit by an uncaught error as 'unhandled', never 'crashed'",
+        "verdict": "confirmed",
+        "evidence": "getsentry/sentry-javascript @ 11.0.0 (commit 3e02c87c), fetched first-hand with gh api; cached scratchpad copies were byte-identical: packages/browser/src/client.ts:111-112 — comment 'Unhandled errors don't actually crash the browser, so we report `unhandled` rather than `crashed`.' then `this._unhandledSessionStatus = 'unhandled';`. The core default is 'crashed' (packages/core/src/client.ts:224-230, :252), and the browser client overrides it. A grep of the browser, browser-utils and core sources finds no other path that marks a browser session crashed. MIGRATION.md:561-565 'Browser sessions use `unhandled` instead of `crashed`', warning that crash-free rates will shift. Session status type: packages/core/src/types/session.ts:33."
+      },
+      {
+        "claim": "(b) A captureException call is handled by default and only marks the session 'errored'",
+        "verdict": "confirmed",
+        "evidence": "packages/browser/src/eventbuilder.ts:232 `addExceptionMechanism(event); // defaults to { type: 'generic', handled: true }`; packages/core/src/utils/misc.ts:136-139. packages/core/src/client.ts:1338-1368 `_updateSessionFromEvent`: an exception sets errored=true. The status changes only when `mechanism.handled === false`; otherwise it just sets errors: 1, and the server counts that as errored (the SDK type has no 'errored' status). The session update runs only after beforeSend keeps the event (client.ts:1543-1557), so dropped engine noise never touches the session. Sentry's Next.js release docs (fetched 2026-10-03) agree: errored when an event with an exception is captured; unhandled when an error reaches the global handler, which was crashed before SDK 11."
+      },
+      {
+        "claim": "(c) How a manual capture is marked unhandled in v11: `captureException(err, { mechanism: { handled: false } })` — field name, and that it flips the session to 'unhandled'",
+        "verdict": "confirmed",
+        "evidence": "EventHint has `mechanism?: Partial<Mechanism>` (packages/core/src/types/event.ts:82). packages/core/src/utils/prepareEvent.ts:77-78 applies hint.mechanism to the captured exception (misc.ts:123-139), then client.ts:1350-1352 sets unhandled, and :1365 sets status to `this._unhandledSessionStatus` ('unhandled' in the browser). CAVEAT: captureException parses its 2nd argument with parseEventHintOrCaptureContext (exports.ts:26-28; prepareEvent.ts:335-373). An object carrying any ScopeContext key (user, level, extra, contexts, tags, fingerprint, propagationContext) is treated as a capture context, so `mechanism` is silently dropped. TypeScript's ExclusiveEventHintOrCaptureContext (prepareEvent.ts:25-27) rejects the mix. reportError's code tag and level must go through `captureContext` inside the hint, or withScope."
+      },
+      {
+        "claim": "(d) Sentry's Release Health docs: what the crash-free share counts, and whether 'unhandled' sessions are shown separately",
+        "verdict": "partly",
+        "evidence": "docs.sentry.io/product/releases/health/ (WebFetch, 2026-10-03): crash-free sessions are the share of sessions 'not ended by a crash of the application'. The page also says that since Sentry 25.9.0, crashes and unhandled errors are counted separately. It names only crash-free sessions and crash-free users as metrics. It does not say whether an 'unhandled' figure is displayed on its own — that part is unverifiable here."
+      }
+    ],
+    "spike": {
+      "ran": false,
+      "what": "None listed. Source reading plus two docs fetches.",
+      "result": "n/a"
+    },
+    "fix_conflicts_with_other_sections": "Must change together: Non-goals bullet 1 (16-20), S4 (58), the 2.2 snippet (116-120), 2.3's reportError options (131-141: it has no way to say 'unhandled', so it needs a new option such as `handled?: false`), and the 3.4 'Crash statistics' paragraph (279-281, 'whether the visit crashed'). Known limits (374-375, 382) are unaffected.",
+    "fix_correction": "Spell out how reportError marks E901 (and in variant B, E201-E204) as unhandled: `captureException(error, { mechanism: { handled: false }, captureContext: { tags: { code }, level } })`, or set tags and level with withScope. The natural form `captureException(error, { tags: { code }, mechanism: { handled: false } })` fails tsc and, if forced through, silently stays handled (prepareEvent.ts:347-351).",
+    "verdict": "pass",
+    "notes": "Context for the error-page variant: Next 16.3.6 production onCaughtError only console.errors an error caught by an explicit boundary such as error.tsx (web/node_modules/next/dist/client/react-client-callbacks/error-boundary-callbacks.js). So a render crash reaches Sentry only through the error page's own report. With NO app/global-error.tsx, a root-layout crash goes to onUncaughtError, which calls the browser global reportError (report-global-error.js), and Sentry would already record that as unhandled. Adding global-error.tsx turns it into a caught error that only our call reports."
+  },
+  {
+    "id": "F-10",
+    "section_exists": true,
+    "quotes": [
+      {
+        "quote": "click breadcrumbs record each element's `aria-label`, `type`, `name`, `title` and `alt`",
+        "found": true,
+        "lines": "219"
+      },
+      {
+        "quote": "any error message that quotes it — none does today",
+        "found": true,
+        "lines": "220"
+      },
+      {
+        "quote": "**The list never forgets** within a tab.",
+        "found": true,
+        "lines": "236"
+      }
+    ],
+    "before_verbatim": [
+      {
+        "lines": "98",
+        "text": "                              scrub.ts (names → [file]; known engine noise dropped) ─► sentry.io"
+      },
+      {
+        "lines": "219-220",
+        "text": "| track names, title, artist, album              | **Verified in Sentry's source** (`packages/browser-utils/src/htmlTreeAsString.ts:156`): click breadcrumbs record each element's `aria-label`, `type`, `name`, `title` and `alt`. The Solo, Mute and Render buttons are labelled `` `Solo ${name}` `` (`client/src/components/ui/TrackRow/TrackRow.tsx:246`). | the names filter (3.2) replaces them with `[file]`                                                                   |\n| the file name                                  | any error message that quotes it — none does today                                                                                                                                                                                                                                                           | the same filter                                                                                                      |"
+      },
+      {
+        "lines": "227-243",
+        "text": "### 3.2 The names filter\n\n```ts\n// web/lib/monitoring/scrub.ts\nexport function rememberOpenFile(fileName: string): void; // called when a file is picked\nexport function rememberScore(score: ScoreFacts): void; // title, subtitle, artist, album, words,\n// music, copyright, tab author, and every track's name and short name\n```\n\n- **The list never forgets** within a tab. A breadcrumb about file A can still be in the trail after\n  file B opens.\n- **Strings shorter than 3 characters are skipped**, so a track named `1` does not rewrite unrelated\n  text.\n- **Both ends:** breadcrumbs are filtered when they are recorded (`beforeBreadcrumb`), and the whole\n  event again when it is sent (`beforeSend`), which also covers names registered after a breadcrumb\n  was recorded.\n- **Stack frames are not touched.** File paths in frames are our code, not the visitor's."
+      },
+      {
+        "lines": "254-255",
+        "text": "  beforeBreadcrumb: scrubBreadcrumb,\n  beforeSend: (event) => (isKnownEngineNoise(event) ? null : scrubEvent(event)),"
+      },
+      {
+        "lines": "332-333",
+        "text": "  - the names filter: the file name, the title and every track name become `[file]`; strings shorter\n    than 3 characters are left alone; stack frames are untouched;"
+      },
+      {
+        "lines": "349-350",
+        "text": "    3. Open a sample whose name, title and track names are known, click Solo, then cause an error:\n       the raw envelope contains none of those strings."
+      }
+    ],
+    "claims": [
+      {
+        "claim": "(a) On /play, the only score data that reaches a recorded attribute (aria-label, title, name, alt) is the track name",
+        "verdict": "confirmed",
+        "evidence": "Score-derived recorded attributes come only from TrackRow (client/src/components/ui/TrackRow/TrackRow.tsx), fed the trimmed name by web/app/play/TracksPopover.tsx:123/348. They are: TransportToggle aria-label (TransportToggle.tsx:71) for `Render ${name}` (:224), `Solo ${name}` (:247), `Mute ${name}` (:257) and the staff toggles `${name} ${staff.label} …` (:186); Slider thumb aria-label (Slider.tsx:135) for `${name} volume` (:277), `${name} Transpose audio` (:354) and `${name} Transpose notation` (:376); and `More controls for ${name}` (:314). staff.label is Treble/Bass/Staff N (web/lib/alphatab/mixer-tracks.ts:66-78). The title and file name appear only as button TEXT and tooltip TEXT (web/app/play/PlayerHeader.tsx:166-176). The file name also sits in `data-file` (:169), which is not in the recorded list (htmlTreeAsString.ts:156; only data-sentry-component/element are read, :117-125). Artist, album, subtitle, words, music, copyright and tab are never referenced in web/app or web/lib. Export's `link.download = …title…` (PlayerShell.tsx:758) is on a detached anchor, and download is not recorded. AlphaTab sets no recorded DOM attributes; it sets only the print-window document.title (alphaTab.core.mjs:49103-49104). Toasts, announcements and confirm() quote the file name as text only."
+      },
+      {
+        "claim": "(b) v11 breadcrumbsIntegration accepts `dom: false`",
+        "verdict": "confirmed",
+        "evidence": "packages/browser/src/integrations/breadcrumbs.ts:36-41 `dom: boolean | { serializeAttribute?, maxStringLength? }`; :66-68 `if (_options.dom) addClickKeypressInstrumentationHandler(…)`. The model tsc check compiles `breadcrumbsIntegration({ dom: false })`. A user instance overrides the default of the same name in either the array or the function form (packages/core/src/integration.ts:25-43, :53-55)."
+      },
+      {
+        "claim": "(c) Exact format of a v11 ui.click breadcrumb message",
+        "verdict": "confirmed",
+        "evidence": "breadcrumbs.ts:146 `target = htmlTreeAsString(element, { keyAttrs, maxStringLength })`, :156-159 `{ category: `ui.${handlerData.name}`, message: target }`. packages/browser-utils/src/htmlTreeAsString.ts:55-99 and :106-164: per element, `tag` + `#id` + `.class…` (or `[k=\"v\"]` for serializeAttribute keys), then `[aria-label=\"…\"][type=\"…\"][name=\"…\"][title=\"…\"][alt=\"…\"]` in that fixed order. Values are inserted verbatim with NO escaping of `\"` or `]` (:140, :159). Elements are joined by \" > \", outermost first, at most 5 levels. Ancestors are added only while the total stays under 80 chars (:85), but the clicked element is always included in full. Example: `div.grid > button.inline-flex.size-11[aria-label=\"Solo Lead Guitar\"][type=\"button\"]`. beforeBreadcrumb(breadcrumb, hint) receives hint.event for ui.* breadcrumbs (breadcrumbs.ts:165-169; packages/core/src/breadcrumbs.ts:32-35)."
+      },
+      {
+        "claim": "(d) No error message in web/ quotes the file name today",
+        "verdict": "confirmed",
+        "evidence": "Our only constructed errors are web/app/play/OpenFileControl.tsx:38 `throw new Error(`over the ${MAX_NOTATION_MB} MB limit`)` and web/lib/alphatab/AlphaTabEngineContext.tsx:39 `new Error(String(error))`. Neither carries a file name. File names appear only in toast, announcement and confirm strings (OpenFileControl.tsx:57-58, 81; PlayerShell.tsx:840, 863, 880-885, 914-918, 972-973). AlphaTab receives bytes, not the name."
+      }
+    ],
+    "spike": {
+      "ran": true,
+      "what": "Same model tsc check as F-1 (verify-A/ts-f1/model.ts): breadcrumbsIntegration({ dom: false }).",
+      "result": "Compiles (model of the 11.0.0 declarations)."
+    },
+    "fix_conflicts_with_other_sections": "Option 1 conflicts with nothing. Options 2 and 3 delete 3.2 (227-243) and change the 3.1 rows (219-220), the 2 diagram (98), 3.3 beforeBreadcrumb/beforeSend (254-255), the section 6 names-filter bullet (332-333) and e2e case 3 (349-350). They also lose the beforeSend names pass, which would scrub an unknown engine exception message that quotes a title or track name (none is known today).",
+    "fix_correction": null,
+    "verdict": "pass",
+    "notes": "Nothing makes an alternative infeasible. Option 3 needs care: a naive /\\[(aria-label|name|title|alt)=\"[^\"]*\"\\]/ fails when a value contains a double quote — realistic for drum names with inch marks, e.g. `14\" Crash` — and leaks the rest. Rebuild the message from hint.event.target, or use a lazy match anchored on the fixed attribute order (followed by `[type|name|title|alt=\"`, ' > ' or end). Option 1 is quote-safe (plain substring replacement). E2E case 3 caveat: if Playwright's click lands on the icon span inside the button, the button's long Tailwind class string can push it past the 80-char ancestor budget. Its aria-label is then not recorded and the case passes without testing the filter. Make the button itself the target, for example with keyboard activation. Spec 3.1 cites TrackRow.tsx:246 for the Solo label; the label is at :247."
+  },
+  {
+    "id": "F-11",
+    "section_exists": true,
+    "quotes": [
+      {
+        "quote": "// music, copyright, tab author, and every track's name and short name",
+        "found": true,
+        "lines": "233"
+      },
+      {
+        "quote": "The Solo, Mute and Render buttons are labelled `` `Solo ${name}` ``",
+        "found": true,
+        "lines": "219"
+      }
+    ],
+    "before_verbatim": [
+      {
+        "lines": "229-234",
+        "text": "```ts\n// web/lib/monitoring/scrub.ts\nexport function rememberOpenFile(fileName: string): void; // called when a file is picked\nexport function rememberScore(score: ScoreFacts): void; // title, subtitle, artist, album, words,\n// music, copyright, tab author, and every track's name and short name\n```"
+      },
+      {
+        "lines": "238-239",
+        "text": "- **Strings shorter than 3 characters are skipped**, so a track named `1` does not rewrite unrelated\n  text."
+      },
+      {
+        "lines": "332-333",
+        "text": "  - the names filter: the file name, the title and every track name become `[file]`; strings shorter\n    than 3 characters are left alone; stack frames are untouched;"
+      }
+    ],
+    "claims": [
+      {
+        "claim": "web/lib/alphatab/mixer-tracks.ts trackName() trims",
+        "verdict": "confirmed",
+        "evidence": "web/lib/alphatab/mixer-tracks.ts:53-58: `const name = track.name.trim(); return name || `Track ${track.index + 1}`;`. toMixerTrack sets `name: trackName(track)` (:95), and web/app/play/TracksPopover.tsx:123 builds the rows with toMixerTrack."
+      },
+      {
+        "claim": "TrackRow uses the trimmed name for the Solo, Mute, Render, volume and 'More controls for' labels",
+        "verdict": "confirmed",
+        "evidence": "TracksPopover.tsx:348 `name={track.name}` (the MixerTrack name). client/src/components/ui/TrackRow/TrackRow.tsx: Render :224, Solo :247, Mute :257, volume :277, More controls :314. The staff toggles (:186) and both transpose sliders (:354, :376) use it too."
+      },
+      {
+        "claim": "AlphaTab 1.8.4 keeps leading/trailing whitespace in Guitar Pro 3-5 track names",
+        "verdict": "confirmed",
+        "evidence": "alphaTab.core.mjs:18137 `newTrack.name = GpBinaryHelpers.gpReadStringByteLength(this.data, 40, this.settings.importer.encoding);`; :18837-18843 reads exactly min(stringLength, 40) bytes and decodes them via IOHelper.toString (:9937-9942, TextDecoder) with no trim. Track.finish (:12676-12680) does not trim either."
+      }
+    ],
+    "spike": {
+      "ran": false,
+      "what": "None listed.",
+      "result": "n/a"
+    },
+    "fix_conflicts_with_other_sections": "None. It refines 3.2's bullets: the 3-character floor (238-239) applies after trimming. It adds a unit case to section 6 (332-333).",
+    "fix_correction": null,
+    "verdict": "pass",
+    "notes": "Both ends matter. A trailing space ('Lead Guitar ') never matches 'Solo Lead Guitar'. A leading space (' Lead Guitar') happens to match inside 'Solo Lead Guitar' but not inside '[aria-label=\"Lead Guitar volume\"]'. The auto short name is cut from the RAW name (see F-13), so trimming every stored string, the short names included, is required."
+  },
+  {
+    "id": "F-13",
+    "section_exists": true,
+    "quotes": [
+      {
+        "quote": "**The list never forgets** within a tab.",
+        "found": true,
+        "lines": "236"
+      },
+      {
+        "quote": "the names filter: the file name, the title and every track name become `[file]`",
+        "found": true,
+        "lines": "332"
+      }
+    ],
+    "before_verbatim": [
+      {
+        "lines": "236-237",
+        "text": "- **The list never forgets** within a tab. A breadcrumb about file A can still be in the trail after\n  file B opens."
+      },
+      {
+        "lines": "332-333",
+        "text": "  - the names filter: the file name, the title and every track name become `[file]`; strings shorter\n    than 3 characters are left alone; stack frames are untouched;"
+      }
+    ],
+    "claims": [
+      {
+        "claim": "AlphaTab 1.8.4 sets a missing shortName to the first 10 characters of the name (Track.finish / _shortNameMaxLength = 10)",
+        "verdict": "confirmed",
+        "evidence": "alphaTab.core.mjs:12591 `static _shortNameMaxLength = 10;`; :12676-12680 `if (!this.shortName) { this.shortName = this.name; if (this.shortName.length > Track._shortNameMaxLength) this.shortName = this.shortName.substr(0, Track._shortNameMaxLength); }`. The auto short name is therefore always a prefix of its own track name."
+      }
+    ],
+    "spike": {
+      "ran": false,
+      "what": "None listed.",
+      "result": "n/a"
+    },
+    "fix_conflicts_with_other_sections": "None. It adds an ordering rule to 3.2 and a unit case to section 6 (332-333).",
+    "fix_correction": null,
+    "verdict": "pass",
+    "notes": "Worked case: 'Solo Drums (Left Kit)', where the short name 'Drums (Lef' is replaced first, gives 'Solo [file]t Kit)'. If another track's 'Drums' goes first, it gives 'Solo [file] (Left Kit)'. Longest-first (or one alternation regex sorted by length) fixes nested and prefix cases. Names that overlap without nesting (e.g. 'Lead Guitar' and 'Guitar Solo' inside 'Lead Guitar Solo') can still leave a fragment — a residual worth one line in 3.2."
+  },
+  {
+    "id": "F-16",
+    "section_exists": true,
+    "quotes": [
+      {
+        "quote": "export function reportError(",
+        "found": true,
+        "lines": "132"
+      },
+      {
+        "quote": "they flagged exactly `catch { }` and `.catch(() => null)`, and passed every form that calls `reportError` or `noteError`.",
+        "found": true,
+        "lines": "180-181"
+      }
+    ],
+    "before_verbatim": [
+      {
+        "lines": "177-194",
+        "text": "### 2.5 The lint rule\n\nTwo selectors make a catch that reports nothing a lint error. Both were run against a scratch file\non 2026-10-03 with the installed ESLint 9.39.4: they flagged exactly `catch { }` and\n`.catch(() => null)`, and passed every form that calls `reportError` or `noteError`.\n\n```js\n{ selector: 'CatchClause:not(:has(CallExpression[callee.name=/^(reportError|noteError)$/]))', … },\n{ selector: \"CallExpression[callee.property.name='catch'] > :function:not(:has(CallExpression[callee.name=/^(reportError|noteError)$/]))\", … },\n```\n\n- **They join the existing `no-restricted-syntax` list** at `web/eslint.config.mjs:68`. A second\n  block that sets the same rule would silently replace the AlphaTab dynamic-import fence already\n  there. If the new selectors need a narrower `files` scope (test files are exempt), that block must\n  repeat the fence's selector, held in a shared constant.\n- **A deliberate silence** is `// eslint-disable-next-line no-restricted-syntax -- <reason>`. The\n  repository already requires a reason on every disable comment\n  (`eslint-comments/require-description`)."
+      },
+      {
+        "lines": "337-338",
+        "text": "- **Lint canary:** a test runs ESLint over a silent `catch { }` and expects it to fail, so the rule\n  cannot stop working quietly — the same idea as `tooling/check-core-purity-canary.sh`."
+      }
+    ],
+    "claims": [
+      {
+        "claim": "lib.dom.d.ts declares a global `reportError(e: any): void` (~line 39146)",
+        "verdict": "confirmed",
+        "evidence": "web/node_modules/typescript/lib/lib.dom.d.ts:39146 `declare function reportError(e: any): void;` (TypeScript 5.9.3)."
+      },
+      {
+        "claim": "web/tsconfig.json includes the dom lib",
+        "verdict": "confirmed",
+        "evidence": "web/tsconfig.json `\"lib\": [\"dom\", \"dom.iterable\", \"esnext\"]`. tsc 5.9.3 type-checks probe 2 (a bare reportError(error) call with no import) with exit 0."
+      },
+      {
+        "claim": "web/eslint.config.mjs does or does not already set `no-restricted-globals`",
+        "verdict": "confirmed",
+        "evidence": "It does not: web/eslint.config.mjs has only no-restricted-syntax (:68-75) and the import fences. `eslint --print-config lib/alphatab/engine.ts` (ESLint 9.39.4, run in web/) shows the effective `no-restricted-globals` is unset (null), so a new entry replaces nothing. `no-undef` is off (0) for TS files, so nothing else catches an undeclared call either."
+      }
+    ],
+    "spike": {
+      "ran": true,
+      "what": "web/node_modules/.bin/eslint 9.39.4 with @typescript-eslint/parser 8.61.1 (the worktree's install) over three probes in scratchpad verify-A/lint-16/: (1) imports reportError from './report' and calls it in a catch; (2) calls reportError(error) in a catch with no import; (3) silent `catch { }`. Config: the two section 2.5 selectors, verbatim, plus no-restricted-globals for reportError. Run twice: parser default lib, and lib [dom, dom.iterable, esnext]. A control run used the selectors only.",
+      "result": "Both parser variants gave the same result. Probe 1: no errors. Probe 2: flagged ONLY by no-restricted-globals (line 5, \"Unexpected use of 'reportError'. Import reportError from web/lib/monitoring/report.ts.\"). Probe 3: flagged ONLY by no-restricted-syntax (line 4, the CatchClause selector). Control (selectors only, as the spec has it): probe 2 passes with NO errors, and tsc accepts it too, so a forgotten import goes unnoticed by both gates."
+    },
+    "fix_conflicts_with_other_sections": "None. 2.5's warning that a second block silently replaces the existing fence applies to no-restricted-syntax only; no-restricted-globals is unset today. Section 6's lint canary (337-338) could add probe 2.",
+    "fix_correction": null,
+    "verdict": "pass",
+    "notes": "At runtime the global reportError reports the exception to window (HTML 'report an exception'), so Sentry's GlobalHandlers would capture it as UNHANDLED with its full message: no code tag, no E101-E103 message drop, and the session marked unhandled (reasoned, untested). no-restricted-globals does not catch member calls such as globalThis.reportError(…) or window.reportError(…). unicorn/prefer-global-this is on in web/ and steers code toward globalThis.x, so add no-restricted-properties if that form matters."
+  }
+]

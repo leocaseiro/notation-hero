@@ -7,7 +7,7 @@
 >
 > **Lowest value of the eight: run instructions only.**
 >
-> The `.mjs` scripts and `demo.html` it tells you to run were **not** archived and are not on `master` — they remain on the branch above. Read `FINDINGS.md` and `RESEARCH-algorithmic-roadmap.md` beside it instead; this file is kept only so the set is complete.
+> The `.mjs` scripts and `demo.html` it tells you to run were archived beside it on 2026-11-06, copied unchanged from the branch above. The `npm install` it needs was never committed, so they may not run as-is. Read `FINDINGS.md` and `RESEARCH-algorithmic-roadmap.md` beside it first.
 
 Throwaway spike. Infers a **key-change (modulation) timeline** and **approximate
 section boundaries** for Guitar Pro files that carry **no section markers**.

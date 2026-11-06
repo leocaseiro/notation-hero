@@ -1,0 +1,454 @@
+[
+  {
+    "id": "F-7",
+    "section_exists": true,
+    "quotes": [
+      {
+        "quote": "the `web` CI job (a fake DSN)",
+        "found": true,
+        "lines": "86"
+      },
+      {
+        "quote": "The CI build sets a fake DSN, `https://public@sentry.invalid/1`.",
+        "found": true,
+        "lines": "340"
+      },
+      {
+        "quote": "With no DSN the SDK sends nothing — which is the state locally, in CI unit tests, and on preview deployments.",
+        "found": true,
+        "lines": "74"
+      }
+    ],
+    "before_verbatim": [
+      {
+        "lines": "74",
+        "text": "| `web/instrumentation-client.ts`            | Starts Sentry before the page becomes interactive. With no DSN the SDK sends nothing — which is the state locally, in CI unit tests, and on preview deployments. |"
+      },
+      {
+        "lines": "86",
+        "text": "screenshot baselines, `web/README.md` (the environment variables), the `web` CI job (a fake DSN),"
+      },
+      {
+        "lines": "339-342",
+        "text": "- **End to end (Playwright, in the existing `web` job):**\n  - The CI build sets a fake DSN, `https://public@sentry.invalid/1`. One shared fixture routes every\n    request to that host, answers it, and records the envelope, so nothing reaches the network and\n    the real SDK is under test with no test code in the app."
+      }
+    ],
+    "claims": [
+      {
+        "claim": "(a) web/playwright.e2e.config.ts sets the lane-only build-time variable NEXT_PUBLIC_ALPHATAB_LOG_LEVEL through webServer.env, and `next build` runs inside that webServer command.",
+        "verdict": "confirmed",
+        "evidence": "web/playwright.e2e.config.ts:55-68 — webServer.command 'pnpm build && pnpm start --port 4174' (:57); env { NEXT_PUBLIC_ALPHATAB_LOG_LEVEL: 'Debug' } (:62-67); comment :63-65: 'NEXT_PUBLIC_* is inlined at BUILD time, which is why the command above runs `pnpm build` under this env rather than only `pnpm start`.' web/package.json:6 'build' runs `next build`. The installed Playwright 1.61.1 runner (node_modules/.pnpm/playwright@1.61.1/node_modules/playwright/lib/runner/index.js, WebServerPlugin) launches the command with env {...DEFAULT_ENVIRONMENT_VARIABLES, ...process.env, ...this._options.env}: webServer.env reaches the build, and a CI job-level env var would ALSO reach it — but only in CI."
+      },
+      {
+        "claim": "(b) The `web` CI job, the local test:e2e-style scripts and `pnpm test:web:docker:update` all run through that same config.",
+        "verdict": "confirmed",
+        "evidence": ".github/workflows/ci.yml:446-447 (web job): `pnpm --filter @notation-hero/web exec playwright test --config=playwright.e2e.config.ts` — one unscoped invocation; the job (:425-461) has no `env:` block today. web/package.json:11-14: test:e2e, test:e2e:ui, test:vr, test:vr:update all pass --config=playwright.e2e.config.ts. Root package.json:42-43: test:web:docker / test:web:docker:update -> tooling/docker-playwright.sh:59 `pnpm --filter \"$1\" run \"$2\"` -> web's test:vr / test:vr:update -> the same config. No lane run bypasses it. Caveat: config :59 reuseExistingServer: !process.env.CI — locally an already-running :4174 server is reused with whatever env it was built with (the same caveat already applies to NEXT_PUBLIC_ALPHATAB_LOG_LEVEL)."
+      },
+      {
+        "claim": "(c) Whether the visual-regression shots run from the same build/config, and whether a DSN being set could change a screenshot.",
+        "verdict": "partly — same build: confirmed; pixel effect: reasoned, unmeasured",
+        "evidence": "Config :3-5: 'two projects over ONE webServer — so one `next build` serves both'; ci.yml:438-445 says the single invocation is load-bearing. So in CI the ten shots in web/e2e/pages.vr.ts run on the same build as the e2e cases, whichever place sets the DSN. Locally `pnpm test:web:docker:update` (test:vr:update, --project=chromium) also builds through the config, so with the spec as written (DSN only in the CI job) baselines would come from a DSN-less build while CI compares a DSN build. Pixels: reasoned no change — S3 excludes Session Replay and the feedback widget, the SDK's only drawing integrations; @sentry/nextjs is not installed, so this is not measured. The concrete harm of CI-only placement: a local `pnpm test:e2e` builds with no DSN, the SDK sends nothing, and the new error-reporting cases fail (or must be skipped) locally. True for either placement: with the DSN lane-wide every spec file sends envelopes (pages.vr.ts's engine-error shot forces E201 via web/e2e/player-states.ts:55, and Release Health pings on each load), so 'nothing reaches the network' (spec line 341) holds only for tests that install the shared route."
+      }
+    ],
+    "spike": {
+      "ran": false,
+      "what": "No spike listed for F-7.",
+      "result": "n/a"
+    },
+    "fix_conflicts_with_other_sections": "Line 74 ('With no DSN the SDK sends nothing — which is the state locally, in CI unit tests, and on preview deployments.') becomes inexact: under the fix every local run of the Playwright lane builds with the fake DSN. Reword 'locally' to e.g. 'in `pnpm dev` and plain local builds'. Nothing else conflicts; §4's 'Preview builds, CI builds and local builds skip the upload' keys on SENTRY_AUTH_TOKEN and is unaffected.",
+    "fix_correction": "None to the central claim. Precision for the write-up: a CI job-level env var would also work in CI (Playwright merges process.env into webServer.env), so the reason to move it is local parity (pnpm test:e2e; test:vr:update in Docker), not CI correctness.",
+    "verdict": "pass",
+    "notes": "Worth one line in §6 that the shared routing fixture is used by every file in the lane, not only error-reporting.e2e.ts — the DSN is lane-wide in both placements."
+  },
+  {
+    "id": "F-8",
+    "section_exists": true,
+    "quotes": [
+      {
+        "quote": "`web/app/play/OpenFileControl.tsx:75`, `web/app/play/PlayerShell.tsx:969`",
+        "found": true,
+        "lines": "159"
+      },
+      {
+        "quote": "the file is too large, or cannot be read",
+        "found": true,
+        "lines": "159"
+      },
+      {
+        "quote": "E101, E102 and E103 drop the exception message",
+        "found": true,
+        "lines": "144"
+      }
+    ],
+    "before_verbatim": [
+      {
+        "lines": "159",
+        "text": "| `web/app/play/OpenFileControl.tsx:75`, `web/app/play/PlayerShell.tsx:969`                      | the file is too large, or cannot be read      | E101/E102 | warning, with file type and size                      |"
+      },
+      {
+        "lines": "142-145",
+        "text": "- `code` becomes the Sentry tag `code`, so a visitor who quotes \"Error E203\" maps straight to a\n  Sentry search.\n- **E101, E102 and E103 drop the exception message** and keep its type, its stack, and the file's\n  type and size. The engine's parse message can quote text from inside the file (section 3.1)."
+      }
+    ],
+    "claims": [
+      {
+        "claim": "(a) Both catches wrap `await onNotation(await readNotation(file))` — the whole open flow, including engine calls after a successful parse.",
+        "verdict": "confirmed",
+        "evidence": "web/app/play/OpenFileControl.tsx:71-75: `try {` … `await onNotation(await readNotation(file));` / `} catch {`; onNotation IS requestNotation (web/app/play/PlayerShell.tsx:1109 `<OpenFileControl onNotation={requestNotation} />`). PlayerShell.tsx:967-969: `try {` / `await requestNotation(await readNotation(file));` / `} catch {`. After a successful parse runRequestNotation (PlayerShell.tsx:891-923) calls the engine: :892 `if (wasPlaying) api?.pause();`, :897 `if (api?.playbackRange) setAlphaTabValue(api, 'playbackRange', null);` (a raw `api[key] = value` write, web/lib/alphatab/useAlphaTab.ts:90-96), :902 `dropPlaybackSelection(api);` (api.highlightPlaybackRange + api.applyPlaybackRangeFromHighlight, web/lib/alphatab/playback-selection.ts:35-41), then setNotation / toast / focus. A throw there propagates into both catches. Only the parse has its own catch (PlayerShell.tsx:870-889 -> E103)."
+      },
+      {
+        "claim": "(b) openFailureCode() returns E102 for any file under the size cap.",
+        "verdict": "confirmed",
+        "evidence": "OpenFileControl.tsx:51-53: `export function openFailureCode(file: File): string {` / `return file.size > MAX_NOTATION_BYTES ? ERROR.fileTooLarge : ERROR.fileUnreadable;` (E101 / E102, shared/src/error-codes.ts:17,19). The visitor copy splits the same way (:55-58): every non-size failure reads '… could not be read. Check that the file still exists, then try again. (Error E102)'. Used for the toast id at :81 and PlayerShell.tsx:972, and for the announcement at PlayerShell.tsx:973."
+      },
+      {
+        "claim": "(c) requestNotation has only try/finally (PlayerShell.tsx ~945-949).",
+        "verdict": "confirmed",
+        "evidence": "PlayerShell.tsx:941-952: `const requestNotation = useCallback(` … `if (openInFlight.current) return;` `openInFlight.current = true;` `try {` `await runRequestNotation(next);` `} finally {` `openInFlight.current = false;` `}` — no catch (:945-949)."
+      },
+      {
+        "claim": "(d) A comment in OpenFileControl says a throw mid-open lands in that catch.",
+        "verdict": "confirmed",
+        "evidence": "OpenFileControl.tsx:76-77: '// Same id as requestNotation's loading toast, so a throw mid-open REPLACES the \"Opening…\"' / '// spinner instead of stacking a second toast beside one that never resolves.' Mirrored at PlayerShell.tsx:970: '// Same id as requestNotation's loading toast — see OpenFileControl's `accept`.'"
+      }
+    ],
+    "spike": {
+      "ran": false,
+      "what": "No spike listed for F-8.",
+      "result": "n/a"
+    },
+    "fix_conflicts_with_other_sections": "§2.3 lines 142-143 promise that the `code` tag lets a visitor's quoted code map straight to a Sentry search. Under the fix, a post-read throw still shows the visitor '(Error E102)' (readFailureMessage, OpenFileControl.tsx:55-58; PlayerShell.tsx:972-973) while its report carries no E1xx code, so that quote finds nothing. Choose one: (i) also change what the visitor sees on the post-read branch — a code that needs shared/src/error-codes.ts plus docs/reference/error-codes.md, policed by check:error-codes; or (ii) tag the post-read report E102 at level error with its message kept — then §2.3 lines 144-145 must key the message drop on 'the read or the parse failed', not on the code, and the §6 unit bullet at line 334 ('E101–E103 dropping the message') changes with it. §2.5's selector is satisfied either way (both branches call reportError inside the catch).",
+    "fix_correction": "The fix stands. Add the sentence that resolves the code mismatch above, and place the flag between the two awaits in both catch sites: `const loaded = await readNotation(file); read = true; await onNotation(loaded);`.",
+    "verdict": "pass",
+    "notes": "The 2.4 row's line numbers (OpenFileControl.tsx:75, PlayerShell.tsx:969) are exact at cea5a76d."
+  },
+  {
+    "id": "F-9",
+    "section_exists": true,
+    "quotes": [
+      {
+        "quote": "storage blocked while reading",
+        "found": true,
+        "lines": "161"
+      },
+      {
+        "quote": "storage blocked or full while writing",
+        "found": true,
+        "lines": "162"
+      },
+      {
+        "quote": "Saved data that is _corrupt_ means our own code wrote something bad, or an update changed which values are valid. That is a bug signal, so it sends a warning.",
+        "found": true,
+        "lines": "174-175"
+      }
+    ],
+    "before_verbatim": [
+      {
+        "lines": "161-162",
+        "text": "| `web/app/play/PlayerShell.tsx:190`, `web/lib/alphatab/transport-storage.ts:129`                | storage blocked while reading                 | —         | breadcrumb                                            |\n| `web/app/play/PlayerShell.tsx:220`, `:594`, `:722`, `web/app/play/useRestoredTransport.ts:114` | storage blocked or full while writing         | —         | breadcrumb                                            |"
+      },
+      {
+        "lines": "173-175",
+        "text": "**Blocked is not corrupt.** Storage the browser _blocks_ is the visitor's environment: a breadcrumb\n(S2b). Saved data that is _corrupt_ means our own code wrote something bad, or an update changed which\nvalues are valid. That is a bug signal, so it sends a warning."
+      }
+    ],
+    "claims": [
+      {
+        "claim": "(a) The try at PlayerShell.tsx ~181-196 wraps the whole reader (loadStoredSettings with its merge/option/bound/text checks), not just the storage call.",
+        "verdict": "confirmed",
+        "evidence": "web/app/play/PlayerShell.tsx:182-190: `try {` `return loadStoredSettings(` `globalThis.localStorage.getItem(SETTINGS_STORAGE_KEY),` `DEFAULT_PLAYER_SETTINGS,` `SETTING_OPTION_VALUES,` `SETTING_NUMERIC_BOUNDS,` `SETTING_TEXT_VALIDATORS,` `);` `} catch {` -> returns defaults with reset:false (:195). loadStoredSettings (web/lib/alphatab/settings-storage.ts:176-215) runs our own code: JSON.parse (own inner catch :193-197), mergeAgainstDefaults, dropUnknownOptions, dropInvalidText (our validators isCssColor / isFontShorthand, web/lib/alphatab/settings-schema.ts:1355-1380), clampToBounds. Comment :191-194 assumes the throw is the storage getter's."
+      },
+      {
+        "claim": "(b) web/lib/alphatab/transport-storage.ts ~127-134 does the same with loadStoredTransport.",
+        "verdict": "confirmed",
+        "evidence": "transport-storage.ts:126-134: `export function readStoredTransport(): StoredTransport {` `try {` `return loadStoredTransport(globalThis.localStorage.getItem(TRANSPORT_STORAGE_KEY));` `} catch {` -> defaults, reset:false. loadStoredTransport (:94-117) runs the same loadStoredSettings reader with TRANSPORT_BOUNDS."
+      },
+      {
+        "claim": "(c) The write sites (PlayerShell.tsx ~220, ~594, ~722; useRestoredTransport.ts ~114) serialize inside their try.",
+        "verdict": "confirmed",
+        "evidence": "PlayerShell.tsx:218-222 `try {` `globalThis.localStorage.setItem(SETTINGS_STORAGE_KEY, serializeSettings(restored.settings));` `} catch {`; :589-597 `try {` `globalThis.localStorage.setItem(` `TRANSPORT_STORAGE_KEY,` `serializeTransport({ ...readStoredTransport().values, ...change }),` `);` `} catch {` (serialize plus a full re-read); :720-725 `try {` `globalThis.localStorage.setItem(SETTINGS_STORAGE_KEY, serializeSettings(accepted));` `} catch {`; web/app/play/useRestoredTransport.ts:112-116 `try {` `globalThis.localStorage.setItem(TRANSPORT_STORAGE_KEY, serializeTransport(toRestore));` `} catch {`. Each catch comment assumes storage threw (:221, :595-596, :723-724, useRestoredTransport.ts:115)."
+      },
+      {
+        "claim": "(d) What blocked and full storage throw (DOMException 'SecurityError' / 'QuotaExceededError'; Firefox legacy 'NS_ERROR_DOM_QUOTA_REACHED').",
+        "verdict": "reasoned (MDN-level knowledge; not measured)",
+        "evidence": "Blocked site data: reading `window.localStorage` throws a DOMException named 'SecurityError' (Chromium 'Access is denied for this document', Firefox 'The operation is insecure'). Full: setItem throws a DOMException named 'QuotaExceededError' (legacy code 22); older Firefox used 'NS_ERROR_DOM_QUOTA_REACHED' (code 1014). A blocked read never throws a quota error, so the legacy name matters only at the four write sites."
+      },
+      {
+        "claim": "(e) Does existing code in web/ already distinguish these names?",
+        "verdict": "no (confirmed)",
+        "evidence": "No match for SecurityError, QuotaExceeded, NS_ERROR_DOM_QUOTA or DOMException in web/app, web/lib or web/e2e; no unit test simulates blocked storage. The only repository precedent for naming a DOMException is out of scope: client/src/components/About.tsx:88-90 `function isAbort(cause: unknown): boolean {` `return cause instanceof DOMException && cause.name === 'AbortError';` `}`."
+      }
+    ],
+    "spike": {
+      "ran": false,
+      "what": "No spike listed for F-9.",
+      "result": "n/a"
+    },
+    "fix_conflicts_with_other_sections": "(1) §6 e2e case 5 (lines 352-353): the init script that blocks storage must make the getter throw `new DOMException('…', 'SecurityError')`, as browsers do; one that throws a plain Error would, under the fix, be reported as an error and the case fails. (2) §2.5's selector (line 184) needs a CallExpression named reportError or noteError inside each catch: a shared classifier helper (e.g. `reportStorageError(e)`) is flagged unless each catch calls reportError/noteError directly (e.g. `isStorageRefusal(e) ? noteError(e, '…') : reportError(e)`) or the selector regex gains the helper's name. (3) The 'Sends' cells of both rows (lines 161-162) become a split; S2b (line 56) and 'Blocked is not corrupt' (lines 173-175) stay true and need at most one added sentence that a throw from our own reader or serializer is a bug, not a blocked store.",
+    "fix_correction": "The fix stands. Precision: the Firefox legacy name only matters on the write sites; the read sites need only SecurityError.",
+    "verdict": "pass",
+    "notes": "The six sites are exactly the 2.4 rows at lines 161-162 (2 reads + 4 writes); line numbers exact at cea5a76d."
+  },
+  {
+    "id": "F-14",
+    "section_exists": true,
+    "quotes": [
+      {
+        "quote": "3. Open a sample whose name, title and track names are known, click Solo, then cause an error: the raw envelope contains none of those strings.",
+        "found": true,
+        "lines": "349-350"
+      },
+      {
+        "quote": "4. Opening `guitar-no-percussion.gp` (the NH-335 file) sends no error.",
+        "found": true,
+        "lines": "351"
+      },
+      {
+        "quote": "5. With storage blocked by an init script, nothing is sent until a real error, and that report carries the storage breadcrumb.",
+        "found": true,
+        "lines": "352-353"
+      },
+      {
+        "quote": "1. A throw injected by the test (`page.evaluate`) sends an `error`.",
+        "found": true,
+        "lines": "347"
+      }
+    ],
+    "before_verbatim": [
+      {
+        "lines": "346-353",
+        "text": "  - **New cases in `web/e2e/error-reporting.e2e.ts`:**\n    1. A throw injected by the test (`page.evaluate`) sends an `error`.\n    2. Opening a file that is not a score sends an E103 `warning` with its type and size, and no name.\n    3. Open a sample whose name, title and track names are known, click Solo, then cause an error:\n       the raw envelope contains none of those strings.\n    4. Opening `guitar-no-percussion.gp` (the NH-335 file) sends no error.\n    5. With storage blocked by an init script, nothing is sent until a real error, and that report\n       carries the storage breadcrumb."
+      }
+    ],
+    "claims": [
+      {
+        "claim": "(a) web/e2e/page-errors.ts records a past trap where a check ran before a deferred render's throw and went green (NH-291).",
+        "verdict": "confirmed",
+        "evidence": "web/e2e/page-errors.ts:112-117: '// One round trip to the page, so any pageerror already raised has been DISPATCHED before we' / '// assert. Without it a throw from a deferred (rAF) render lands after this check and the test' / '// goes green on a build that threw — which is why the flaky NH-291 case reported as flaky' / '// rather than as a consistent red. …' then `if (!page.isClosed()) await page.evaluate(() => {});`."
+      },
+      {
+        "claim": "(b) NH-335 fires after the score is already visible (postRenderFinished).",
+        "verdict": "confirmed from the engine bundle's code (not run)",
+        "evidence": "The app serves alphaTab.core.min.mjs (web/scripts/vendor-alphatab.mjs VENDOR_FILES). In it, class `jn` method `Zu(t)` is the MAIN-thread AlphaTabWorkerScoreRenderer._handleWorkerMessage, registered on the Worker object; its 'alphaTab.postRenderFinished' case runs `this.boundsLookup=Jn.fromJson(e.boundsLookup,this.qu.score)` BEFORE `this.postRenderFinished.trigger()`. That matches the stack quoted at page-errors.ts:46-48 (Jn.fromJson <- jn.Zu <- Worker.<anonymous>). Unminified twin: web/node_modules/@coderline/alphatab/dist/alphaTab.core.mjs:34492-34497, with BoundsLookup.fromJson dereferencing `score.tracks[…].staves[…].bars[…].voices[…]` at :34221. The worker posts postRenderFinished immediately after renderFinished (ScoreRenderer :40741-40742, :40766-40767, :40775-40776), and the app marks the score drawn on renderFinished (web/app/play/NotationSurface.tsx:155-161, `setRendered(true)`). So NH-335 lands after the notation is drawn, and a check made as soon as the score is visible can run before it."
+      },
+      {
+        "claim": "(c) With Release Health on, every page load sends a session envelope, so case 5's 'nothing is sent' cannot pass literally.",
+        "verdict": "confirmed (from the spec's own text; the SDK default itself is on the spec's to-verify list)",
+        "evidence": "Spec line 58 (S4 'Release Health on'), lines 279-280 ('a small ping on every visit, not only on a crash'), line 382 ('Release Health pings on every visit'); line 392 lists the SDK default as unverified. If session envelopes count as 'sent', case 5 fails on every run."
+      },
+      {
+        "claim": "(d) A throw inside a page.evaluate callback rejects the evaluate call and does NOT reach the page's global error handler unless deferred (e.g. setTimeout).",
+        "verdict": "confirmed by spike",
+        "evidence": "Chromium 149.0.7827.55 / playwright-core 1.61.1, about:blank, with both window.onerror (what Sentry's global handler wraps) and a window 'error' listener installed. (i) sync throw in the callback: the evaluate call rejected ('page.evaluate: Error: x-sync-throw-in-evaluate'); window.onerror, the listener and Playwright 'pageerror' saw nothing. (ii) the throw deferred with setTimeout: evaluate resolved; window 'error' listener, window.onerror AND Playwright 'pageerror' all fired. Extras: an async callback that throws behaves like (i); an un-awaited Promise.reject inside evaluate reached 'unhandledrejection' and 'pageerror'."
+      }
+    ],
+    "spike": {
+      "ran": true,
+      "what": "scratchpad/verify-B/evaluate-throw-spike.mjs — headless Chromium (the installed chromium-1228 build) via the worktree's playwright-core 1.61.1 against about:blank; listeners: window.onerror, window 'error', window 'unhandledrejection', Playwright 'pageerror'. Output: evaluate-throw-spike.out.json.",
+      "result": "{\"i\": {\"evaluateCall\": \"rejected: page.evaluate: Error: x-sync-throw-in-evaluate\", \"pageSeen\": [], \"playwrightPageerror\": []}, \"ii\": {\"evaluateCall\": \"resolved\", \"pageSeen\": [\"listener:error:Uncaught Error: y-deferred-throw\", \"onerror:Uncaught Error: y-deferred-throw\"], \"playwrightPageerror\": [\"y-deferred-throw\"]}, \"iii\": {\"evaluateCall\": \"rejected: page.evaluate: Error: z-async-reject-in-evaluate\", \"pageSeen\": [], \"playwrightPageerror\": []}, \"iv\": {\"evaluateCall\": \"resolved\", \"pageSeen\": [\"listener:unhandledrejection:w-unawaited-rejection\"], \"playwrightPageerror\": [\"w-unawaited-rejection\"]}, \"browserVersion\": \"149.0.7827.55\"}"
+    },
+    "fix_conflicts_with_other_sections": "(1) The deferred sentinel is an uncaught page error — the spike shows a setTimeout throw fires Playwright's 'pageerror'. Any file that calls failOnUnexpectedPageErrors() (web/e2e/page-errors.ts:90-123) then fails in afterEach. error-reporting.e2e.ts must either not install that gate (only *.vr.ts files are required to — tooling/workflow-guards.test.mjs:352-358) or allow the sentinel locally. It must NOT add the sentinel to the shared known-engine-noise list §2.6 creates (lines 207-211): the Sentry filter reads the same list and would drop the sentinel, so the control could never arrive. (2) Case 5's wording must say 'no event envelope' to agree with S4 (line 58) — the fix already does.",
+    "fix_correction": "Case 4 needs an ordering guarantee the proposed fix lacks. NH-335 fires only when the worker's postRenderFinished message reaches the main thread, after renderFinished (claim b), so a sentinel thrown as soon as the score is visible can land BEFORE the NH-335 throws and the case is still vacuous. Throw the sentinel only after Playwright's own page.on('pageerror') has recorded the NH-335 message at least once (proof the throw happened in this run); if NH-335 is not deterministic on that file, case 4 needs a different trigger. Case 3: also assert the scrubbed placeholder `[file]` appears in the envelope (the Solo click breadcrumb's aria-label), otherwise a breadcrumb that was never recorded passes the same check as one that was scrubbed. Cases 1 and 5 as proposed agree with the spike and with S4.",
+    "verdict": "pass",
+    "notes": "Incidental, outside group B — spec §2.1 line 107: NH-335 is thrown on the MAIN thread, in AlphaTab's listener on the Worker object (BoundsLookup.fromJson <- AlphaTabWorkerScoreRenderer._handleWorkerMessage), not inside the worker, so it is not evidence that a worker throw reaches the page. The row's conclusion still holds: a same-origin spike (worker-throw-spike-http.mjs) shows a throw inside a module or classic dedicated worker reaches window.onerror, a window 'error' listener and Playwright's 'pageerror' in Chromium 149: {\"module\": {\"seenInPage\": [\"worker-object:error:ErrorEvent:Uncaught Error: thrown-inside-module\", \"window-listener:error:Uncaught Error: thrown-inside-module (filename=http://127.0.0.1:63904/worker.mjs)\", \"window.onerror:Uncaught Error: thrown-inside-module\"], \"playwrightPageerror\": [\"thrown-inside-module\"]}, \"classic\": {\"seenInPage\": [\"worker-object:error:ErrorEvent:Uncaught Error: thrown-inside-classic\", \"window-listener:error:Uncaught Error: thrown-inside-classic (filename=http://127.0.0.1:63904/worker.js)\", \"window.onerror:Uncaught Error: thrown-inside-classic\"], \"playwrightPageerror\": [\"thrown-inside-classic\"]}, \"browserVersion\": \"149.0.7827.55\"}. (From an opaque blob: URL on about:blank it reached only the Worker object — irrelevant to the app, which serves its worker same-origin.) page-errors.ts:26's comment ('throws this out of its own worker's score DESERIALIZATION') carries the same inaccuracy."
+  },
+  {
+    "id": "F-15",
+    "section_exists": true,
+    "quotes": [
+      {
+        "quote": "a React render crash ─► error.tsx / global-error.tsx ─► reportError()",
+        "found": true,
+        "lines": "94"
+      },
+      {
+        "quote": "After (both, and the new global-error.tsx):",
+        "found": true,
+        "lines": "271"
+      },
+      {
+        "quote": "**Unit (Vitest), beside each `lib/monitoring` file:**",
+        "found": true,
+        "lines": "331"
+      }
+    ],
+    "before_verbatim": [
+      {
+        "lines": "331-336",
+        "text": "- **Unit (Vitest), beside each `lib/monitoring` file:**\n  - the names filter: the file name, the title and every track name become `[file]`; strings shorter\n    than 3 characters are left alone; stack frames are untouched;\n  - `reportError`: the default level, the `code` tag, and E101–E103 dropping the message;\n  - known engine noise: a throw whose frames all sit in the engine bundle is dropped; the same\n    message with one frame from our code is kept."
+      }
+    ],
+    "claims": [
+      {
+        "claim": "(a) web/ has Vitest with a DOM environment and @testing-library/react.",
+        "verdict": "confirmed",
+        "evidence": "web/vitest.config.ts:19 `environment: 'jsdom'`, :20 setupFiles ['./vitest.setup.ts']; web/vitest.setup.ts:1 '@testing-library/jest-dom/vitest', :3-10 RTL `cleanup` in afterEach. web/package.json:26-44 devDependencies: @testing-library/react ^16.3.2, @testing-library/jest-dom ^6.9.1, @testing-library/user-event ^14.6.1, jsdom ^29.1.1, vitest ^4.1.11."
+      },
+      {
+        "claim": "(b) Existing component tests (*.test.tsx) in web/.",
+        "verdict": "confirmed",
+        "evidence": "web/app/play/PlayerHeader.test.tsx, PlayerShell.test.tsx, SettingsPopover.test.tsx, TransportRow.test.tsx (all use RTL render). Module mocking with vi.mock is established: PlayerShell.test.tsx:10, :23, :31, :40; PlayerHeader.test.tsx:12."
+      },
+      {
+        "claim": "(c) app/error.tsx and app/play/error.tsx have no test today.",
+        "verdict": "confirmed",
+        "evidence": "No error*.test.* file under web/app or web/lib; no e2e asserts E901 or either page's copy ('Something went wrong', 'The player stopped unexpectedly'). Outside the pages, E901 appears only as fixture data in tooling/check-error-codes.test.mjs. Both pages today ignore `error` (web/app/error.tsx:7, web/app/play/error.tsx:7: `({ reset }: Readonly<{ error: Error; reset: () => void }>)`)."
+      },
+      {
+        "claim": "(d) Feasibility of rendering global-error.tsx (returns <html><body>) inside a test container.",
+        "verdict": "feasible (spiked, outside Vitest)",
+        "evidence": "No existing pattern in the repo. Spike with the installed React 19.2.7 + react-dom + jsdom 29.1.1 + @testing-library/react 16.3.2 (Node + jsdom, approximating Vitest's jsdom environment): RTL render() of a component returning <html lang><body><main>… inside its default <div> container did not throw; screen found 'Error E901' and the 'Try again' button; a click called reset once; cleanup() restored the document (React 19 applied lang to the real <html> and removed it on unmount). One dev console.error: 'In HTML, <html> cannot be a child of <div>. This will cause a hydration error.' web/vitest.setup.ts has no console.error trap, so it is noise, not a failure."
+      }
+    ],
+    "spike": {
+      "ran": true,
+      "what": "scratchpad/verify-B/global-error-render-spike.cjs — Node with jsdom globals; RTL render of an <html><body> component; checks screen queries, a reset click, cleanup, console.error. Output: global-error-render-spike.out.json.",
+      "result": "{\"containerInnerHTML\": \"<main><p>Errors are reported automatically.</p><p>Error E901</p><button type=\\\"button\\\">Try again</button></main>\", \"containerStillInBody\": true, \"documentAfterRender\": \"<html lang=\\\"en\\\"><head></head><body><div><main><p>Errors are reported automatically.</p><p>Error E901</p><button type=\\\"button\\\">Try again</button></main></div></body></html>\", \"screenFindsCode\": true, \"screenFindsButton\": true, \"resetCalls\": 1, \"documentAfterCleanup\": \"<html><head></head><body></body></html>\", \"consoleErrors\": [\"In HTML, %s cannot be a child of <%s>.%s\\nThis will cause a hydration error.%s <html> div  \"]}"
+    },
+    "fix_conflicts_with_other_sections": "None. Co-located page tests match AGENTS.md's layout rule (no __tests__/), and vi.mock of the report module follows the existing pattern. One implementation note tied to §2.2 lines 122-123 (global-error.tsx imports globals.css itself): that test would be the first web unit test whose import graph pulls a .css file (today only web/app/layout.tsx:5 imports it, and layout has no test). Vitest's default CSS handling is expected to stub it — unverified; `vi.mock('./globals.css', () => ({}))` is the fallback.",
+    "fix_correction": "None needed. Optionally note the expected <html>-in-<div> development warning so nobody mistakes it for a failure.",
+    "verdict": "pass",
+    "notes": "The sentence the fix asserts is §3.4 lines 272-273; the two existing pages differ only in their <h1>."
+  },
+  {
+    "id": "FYI-3",
+    "section_exists": true,
+    "quotes": [
+      {
+        "quote": "type FileFacts = { readonly type: string; readonly bytes: number }; // never the name",
+        "found": true,
+        "lines": "129"
+      },
+      {
+        "quote": "warning, with file type and size",
+        "found": true,
+        "lines": "158, 159"
+      }
+    ],
+    "before_verbatim": [
+      {
+        "lines": "129",
+        "text": "type FileFacts = { readonly type: string; readonly bytes: number }; // never the name"
+      },
+      {
+        "lines": "158-159",
+        "text": "| `web/app/play/PlayerShell.tsx:872`                                                             | the file is not a score                       | E103      | warning, with file type and size                      |\n| `web/app/play/OpenFileControl.tsx:75`, `web/app/play/PlayerShell.tsx:969`                      | the file is too large, or cannot be read      | E101/E102 | warning, with file type and size                      |"
+      }
+    ],
+    "claims": [
+      {
+        "claim": "At PlayerShell.tsx ~872 the parsed input (LoadedNotation, built near OpenFileControl.tsx:42) holds only name and bytes; browsers give an empty File.type for .gp/.gp5/.gpx/.atex.",
+        "verdict": "confirmed (code) / reasoned (browser)",
+        "evidence": "web/app/play/PlayerShell.tsx:68-72 `export interface LoadedNotation {` `name: string;` `bytes: Uint8Array;` `}`, built by readNotation at OpenFileControl.tsx:42 `return { name: file.name, bytes: new Uint8Array(buffer) };`. The E103 catch (PlayerShell.tsx:870-889) has only `next: LoadedNotation` in scope: size is next.bytes.byteLength, but there is no File and no MIME type. File.type (reasoned, unmeasured): browsers map known extensions and return '' otherwise, which covers .gp/.gp3-5/.gpx/.atex/.alphatex/.capx unless the OS registers one. The same gap reaches §5 step 5 (lines 322-323) and §6 case 2 (line 348)."
+      }
+    ],
+    "spike": {
+      "ran": false,
+      "what": "n/a",
+      "result": "n/a"
+    },
+    "fix_conflicts_with_other_sections": "n/a (advisory)",
+    "fix_correction": "n/a",
+    "verdict": "pass",
+    "notes": ""
+  },
+  {
+    "id": "FYI-4",
+    "section_exists": true,
+    "quotes": [
+      {
+        "quote": "If the new selectors need a narrower `files` scope (test files are exempt), that block must repeat the fence's selector, held in a shared constant.",
+        "found": true,
+        "lines": "190-191"
+      }
+    ],
+    "before_verbatim": [
+      {
+        "lines": "188-191",
+        "text": "- **They join the existing `no-restricted-syntax` list** at `web/eslint.config.mjs:68`. A second\n  block that sets the same rule would silently replace the AlphaTab dynamic-import fence already\n  there. If the new selectors need a narrower `files` scope (test files are exempt), that block must\n  repeat the fence's selector, held in a shared constant."
+      }
+    ],
+    "claims": [
+      {
+        "claim": "No test/e2e/setup file under web/ contains a `catch` clause or `.catch(` today.",
+        "verdict": "confirmed",
+        "evidence": "Searched all 20 test/e2e/setup files (web/app/play/*.test.ts(x), web/lib/alphatab/*.test.ts, web/e2e/*.ts, web/vitest.setup.ts): the only hit is a comment, web/e2e/a11y.e2e.ts:220 ('…exists to catch (NH-315)'). The fence block is scoped `files: ['**/*.{ts,tsx}']` (web/eslint.config.mjs:66), so it already covers test and e2e files and excludes .mjs; the only other catches under web/ are build scripts (web/scripts/app-version.mjs:118, web/scripts/assert-design-system-css.mjs:128 — .mjs, outside that scope). Non-test web/app + web/lib hold exactly the 16 catch sites §2.4 lists."
+      }
+    ],
+    "spike": {
+      "ran": false,
+      "what": "n/a",
+      "result": "n/a"
+    },
+    "fix_conflicts_with_other_sections": "n/a (advisory)",
+    "fix_correction": "n/a",
+    "verdict": "pass",
+    "notes": ""
+  },
+  {
+    "id": "FYI-5",
+    "section_exists": true,
+    "quotes": [
+      {
+        "quote": "a test runs ESLint over a silent `catch { }` and expects it to fail, so the rule cannot stop working quietly — the same idea as `tooling/check-core-purity-canary.sh`",
+        "found": true,
+        "lines": "337-338"
+      }
+    ],
+    "before_verbatim": [
+      {
+        "lines": "337-338",
+        "text": "- **Lint canary:** a test runs ESLint over a silent `catch { }` and expects it to fail, so the rule\n  cannot stop working quietly — the same idea as `tooling/check-core-purity-canary.sh`."
+      }
+    ],
+    "claims": [
+      {
+        "claim": "tooling/alphatab-import-fence.test.sh exists, probes the same no-restricted-syntax array with an expect_rejected helper, and runs under test:tooling:sh in the CI quality job.",
+        "verdict": "confirmed",
+        "evidence": "tooling/alphatab-import-fence.test.sh:44-57 defines expect_rejected (runs `pnpm --filter \"@notation-hero/$1\" exec eslint \"$2\"`, requires a non-zero exit AND the rule id); :63 `expect_rejected web \"$WEB_DYN_PROBE\" 'no-restricted-syntax'` probes the array at web/eslint.config.mjs:68; probe files are ephemeral (trap cleanup :24-30). Its header :12-15 already records the flat-config 'later block REPLACES' hazard §2.5 names. Root package.json:40-41: test:tooling -> test:tooling:sh (`for t in tooling/*.test.sh`); CI quality job, .github/workflows/ci.yml:104-105 'Tooling unit tests (node --test + shell)' runs `pnpm run test:tooling`. tooling/check-core-purity-canary.sh, the spec's model, probes dependency-cruiser, not ESLint."
+      }
+    ],
+    "spike": {
+      "ran": false,
+      "what": "n/a",
+      "result": "n/a"
+    },
+    "fix_conflicts_with_other_sections": "n/a (advisory)",
+    "fix_correction": "n/a",
+    "verdict": "pass",
+    "notes": ""
+  },
+  {
+    "id": "FYI-6",
+    "section_exists": true,
+    "quotes": [
+      {
+        "quote": "`/play`'s first-load JavaScript is measured before and after, and both numbers go in the PR description.",
+        "found": true,
+        "lines": "356-357"
+      }
+    ],
+    "before_verbatim": [
+      {
+        "lines": "356-357",
+        "text": "- **Download size:** `/play`'s first-load JavaScript is measured before and after, and both numbers go\n  in the PR description."
+      }
+    ],
+    "claims": [
+      {
+        "claim": "The Next 16 upgrade guide under web/node_modules/next/dist/docs says `next build` no longer prints size / First Load JS.",
+        "verdict": "confirmed",
+        "evidence": "web/node_modules/next/dist/docs/01-app/02-guides/upgrading/version-16.md:989 (installed next 16.3.6): Next.js 16 'removes the `size` and `First Load JS` metrics from the `next build` output'. The same bundled docs offer a replacement: 01-app/02-guides/package-bundling.md:22-41, an experimental Turbopack bundle analyzer (v16.1+, `pnpm next experimental-analyze`)."
+      }
+    ],
+    "spike": {
+      "ran": false,
+      "what": "n/a",
+      "result": "n/a"
+    },
+    "fix_conflicts_with_other_sections": "n/a (advisory)",
+    "fix_correction": "n/a",
+    "verdict": "pass",
+    "notes": ""
+  }
+]
