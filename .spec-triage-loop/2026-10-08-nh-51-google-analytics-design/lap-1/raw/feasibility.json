@@ -1,0 +1,100 @@
+{
+  "reviewer": "feasibility",
+  "findings": [
+    {
+      "title": "Every existing lane test would still reach Google",
+      "severity": "P2",
+      "section": "9. Testing (End to end, Playwright) and 1. Packages and files",
+      "why_it_matters": "Every existing test in the `web` lane would download Google's gtag.js and send page-view hits to Google on every CI and local run. The fake Google Analytics ID and the Sydney time zone apply to the whole one-build lane, but only `privacy-choice.e2e.ts` installs the fixture that answers Google's hosts. `player.e2e.ts`, `a11y.e2e.ts`, `toast-occlusion.e2e.ts` and `pages.vr.ts` import `test` straight from `@playwright/test`, and none of them is on the changed-files list. Sentry's opt-in fixture is safe only because its fake DSN host is `.invalid` and never resolves. `www.googletagmanager.com` does resolve, and the spike showed that a made-up ID still gets a working script that sends a page view. A module-scope call that every lane file makes, the same shape `failOnUnexpectedPageErrors()` already has, keeps 'no test reaches Google' true and keeps a live third-party host out of the merge-blocking lane.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "Have web/e2e/google-analytics.ts export a module-scope call, the same shape as failOnUnexpectedPageErrors(), that answers Google's hosts for every test in the calling file. Add web/e2e/player.e2e.ts, a11y.e2e.ts, toast-occlusion.e2e.ts and pages.vr.ts to 'Changed files' as callers of it. State in section 9 that every test in the lane answers Google's hosts locally, not only privacy-choice.e2e.ts.",
+      "confidence": 100,
+      "evidence": [
+        "`web/playwright.e2e.config.ts`: `timezoneId: 'Australia/Sydney'` for every project, and a fake Google Analytics ID.",
+        "the shared fixture: answers Google's hosts locally and records every request",
+        "`web/e2e/google-analytics.ts` answers Google's hosts locally, the way Sentry's fixture answers its fake DSN, so no test reaches Google."
+      ]
+    },
+    {
+      "title": "E2E assertions need Google's real gtag.js; its source is undecided",
+      "severity": "P2",
+      "section": "9. Testing (End to end, Playwright)",
+      "why_it_matters": "The Sydney, 'Yes' and privacy cases check `gcs=G101`, `npa=1` and `dt`. Only Google's own gtag.js puts those values on its collect requests. Yet section 9 answers every Google host locally and never says what the fixture returns for the script itself. If the fixture serves a stub script, the page sends no collect request at all: the Sydney case cannot pass, and the privacy case ('no Google request contains the title') passes while checking nothing. leocaseiro needs to choose between two options. (1) Commit a snapshot of the gtag.js that Google serves for the fake ID as a test fixture: no test reaches Google, but a Google-owned script then sits in a public repository, and the tests run a frozen copy until someone refreshes it. (2) Let only the script download through to Google, as the spike did: the tests run the live script, but the merge-blocking `web` job then depends on googletagmanager.com, and section 9's promise becomes 'no hit reaches Google'. Whichever is chosen, the privacy case should also check that at least one collect request was recorded.",
+      "finding_type": "error",
+      "autofix_class": "manual",
+      "suggested_fix": null,
+      "confidence": 75,
+      "evidence": [
+        "**Sydney:** no popup; a page view with `gcs=G101` and `npa=1`",
+        "No Google request — address or body — contains any of them, and `dt` stays `Notation Hero`.",
+        "`web/e2e/google-analytics.ts` answers Google's hosts locally, the way Sentry's fixture answers its fake DSN, so no test reaches Google.",
+        "Google's collect requests answered locally, so nothing reached Google."
+      ]
+    },
+    {
+      "title": "Saved 'No' ignored once the time zone leaves Europe",
+      "severity": "P2",
+      "section": "2. The privacy choice",
+      "why_it_matters": "Suppose a visitor answers 'No, send nothing' while their browser is set to a European time zone. On their next visit from a time zone outside Europe, they are counted and reported anyway. The reason: `allowed()`, the one rule both tools follow, is defined as section 2's table. Its 'Outside Europe' row allows everything, whatever answer is saved, and the 15 unit-test cells lock that in. This contradicts the Goal's 'one answer governs' and G3's 'by default'. It also breaks the 'Extending later' plan for NH-349, the 'Privacy choices' link for every visitor: if a visitor outside Europe says 'No' through that link, the next page load overrides it. Letting a saved answer win for every visitor, with the time zone deciding only whether to ask when nothing is saved, fixes both for the cost of one table row.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "In section 2, state that a saved answer wins for every visitor, and that the time zone only decides whether to ask when nothing is saved. allowed() reads savedChoice() first. The table's first row becomes 'Outside Europe, no saved answer', and a new row is added: 'Outside Europe, answered earlier: as answered'. Section 9's allowed() unit cells cover the new row.",
+      "confidence": 75,
+      "evidence": [
+        "/** The table above, for this visitor. */",
+        "Visitors in Europe are asked first, and one answer governs both Google Analytics and Sentry.",
+        "**NH-349's link** reuses `PrivacyChoices` and `saveChoice()`. Changing to \"No\" must stop Google Analytics (a consent update to denied, and no more events) and close Sentry for the rest of the visit.",
+        "`allowed()`: the 15 cells of section 2's table."
+      ]
+    },
+    {
+      "title": "NH-124 going live first reports Europe without asking",
+      "severity": "P2",
+      "section": "6. Changes to Sentry's design and 8. Setup",
+      "why_it_matters": "NH-124's merge deploys to production. From then until this ticket's code ships, every visitor in Europe is reported to Sentry without being asked, Release Health's visit ping included. G5 forbids exactly this: in Europe nothing loads, Sentry included, until the visitor answers (leocaseiro's 'whatever is good by law'). G10 places this code after NH-124 merges. NH-124's own setup sets `NEXT_PUBLIC_SENTRY_DSN` in Production and checks a live report right after its first deploy. This spec's go-live note covers only NH-349. Holding back the DSN until the deploy that ships the popup closes the gap. The cost is that Sentry's first live check moves to this ticket's deploy.",
+      "finding_type": "omission",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "Add to section 8 and 'Known limits': NEXT_PUBLIC_SENTRY_DSN is added to Vercel Production only with the deploy that ships this ticket's popup. Until then, NH-124 runs in production with no DSN, so no visitor in Europe is reported before they answer. NH-124's first live check moves to that deploy.",
+      "confidence": 75,
+      "evidence": [
+        "This spec now; the code after NH-124 merges, then a rebase",
+        "In Europe nothing loads — Sentry included — until the visitor answers",
+        "Made in this ticket's pull request, after NH-124 merges:",
+        "NH-349 should land before or with this ticket's go-live."
+      ]
+    },
+    {
+      "title": "The card over the drop zone swallows dropped files",
+      "severity": "P2",
+      "section": "3. The popup",
+      "why_it_matters": "A visitor in Europe who drops a score onto the part of the notation area under the card does not get it opened. The browser's default action runs instead: it opens or downloads the file, and a plain .xml score replaces the player in the tab. The card is rendered from the root layout, outside the player's drop container, and nothing there cancels dragover or drop. A comment beside the drop overlay in PlayerShell.tsx already records this problem: an element mounted outside the container is not a descendant, so dragleave throws off the player's drag counter and 'Drop to open' disappears over it. Letting a file drag pass through the card keeps 'the player works while the card waits' true. No case in section 9 drops a file on the card's area, so no test would catch this.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "In section 3: while a file is dragged over the page, the card takes no pointer events, so the drop zone beneath keeps the drag. Switch this on from a window dragenter event that carries files, and switch it off the way PlayerShell already detects that a drag has ended. Add a Berlin case to privacy-choice.e2e.ts that drops a fixture onto the card's area while the card is showing and expects the file to open.",
+      "confidence": 75,
+      "evidence": [
+        "On `/play` it sits 12 px above the 80 px transport row",
+        "`web/app/layout.tsx`: renders `<PrivacyChoices />`.",
+        "The player works while the card waits, and nothing is sent meanwhile."
+      ]
+    },
+    {
+      "title": "Typed fields catch literals only; track() forwards everything",
+      "severity": "P3",
+      "section": "5. Events",
+      "why_it_matters": "The promise that 'text from the file cannot reach Google' only holds where a call passes an object literal. TypeScript skips its excess-property check for an object that is built first, or merged in with a spread. So a fields object that also carries a track name still type-checks, and `track()` forwards the whole object to `gtag('event', …)`. If `track()` copies only the keys declared for that event, the promise holds for every call shape, for the cost of one key list per event. The privacy e2e case cannot catch this, because it covers opening a file, not every control.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "In section 5, track() sends only the fields declared for that event. They are read from a per-event key list kept beside AnalyticsEvents, with the types derived from it; the fields object is never forwarded as given.",
+      "confidence": 50,
+      "evidence": [
+        "Every field comes from a fixed list or is a number, so text from the file cannot reach Google.",
+        "**`track(name, fields)`** sends `gtag('event', name, fields)` once started, and nothing before",
+        "track('mixer_change', { control: 'solo', on: true, track: 'Lead Guitar' });"
+      ]
+    }
+  ],
+  "residual_risks": [],
+  "deferred_questions": []
+}

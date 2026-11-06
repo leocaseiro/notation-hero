@@ -1,0 +1,38 @@
+{
+  "reviewer": "product-lens",
+  "findings": [
+    {
+      "title": "Consent withdrawal (NH-349) is required at go-live but ungated",
+      "severity": "P2",
+      "section": "Known limits — 'Until NH-349 ships' (withdrawing an answer), with the Status line",
+      "why_it_matters": "Visitors in Europe could answer Yes and have no way to take it back for as long as NH-349 (the 'Privacy choices' link) stays in the backlog. The spec says the Article 7(3) fix 'should' land by go-live, but it never defines go-live and nothing waits for it. In practice go-live is this ticket's merge: once NH-124's Sentry DSN is set, section 2 shows the popup on that deploy. Yet the Status line and G10 (code after NH-124 merges) wait only for NH-124, and Jira links neither ticket to the other (NH-349 is To Do, Medium). The gate is leocaseiro's call, because holding this ticket keeps NH-124's reporting in Europe running without consent until both merge. Without a gate, though, the plan cannot order the two tickets.",
+      "finding_type": "omission",
+      "autofix_class": "manual",
+      "suggested_fix": "Define go-live in Known limits as the production deploy of this ticket's merge, and make NH-349's 'Privacy choices' link its blocker. The Status line and section 10 say this pull request merges only once NH-349's own pull request, stacked on this branch, is approved and merges right after it. Jira gets the link 'NH-349 blocks NH-51'.",
+      "confidence": 75,
+      "evidence": [
+        "GDPR Article 7(3) requires withdrawing to be as easy as agreeing, so NH-349 should land before or with this ticket's go-live.",
+        "The popup and the rule apply only when `NEXT_PUBLIC_SENTRY_DSN` or `NEXT_PUBLIC_GA_ID` is set.",
+        "Not implemented. The plan comes next; the code waits for NH-124 to merge.",
+        "**Jira:** NH-51 rewritten and NH-349 narrowed (both done on 2026-10-05)."
+      ]
+    },
+    {
+      "title": "Owner's own production visits will be counted as visitors",
+      "severity": "P3",
+      "section": "8. Setup — done by leocaseiro, by hand",
+      "why_it_matters": "On a small personal demo, leocaseiro's own production visits can be a large share of what Google Analytics records: step 6's Realtime check, checks after later deploys, and demos from leocaseiro's own machine. Then 'who comes', 'what they use' and the funnel would partly describe the owner, not visitors. leocaseiro is in Sydney, which G3 (everyone outside Europe counted by default) always counts. Section 8 tunes the property for small numbers but excludes no internal traffic. Google Analytics' internal-traffic rule and data filter remove these visits with no code. The filter goes on after step 6, because an active filter discards matching data for good and would hide step 6's own check.",
+      "finding_type": "omission",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "Add a step 7 to section 8: after step 6's checks, define internal traffic for leocaseiro's own IP addresses (the web data stream → Configure tag settings → Define internal traffic) and set the 'Internal Traffic' data filter to Active.",
+      "confidence": 50,
+      "evidence": [
+        "**After the first production deploy, in the Realtime report:** a page view on `/`",
+        "Visitors in Europe are asked first; everyone else gets everything by default, with no popup",
+        "**Reporting identity: device-based**, so thresholds do not hide small numbers."
+      ]
+    }
+  ],
+  "residual_risks": [],
+  "deferred_questions": []
+}

@@ -1,0 +1,637 @@
+{
+  "group": 3,
+  "items": [
+    {
+      "id": "F-25",
+      "verdict": "CONFIRMED_WITH_CORRECTION",
+      "correction": "The links do not have to move to a row of their own, as the reviewer proposed. Built as the design system's Button in its link variant with min-h-11, each link measures 44 px tall in the place the approved copy gives it (158 × 44 and 88 × 44 inside their sentences, in a mock) and passes both the hit-area check and axe, so the approved layout of the card's Details stays as drawn. The home note's two links already sit on a line of their own (line 355). One addition: keep the links underlined. The link variant underlines only on hover, and the colour of a link (--primary) and of the note around it (--muted-foreground) have almost the same lightness (oklch 51.1% and 52%), so at rest a link inside a sentence would differ from the words around it only by hue and a slightly heavier weight.",
+      "section_heading": "## 3. The popup; ## 7. The copy; ## 9. Testing",
+      "section_lines": "158-200 (Details: 186-189); 344-380 (home-note links: 355; notice: 357-362); 421-489 (axe scans: 486-489)",
+      "quotes": [
+        {
+          "quote": "How Google uses data ↗ · Privacy notice",
+          "verbatim": true,
+          "line": 355,
+          "note": ""
+        },
+        {
+          "quote": "An axe scan with the popup open, in light only, like every other axe case in the lane",
+          "verbatim": true,
+          "line": 486,
+          "note": ""
+        },
+        {
+          "quote": "the design system's `Button`, one variant for all three, each at least 44 px tall",
+          "verbatim": true,
+          "line": 183,
+          "note": "runs over lines 183-184; matches once the line break is collapsed"
+        }
+      ],
+      "central_claim_check": "web/e2e/a11y.e2e.ts:54-225 (expectHitAreas) measures every `button`, `a[href]`, `label[for]`, `[role=\"button\"]` and slider control (lines 78-96) and fails any under 44 × 44 px or past a window edge (lines 136-196). Its only exemptions are the toast's close button and the mixer rows' buttons (lines 132-135); links in text are not exempt. The landing case runs it over `/` (lines 255-260, floor of 1 control), and every /play case runs it too. The 44 px bar is documented as deliberate: lines 41-45 ('The stricter rule is enforced here deliberately ... so a later control cannot quietly shrink below it'), repeated at web/app/play/PlayerHeader.tsx:136 ('the a11y lane fails any a[href] under 44 px in EITHER dimension'). Play on `/` is the design system's Button rendered as a Link with min-h-11 (web/app/page.tsx:19); the link variant is 'text-primary underline-offset-4 ... hover:underline' and the default size is h-9, 36 px (client/src/components/ui/Button/Button.tsx:40 and 44). The Sentry plan, PR #191 (the Sentry pull request), puts the home note in a plain text-sm paragraph below Play. The spec sizes only the three answers (lines 183-184). Because the config runs every test project as Sydney (section 1 (Packages and files), line 106), the landing case sees the note's links but no card.",
+      "contradicts": "none — checked section 3 (The popup)'s Equal buttons (183-184) and Keyboard (180-182: still four Tab stops while Details is closed); section 7 (The copy)'s approved words, where line 355 already gives the two links their own line; G7 (the floating card with the approved words) and G9 (the home page names Google Analytics; Sentry is named only in the card's Details); and round 1's changes that added the privacy notice and its links, kept the axe scans to light only, and put the card first in the Tab order. All stand.",
+      "spike": {
+        "ran": true,
+        "what": "Static mocks built with the design system's own compiled Tailwind CSS (the same import web/app/globals.css uses): `/` as the Sentry plan, PR #191 (the Sentry pull request), leaves it, plus this spec's note and links; and the card with Details open. Opened in Chromium through the repo's Playwright 1.61.1 at 1280 × 720, the lane's size. Ran a line-for-line copy of expectHitAreas, and axe-core 4.12.1 with the lane's four WCAG tags; a planted control (an image with no alt text, faint text, a colour-only link) proved axe was running.",
+        "result": "As written: the note's links measure 158 × 18 and 88 × 18, the card's plain Details button 56 × 20, and its two links 496 × 38 (wrapped over two lines) and 88 × 18 — all fail. As the design system's Button with min-h-11: the note's links 168 × 44 and 99 × 44, Details 74 × 44, the card's links 158 × 44 and 88 × 44 inside their sentences (160 × 44 and 91 × 44 on a line of their own) — all pass. Axe found no violation in either layout, with or without an underline.",
+        "fix_holds": true
+      },
+      "scenario": "You open Notation Hero's home page on your phone and try to tap 'Privacy notice' under the note. The link is one thin line of small text, about 18 px tall, and your thumb lands on the words around it. In Berlin, you open the privacy card's Details and meet the same small links and a small 'Details' button. The project's own accessibility check rejects any button or link under 44 px, so the page fails that check the first time it runs.",
+      "whats_wrong": "Section 3 (The popup) makes only the three answers 44 px tall. The other controls the spec adds have no size: the home note's two links, the card's Details button, the two links inside Details, and the links on `/privacy`. The project's hit-area check fails any button or link under 44 × 44 px, on purpose, and it already runs over `/`, so the first CI run fails on the note's two links (18 px tall in a mock). The new scans of the open card and of `/privacy` meet the same check, and nothing says the card scan opens Details, so its two links would go unchecked.",
+      "before": [
+        {
+          "lines": "after 189",
+          "text": "(absent — a new bullet after the Details bullet, which ends at line 189: \"  and say so to screen readers.\")"
+        },
+        {
+          "lines": "486",
+          "text": "- An axe scan with the popup open, in light only, like every other axe case in the lane: `web/`"
+        },
+        {
+          "lines": "489",
+          "text": "- An axe scan of `/privacy`."
+        }
+      ],
+      "after": [
+        {
+          "replaces_lines": "new, after 189",
+          "text": "- **44 px targets:** Details and every link (on the card, in the home note and on `/privacy`)\n  is the design system's `Button` with `min-h-11`, built like Play on `/`: a link is the link\n  variant, rendered as the `<a>` itself, underlined, in the place the copy gives it. The lane's\n  hit-area check (`expectHitAreas` in `web/e2e/a11y.e2e.ts`) fails any button or link under\n  44 × 44 px."
+        },
+        {
+          "replaces_lines": "486",
+          "text": "- An axe scan with the popup open and Details expanded (as the Settings case opens every group),\n  in light only, like every other axe case in the lane: `web/`"
+        },
+        {
+          "replaces_lines": "489",
+          "text": "- An axe scan of `/privacy`. Both new cases also run the hit-area check, as every case in\n  `web/e2e/a11y.e2e.ts` does; the landing case already runs it over `/` and the note's links."
+        }
+      ],
+      "proposed_fix": "Give Details and every link the 44 px rule the answers already have: the design system's Button with min-h-11, built the way Play on `/` is, each link rendered as the link itself through Button's `render` and kept underlined, in the place the approved copy gives it. In section 9 (Testing), open Details before the card's scan, and say that both new scans also run the hit-area check.",
+      "why_it_works": "The check measures the box a finger hits. min-h-11 makes that box 44 px tall without changing a word or moving a link, the same way Play and the header's logo link already pass. Opening Details in the scan lets axe and the size check measure its two links, the way the Settings case opens every group. Measured on a mock: every control passes at 44 px, and axe stays clean.",
+      "clear_fix": "yes — the check is deliberate and must pass; the approved words and their places stay; only the controls' built size changes, and the underline keeps a link looking like a link",
+      "plain_terms": {
+        "expectHitAreas": "the project's test that every button and link on a page is at least 44 × 44 px and inside the window",
+        "min-h-11": "a Tailwind class: a minimum height of 44 px",
+        "link variant": "the design system's Button style that looks like a teal text link",
+        "axe": "the automatic accessibility checker the test lane runs",
+        "G7": "decision G7: the popup is a floating card above the player's controls, with the approved words",
+        "G9": "decision G9: the home page names Google Analytics; Sentry is named only in the card's Details",
+        "PR #191": "the Sentry pull request"
+      },
+      "severity_check": {
+        "agree": true,
+        "proposed": "P2",
+        "why": "The first CI run fails on the home note's links, and the card's Details and links fail as soon as the new scan measures them: a real gap the implementer meets at once, with no rule in the spec to fix it by. Nothing ships broken, because the check stops the merge."
+      },
+      "cross_fix": [
+        "F-26 (the card's height cap) — 44 px Details and links make the card about 24 px taller (290 px instead of 266 at 375 × 667, in the mock); the cap uses the card's real height, so it needs no change.",
+        "F-28 (the card over the privacy notice) — the links on `/privacy` must follow the same rule, and so must NH-349 (the 'Privacy choices' link that lets a visitor change an answer) on that page: its pull request merges into this branch first, so the `/privacy` scan will measure it."
+      ]
+    },
+    {
+      "id": "F-26",
+      "verdict": "CONFIRMED_WITH_CORRECTION",
+      "correction": "WCAG 1.4.10 (Reflow) asks for 320 CSS px wide for content that scrolls down, like this site; its 256 px height is the case for content that scrolls sideways, such as vertical text. So 320 × 256 is not WCAG's own test for this page. It is, though, exactly what a 1280 × 1024 screen shows at 400% zoom, and at that size the card loses its question. The finding holds: the problem is lost content in a zoomed, 320 px-wide window, not a 256 px rule.",
+      "section_heading": "## 3. The popup",
+      "section_lines": "158-200 (Where: 169-171; Non-blocking: 172-173)",
+      "quotes": [
+        {
+          "quote": "At most 560 px wide; on a phone, the full width less the 16 px gutters, with the buttons stacked.",
+          "verbatim": true,
+          "line": 170,
+          "note": "runs over lines 170-171; matches once the line break is collapsed"
+        },
+        {
+          "quote": "no backdrop and no focus trap",
+          "verbatim": true,
+          "line": 172,
+          "note": ""
+        }
+      ],
+      "central_claim_check": "The spec bounds the card's width (lines 170-171) and never its height; section 9 (Testing) has no short or zoomed window. WCAG 2.2's Understanding page for 1.4.10 (https://www.w3.org/WAI/WCAG22/Understanding/reflow.html) gives the rule as 'Vertical scrolling content at a width equivalent to 320 CSS pixels; Horizontal scrolling content at a height equivalent to 256 CSS pixels', says '320 CSS pixels is equivalent to a starting viewport width of 1280 CSS pixels wide at 400% zoom', and lists failure F102, 'content disappearing and not being available when content has reflowed'. A fixed card does not move when the page scrolls, so anything above the window's top edge cannot be reached.",
+      "contradicts": "none — checked section 3 (The popup)'s Non-blocking (a card that scrolls inside itself traps nothing), Keyboard (the browser scrolls a focused answer into view inside the card) and 'Files pass through it' (pointer-events unchanged); section 9 (Testing)'s choice, from round 1, of no phone-width screenshot (the new case is a behaviour test, not a shot); and 'To verify at plan time' line 548 (a height cap moves nothing).",
+      "spike": {
+        "ran": true,
+        "what": "The same mock of `/` with the card, in Chromium at 320 × 256: first the card as written (no height limit), then with max-height = the window less its 24 px offset and 16 px, and overflow-y: auto. Scrolled each answer into view; ran the copied hit-area check and axe (the lane's tags) over the capped card.",
+        "result": "As written: the card is 286 px tall (310 px with the 44 px Details from F-25 (44 px links and Details)), so its top sits 54 px (78 px) above the window and the question is cut off; with Details open (44 px version) it is 546 px tall and no answer fits fully in the window. Capped: the card is 216 px tall (from 16 to 232 px), its 308 px (Details closed) or 544 px (open) of content scrolls inside it, and each answer scrolls fully into view. The hit-area check passes (it judges a control against its scrolling container), and axe finds no violation; its scrollable-region-focusable rule applies and passes, because the card holds buttons.",
+        "fix_holds": true
+      },
+      "scenario": "You see poorly, so you browse with the screen zoomed to 400%, and the browser window acts as 320 px wide and 256 px tall. You open Notation Hero in Berlin. The privacy card is taller than the window: its question starts above the top edge, and you cannot scroll up to it, because the card does not move with the page. You open Details, and now no answer button fits on the screen.",
+      "whats_wrong": "Section 3 (The popup) limits the card's width but not its height. In a short window the card becomes taller than the window. Because the card is fixed, it does not move when the page scrolls, so the part above the top edge — the question, and with Details open the answers too — cannot be reached at all. Section 9 (Testing) has no case for a zoomed or short window.",
+      "before": [
+        {
+          "lines": "171",
+          "text": "  phone, the full width less the 16 px gutters, with the buttons stacked."
+        },
+        {
+          "lines": "after 468",
+          "text": "(absent — a new end-to-end case after \"No overlap\", which ends at line 468)"
+        }
+      ],
+      "after": [
+        {
+          "replaces_lines": "171",
+          "text": "  phone, the full width less the 16 px gutters, with the buttons stacked. At most as tall as the\n  window less its bottom offset and 16 px; past that, the card scrolls inside itself, so its\n  question and every answer stay reachable at 400% zoom."
+        },
+        {
+          "replaces_lines": "new, after 468",
+          "text": "- **Zoomed in:** in Berlin, on `/` at 320 × 256 (a 1280 × 1024 screen at 400% zoom), with Details\n  open: the card stays inside the window, and each answer scrolls fully into view inside it."
+        }
+      ],
+      "proposed_fix": "Cap the card's height at the window's height less its bottom offset and 16 px (max-height with the dvh unit), and let it scroll inside itself (overflow-y: auto). Add one end-to-end case in Berlin at 320 × 256 on `/`, with Details open.",
+      "why_it_works": "A fixed box taller than the window can never show its top part. A capped box that scrolls inside itself always fits the window, and the browser scrolls a focused answer into view inside it, so keyboard users reach every answer as well. The project's hit-area check already handles a scrolling container, and axe passes it. Measured on a mock: all three answers can be reached at 320 × 256, with Details open and closed.",
+      "clear_fix": "yes — one right answer: in any window where the card already fits, nothing changes; it only stops the card growing past the window",
+      "plain_terms": {
+        "WCAG 1.4.10": "Reflow, a WCAG 2.1 AA rule: content stays usable at 320 CSS px wide without losing information",
+        "400% zoom": "the browser zoomed four times; a 1280 × 1024 screen then acts as a 320 × 256 window",
+        "F102": "WCAG's listed failure for 1.4.10: content that disappears and cannot be reached after reflow",
+        "dvh": "a CSS unit: 1% of the window's current height",
+        "F-25": "the finding that gives Details and every link a 44 px target",
+        "F-28": "the finding about the card covering the privacy notice",
+        "R5": "the residual about the card covering the home page on small phones",
+        "R4": "the residual about the card's stacking order"
+      },
+      "severity_check": {
+        "agree": true,
+        "proposed": "P2",
+        "why": "A low-vision visitor in Europe at 400% zoom cannot read the question, and with Details open cannot reach an answer; the project's checks cannot see reflow, so nothing would stop it. It is limited to zoomed or very short windows, so not P1."
+      },
+      "cross_fix": [
+        "F-28 (the card over the privacy notice) and R5 (the card over the home page on small phones) also change the 'Where' bullet (lines 169-171). With all three applied it reads:\n- **Where:** a floating card, centred at the bottom. On `/play` it sits 12 px above the 80 px\n  transport row, so it never covers ▶. On every other page it sits 24 px from the bottom, and\n  while it shows, the page keeps room below its end as tall as the card and that offset\n  (`padding-bottom` on `<body>`, the same `scroll-padding-bottom` on `<html>`): nothing on the\n  page moves, every line can be scrolled clear of the card, and Tab scrolls the focused control\n  above it. At most 560 px wide; on a phone, the full width less the 16 px gutters, with the\n  buttons stacked. At most as tall as the window less its bottom offset and 16 px; past that,\n  the card scrolls inside itself, so its question and every answer stay reachable at 400% zoom.",
+        "F-25 (44 px links and Details) makes the card about 24 px taller; the cap uses the card's real height, so it needs no change.",
+        "R4 (the card's stacking order) adds a 'Stacking' bullet right after 'Where'."
+      ]
+    },
+    {
+      "id": "F-27",
+      "verdict": "CONFIRMED_WITH_CORRECTION",
+      "correction": "The fix must also change line 200, which records '(with a cookie)' as the one approved addition, and line 378 ('the cookie'), or the spec contradicts its own copy. Line 372 is clearer naming `_ga` as the lasting ID. The notice's new words avoid the term 'measurement ID'.",
+      "section_heading": "## 7. The copy (with ## 3. The popup and ## The spike (2026-10-05, throwaway))",
+      "section_lines": "344-380 (notice: 357-362; home note: 352); 158-200 (popup line: 161; approval note: 198-200); 550-566 (spike table: 562)",
+      "quotes": [
+        {
+          "quote": "sets a cookie (_ga)",
+          "verbatim": true,
+          "line": 360,
+          "note": ""
+        },
+        {
+          "quote": "`_ga`, `_ga_<ID>`",
+          "verbatim": true,
+          "line": 562,
+          "note": ""
+        },
+        {
+          "quote": "(with a cookie)",
+          "verbatim": true,
+          "line": 161,
+          "note": "also on line 200"
+        },
+        {
+          "quote": "(it uses a cookie)",
+          "verbatim": true,
+          "line": 352,
+          "note": ""
+        }
+      ],
+      "central_claim_check": "Google's own page '[GA4] Cookie usage on websites' (https://support.google.com/analytics/answer/11397207) lists two cookies for a site that uses gtag.js: `_ga` ('2 years', 'Used to distinguish users.') and `_ga_<container-id>` ('2 years', 'Used to persist session state.'). The spec's spike table (line 562) records `_ga` and `_ga_<ID>` for the Sydney visit; the 2026-10-05 spike (throwaway, not in the repo) read those names from the browser's own cookie store. Against that, the notice says 'sets a cookie (_ga)' (line 360), the popup '(with a cookie)' (line 161) and the home note '(it uses a cookie)' (line 352); lines 200, 372 and 378 repeat the singular.",
+      "contradicts": "It changes approved copy: the popup's first line, approved on 2026-10-08 under G7 (the floating card with the approved words) and recorded at lines 198-200; the home note; and the notice text added in round 1. No other section conflicts: Known limits (line 527) names `_ga` only as an example ('such as Google Analytics' `_ga`').",
+      "spike": {
+        "ran": false,
+        "why": "Not needed: Google's own cookie table and the spec's own spike table both show the two cookies; a new run would show nothing new.",
+        "mark": "(untested)"
+      },
+      "scenario": "You are in Berlin and read the privacy notice before you answer. It says Google Analytics 'sets a cookie (_ga)'. You press 'Yes', open your browser's list of stored cookies, and find two from Google: _ga, and a second one called _ga_ followed by letters. The page you read to decide listed only one.",
+      "whats_wrong": "Google Analytics 4 stores two cookies: `_ga`, and `_ga_` followed by the site's ID. Google's own cookie table lists both, and this spec's spike saw both. The privacy notice names only `_ga`, and the popup and home note say 'a cookie'. The notice is the page this spec relies on for an informed 'Yes' (section 7 (The copy), lines 377-380), so it should list what is really stored.",
+      "before": [
+        {
+          "lines": "161",
+          "text": "Can we count visits (with a cookie) and get error reports? Your scores stay on your device."
+        },
+        {
+          "lines": "200",
+          "text": "addition is \"(with a cookie)\", because EU guidance expects the first layer to mention it."
+        },
+        {
+          "lines": "352",
+          "text": "  This site counts visits with Google Analytics (it uses a cookie) and sends an error report when"
+        },
+        {
+          "lines": "360",
+          "text": "  sets a cookie (_ga). Neither gets your file, its name, or the music in it. In Europe nothing is"
+        },
+        {
+          "lines": "372",
+          "text": "- \"Anonymously\" goes: Google Analytics' cookie is a lasting ID."
+        },
+        {
+          "lines": "378",
+          "text": "  the site and how to reach them, what each tool receives and keeps, the cookie, and how to change an"
+        }
+      ],
+      "after": [
+        {
+          "replaces_lines": "161",
+          "text": "Can we count visits (with cookies) and get error reports? Your scores stay on your device."
+        },
+        {
+          "replaces_lines": "200",
+          "text": "addition is \"(with cookies)\", because EU guidance expects the first layer to mention them."
+        },
+        {
+          "replaces_lines": "352",
+          "text": "  This site counts visits with Google Analytics (it uses cookies) and sends an error report when"
+        },
+        {
+          "replaces_lines": "360",
+          "text": "  sets two cookies: _ga, and _ga_ followed by this site's ID. Neither gets your file, its name, or\n  the music in it. In Europe nothing is"
+        },
+        {
+          "replaces_lines": "372",
+          "text": "- \"Anonymously\" goes: Google Analytics' `_ga` cookie is a lasting ID."
+        },
+        {
+          "replaces_lines": "378",
+          "text": "  the site and how to reach them, what each tool receives and keeps, the cookies, and how to\n  change an"
+        }
+      ],
+      "proposed_fix": "Name both cookies in the privacy notice, and use the plural in the popup's first line and in the home note; change lines 200, 372 and 378 to match.",
+      "why_it_works": "The copy then matches Google's own cookie table and the spec's own spike. The first layer still only says that cookies are used, as EU guidance asks; the notice gives the exact names, which a visitor can check in their own browser.",
+      "clear_fix": "no — it changes approved copy: the popup's first line under G7 (the floating card with the approved words), the home note, and the notice text from round 1",
+      "plain_terms": {
+        "G7": "decision G7: the popup is a floating card above the player's controls, with the approved words",
+        "first layer": "the words a visitor sees before opening Details",
+        "_ga_<ID>": "Google Analytics' second cookie: '_ga_' followed by the site's ID; it keeps the visit's state"
+      },
+      "severity_check": {
+        "agree": true,
+        "proposed": "P2",
+        "why": "The public notice would understate what is stored, on the page meant to inform a 'Yes'. The fix is a few words, and nothing else depends on it."
+      },
+      "cross_fix": []
+    },
+    {
+      "id": "F-28",
+      "verdict": "CONFIRMED_WITH_CORRECTION",
+      "correction": "The fix does not need a new top-aligned layout. Room kept below the page while the card shows (padding-bottom on <body> as tall as the card and its 24 px offset, and the same scroll-padding-bottom on <html>) lets every line be scrolled clear on the other pages' own centred layout, and nothing on the page moves when the room appears (measured). The same rule also fixes `/`, the subject of R5 (the card over the home page on small phones). The finding also missed that the 'Where' bullet gives no place for the card on `/privacy` at all: it names only `/play` and `/`.",
+      "section_heading": "## 7. The copy (with ## 3. The popup and ## 9. Testing)",
+      "section_lines": "344-380 (notice: 357-362); 158-200 (Where: 169-171; returns on every page load: 173); 421-489 (No overlap: 467-468)",
+      "quotes": [
+        {
+          "quote": "Privacy notice (new page, /privacy, linked from the home note and the popup's Details):",
+          "verbatim": true,
+          "line": 357,
+          "note": ""
+        },
+        {
+          "quote": "renders `<PrivacyChoices />` first inside `<body>`, before the page",
+          "verbatim": true,
+          "line": 101,
+          "note": ""
+        },
+        {
+          "quote": "It returns on every page load until answered.",
+          "verbatim": true,
+          "line": 173,
+          "note": ""
+        }
+      ],
+      "central_claim_check": "The spec gives `/privacy` its text (section 7 (The copy), lines 357-362), a file (section 1 (Packages and files), line 91) and two tests (section 9 (Testing), lines 474-475 and 489), but no layout, and 'Where' (lines 169-171) places the card only on `/play` and `/`. The card shows on every page until answered (line 173), because layout.tsx renders it first in <body> (line 101). The other non-player pages share one layout: 'mx-auto flex min-h-dvh max-w-3xl flex-col items-center justify-center gap-6 p-8 text-center' in web/app/page.tsx:6, web/app/error.tsx:9 and web/app/play/error.tsx:9, and the Sentry plan, PR #191 (the Sentry pull request), keeps it for `/`. `/play` is h-dvh with overflow-hidden and never scrolls as a page (web/app/play/PlayerShell.tsx:989-994). A visitor in Europe reaches `/privacy` in a new tab from the card's Details or the home note (lines 186-189), where the card is still unanswered.",
+      "contradicts": "none — checked 'To verify at plan time' line 548 ('causes no layout shift'): the room sits after the page, and nothing moved in the mock; G7 (the floating card with the approved words), which rejected a top strip because 'the page jumps' — nothing jumps here; section 3 (The popup)'s Keyboard rule and round 1's change that puts the card first in the page, both unchanged; and `/play`, which keeps its own rule because it never scrolls as a page.",
+      "spike": {
+        "ran": true,
+        "what": "A mock of `/privacy` with the section 7 notice text (10 to 11 lines on a phone) on the shared centred layout, with the card (the 44 px version from F-25 (44 px links and Details)), in Chromium at 375 × 667 and 360 × 640. Counted the notice's lines that sit behind the card, before and after scrolling to the bottom. Then tried two fixes: a top-aligned page with 352 px of bottom padding, and room below the page (padding-bottom on <body> = the card's height + 24 px, and scroll-padding-bottom on <html>) on the unchanged centred layout, also at 667 × 375 and 640 × 360.",
+        "result": "Centred layout as is: 5 of 10 lines hidden at 375 × 667 and 7 of 11 at 360 × 640 (4 and 6 with the smaller card as written), and the page cannot scroll at all, so they stay hidden. Top-aligned with bottom padding: every line can be scrolled clear. Room below the page on the centred layout: every line can be scrolled clear at all four sizes, and no element on the page moved when the room appeared.",
+        "fix_holds": true
+      },
+      "scenario": "You are in Berlin, on your phone. Before you answer, you tap 'Privacy notice' to see who runs the site. It opens in a new tab, and the privacy card appears there too, over the lower half of the notice — including how to change your answer and the link to Google's page. You try to scroll, but the page does not move. To read the rest, you have to answer first.",
+      "whats_wrong": "The spec gives `/privacy` no layout and no place for the card ('Where' covers only `/play` and `/`). Built on the other pages' centred, one-screen layout, the notice fits the screen, so the page cannot scroll, and the card — which shows on every page until answered — hides the last half of the notice on a phone. The visitor cannot read the page meant to inform their answer until they have answered.",
+      "before": [
+        {
+          "lines": "169-170",
+          "text": "- **Where:** a floating card, centred at the bottom. On `/play` it sits 12 px above the 80 px\n  transport row, so it never covers ▶; on `/`, 24 px from the bottom. At most 560 px wide; on a"
+        },
+        {
+          "lines": "467-468",
+          "text": "- **No overlap:** the popup's box never intersects ▶ or the transport row, at desktop and phone\n  width, measured the way `web/e2e/toast-occlusion.e2e.ts` measures the toaster."
+        }
+      ],
+      "after": [
+        {
+          "replaces_lines": "169-170",
+          "text": "- **Where:** a floating card, centred at the bottom. On `/play` it sits 12 px above the 80 px\n  transport row, so it never covers ▶. On every other page it sits 24 px from the bottom, and\n  while it shows, the page keeps room below its end as tall as the card and that offset\n  (`padding-bottom` on `<body>`, the same `scroll-padding-bottom` on `<html>`): nothing on the\n  page moves, every line can be scrolled clear of the card, and Tab scrolls the focused control\n  above it. At most 560 px wide; on a"
+        },
+        {
+          "replaces_lines": "467-468",
+          "text": "- **No overlap:** the popup's box never intersects ▶ or the transport row, at desktop and phone\n  width, measured the way `web/e2e/toast-occlusion.e2e.ts` measures the toaster. On `/privacy`\n  at 375 × 667, the notice's last line can be scrolled clear of the card."
+        }
+      ],
+      "proposed_fix": "Give every page but `/play` one rule for the card: 24 px from the bottom and, while it shows, room below the page's end as tall as the card and that offset, with the same scroll-padding so Tab keeps the focused control in view. Test that the notice's last line can be scrolled clear at 375 × 667.",
+      "why_it_works": "The room comes after the page's own content, so the centred content does not move — no layout shift — but the page gains just enough scroll to lift its last line above the card. scroll-padding-bottom makes the browser keep a focused link above the card when Tab scrolls the page; WCAG 2.2's Understanding page for 2.4.11 (Focus Not Obscured) names scroll padding as one way a cookie banner passes. Measured on a mock: every line clear at four phone sizes, and nothing moved.",
+      "clear_fix": "no — a layout rule for a page that has none yet; other workable answers are a top-aligned `/privacy` with bottom padding (the reviewer's version, also measured to work) or no card on `/privacy`",
+      "plain_terms": {
+        "scroll-padding-bottom": "a CSS setting that tells the browser to keep a strip at the bottom free when it scrolls something into view",
+        "G7": "decision G7: the popup is a floating card above the player's controls, with the approved words",
+        "PR #191": "the Sentry pull request",
+        "R5": "the residual about the card covering the home page on small phones",
+        "F-25": "the finding that gives Details and every link a 44 px target",
+        "F-26": "the finding that caps the card's height",
+        "R4": "the residual about the card's stacking order",
+        "WCAG 2.4.11": "Focus Not Obscured (Minimum), a WCAG 2.2 AA rule: a control with keyboard focus must not be entirely hidden by the page's own content"
+      },
+      "severity_check": {
+        "agree": false,
+        "proposed": "P2",
+        "why": "The notice exists so a visitor in Europe can read before answering (section 7 (The copy), lines 377-380). On a phone, the shared centred layout — the natural choice, used by every page but the player — hides half of it, including how to change an answer, until the visitor answers. An implementer will meet this; it is not a rare edge case."
+      },
+      "cross_fix": [
+        "R5 (the card over the home page on small phones) — the same 'Where' rule fixes `/` as well; measured at 375 × 667, 360 × 640, 667 × 375 and 640 × 360.",
+        "F-26 (the card's height cap) — edits the same 'Where' bullet; the room follows the card's capped height. Merged text is in F-26 (the card's height cap)'s cross-fix note.",
+        "R4 (the card's stacking order) and R5 (the card over the home page on small phones) also add to the 'No overlap' bullet. With all three applied it reads:\n- **No overlap:** the popup's box never intersects ▶ or the transport row, at desktop and phone\n  width, measured the way `web/e2e/toast-occlusion.e2e.ts` measures the toaster. On `/play`,\n  after load and while the first-visit Skeleton is up, the card is the top element at its own\n  centre (`document.elementFromPoint`). On `/` and `/privacy`, at 375 × 667 and with a phone held\n  sideways (667 × 375), Play, the note and the notice's last line can each be scrolled clear of\n  the card, and a Tab onto Play leaves it fully above the card.",
+        "F-25 (44 px links and Details) — the links on `/privacy` must be 44 px too."
+      ]
+    },
+    {
+      "id": "F-29",
+      "verdict": "CONFIRMED_WITH_CORRECTION",
+      "correction": "Two things the finding missed. (1) The new shot must be declared in `web/e2e/pages.vr.ts`: the guard pairs shot names only against `web/e2e/pages.vr.ts-snapshots/` (tooling/workflow-guards.test.mjs:398-406), so a shot in a new file fails a second assertion — measured. (2) AGENTS.md (line 213) says 'a new low-contrast surface on `/` or `/play` needs its own computed `background-color` assertion beside the shot, not a baseline alone'. The card's fill is --popover, pure white, on the white score, so the comparison cannot see it: changing it to the transport row's --panel (#fbfcfe) scores about 5 against Playwright's 1408.6 cutoff. So the shot needs that assertion, and the guard's list of surface anchors needs a fifth entry, because it counts assertions against anchors (lines 431-449). The spec's 'sees ... its colours' (line 482) holds for the buttons, border and shadow, not for the fill. The runbook also lists the ten shots by name (line 40), so the new name joins that list.",
+      "section_heading": "## 9. Testing (Screenshots and accessibility), with ## 1. Packages and files and ## 10. Documents that change",
+      "section_lines": "477-489 (the new shot: 481-485); 97-110 (changed files: 109-110); 491-499",
+      "quotes": [
+        {
+          "quote": "One new shot, in `Europe/Berlin`: `/play` with the popup, at the lane's 1280 × 900.",
+          "verbatim": true,
+          "line": 481,
+          "note": ""
+        },
+        {
+          "quote": "Screenshot baselines: `/` (the new note) and one new shot with the popup (section 9).",
+          "verbatim": true,
+          "line": 109,
+          "note": ""
+        }
+      ],
+      "central_claim_check": "tooling/workflow-guards.test.mjs:256 pins `const EXPECTED_SHOTS = 10;`, and lines 407-412 assert that the `toHaveScreenshot('…png')` names in `web/e2e/*.vr.ts` number exactly that, failing with '… are documented in AGENTS.md, both READMEs and the runbook — bump this and the prose together'. The test runs in the `quality` job (.github/workflows/ci.yml:110-111, `pnpm run test:tooling`), which CI Green needs (ci.yml:557-569). Counts in words: AGENTS.md:213 ('its gate is ten page screenshots of `/` and `/play`' and 'What the ten shots CANNOT see'), AGENTS.md:215 ('the ten `web/` shots'), web/README.md:22 ('The ten page screenshots'), client/README.md:164 ('`web/`'s ten page baselines'), docs/runbooks/vr-a11y-testing.md:13 ('ten page screenshots'), :38 ('ten page shots of the real app'), :40 (the ten shot names), :46 ('# the ten shots, in the container'), and docs/decisions/decision-registry.md:295, row L13 (the decision-registry row that says how many screenshots the web lane has) ('ten page screenshots'). In code comments: web/e2e/pages.vr.ts:23 ('Ten shots, and the count is deliberate … An eleventh should have to justify itself.'), :89 and :360 ('ten shots is settled'); tooling/workflow-guards.test.mjs:383, :488 and the error message at :506 ('the ten shots only mean something at the default threshold'). The card's fill: --popover is oklch(100% 0 0deg) (client/src/styles.css:138), the score box is bg-white (web/app/play/NotationSurface.tsx:294), and --panel is #fbfcfe (styles.css:172).",
+      "contradicts": "none — it follows from round 1's choice of one new popup shot instead of three. Line 480 ('all ten existing shots') stays true. The older plan and spec for the screenshot lane (docs/plans/2026-09-29-web-visual-regression-gate.md, docs/specs/2026-09-21-web-visual-regression-gate.md) record shipped history and need no change.",
+      "spike": {
+        "ran": true,
+        "what": "Copied the guard test, `web/e2e/pages.vr.ts`, the Playwright config and the ten baseline names (as empty files) into a scratch folder, and ran only the guard's 'the web VR project has at least one shot to run' test with Node's test runner, in four states.",
+        "result": "Unchanged: passes. An eleventh shot (player-privacy-card.png, inside a titled describe with test.use({ timezoneId: 'Europe/Berlin' })) added to pages.vr.ts with its baseline: fails — 'web/e2e declares 11 shots but 10 are documented in AGENTS.md, both READMEs and the runbook — bump this and the prose together'. With EXPECTED_SHOTS set to 11: passes. The same shot in its own privacy.vr.ts, with its baseline in that file's own snapshot folder: fails even at 11 — 'the shots and the committed -chromium-linux baselines no longer pair up'.",
+        "fix_holds": true
+      },
+      "scenario": "You open the pull request that adds the one new screenshot of the privacy card. The required 'quality' check turns red: a guard says the project documents ten screenshots, not eleven. Its message tells you to change the number 'and the prose together', but the spec's lists of files name neither the guard nor the five documents that still say 'ten'.",
+      "whats_wrong": "Round 1 chose one new popup screenshot. The project pins the number of screenshots at ten in a guard test that the required 'quality' job runs, and five documents state 'ten' in words. Section 1 (Packages and files) and section 10 (Documents that change) list none of them, so a plan built from those lists leaves a failing required check and stale counts. The spec also does not say the shot must live in `pages.vr.ts`, or that the card's white-on-white fill needs the computed-colour check AGENTS.md asks for.",
+      "before": [
+        {
+          "lines": "109",
+          "text": "- Screenshot baselines: `/` (the new note) and one new shot with the popup (section 9)."
+        },
+        {
+          "lines": "485",
+          "text": "  no width under 900 px, by design; the no-overlap case measures the phone placement)."
+        },
+        {
+          "lines": "after 496",
+          "text": "(absent — a new bullet after line 496: \"- `web/README.md` — `NEXT_PUBLIC_GA_ID` in the Deploy section.\")"
+        }
+      ],
+      "after": [
+        {
+          "replaces_lines": "109",
+          "text": "- Screenshot baselines: `/` (the new note) and one new shot with the popup (section 9).\n- `web/e2e/pages.vr.ts`: the new shot, beside the ten, so its baseline lands in\n  `pages.vr.ts-snapshots/`, the one folder the shot guard pairs against; the card's computed\n  `background-color` check beside it; \"ten\" → \"eleven\" in its comments.\n- `tooling/workflow-guards.test.mjs`: `EXPECTED_SHOTS` 10 → 11, a fifth surface anchor for the\n  card's check, and \"ten\" → \"eleven\" in its messages."
+        },
+        {
+          "replaces_lines": "485",
+          "text": "  no width under 900 px, by design; the no-overlap case measures the phone placement). The card's\n  fill is `--popover`, white on the white score, a step the comparison cannot see, so the shot\n  also reads the card's computed `background-color`, as AGENTS.md asks for a new surface."
+        },
+        {
+          "replaces_lines": "new, after 496",
+          "text": "- The screenshot count, ten → eleven: `AGENTS.md` (two lines), `web/README.md`,\n  `client/README.md`, row L13 (the test harnesses) of\n  `docs/decisions/decision-registry.md`, and `docs/runbooks/vr-a11y-testing.md` (its heading,\n  two sentences, and its list of shot names, which gains the popup shot)."
+        }
+      ],
+      "proposed_fix": "List the guard (EXPECTED_SHOTS 10 → 11, plus a fifth surface anchor) and pages.vr.ts in section 1 (Packages and files); say in section 9 (Testing) why the shot also reads the card's computed background colour; and list every document that says 'ten' in section 10 (Documents that change), with the new count, eleven.",
+      "why_it_works": "The plan is built from these lists, so naming the guard, the shot file and the documents puts every change in the same pull request and keeps the required check green. Declaring the shot in pages.vr.ts keeps its baseline in the one folder the guard pairs against. The computed-colour check is the project's own answer to a surface the screenshot comparison cannot see. Measured: with the eleventh shot in pages.vr.ts and the count at 11, the guard passes.",
+      "clear_fix": "yes — it follows from round 1's one-shot choice and the project's own written rules; it changes no behaviour, copy or scope",
+      "plain_terms": {
+        "EXPECTED_SHOTS": "the number of screenshots the guard test requires",
+        "quality": "the required CI job that runs type checks, unit tests and the guard tests",
+        "L13": "the decision-registry row for the test harnesses; it says how many screenshots the web lane has",
+        "surface anchor": "an entry in the guard's list proving a computed-colour check is still in the screenshot file",
+        "1408.6 cutoff": "the per-pixel difference below which Playwright's screenshot comparison ignores a change",
+        "R4": "the residual about the card's stacking order"
+      },
+      "severity_check": {
+        "agree": true,
+        "proposed": "P3",
+        "why": "The guard's own message names the fix, and nothing ships broken; it is a small, cheap correction that saves a red CI run and five stale documents."
+      },
+      "cross_fix": [
+        "R4 (the card's stacking order) — this shot is the one picture that would show a card drawn under the score; a Playwright click on an answer on `/play` would also fail."
+      ]
+    },
+    {
+      "id": "FYI-9",
+      "verdict": "CONFIRMED",
+      "section_heading": "## 3. The popup",
+      "section_lines": "158-200 (Answering: 185; Screen readers: 190-194)",
+      "quotes": [
+        {
+          "quote": "saves the choice, hides the card and starts what it allows at once — no reload",
+          "verbatim": true,
+          "line": 185,
+          "note": ""
+        },
+        {
+          "quote": "when the card appears, the region receives the question",
+          "verbatim": true,
+          "line": 194,
+          "note": ""
+        }
+      ],
+      "central_claim_check": "Section 3 (The popup) gives the card's arrival a polite live region that already exists (lines 190-194), and its departure nothing: 'Answering saves the choice, hides the card …' (line 185). Section 9 (Testing)'s PrivacyChoices unit test checks only that the region 'receives the question' (lines 436-438). The player already reports the result of an action through the same kind of region: web/app/play/PlayerShell.tsx:1240 keeps a polite paragraph that both outcomes of an open write to. What a screen reader says when the focused button disappears is (untested) here.",
+      "contradicts": "none — a confirmation would use the same live region round 1 added for the question; the words are new copy, for leocaseiro to approve.",
+      "spike": {
+        "ran": false,
+        "why": "It needs a real screen reader (NVDA, JAWS or VoiceOver); a headless browser cannot show what one says.",
+        "mark": "(untested)"
+      },
+      "scenario": "You use a screen reader in Berlin. You move to 'No, send nothing' and press it. The button you were on disappears with the card, and your screen reader says nothing. You cannot tell whether your answer was saved.",
+      "whats_wrong": "When a visitor answers, the card and the button they pressed disappear, and nothing tells a screen-reader user that the answer was saved. The spec already has the right tool — a polite live region that exists before the card — and uses it for the question, but not for the result. One short line in that region, such as 'Your answer is saved: Report errors only.', would fix this without a new component; the words are new copy, so leocaseiro decides. It is not a failure the project's checks would catch; it is a usability gap, which is why it is an FYI and not a finding.",
+      "before": [
+        {
+          "lines": "185",
+          "text": "- **Answering** saves the choice, hides the card and starts what it allows at once — no reload."
+        },
+        {
+          "lines": "437-438",
+          "text": "  outside Europe, once answered, and when neither key is set; the live region is in the page before\n  the card appears, and receives the question when it does."
+        }
+      ],
+      "after": [
+        {
+          "replaces_lines": "185",
+          "text": "- **Answering** saves the choice, hides the card and starts what it allows at once — no reload.\n  The live region then says \"Your answer is saved:\" and the label of the button pressed."
+        },
+        {
+          "replaces_lines": "437-438",
+          "text": "  outside Europe, once answered, and when neither key is set; the live region is in the page before\n  the card appears, receives the question when it does, and names the saved answer when it goes."
+        }
+      ],
+      "proposed_fix": "Optional: after an answer, write one short confirmation that names the saved answer into the existing live region, and add that line to the PrivacyChoices unit test. The exact words are new copy for leocaseiro to approve.",
+      "why_it_works": "The region is already in the page and already polite, so the new line is read out at the next pause without moving focus — the same way the player already reports whether a file opened.",
+      "clear_fix": "no — new words that a screen reader speaks; leocaseiro approves copy",
+      "plain_terms": {
+        "live region": "a hidden part of the page whose changes a screen reader reads out",
+        "polite": "read out at the next pause, without cutting the reader off"
+      },
+      "severity_check": {
+        "agree": true,
+        "proposed": "P3",
+        "why": "A small usability gap for screen-reader users, cheap to close; no rule is broken and nothing fails."
+      },
+      "cross_fix": []
+    },
+    {
+      "id": "R4",
+      "verdict": "CONFIRMED_WITH_CORRECTION",
+      "correction": "The residual's facts hold: the Tracks popover is 32 rem wide, opens upward, aligned to the end, at z-50; the spec sets no stacking order; at 1280 px the card spans 360-920 px and the popover 736-1248 px. The larger result it missed: because layout.tsx renders the card first in <body> (round 1's Tab-order change), a card with no z-index is drawn under the player's later layers — the white score box included — so on `/play` it is invisible. At z-1 to z-10 the first-visit Skeleton (z-10, later in the page) still hides it. Any value from 11 to 50 works; above 50 the card covers the open mixer's footer, as the residual says (at exactly 50 the popover, later in the page, still wins).",
+      "section_heading": "## 3. The popup (with ## 1. Packages and files and ## 9. Testing)",
+      "section_lines": "158-200 (Where: 169-171; Keyboard: 180-182); 97-110 (layout.tsx: 101-102); 421-489 (No overlap: 467-468)",
+      "quotes": [
+        {
+          "quote": "renders `<PrivacyChoices />` first inside `<body>`, before the page",
+          "verbatim": true,
+          "line": 101,
+          "note": "checked; the residual itself quotes nothing"
+        },
+        {
+          "quote": "the popup's box never intersects ▶ or the transport row",
+          "verbatim": true,
+          "line": 467,
+          "note": "checked; the no-overlap case measures boxes only"
+        }
+      ],
+      "central_claim_check": "web/app/play/TracksPopover.tsx:320-324: the popover is align=\"end\", side=\"top\", w-[32rem]. client/src/components/ui/Popover/Popover.tsx:30-42: it is portalled to document.body, with its positioner at 'isolate z-50' (the comment at lines 31-36 explains that the z-index must sit on the positioner); tooltips use the same (client/src/components/ui/Tooltip/Tooltip.tsx:52). The spec never sets the card's z-index: no 'z-index', 'z-' or stacking rule anywhere; G7 (the floating card with the approved words)'s 'above the player's controls' is about position. The player's own layers: the header wrapper is 'relative z-10' (web/app/play/PlayerShell.tsx:1004), the drop overlay 'absolute inset-0 z-10' (line 1116), the Skeleton and the engine-error banner z-10, and the score box 'isolate … bg-white' (web/app/play/NotationSurface.tsx:227, 260 and 294). That file's comment at lines 250-256 records the same trap once before: 'a non-positioned stacking context paints LATER in tree order', which left the Skeleton under the white box. web/ uses only z-10 and z-50 today.",
+      "contradicts": "none — the z-index keeps round 1's change that puts the card first in <body> for the Tab order. section 3 (The popup)'s 'Files pass through it' still holds: the card stays pointer-events: none during a drag. At z-20 the card is drawn above the drop overlay (z-10), but in the mock the 'Drop to open' text sat clear of the card at 1280 × 900 and 375 × 667.",
+      "spike": {
+        "ran": true,
+        "what": "A mock of `/play` that copies the player's layer classes (the z-10 header wrapper, the relative score containers, the isolate bg-white score box, a z-10 Skeleton and drop overlay, the 80 px transport row), with the card first in <body> and a Tracks popover portalled at the end of <body> with an isolate z-50 positioner. In Chromium, hit-tested the card's centre and the 'No, send nothing' button with document.elementFromPoint for card z-index none, 1, 10, 11, 40, 50 and 60, at 1280 × 900 and 375 × 667; ran axe (the lane's tags) and a Playwright click on the card with no z-index; took screenshots.",
+        "result": "No z-index: the score box is on top at the card's centre, and the screenshot shows only the score. Axe reports nothing, Playwright's visibility check passes and the first Tab focuses the hidden 'Yes', but a Playwright click on an answer times out: '… intercepts pointer events'. z-1 to z-10: visible, but under the Skeleton while it is up. z-11 to z-50: visible above every player layer; an open Tracks popover covers 'No, send nothing' (overlap 736-920 px across, 678-808 px down, at 1280 × 900). z-60: the card covers the popover.",
+        "fix_holds": true
+      },
+      "scenario": "You open the player in Berlin. The privacy question should float above the controls, but you see only the score: the card is drawn underneath the white score area. You press Tab, and the focus moves to a 'Yes' button you cannot see.",
+      "whats_wrong": "The spec never says how the card stacks against the page, and that matters more than the residual says. Round 1 put the card first in <body> for the Tab order; in that position, a card with no z-index is drawn under every later layer of the player, the white score box included, so on `/play` it is invisible while its buttons still take the first Tab presses. A z-index of 10 or less still leaves it under the loading Skeleton. Above 50 it covers the open mixer's footer (Master volume and the layout switch) until the visitor answers. Any value from 11 to 50 works; z-20 sits between the player's z-10 layers and the popovers' z-50. Only a click test on `/play` or a person looking at the new screenshot would notice: axe, the keyboard case and the box-overlap case all pass over an invisible card.",
+      "before": [
+        {
+          "lines": "after 171",
+          "text": "(absent — a new bullet after \"Where\", which ends at line 171)"
+        },
+        {
+          "lines": "467-468",
+          "text": "- **No overlap:** the popup's box never intersects ▶ or the transport row, at desktop and phone\n  width, measured the way `web/e2e/toast-occlusion.e2e.ts` measures the toaster."
+        }
+      ],
+      "after": [
+        {
+          "replaces_lines": "new, after 171",
+          "text": "- **Stacking:** the card is `z-20`. It is first in `<body>`, so with no z-index the player's\n  later layers are drawn over it, the white score box included, and at `z-10` or lower the\n  first-visit Skeleton still hides it. At `z-20` it is above the player's `z-10` layers and\n  below the popovers and tooltips (`z-50`): an open Tracks popover covers part of the card until\n  it is closed, and the card never covers the mixer."
+        },
+        {
+          "replaces_lines": "467-468",
+          "text": "- **No overlap:** the popup's box never intersects ▶ or the transport row, at desktop and phone\n  width, measured the way `web/e2e/toast-occlusion.e2e.ts` measures the toaster. On `/play`,\n  after load and while the first-visit Skeleton is up, the card is the top element at its own\n  centre (`document.elementFromPoint`)."
+        }
+      ],
+      "proposed_fix": "Set the card's stacking order in section 3 (The popup): z-20, above the player's z-10 layers and below the popovers and tooltips (z-50). In section 9 (Testing), check on `/play` that the card is the top element at its own centre, after load and while the first-visit Skeleton is up.",
+      "why_it_works": "z-20 is the lowest standard value above every z-10 layer of the player (Skeleton, engine-error banner, drop overlay, header) and below every popup layer (popovers and tooltips are z-50), and web/ uses nothing in between. Measured on a mock: visible over the score and the Skeleton, and under an open Tracks popover, which the visitor opened and can close. The elementFromPoint check fails at once if a later change drops the z-index.",
+      "clear_fix": "no — it is a stacking choice (below the popovers, as recommended, or always on top); leocaseiro may prefer the card always on top, at the cost of covering the open mixer's footer",
+      "plain_terms": {
+        "z-index": "the order in which overlapping parts of a page are drawn; a higher number is drawn on top",
+        "z-20": "a Tailwind class: z-index 20",
+        "first-visit Skeleton": "the grey loading shape that covers the score area until the music first draws",
+        "G7": "decision G7: the popup is a floating card above the player's controls, with the approved words",
+        "F-26": "the finding that caps the card's height",
+        "F-28": "the finding about the card covering the privacy notice",
+        "F-29": "the finding about the eleventh screenshot and its guard"
+      },
+      "severity_check": {
+        "agree": false,
+        "proposed": "P2",
+        "why": "Following the spec as written makes the card invisible on `/play`. It would most likely be caught before shipping — a Playwright click on an answer there times out, and the new screenshot shows no card — but the spec gives no rule to fix it by, and only z-index values from 11 to 50 work."
+      },
+      "cross_fix": [
+        "F-26 (the card's height cap) and F-28 (the card over the privacy notice) also edit section 3 (The popup)'s 'Where' bullet; the new 'Stacking' bullet goes right after it.",
+        "F-28 (the card over the privacy notice) and R5 (the card over the home page on small phones) also add to the 'No overlap' bullet. With all three applied it reads:\n- **No overlap:** the popup's box never intersects ▶ or the transport row, at desktop and phone\n  width, measured the way `web/e2e/toast-occlusion.e2e.ts` measures the toaster. On `/play`,\n  after load and while the first-visit Skeleton is up, the card is the top element at its own\n  centre (`document.elementFromPoint`). On `/` and `/privacy`, at 375 × 667 and with a phone held\n  sideways (667 × 375), Play, the note and the notice's last line can each be scrolled clear of\n  the card, and a Tab onto Play leaves it fully above the card.",
+        "F-29 (the eleventh screenshot and its guard) — the new screenshot is the one picture that would show an invisible card, so a person must check its baseline by eye before it is committed."
+      ]
+    },
+    {
+      "id": "R5",
+      "verdict": "CONFIRMED",
+      "section_heading": "## 3. The popup (with ## 9. Testing)",
+      "section_lines": "158-200 (Where: 169-171; Non-blocking: 172-173); 421-489 (No overlap: 467-468; no `/` shot: 484)",
+      "quotes": [
+        {
+          "quote": "a centred dialog (blocks the demo)",
+          "verbatim": true,
+          "line": 72,
+          "note": "checked; G7's row in the decision table"
+        },
+        {
+          "quote": "no backdrop and no focus trap",
+          "verbatim": true,
+          "line": 172,
+          "note": "checked"
+        },
+        {
+          "quote": "No `/` shot (there the card sits over empty page)",
+          "verbatim": true,
+          "line": 484,
+          "note": "true at the lane's 1280 × 900 with Details closed (measured: no overlap); not on small phones"
+        }
+      ],
+      "central_claim_check": "Measured on a mock of `/` (the Sentry plan's page from PR #191 (the Sentry pull request), plus this spec's note and links) with the card as written: 266 px tall at 375 × 667, covering 117 of the note's 120 px; 286 px at 360 × 640, covering the whole note and 18 px of Play; on a phone held sideways the card switches to its 162 px row layout and covers 33 of Play's 44 px at 667 × 375 and 40 at 640 × 360, Play's centre included. The page cannot scroll them clear. With the 44 px Details and links from F-25 (44 px links and Details), the card is 290-310 px and covers all of Play when the phone is sideways; a Tab onto Play then leaves 0 px of it visible. WCAG 2.2's Understanding page for 2.4.11 Focus Not Obscured (https://www.w3.org/WAI/WCAG22/Understanding/focus-not-obscured-minimum.html): 'A notification implemented as sticky content, such as a cookie banner, will fail this success criterion if it entirely obscures a component receiving focus', and it names 'scroll padding' as a way to pass. The lane's axe tags (WCAG 2.0 and 2.1) do not cover 2.4.11, and the no-overlap case (lines 467-468) checks only ▶ and the transport row.",
+      "contradicts": "none — the room-below-the-page rule from F-28 (the card over the privacy notice) keeps 'To verify at plan time' line 548 ('causes no layout shift') true, measured; G7 (the floating card with the approved words) stays a floating card. Padding inside the centred <main> would also free Play, but it moves the content up when the card appears (by 80 to 106 px on phones, measured) — that version would break line 548.",
+      "spike": {
+        "ran": true,
+        "what": "The mock of `/` with the card first in <body>, as written and in the 44 px version, in Chromium at 375 × 667, 360 × 640, 667 × 375 and 640 × 360: measured what the card covers, then added room below the page (padding-bottom on <body> = the card's height + 24 px, scroll-padding-bottom on <html> the same) and checked whether anything moved, whether Play and the note can be scrolled clear, and where a Tab onto Play leaves it.",
+        "result": "Covers as listed above. With the room: nothing on `/` moved when it appeared; Play, the note and its links could all be scrolled clear of the card at all four sizes; and a Tab onto Play left it fully above the card each time. Without the room, on a phone held sideways, the focused Play was 0 px visible. Room added as padding inside the centred <main> also freed everything, but moved Play up by 106 px at 375 × 667, 80 px at 360 × 640 and 89 px at 1280 × 720 when the card appeared; the room below the page moved it 0 px.",
+        "fix_holds": true
+      },
+      "scenario": "You are in Berlin with your phone held sideways. You open Notation Hero's home page. The privacy card fills the lower half of the screen, on top of the Play button and the note that names Google Analytics. You cannot scroll them clear of it, and when you press Tab onto Play, it stays hidden. To start the demo, you must answer first.",
+      "whats_wrong": "On `/`, nothing in the spec stops the card covering the page's own content, and nothing tests it. On small phones the card hides the note — the disclosure that G9 (the home page names Google Analytics; Sentry is named only in the card's Details) puts on the home page — and part or all of Play, and the page cannot scroll them clear. With a keyboard, Play can be focused while fully hidden, which WCAG 2.2's 2.4.11 (Focus Not Obscured) counts as a failure for a cookie banner. This works against G7 (the floating card with the approved words), which chose a floating card so the demo is not blocked. The rule proposed in F-28 (the card over the privacy notice) — room below every page but `/play` while the card shows — fixes it with no layout shift (measured); if leocaseiro prefers no layout change, the other honest answer is a Known-limits line.",
+      "before": [
+        {
+          "lines": "467-468",
+          "text": "- **No overlap:** the popup's box never intersects ▶ or the transport row, at desktop and phone\n  width, measured the way `web/e2e/toast-occlusion.e2e.ts` measures the toaster."
+        }
+      ],
+      "after": [
+        {
+          "replaces_lines": "467-468",
+          "text": "- **No overlap:** the popup's box never intersects ▶ or the transport row, at desktop and phone\n  width, measured the way `web/e2e/toast-occlusion.e2e.ts` measures the toaster. On `/` at\n  375 × 667 and with a phone held sideways (667 × 375), Play and the note can be scrolled clear\n  of the card, and a Tab onto Play leaves it fully above the card."
+        }
+      ],
+      "proposed_fix": "Apply the 'Where' rule from F-28 (the card over the privacy notice) (it covers `/` as well as `/privacy`) and extend the no-overlap case to `/`, at 375 × 667 and with a phone held sideways.",
+      "why_it_works": "The room below the page gives the visitor exactly the scroll needed to lift Play and the note above the card, and scroll-padding makes Tab do it by itself — the passing route WCAG 2.2's Understanding page names for cookie banners. Nothing on the page moves, because the room comes after the page's own content.",
+      "clear_fix": "no — it changes how `/` behaves while the card shows (a layout choice); the alternative is to accept it in Known limits",
+      "plain_terms": {
+        "G7": "decision G7: the popup is a floating card above the player's controls, with the approved words; a centred dialog was rejected because it blocks the demo",
+        "G9": "decision G9: the home page names Google Analytics; Sentry is named only in the card's Details",
+        "PR #191": "the Sentry pull request",
+        "F-25": "the finding that gives Details and every link a 44 px target",
+        "F-28": "the finding about the card covering the privacy notice",
+        "WCAG 2.4.11": "Focus Not Obscured (Minimum), a WCAG 2.2 AA rule: a control with keyboard focus must not be entirely hidden by the page's own content",
+        "scroll padding": "a CSS setting that tells the browser to keep a strip free when it scrolls something into view"
+      },
+      "severity_check": {
+        "agree": false,
+        "proposed": "P2",
+        "why": "On a phone held sideways the card covers Play, and a keyboard user can focus Play while it is fully hidden (with the 44 px card) — a failure of WCAG 2.2's 2.4.11 (Focus Not Obscured) by its own cookie-banner example, which the project's checks do not test. It lasts only until the visitor answers, so not P1."
+      },
+      "cross_fix": [
+        "F-28 (the card over the privacy notice) — its 'Where' rule is the fix; apply both together.",
+        "F-26 (the card's height cap) — caps the card's height; the room follows the capped height.",
+        "R4 (the card's stacking order) and F-28 (the card over the privacy notice) also add to the 'No overlap' bullet; the merged text is in R4 (the card's stacking order)'s cross-fix note."
+      ]
+    }
+  ]
+}

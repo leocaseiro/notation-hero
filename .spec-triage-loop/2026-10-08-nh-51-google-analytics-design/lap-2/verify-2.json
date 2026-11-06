@@ -1,0 +1,638 @@
+{
+  "group": 2,
+  "items": [
+    {
+      "id": "F-20",
+      "verdict": "CONFIRMED_WITH_CORRECTION",
+      "correction": "The two reviewers' fixes are merged into one text. The unit case reads an answer saved under an older `version` (the second reviewer's `\"version\":0` is a value the code never writes, because it starts at 1; a test sets the current version instead). The merged text also says what an old 'Report errors only' does in Europe: nothing starts until the popup is answered again, which keeps G5 (in Europe nothing loads, Sentry included, until the visitor answers).",
+      "section_heading": "## 2. The privacy choice",
+      "section_lines": "112-157",
+      "quotes": [
+        {
+          "quote": "**Kept in this browser:** the `localStorage` key `notation-hero.privacy-choice` holds `{\"choice\":\"all\",\"version\":1}`. `version` lets a later change to the question ask again. Keeping the answer needs no consent: the CNIL lists trackers that store the user's choice as exempt.",
+          "verbatim": true,
+          "line": 147,
+          "note": "the whole bullet, verbatim including the spec's bold markers"
+        },
+        {
+          "quote": "An answer holds in every time zone once it is given; the time zone decides only while there is none.",
+          "verbatim": true,
+          "line": 122,
+          "note": "spans lines 122-123"
+        },
+        {
+          "quote": "Outside Europe, no answer given",
+          "verbatim": true,
+          "line": 116,
+          "note": "answers table, line 116: error reports, visit count and Google Analytics all on"
+        },
+        {
+          "quote": "In Europe, before answering",
+          "verbatim": true,
+          "line": 120,
+          "note": "answers table, line 120: all three off"
+        },
+        {
+          "quote": "/** The saved answer; null when there is none, the value is corrupt, or storage is blocked. */",
+          "verbatim": true,
+          "line": 133,
+          "note": "the `savedChoice()` comment in the sketch"
+        },
+        {
+          "quote": "export function savedChoice(): PrivacyChoice | null;",
+          "verbatim": true,
+          "line": 134,
+          "note": "the `savedChoice()` signature"
+        },
+        {
+          "quote": "/** The table above: an answer, saved or kept in memory, wins in any time zone. */",
+          "verbatim": true,
+          "line": 136,
+          "note": "the `allowed()` comment"
+        },
+        {
+          "quote": "a Google Analytics user ID only with consent, never an email.",
+          "verbatim": true,
+          "line": 506,
+          "note": "in 'Extending later'; one of the planned changes that could change the question"
+        }
+      ],
+      "central_claim_check": "Checked the spec text. Section 2's answers table (lines 114-120) gives 'Outside Europe, no answer given' everything. Line 122 says the time zone decides only while there is no answer. Line 148 says `version` lets a later change to the question ask again, and nothing says what an answer saved under an older version allows. The `savedChoice()` comment (line 133) lists three cases that return null, and an outdated answer is not one of them; the `allowed()` comment (line 136) says an answer wins in any time zone. So the spec allows two readings, and both break something. (1) The outdated answer reads as no answer, which is the only way the popup in Europe can ask again: then outside Europe, where no popup ever asks (decision G3, visitors in Europe are asked first; everyone else gets everything by default), a saved 'No' or 'Report errors only' becomes full tracking. (2) The outdated answer keeps full force: then an old 'Yes' never lapses and the question is never asked again, which defeats `version`. The unit-test line (lines 429-430) covers the 15 table cells and nothing about versions. A version change is foreseeable: 'Extending later' plans a second destination (NH-54, the AWS analytics pipeline) and a Google Analytics user ID 'only with consent'. Who can hold a refusal outside Europe: only someone who used NH-349 (the 'Privacy choices' link), because no popup asks there.",
+      "contradicts": "none. Checked: line 122 (an answer holds in every time zone), which the fix extends to answers from an older version; the `savedChoice()` and `allowed()` comments (lines 133 and 136), which the plan can meet by letting `allowed()` see an outdated answer as a limit while the popup treats it as unanswered; the Safari line in Known limits (lines 526-530), which is about deleted answers, not outdated ones; section 3's 'It returns on every page load until answered', which still holds in Europe; and round 1's item that let a saved answer win in every time zone (commit 01889ee4), which this protects rather than undoes.",
+      "spike": {
+        "ran": true,
+        "what": "A scratch .mjs that models `allowed()` and whether the popup shows, for answers saved under version 1 and read by version-2 code, in Australia/Sydney and Europe/Berlin. 'As written' reads an outdated answer as no answer (so the popup can ask again). 'Fixed' reads it as no answer that can only limit. It also checks that current answers and no answer behave the same in both models.",
+        "result": "Old 'none' in Sydney: as written, errors + visits + Google Analytics; fixed, nothing. Old 'none' in Berlin: both, nothing and the popup asks. Old 'errors' in Sydney: as written, all three; fixed, error reports only. Old 'errors' in Berlin: both, nothing and the popup asks. (Old 'all': Sydney everything, Berlin nothing and the popup asks, in both models.) Current answers and no answer: identical in both models.",
+        "fix_holds": true
+      },
+      "scenario": "You open Notation Hero in Sydney and use the 'Privacy choices' link to choose 'No, send nothing'. Months later the site starts sending visit counts to a second place, so the question changes. You return. No question appears, because outside Europe the site never asks, and Google Analytics and Sentry both start. Your 'No' is still saved, but the new code reads it as no answer.",
+      "whats_wrong": "The spec says a saved answer carries a `version` so that a changed question can be asked again, but it does not say what an answer from an older version allows. For the popup to ask again in Europe, such an answer must count as no answer. With no answer, the time zone decides, and outside Europe that means everything starts with no popup. So the first change to the question silently changes every saved 'No' and 'Report errors only' outside Europe into full tracking. That undoes, on this one path, round 1's rule that an answer holds in every time zone.",
+      "before": [
+        {
+          "lines": "148",
+          "text": "`version` lets a later change to the question ask again."
+        },
+        {
+          "lines": "429-430",
+          "text": "- `allowed()`: the 15 cells of section 2's table, each answered row in both `Europe/Berlin` and `Australia/Sydney`: a saved `none` in Sydney allows nothing."
+        }
+      ],
+      "after": [
+        {
+          "replaces_lines": "148",
+          "text": "`version` lets a later change to the question ask again. An answer saved under an older `version` counts as no answer, but never allows more than it did: in Europe the popup asks again and nothing starts meanwhile, and elsewhere an old `none` or `errors` still holds until the visitor changes it."
+        },
+        {
+          "replaces_lines": "429-430",
+          "text": "- `allowed()`: the 15 cells of section 2's table, each answered row in both `Europe/Berlin` and `Australia/Sydney`: a saved `none` in Sydney allows nothing. A `none` or `errors` saved under an older `version` allows nothing in Berlin, and in Sydney no more than it did."
+        }
+      ],
+      "proposed_fix": "Add one sentence to section 2's 'Kept in this browser' bullet: an answer from an older version counts as no answer (so Europe is asked again), but it can only limit, never widen, what starts. Add one unit case to section 9 that pins the four outcomes.",
+      "why_it_works": "An outdated answer still makes Europe see the new question, so the change is asked about, and an old 'Yes' lapses as intended. But a refusal can no longer become tracking anywhere: outside Europe, where no popup can ask, an old 'No' stays 'No' until the visitor changes it with the 'Privacy choices' link. The unit case fails if the plan reads an outdated answer as nothing.",
+      "clear_fix": "no: it adds a privacy rule for outdated answers (a behaviour). The safe direction is clear, and it follows round 1's rule, but it is still a rule leocaseiro has not stated.",
+      "plain_terms": {
+        "version": "the number saved beside the answer; a later change to the question raises it",
+        "G3": "decision G3: visitors in Europe are asked first; everyone else gets everything by default, with no popup",
+        "G5": "decision G5: in Europe nothing loads, Sentry included, until the visitor answers",
+        "NH-349": "the ticket for the 'Privacy choices' link that lets any visitor change an answer",
+        "NH-54": "the later ticket for an AWS analytics pipeline, a likely second place visit data goes",
+        "round 1": "the first lap of this review; its item that made a saved answer win in every time zone was applied in commit 01889ee4"
+      },
+      "severity_check": {
+        "agree": true,
+        "proposed": "P2",
+        "why": "It matters only after the first change to the question, but the saved format ships with this ticket, so the plan must decide now how an old answer is read. When it happens, refusals outside Europe silently become tracking. A real gap an implementer will hit, not a false promise today."
+      },
+      "cross_fix": []
+    },
+    {
+      "id": "F-21",
+      "verdict": "CONFIRMED",
+      "section_heading": "## Extending later",
+      "section_lines": "501-513",
+      "quotes": [
+        {
+          "quote": "**NH-349's link** reuses `PrivacyChoices` and `saveChoice()`. Changing to \"No\" must stop Google Analytics for the rest of the visit. A consent update to denied is not enough: the loaded tag still sends a cookieless `user_engagement` hit when the page is left (spike, 2026-10-08). So the link also sets `window['ga-disable-<ID>'] = true` and sends no more events. Google documents that switch as set before any `gtag()` call, so NH-349's test must prove no hit follows a \"No\". The link must also close Sentry for the rest of the visit.",
+          "verbatim": true,
+          "line": 507,
+          "note": "the whole bullet, verbatim including the spec's bold markers"
+        },
+        {
+          "quote": "Changing to \"No\" must stop Google Analytics for the rest of the visit.",
+          "verbatim": true,
+          "line": 507,
+          "note": "spans lines 507-508"
+        },
+        {
+          "quote": "Changing to \"No\" must stop Google",
+          "verbatim": true,
+          "line": 507,
+          "note": ""
+        },
+        {
+          "quote": "NH-349's test must prove no hit follows a \"No\"",
+          "verbatim": true,
+          "line": 511,
+          "note": ""
+        },
+        {
+          "quote": "Answered \"Report errors only\"",
+          "verbatim": true,
+          "line": 118,
+          "note": "section 2's answers table, line 118: error reports yes, visit count no, Google Analytics no"
+        },
+        {
+          "quote": "On a phone, whose IP address changes, choose \"Report errors only\" through NH-349's \"Privacy choices\" link instead.",
+          "verbatim": true,
+          "line": 417,
+          "note": "setup step 7"
+        },
+        {
+          "quote": "choose \"Report errors only\" through NH-349's \"Privacy choices\" link",
+          "verbatim": true,
+          "line": 418,
+          "note": ""
+        },
+        {
+          "quote": "calls `gtag('event', name, …)` once started, and nothing before",
+          "verbatim": true,
+          "line": 232,
+          "note": "section 4: `track()` checks only that Google Analytics has started"
+        }
+      ],
+      "central_claim_check": "Checked the spec text. Section 2's table (line 118) gives 'Report errors only' no visit count and no Google Analytics. The bullet for NH-349 (the 'Privacy choices' link) names only 'No' (lines 507-508) and tests only 'No' (line 511). `track()` sends once Google Analytics has started and checks nothing else (line 232), and page views on client-side page changes come from Google's own script (lines 236-237), so both keep running unless the link stops them. The bullet itself says a consent update is not enough, because the loaded tag still sends a cookieless hit when the page is left (lines 508-509, the 2026-10-08 spike, which is not on disk; taken from the spec). Setup step 7 (lines 417-419) tells leocaseiro to make exactly this change on a phone, where Google Analytics already runs by default. Sentry's visit count needs no extra stop inside the visit: the Sentry plan (PR #191, the Sentry pull request), in its table of checked claims, records one visit ping per page load, and a client-side page change starts none; section 6 then starts Sentry without it on the next load. (untested: whether an error after the change updates that page's existing visit record.)",
+      "contradicts": "none. Checked: section 2's table (line 118), which the fix now matches; section 6 (Sentry starts without its visit count for 'Report errors only'); setup step 7 (lines 417-419); round 1's item that told NH-349 (the 'Privacy choices' link) to stop the loaded Google tag on a 'No' (commit ed330aa0), which this extends; and round 1's item that keeps the owner's visits out (commit 44e6920b). 'Close Sentry' stays for 'No' only, because 'Report errors only' keeps error reports by design.",
+      "spike": {
+        "ran": false,
+        "why": "The gap is in the text: the instruction names one answer where the table needs two. A runtime check would need Google's real script and the link NH-349 (the 'Privacy choices' link) builds; neither is available here.",
+        "mark": "(untested)"
+      },
+      "scenario": "You said 'Yes' earlier. While a song plays, you open 'Privacy choices' and pick 'Report errors only'. The card closes and says nothing more. But Google Analytics keeps counting every page you open and every button you press, until you leave the site.",
+      "whats_wrong": "Section 2's table says 'Report errors only' sends nothing to Google Analytics, just like 'No'. But the instruction for the 'Privacy choices' link tells it to stop Google Analytics only on a change to 'No', and its test checks only 'No'. Our `track()` checks only that Google Analytics has started, and Google's script keeps sending page views, so a switch to 'Report errors only' leaves Google Analytics running for the rest of the visit. The owner's own setup step 7 makes exactly this switch.",
+      "before": [
+        {
+          "lines": "507-508",
+          "text": "Changing to \"No\" must stop Google Analytics for the rest of the visit."
+        },
+        {
+          "lines": "510-511",
+          "text": "Google documents that switch as set before any `gtag()` call, so NH-349's test must prove no hit follows a \"No\"."
+        },
+        {
+          "lines": "511-512",
+          "text": "The link must also close Sentry for the rest of the visit."
+        }
+      ],
+      "after": [
+        {
+          "replaces_lines": "507-508",
+          "text": "Changing to \"No\" or to \"Report errors only\" must stop Google Analytics for the rest of the visit."
+        },
+        {
+          "replaces_lines": "510-511",
+          "text": "Google documents that switch as set before any `gtag()` call, so NH-349's test must prove no hit follows either answer."
+        },
+        {
+          "replaces_lines": "511-512",
+          "text": "On a \"No\", the link must also close Sentry for the rest of the visit."
+        }
+      ],
+      "proposed_fix": "In the instruction for the 'Privacy choices' link, name both answers that stop Google Analytics, make its test cover both, and keep the Sentry close for 'No' alone.",
+      "why_it_works": "The table already decides that both answers stop Google Analytics. Naming both in the instruction and the test makes the link match the table. Sentry's close stays tied to 'No', because 'Report errors only' keeps error reports on purpose.",
+      "clear_fix": "yes: one right answer. It aligns the instruction with section 2's approved table and changes no behaviour, scope or copy.",
+      "plain_terms": {
+        "NH-349": "the ticket for the 'Privacy choices' link that lets any visitor change an answer",
+        "the ga-disable switch": "`window['ga-disable-<ID>'] = true`, Google's documented way to stop its tag",
+        "visit count": "Sentry's Release Health: one small ping per page load",
+        "PR #191": "the Sentry pull request, which holds the Sentry spec and plan"
+      },
+      "severity_check": {
+        "agree": true,
+        "proposed": "P2",
+        "why": "The two reviewers said P2 and P3. P2: this bullet is the only instruction the 'Privacy choices' ticket gets, that ticket merges into this branch before go-live, and following it as written ships a withdrawal that does not stop Google Analytics."
+      },
+      "cross_fix": [
+        "FYI-8 (a change of answer in one tab does not reach other open tabs): edits the same bullet. Apply this fix first; the added sentence there says 'whatever the new answer no longer allows', so it already covers both answers."
+      ]
+    },
+    {
+      "id": "F-22",
+      "verdict": "CONFIRMED_WITH_CORRECTION",
+      "correction": "Two additions. (1) The table `zone.tab` files the French overseas regions under their own two-letter codes, not France's, so the list must name those codes (GP, MQ, GF, RE, YT, MF); 'the EU and EEA (European Economic Area) country codes' alone would miss all of them. Saint-Martin is an EU region but not one of the French 'overseas regions' the spec names, so it needs naming too. (2) The claim holds in all three browser engines, not only in Chrome's JavaScript engine: Chromium 149, Firefox 148 and WebKit 26.5 all report the `zone.tab` names. A list built from `zone1970.tab` misses exactly five names: Atlantic/Reykjavik, Indian/Reunion, Indian/Mayotte, America/Guadeloupe and America/Marigot.",
+      "section_heading": "## 2. The privacy choice",
+      "section_lines": "112-157",
+      "quotes": [
+        {
+          "quote": "The plan fixes the full list from the IANA time-zone database.",
+          "verbatim": true,
+          "line": 145,
+          "note": "spans lines 145-146"
+        },
+        {
+          "quote": "such as `Atlantic/Canary`, `Atlantic/Madeira`, `Atlantic/Azores`, `Atlantic/Reykjavik`, `Asia/Nicosia` and the French overseas regions",
+          "verbatim": true,
+          "line": 142,
+          "note": "spans lines 142-144"
+        },
+        {
+          "quote": "`asksFirst()`: `Europe/Berlin`, `Europe/London`, `Atlantic/Canary`, `Asia/Nicosia`, `UTC` and an empty value ask first",
+          "verbatim": true,
+          "line": 425,
+          "note": "section 9 unit tests"
+        }
+      ],
+      "central_claim_check": "Ran it. What the browser reports, given each place's zone: Node 24.16 (with the TZ variable), Chromium 149, Firefox 148 and WebKit 26.5 (Playwright's time-zone setting) all report Atlantic/Reykjavik, Indian/Reunion, Indian/Mayotte, America/Guadeloupe and America/Marigot unchanged; the old alias 'Iceland' becomes Atlantic/Reykjavik. The tables: macOS's `zone.tab` (time-zone data release 2026c) has one row per code, with IS Atlantic/Reykjavik, RE Indian/Reunion, YT Indian/Mayotte, GP America/Guadeloupe and MF America/Marigot, and its header says it is kept for older programs and 'New programs should use zone1970.tab'. macOS ships no `zone1970.tab`, so a copy from release 2025b (inside a Python package on this machine) was read: IS sits in the Africa/Abidjan row, RE in Asia/Dubai, YT in Africa/Nairobi, and GP and MF in America/Puerto_Rico; MQ (America/Martinique), GF (America/Cayenne), Spain's Atlantic/Canary and Africa/Ceuta, Portugal's Atlantic/Madeira and Atlantic/Azores, and Cyprus's two zones keep their own rows in both tables. A 2021 copy still listed Atlantic/Reykjavik and Indian/Reunion, so the change is recent. The spec today names Atlantic/Reykjavik and 'the French overseas regions' as examples (lines 142-144) and leaves the source open: 'from the IANA time-zone database' (lines 145-146; IANA is the body that keeps that database) and 'from the IANA database' (line 547). (untested: what a real phone or Windows laptop in those places reports; Windows maps its own zone names through the region setting.) A side observation, not part of this fix: a browser whose zone is plain GMT reports '+00:00' (Chromium 149 and Node 24), which is neither `UTC` nor `Etc/…`; the `asksFirst()` comment's 'and for an unknown one' covers it only if 'unknown' means 'not a zone name'.",
+      "contradicts": "none. Checked: the bullet's examples and its 'errs toward asking' (lines 140-146), which stay; G4 (Europe is decided by the browser's time zone); Known limits' 'A time zone is a guess' (lines 516-517); the screenshot note that the test containers run in UTC, which counts as Europe (lines 479-480); and round 1, which had no item on the list. The new negative case (`Asia/Dubai` does not ask) matches G3: everyone outside Europe gets no popup.",
+      "spike": {
+        "ran": true,
+        "what": "Asked Node 24.16 (TZ variable) and Chromium 149, Firefox 148 and WebKit 26.5 (Playwright's timezoneId; the last two are older builds already on this machine) what time zone they report for Iceland, Réunion, Mayotte, Guadeloupe, Saint-Martin and nearby names; read the IS, RE, YT, GP and MF rows of macOS's zone.tab (2026c) and of a zone1970.tab copy (2025b).",
+        "result": "Every engine reports the zone.tab name: Atlantic/Reykjavik, Indian/Reunion, Indian/Mayotte, America/Guadeloupe, America/Marigot. zone.tab lists exactly those. zone1970.tab lists those places under Africa/Abidjan, Asia/Dubai, Africa/Nairobi and America/Puerto_Rico. A zone.tab list that includes the regions' own codes misses none of the reported names. A zone.tab list from the 30 EU and EEA state codes alone misses all six overseas names (America/Guadeloupe, America/Martinique, America/Cayenne, Indian/Reunion, Indian/Mayotte, America/Marigot), because France's row is only Europe/Paris. A zone1970.tab list misses those five and asks Côte d'Ivoire, Ghana, the United Arab Emirates, Oman, Kenya, Puerto Rico and others instead.",
+        "fix_holds": true
+      },
+      "scenario": "You open Notation Hero on a laptop set to Réunion time. Réunion is part of the EU. The site's list of European time zones was copied from the wrong table, so your zone is missing. No question appears, and Google Analytics counts you without asking. Meanwhile a visitor in Dubai, whose zone took Réunion's place on the list, is asked.",
+      "whats_wrong": "The spec says the plan builds the full list 'from the IANA time-zone database' but not from which table. IANA (the body that keeps the time-zone database) now recommends its newer table, `zone1970.tab`, which groups places whose clocks have agreed since 1970 under one name: Iceland under Abidjan, Réunion under Dubai, Mayotte under Nairobi, Guadeloupe and Saint-Martin under Puerto Rico. Browsers still report the places' own names. A list built from the newer table therefore misses those EU and EEA (European Economic Area) visitors, who would be tracked without being asked, against G3 (Europe is asked first), and it asks unrelated countries instead.",
+      "before": [
+        {
+          "lines": "145-146",
+          "text": "The plan fixes the full list from the IANA time-zone database."
+        },
+        {
+          "lines": "425-426",
+          "text": "- `asksFirst()`: `Europe/Berlin`, `Europe/London`, `Atlantic/Canary`, `Asia/Nicosia`, `UTC` and an empty value ask first; `Australia/Sydney`, `America/New_York` and `Asia/Tokyo` do not."
+        },
+        {
+          "lines": "547",
+          "text": "- The time-zone list, from the IANA database."
+        }
+      ],
+      "after": [
+        {
+          "replaces_lines": "145-146",
+          "text": "The plan fixes the full list from IANA's `zone.tab`: its rows for the EU and EEA country codes and for the overseas regions' own codes (`GP`, `MQ`, `GF`, `RE`, `YT`, `MF`), which keep the names browsers report. Not from `zone1970.tab`: it files Iceland, Réunion, Mayotte, Guadeloupe and Saint-Martin under `Africa/Abidjan`, `Asia/Dubai`, `Africa/Nairobi` and `America/Puerto_Rico`."
+        },
+        {
+          "replaces_lines": "425-426",
+          "text": "- `asksFirst()`: `Europe/Berlin`, `Europe/London`, `Atlantic/Canary`, `Atlantic/Reykjavik`, `Indian/Reunion`, `Asia/Nicosia`, `UTC` and an empty value ask first; `Australia/Sydney`, `America/New_York`, `Asia/Tokyo` and `Asia/Dubai` do not."
+        },
+        {
+          "replaces_lines": "547",
+          "text": "- The time-zone list, from IANA's `zone.tab`, and what a real phone or laptop set to an overseas region reports (a test browser given `Indian/Reunion` reports that name, checked 2026-10-10)."
+        }
+      ],
+      "proposed_fix": "Name the table: build the list from `zone.tab` rows for the EU and EEA codes plus the overseas regions' own codes, and say why not `zone1970.tab`. Add Atlantic/Reykjavik and Indian/Reunion to the ask-first unit case and Asia/Dubai to the does-not case. Name `zone.tab` in 'To verify at plan time', with the real-device question that is still open.",
+      "why_it_works": "`zone.tab` keeps one row per country code with the name a browser actually reports, so the list matches what `asksFirst()` reads. The two new ask-first cases fail if the plan uses the newer table, and the Dubai case fails if the list asks the wrong places.",
+      "clear_fix": "yes: one right answer. The spec already means to ask in these places ('and the French overseas regions'); this names the table that does it and changes no behaviour, scope or copy.",
+      "plain_terms": {
+        "IANA": "the body that keeps the world's time-zone database",
+        "zone.tab": "the database's older table: one row per two-letter country code, with the names browsers report",
+        "zone1970.tab": "the database's newer table, which IANA recommends; it groups places whose clocks have agreed since 1970 under one zone name",
+        "EEA": "the European Economic Area: the EU plus Iceland, Liechtenstein and Norway",
+        "GP, MQ, GF, RE, YT, MF": "the two-letter codes of Guadeloupe, Martinique, French Guiana, Réunion, Mayotte and Saint-Martin",
+        "G3": "decision G3: visitors in Europe are asked first; everyone else gets everything by default, with no popup",
+        "G4": "decision G4: Europe is decided by the browser's time zone"
+      },
+      "severity_check": {
+        "agree": true,
+        "proposed": "P2",
+        "why": "An implementer who follows IANA's own advice builds the wrong list, and EU visitors in five places are tracked without being asked. A real gap the plan will hit; the spec's promise is only at risk if the plan picks the newer table."
+      },
+      "cross_fix": []
+    },
+    {
+      "id": "F-23",
+      "verdict": "CONFIRMED_WITH_CORRECTION",
+      "correction": "Two changes to the reviewer's fix. (1) Before an answer, the wait after 'Yes' should be for a sentinel error thrown after the click, as the Sentry spec's rule does, not for any session envelope: in a broken build, Sentry already sent its visit ping at start-up and a second start does nothing, so a wait for 'a session envelope' returns at once, before the earlier error's report may have arrived. (2) The 'also after a reload' check has the same gap, so after 'No' the test reloads twice: the second reload is the moment for the first reloaded page. The same `window.dataLayer` check also replaces the unanchored 'nothing reaches Google' in the 'Report errors only' sub-case.",
+      "section_heading": "## 9. Testing",
+      "section_lines": "421-490",
+      "quotes": [
+        {
+          "quote": "**Berlin:** the popup shows, and **no** request reaches Google or Sentry before an answer. \"No, send nothing\": still none, also after a reload.",
+          "verbatim": true,
+          "line": 455,
+          "note": "verbatim, including the spec's bold markers"
+        },
+        {
+          "quote": "**Berlin:** the popup shows, and **no** request reaches Google or Sentry before an answer. \"No, send nothing\": still none, also after a reload. \"Report errors only\": a forced error reaches Sentry; when it arrives, Sentry's fixture has recorded no `session` envelope (the visit ping), and nothing reaches Google. \"Yes, …\": both, and a `session` envelope arrives. The answer survives a reload. Unlike NH-124's cases, these read session envelopes on purpose: the visit ping is the one thing \"Report errors only\" withholds from Sentry.",
+          "verbatim": true,
+          "line": 455,
+          "note": "the whole Berlin bullet, lines 455-460"
+        },
+        {
+          "quote": "**Privacy:** open a fixture with a known title and track names, and press Solo and Mute on one of its tracks (both buttons are named after the track). Wait until `window.dataLayer` holds the `score_loaded` event, with the score's `track_count`, and both `mixer_change` events. Only then check that no entry contains the title or a track name, that `document.title` stays `Notation Hero` (Google's script sends it as `dt`), and that the page address holds neither. Without the wait, an empty queue would pass.",
+          "verbatim": true,
+          "line": 461,
+          "note": "the whole Privacy bullet, lines 461-466, as round 1 left it (commit f587f2e2)"
+        },
+        {
+          "quote": "Without the wait, an empty queue would pass.",
+          "verbatim": true,
+          "line": 466,
+          "note": "the Privacy case's last sentence"
+        }
+      ],
+      "central_claim_check": "Checked the spec, the Sentry spec and plan (PR #191, the Sentry pull request) and web/. The Berlin case (lines 455-460) names no moment for its 'no request' checks. Google's script is added only after the page's load event (lines 223 and 230). The Privacy case now waits (lines 461-466, round 1's fix). The Sentry spec's rule, lines 703-706: every case that expects nothing to be sent ends with a sentinel, an error the test throws and waits for, because a recorder that captured nothing would pass; its plan implements it as `throwSentinel`. A 'No' allows nothing, so no sentinel can arrive. `window.dataLayer` is created at once inside `startAnalytics()` (line 210), and a grep of web/ (source, scripts and public files, not node_modules) finds no other code that creates `dataLayer` or loads a Google tag; in next 16.3.6 only the bundled docs mention it. Sentry is not installed on this branch, so its own code was not read (untested), but it is not a Google tag. The Berlin case already throws an error on purpose for 'Report errors only' (line 456), so its test file already has to allow thrown errors.",
+      "contradicts": "none. Checked: the end-to-end intro (lines 446-449), which already says the cases check what our code hands Google in `window.dataLayer`; the 'Report errors only' sub-case, which already forces an error; round 1's fixes to the Privacy case (commit f587f2e2) and to the visit-ping check (commit 15c8acb2), which this follows; and the Sentry spec's sentinel rule, which this applies.",
+      "spike": {
+        "ran": true,
+        "what": "A local mock of a broken build with the spec's timing (no request left the machine): `window.dataLayer` created at start-up and a script request only after the load event, a visit ping sent in the background, and errors reported through a background request. Twenty runs of three checks in Chromium on Berlin time: (1) as written, check the recorded requests as soon as the page has loaded; (2) check whether `window.dataLayer` exists; (3) throw an error, see the page error, reload, then check the recorded requests.",
+        "result": "(1) passed on the broken build 20 of 20 times. (2) caught it 20 of 20. (3) caught the error report 20 of 20. The mock's delays are mine; real Sentry and Google timing were not run (untested), which is why a named moment matters.",
+        "fix_holds": true
+      },
+      "scenario": "You open Notation Hero in Berlin. A recent code change, by mistake, starts Google Analytics before you answer. The automated test that should catch this opens the page on Berlin time and checks the requests at once. Google's script is added only after the page finishes loading, so the test sees nothing yet and passes. The broken version is published, and you are counted before you say 'Yes'.",
+      "whats_wrong": "The Berlin case is the one automated proof of G5 (in Europe nothing loads until the visitor answers). It says no request reaches Google or Sentry before an answer, or after 'No', but names no moment by which a wrongly started tool would have sent one. Google's script starts only after the load event and Sentry sends in the background, so a check made as soon as the page loads passes on a broken build. Round 1 fixed the same gap in the Privacy case, and the Sentry spec requires a sentinel for every 'nothing sent' check, which a 'No' case cannot send.",
+      "before": [
+        {
+          "lines": "455-456",
+          "text": "**Berlin:** the popup shows, and **no** request reaches Google or Sentry before an answer. \"No, send nothing\": still none, also after a reload."
+        },
+        {
+          "lines": "457-458",
+          "text": "and nothing reaches Google."
+        }
+      ],
+      "after": [
+        {
+          "replaces_lines": "455-456",
+          "text": "**Berlin:** the popup shows, and nothing starts before an answer: `window.dataLayer` does not exist, and an error the test throws is seen as a page error but never reported. After \"Yes\", a sentinel error arrives and that earlier error does not (the Sentry spec's sentinel rule). \"No, send nothing\": a \"No\" sends nothing to wait for, so the test throws an error, reloads, throws another and reloads again, and only then checks that neither recorder holds a request; `window.dataLayer` does not exist after any load."
+        },
+        {
+          "replaces_lines": "457-458",
+          "text": "and `window.dataLayer` does not exist."
+        }
+      ],
+      "proposed_fix": "Give every 'nothing sent' check in the Berlin case a moment. For Google Analytics, check our own queue, which exists at once when it starts. For Sentry before an answer, prove an early error is never reported by waiting for a sentinel error after 'Yes'. After 'No', where nothing can arrive, let finished reloads be the moment.",
+      "why_it_works": "Each check now runs after a point by which a wrongly started tool must have left a trace: our queue exists at once, a sentinel error proves Sentry has sent what it had (its reports leave in order), and a finished reload proves the earlier page's requests were already sent. A broken build then fails every time instead of passing every time.",
+      "clear_fix": "yes: test strength only. It changes no behaviour, scope or copy; it applies round 1's Privacy-case rule and the Sentry spec's sentinel rule to the Berlin case.",
+      "plain_terms": {
+        "G5": "decision G5: in Europe nothing loads, Sentry included, until the visitor answers",
+        "sentinel": "an error the test throws on purpose and waits for, so it knows the reporter has sent anything it had",
+        "the Sentry spec (PR #191)": "the error-reporting design in the Sentry pull request",
+        "`window.dataLayer`": "the queue our loader creates the moment Google Analytics starts",
+        "recorder": "a test helper that answers Google's or Sentry's addresses locally and keeps every request",
+        "round 1": "the first lap of this review; it made the Privacy case wait (commit f587f2e2)"
+      },
+      "severity_check": {
+        "agree": true,
+        "proposed": "P2",
+        "why": "Test strength, not shipped behaviour, but it is the only automated proof of G5 (in Europe nothing loads until the visitor answers), and as written it cannot fail on the break it exists to catch."
+      },
+      "cross_fix": [
+        "F-24 (a late \"Yes\" loses the landing page): its option 1 adds one sentence at the end of the same Berlin bullet. The two edits touch different sentences and fit together."
+      ]
+    },
+    {
+      "id": "F-24",
+      "verdict": "CONFIRMED",
+      "section_heading": "## 4. Google Analytics in code",
+      "section_lines": "202-248",
+      "quotes": [
+        {
+          "quote": "The player works while the card waits, and nothing is sent meanwhile. It returns on every page load until answered.",
+          "verbatim": true,
+          "line": 172,
+          "note": "section 3, the popup"
+        },
+        {
+          "quote": "the campaign tags on a link you share, which is how it reports where a visitor came from",
+          "verbatim": true,
+          "line": 240,
+          "note": "section 4, 'Addresses'"
+        },
+        {
+          "quote": "**Answering** saves the choice, hides the card and starts what it allows at once — no reload.",
+          "verbatim": true,
+          "line": 185,
+          "note": "section 3; verbatim, including the spec's bold markers"
+        }
+      ],
+      "central_claim_check": "Checked the spec and ran a browser spike. In Europe `startAnalytics()` runs only at the answer (line 185, and G5: in Europe nothing loads until the visitor answers). The card does not block the page (lines 172-173) and lives in the layout (lines 101-102), so it stays across client-side page changes. Google's script then reads the current address. The spec keeps the `?` part on purpose to tell where a visitor came from (lines 240-241). Spike: after a client-side change from `/?utm_source=probe#frag` to `/play`, `performance.getEntriesByType('navigation')[0].name` still returns the landing address in Chromium 149, Firefox 148 and WebKit 26.5, `#frag` included, so dropping the `#` part is required, not optional. `document.referrer` is unchanged, so a visit with a referring site still shows as a referral; only the campaign tags and the landing page are lost. That the first page view then carries `/play` is reasoned from how Google's script reads the address; it was not run (untested), because the spike could not use Google's real script here. The folded residual (outside Europe, a click on Play before the load event) stays (untested) for the same reason: downloading Google's public script for a local test was refused by this session's permission check.",
+      "contradicts": "Option 1: none. Checked: G5 (in Europe nothing loads until the visitor answers), because the address is read only after the answer, from the browser's own record; section 4's 'never the `#` part', which the text keeps; section 4's 'Page views', which already plans a page view sent from our code as a fallback; Known limits' 'Nothing from before an answer is reported in Europe' (line 533) and the privacy notice's 'In Europe nothing is sent until you answer' (lines 360-361), which stay true because the landing page view is sent after the answer. One open point: round 1's click-ID redaction (commit 734f00e5) relies on a Google setting for page addresses, and whether it covers an address set from our code is not checked. Option 2: none.",
+      "spike": {
+        "ran": true,
+        "what": "A tiny local page served by Node's http module; every other request blocked. Open `/?utm_source=probe#frag` with a referrer, make a client-side page change to `/play` (`history.pushState`, as a Next.js link does), then read the navigation record, the address and `document.referrer`. Run in Chromium 149, Firefox 148 and WebKit 26.5.",
+        "result": "All three engines: the address is `/play`; the navigation record still reads `/?utm_source=probe#frag` (one record); `document.referrer` is unchanged (WebKit shortens it to the referring site's origin). Not run (untested): Google's script itself, so neither the first page view's address nor the fix's order of two page views was seen. Downloading Google's public script for a local test was refused by this session's permission check.",
+        "fix_holds": true
+      },
+      "scenario": "A newsletter link with a campaign tag brings you to Notation Hero in Berlin. The question waits at the bottom, but you click Play first and answer 'Yes' on the player page. Google Analytics records your visit as starting on the player page. The home page and the newsletter's tag are never sent, so the visit shows as coming from nowhere, or at best from the site that linked you.",
+      "whats_wrong": "In Europe, Google Analytics starts only at the answer. The card does not block the page and stays through client-side page changes, so clicking Play before answering is likely the common path (reasoned, not measured). Google's script then reads the current address, `/play`: the landing page and its campaign tags are never sent, although the spec keeps the `?` part exactly to tell where a visitor came from. For these visitors the source reads as a referral or as direct, and the funnel loses its first step. No section mentions this skew.",
+      "before": [
+        {
+          "lines": "244",
+          "text": "(absent — option 1 adds a bullet after \"Addresses\", which ends: \"No address in `web/` carries anything of the visitor's.\")"
+        },
+        {
+          "lines": "459-460",
+          "text": "(absent — option 1 adds a sentence at the end of the Berlin bullet, which ends: \"the visit ping is the one thing \"Report errors only\" withholds from Sentry.\")"
+        },
+        {
+          "lines": "548",
+          "text": "(absent — option 1 adds an item after: \"The popup, which appears after hydration, causes no layout shift (it is fixed-position).\")"
+        },
+        {
+          "lines": "533",
+          "text": "(absent — option 2 adds a bullet after: \"**Nothing from before an answer** is reported in Europe: an error in the first seconds is lost.\")"
+        }
+      ],
+      "options": [
+        {
+          "label": "Option 1: send the landing page after a late Yes",
+          "what": "When the answer comes after a client-side page change, `startAnalytics()` first sends a page view for the address the visit began at, read after the answer from the browser's navigation record without its `#` part, then the one for the current page. A new Berlin end-to-end case and a plan-time check.",
+          "pros": [
+            "Keeps goal 1 (who comes, and where they came from) true for visitors in Europe, on the path the non-blocking card invites.",
+            "Keeps the funnel's first two steps for them.",
+            "The browser part is checked in Chromium, Firefox and WebKit, and nothing is read or kept before the answer."
+          ],
+          "cons": [
+            "One more path in the loader, beside an unchecked one: client-side page views are not yet seen working with the real property (section 8, step 6).",
+            "How Google's script orders the two page views is unchecked: the `config` command sends its own page view, which this path must withhold.",
+            "Events from before the answer (a file opened, Play pressed) are still lost; only the landing page view comes back.",
+            "Whether Google's click-ID redaction covers an address set from our code is unchecked."
+          ],
+          "cost": "About ten lines in `start.ts`, one unit case, one end-to-end case, one plan-time check against the real property.",
+          "after": [
+            {
+              "replaces_lines": "(absent — new bullet after line 244)",
+              "text": "- **A late \"Yes\":** a visitor in Europe may click Play before answering. When the answer comes after a client-side page change, `startAnalytics()` first sends a page view for the address the visit began at, read after the answer from the browser's navigation record (`performance.getEntriesByType('navigation')[0].name`) without its `#` part, then the one for the current page. Without it, the first page view is `/play`, and the landing page and its campaign tags never reach Google Analytics."
+            },
+            {
+              "replaces_lines": "(absent — added at the end of line 460)",
+              "text": "Land on `/?utm_source=probe`, click Play, then answer \"Yes\": the queue holds a page view for `/?utm_source=probe` before the one for `/play`."
+            },
+            {
+              "replaces_lines": "(absent — new item after line 548)",
+              "text": "- That after a late \"Yes\" the landing page view can come first (the `config` command's own page view withheld on that path), and that page views on later client-side page changes still arrive."
+            }
+          ]
+        },
+        {
+          "label": "Option 2: accept it and record it in Known limits",
+          "what": "No code change. One Known-limits line says that a late \"Yes\" in Europe loses the landing page and its campaign tags.",
+          "pros": [
+            "No new code, and nothing more to check against the real property.",
+            "Honest: the skew is written where the numbers are explained.",
+            "The site has no visitors yet; it can switch to option 1 later if visitors in Europe matter."
+          ],
+          "cons": [
+            "Visitors in Europe who play first lose their campaign source, against the spec's own reason for keeping the `?` part.",
+            "The funnel misses its first step for them, and the reports do not show that anything is missing."
+          ],
+          "cost": "One Known-limits line.",
+          "after": [
+            {
+              "replaces_lines": "(absent — new bullet after line 533)",
+              "text": "- **A late \"Yes\" loses where the visit began.** A visitor in Europe who clicks Play before answering is counted from `/play` on: the landing page and its campaign tags are never sent, so Google Analytics shows the visit as a referral or as direct, and the funnel misses its first step."
+            }
+          ]
+        }
+      ],
+      "recommendation": "Option 1. G7 (the popup is a floating card that never blocks the player) makes 'play first, answer later' likely the common path in Europe. On that path the spec's own reason for sending the `?` part, telling where a visitor came from, fails silently. The browser part is checked in three engines, and the code is small.",
+      "flip_condition": "Choose option 2 if the plan-time check shows Google's script cannot take the landing page view first without losing later page views, or if leocaseiro does not expect to share tagged links with visitors in Europe at launch.",
+      "proposed_fix": "Choose between sending the landing page view after a late 'Yes' (option 1) and recording the loss in Known limits (option 2).",
+      "why_it_works": "Option 1: the browser keeps the landing address in its navigation record after client-side page changes (checked in three engines), so it can be read after the answer and sent first, which restores the campaign source without reading or keeping anything before consent. Option 2: the limit is written down where the numbers are explained, so no one reads the Europe sources as complete.",
+      "clear_fix": "no: a scope and trade-off choice (new loader behaviour against a recorded limit).",
+      "plain_terms": {
+        "G5": "decision G5: in Europe nothing loads, Sentry included, until the visitor answers",
+        "G7": "decision G7: the popup is a floating card that does not block the player",
+        "campaign tags": "the `?utm_…` part of a shared link, which tells Google Analytics where a visitor came from",
+        "navigation record": "the browser's own note of the address the page was loaded from",
+        "funnel": "the Explore report Home, Play page, file opened, pressed play",
+        "goal 1": "the spec's 'Who comes': visits, new and returning, country, device, and where they came from",
+        "round 1": "the first lap of this review; it added click-ID redaction (commit 734f00e5)"
+      },
+      "severity_check": {
+        "agree": true,
+        "proposed": "P2",
+        "why": "No privacy harm, but a stated goal (where visitors came from) silently fails for a group the design itself creates. A real gap, not a broken promise to visitors."
+      },
+      "cross_fix": [
+        "F-23 (Berlin checks can pass on a broken build): rewrites the first sentences of the same Berlin bullet; option 1 only appends one sentence at its end. They fit together."
+      ]
+    },
+    {
+      "id": "FYI-8",
+      "verdict": "CONFIRMED",
+      "section_heading": "## Extending later",
+      "section_lines": "501-513",
+      "quotes": [
+        {
+          "quote": "So the link also sets `window['ga-disable-<ID>'] = true` and sends no more events.",
+          "verbatim": true,
+          "line": 509,
+          "note": "spans lines 509-510"
+        },
+        {
+          "quote": "Changing to \"No\" must stop Google Analytics for the rest of the visit.",
+          "verbatim": true,
+          "line": 507,
+          "note": "spans lines 507-508"
+        },
+        {
+          "quote": "Both open in a new tab, so an open score is not lost,",
+          "verbatim": true,
+          "line": 188,
+          "note": "section 3: the popup's Details links"
+        },
+        {
+          "quote": "Change your answer at any time: <the Privacy choices link (NH-349)>.",
+          "verbatim": true,
+          "line": 361,
+          "note": "section 7: the privacy notice"
+        }
+      ],
+      "central_claim_check": "Checked the spec and ran a spike. The stop that the instruction for NH-349 (the 'Privacy choices' link) prescribes, the ga-disable switch plus no more events, runs only in the tab where the answer changes (lines 507-512). The popup's Details opens the privacy notice in a new tab (lines 186-189), and the notice carries 'Change your answer at any time' with the link (line 361). Spike: from a player tab, a link with `target=\"_blank\" rel=\"noopener noreferrer\"` opened `/privacy`; that tab wrote `notation-hero.privacy-choice`. The player tab received a `storage` event with the key and the new value, and the writing tab received none, in Chromium 149, Firefox 148 and WebKit 26.5. So a second tab keeps sending to Google Analytics, and after a 'No' to Sentry, until it is closed or reloaded; the browser's own signal is enough to stop it.",
+      "contradicts": "none. It extends the instruction's own 'for the rest of the visit' to every tab; it uses section 2's storage key (line 147); and it fits F-21's change (both answers stop Google Analytics), because it stops whatever the new answer no longer allows.",
+      "spike": {
+        "ran": true,
+        "what": "A tiny local page; every other request blocked. A player tab opens the notice through a new-tab link, the notice tab saves a new answer, and both tabs record `storage` events. Chromium 149, Firefox 148, WebKit 26.5.",
+        "result": "In all three engines the player tab heard the change (key `notation-hero.privacy-choice`, new value `{\"choice\":\"none\",\"version\":1}`); the notice tab heard nothing of its own write.",
+        "fix_holds": true
+      },
+      "scenario": "You said 'Yes' and have a song open in one tab. From another tab, the privacy notice, you change your answer to 'No'. The song tab is never told. Google Analytics, and Sentry too, keep receiving from it until you close or reload that tab.",
+      "whats_wrong": "The instruction for the 'Privacy choices' link says the change must stop Google Analytics 'for the rest of the visit', but the stop it describes runs only in the tab where the answer changes. The site's design makes a second tab likely: the popup's Details opens the privacy notice, which carries the link, in a new tab beside the player. The browser already tells every other open tab of the site when the saved answer changes, so the same stop can run there. A small, cheap gap; recommended as one sentence for that ticket.",
+      "before": [
+        {
+          "lines": "511-512",
+          "text": "(absent — added after the bullet's last sentence: \"The link must also close Sentry for the rest of the visit.\")"
+        }
+      ],
+      "after": [
+        {
+          "replaces_lines": "(absent — added after line 512)",
+          "text": "The stop also runs in every other open tab of the site: each tab listens for the `storage` event on `notation-hero.privacy-choice` and stops whatever the new answer no longer allows. NH-349's test opens two tabs, changes the answer in one, and proves no hit follows from the other."
+        }
+      ],
+      "proposed_fix": "Add one sentence to the instruction for the 'Privacy choices' link: other open tabs listen for the browser's storage signal on the saved answer and run the same stop; the link's test covers two tabs.",
+      "why_it_works": "All tabs of the site share one saved answer, and the browser signals every other tab when it changes (checked in three engines, also for a tab opened through a new-tab link). Running the same stop on that signal makes 'for the rest of the visit' true in every tab.",
+      "clear_fix": "no: it adds scope to the 'Privacy choices' ticket (a second-tab stop and test). Small, but a scope choice.",
+      "plain_terms": {
+        "NH-349": "the ticket for the 'Privacy choices' link that lets any visitor change an answer",
+        "storage event": "the browser's signal to the other open tabs of the same site when saved data changes",
+        "the ga-disable switch": "`window['ga-disable-<ID>'] = true`, Google's documented way to stop its tag"
+      },
+      "severity_check": {
+        "agree": true,
+        "proposed": "P3",
+        "why": "Real but narrow: it needs two open tabs and a change of answer, and the leak ends when the other tab closes or reloads."
+      },
+      "cross_fix": [
+        "F-21 ('Report errors only' leaves Google Analytics running): same bullet. Apply that fix first; this sentence's 'whatever the new answer no longer allows' covers both answers."
+      ]
+    },
+    {
+      "id": "R3",
+      "verdict": "CONFIRMED",
+      "section_heading": "## Known limits",
+      "section_lines": "514-535",
+      "quotes": [
+        {
+          "quote": "**Ad blockers** stop Google Analytics, as they stop Sentry; those visitors are not counted.",
+          "verbatim": true,
+          "line": 525,
+          "note": "verbatim, including the spec's bold markers"
+        },
+        {
+          "quote": "counts as new, so returning visitors are undercounted.",
+          "verbatim": true,
+          "line": 529,
+          "note": "the Safari line"
+        }
+      ],
+      "central_claim_check": "Checked the sources. The Sentry spec (PR #191, the Sentry pull request), Known limits, lines 740-742: 'Ad-blocked visitors. Their reports never arrive (D3). How many are missed is not measured: this project counts no visits outside Sentry, and adding a counter is the usage tracking NH-52 owns.' (There, D3 is the Sentry spec's decision not to bypass ad blockers, and NH-52 is the later ticket for service goals.) The 2026-06-20 spike, docs/spikes/2026-06-20-clean-slate-infra-tooling-app-skeleton.md:295, opens a decision to revisit Google Analytics (PostHog, or CloudFront logs read with Athena) 'when undercount bites'; its line 29 expects a '15–50% adblock undercount on a dev-skewed audience'. This spec names three causes (ad blockers, line 525; Europe before an answer, the table's last row, line 120; Safari's seven-day reset, lines 526-530) but no way to size them. Sentry's visit count, the only other count, misses the same blocked visitors and, in Europe, the same unanswered ones, so it cannot serve as the gauge. After this ticket the Sentry spec's reason ('counts no visits outside Sentry') is no longer literally true, but its conclusion still holds. A server-side count, such as Vercel's own request numbers, might serve as a rough ceiling (untested; not in this design).",
+      "contradicts": "none. A Known-limits line changes no behaviour. It follows the Sentry spec's own \"not measured\" line and the Safari line round 1 added (commit 46b9b3b5).",
+      "spike": {
+        "ran": false,
+        "why": "A measurement gap with nothing to run. No gauge exists in the design; checking a server-side count would need the production deployment.",
+        "mark": "(untested)"
+      },
+      "scenario": "You launch Notation Hero and share it. A month later Google Analytics shows 40 visitors. You cannot tell whether 40 people came, or 200 came and most were hidden: by ad blockers, by never answering the question in Europe, or by Safari forgetting them after a week. Nothing else counts visits, so the numbers cannot tell you when it is time to move to another tool.",
+      "whats_wrong": "The spec documents three causes of undercounting but no way to size them, and the only other count, Sentry's, misses the same visitors. Early numbers therefore cannot tell little interest from a large uncounted share, and the 2026-06-20 plan to revisit Google Analytics 'when undercount bites' has no signal to act on. Recommended: one Known-limits line, so whoever reads the numbers knows what they cannot show.",
+      "before": [
+        {
+          "lines": "529-530",
+          "text": "(absent — new bullet after the Safari line, which ends: \"The saved answer goes too: a visitor in Europe is asked again, and one elsewhere who said \"No\" through NH-349's link is counted again.\")"
+        }
+      ],
+      "after": [
+        {
+          "replaces_lines": "(absent — added after line 530)",
+          "text": "- **How many go uncounted is not measured.** Ad blockers, visitors in Europe who never answer, and Safari's seven-day reset all shrink the counts, and Sentry's visit count, the only other one, misses the same blocked and unanswered visitors. So low numbers cannot tell little interest from a large uncounted share."
+        }
+      ],
+      "proposed_fix": "Add one Known-limits line that says the size of the undercount is not measured and what that means for reading the numbers.",
+      "why_it_works": "It tells whoever reads the numbers what they cannot conclude, in the same words the Sentry spec uses for ad-blocked visitors, at no cost. Building a real gauge would be usage counting outside these tools, which the Sentry spec leaves to NH-52 (the later service-goals ticket).",
+      "clear_fix": "no: optional. It records a limit; whether to add it is leocaseiro's call, not a correction.",
+      "plain_terms": {
+        "NH-52": "the later ticket for CloudWatch and X-Ray service goals; the Sentry spec says it owns usage counting",
+        "D3": "the Sentry spec's decision not to bypass ad blockers",
+        "PR #191": "the Sentry pull request, which holds the Sentry spec",
+        "round 1": "the first lap of this review; it added the Safari line (commit 46b9b3b5)"
+      },
+      "severity_check": {
+        "agree": true,
+        "proposed": "P3",
+        "why": "No break and no false promise; a cheap line that helps read the numbers."
+      },
+      "cross_fix": []
+    }
+  ]
+}

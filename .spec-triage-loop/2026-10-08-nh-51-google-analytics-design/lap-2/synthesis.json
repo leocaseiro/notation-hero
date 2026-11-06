@@ -1,0 +1,722 @@
+{
+  "items": [
+    {
+      "id": "F-16",
+      "area": "Area 1 - the events Google receives (section 5)",
+      "group": 1,
+      "kind": "finding",
+      "route": "decision",
+      "severity": "P1",
+      "confidence": 75,
+      "reviewers": ["adversarial", "coherence"],
+      "title": "KB-precise file size lets Google single out the file",
+      "synthesis_note": "Same problem, two framings: adversarial files a fix (share the Sentry plan's power-of-two size rounding); coherence (anchor 50, manual) asks leocaseiro to pick one rule. One fix resolves both, so merged; severity P1 as filed by adversarial - re-assess it. Present as a decision: (1) share Sentry's rounding, (2) drop file_size_kb from Google, (3) keep whole KB and record why. Check what the Sentry plan's Choice 3 actually says and which goal, if any, needs the exact size.",
+      "constituents": [
+        {
+          "title": "KB-precise file size lets Google single out the file",
+          "severity": "P1",
+          "section": "5. Events - the field table (`file_size_kb`, sent on `open_file` and `score_failed`)",
+          "why_it_matters": "Google, and anyone with access to the Google Analytics property, could tell which widely shared tab a visitor opened, tied to the lasting `_ga` visitor ID - the music the Goal promises never leaves the device. `file_size_kb` is rounded only to whole KB and travels beside `file_type`, with `track_count` and `instruments` on `score_loaded` in the same visit. The owner has approved the opposite rule for Sentry (Choice 3 of the Sentry plan, written after this design's round 1 began): its report rounds the size up to a power of two because an exact size and the type 'could single out a widely shared file', and no goal in this spec needs the precise size either. Sending Google a finer size than Sentry, with a persistent ID Sentry never gets, breaks 'the promise Sentry keeps'; sharing Sentry's rounding gives both tools one standard.",
+          "finding_type": "error",
+          "autofix_class": "gated_auto",
+          "suggested_fix": "In section 5's field table, make `file_size_kb` 'the size after Sentry's rounding (bytes rounded up to a power of two), in KB', and in section 1's `web/lib/score-facts.ts` row add that rounding function, moved out of Sentry's `report.ts` beside `instrumentsValue()`, so both tools share one function.",
+          "confidence": 75,
+          "evidence": [
+            "the size, rounded to whole KB",
+            "Every field comes from a fixed list or is a number, so text from the file cannot reach Google.",
+            "without sending the score, its file name, its track names or the music — the promise Sentry keeps"
+          ],
+          "raw_id": "adversarial#1",
+          "reviewer": "adversarial"
+        },
+        {
+          "title": "File size is sent finer to Google than to Sentry",
+          "severity": "P3",
+          "section": "5. Events - Fields table row `file_size_kb` (line 274), with `error_code` (line 278)",
+          "why_it_matters": "The Sentry implementation plan on PR #191, written after this spec and approved by the owner in its plan review, rounds the file size it sends up to the next power of two because an exact size plus the file type 'could single out a widely shared file'. This spec sends `file_size_kb`, rounded only to whole KB, to Google Analytics together with `file_type`, `track_count` and `instruments` on every open, tied to a cookie ID and kept 14 months, so the same risk is larger there. The two channels now disagree on how exact a file's size may be and the spec does not say why Google Analytics may be finer; the owner needs to pick one rule, either rounding `file_size_kb` the same way or recording why not.",
+          "finding_type": "omission",
+          "autofix_class": "manual",
+          "suggested_fix": null,
+          "confidence": 50,
+          "evidence": [
+            "the size, rounded to whole KB",
+            "the open failures Sentry also sends the file's type and size with"
+          ],
+          "raw_id": "coherence#5",
+          "reviewer": "coherence"
+        }
+      ]
+    },
+    {
+      "id": "F-17",
+      "area": "Area 1 - the events Google receives (section 5)",
+      "group": 1,
+      "kind": "finding",
+      "route": "decision",
+      "severity": "P2",
+      "confidence": 75,
+      "reviewers": ["coherence", "product-lens"],
+      "title": "setting_change overlaps tempo, loop and volume rules",
+      "synthesis_note": "Competing remedies for one problem (a Settings popover row edits a value another event covers): coherence narrows setting_change and sends tempo_change/loop_toggle from the popover, volume rows send nothing; product-lens sends tempo_change/loop_toggle/metronome_toggle/count_in_toggle from the popover too AND keeps setting_change, so a speed set in Settings sends both. Kept as one decision with both views (3.5). Read settings-schema.ts and PlayerShell.tsx to confirm which rows reach which writer.",
+      "constituents": [
+        {
+          "title": "setting_change overlaps tempo, loop and volume rules",
+          "severity": "P2",
+          "section": "5. Events - event table rows setting_change, tempo_change and loop_toggle (lines 262, 265, 267) and the intro sentence on sliders and volume (line 253)",
+          "why_it_matters": "A literal build sends different events for the same action depending on which control the visitor used: a speed or Loop change in the Settings popover would be a `setting_change`, while the same change from the header tempo control or the transport row is a `tempo_change` or `loop_toggle`. The popover's three volume rows would also send `setting_change`, although the section says volume is not tracked. The popover's Player group holds Playback speed, Master volume, Metronome volume, Count-in volume and Loop rows (`web/lib/alphatab/settings-schema.ts`), and `PlayerShell.tsx` routes each to a single writer that a second control also uses, so tempo and loop counts would split across two events. Saying which event those five rows send removes both the overlap and the contradiction.",
+          "finding_type": "error",
+          "autofix_class": "gated_auto",
+          "suggested_fix": "In the event table, narrow the `setting_change` trigger to Settings popover rows that no other event covers and that are not volume rows (the intro's 'volume is not tracked' then excludes Master, Metronome and Count-in volume), and add the popover's Playback speed row to the `tempo_change` trigger and its Loop row to the `loop_toggle` trigger.",
+          "confidence": 75,
+          "evidence": [
+            "Sliders send their final value only; seeking and volume are not tracked.",
+            "a row in the Settings popover changes",
+            "the speed is set",
+            "the row's fixed key in `settings-schema.ts`, such as `player.enableCursor`"
+          ],
+          "raw_id": "coherence#1",
+          "reviewer": "coherence"
+        },
+        {
+          "title": "Tempo and loop events miss changes made in Settings",
+          "severity": "P2",
+          "section": "5. Events — the event table's 'Where the control lives' cells for tempo_change, loop_toggle, metronome_toggle and count_in_toggle",
+          "why_it_matters": "Goal 2 ('What they use': play, loop, tempo, the mixer) will undercount tempo and loop use, because each of those values has two controls but section 5 sends the event from only one of them. The Settings popover's 'Playback speed (%)' row (settings-schema.ts:289 calls it 'the control a drummer reaches for most') edits the same speed as the header stepper (PlayerShell.tsx:606-607: 'v0 ships two controls over this one value'), and its Loop, metronome-volume and count-in-volume rows reach the same writers as the transport buttons (applyApiValue, PlayerShell.tsx:646; the Metronome and Count-In buttons only set those volumes to 1 or 0, :1152-1154). Yet the table puts `tempo_change` only in PlayerHeader.tsx and `loop_toggle`, `metronome_toggle` and `count_in_toggle` only in TransportRow.tsx (spec lines 262-265), so a change made in Settings arrives only as a key-only `setting_change`, with no `speed_percent` and no `on`. Sending each of the four events whichever control made the change, as their 'Sent when' cells already describe ('the speed is set', 'Loop'), closes the gap, keeps `setting_change` meaning 'a Settings row changed', and adds no event to G8's twelve (the typed event list).",
+          "finding_type": "error",
+          "autofix_class": "gated_auto",
+          "suggested_fix": "In section 5's event table, add `SettingsPopover.tsx` to the 'Where the control lives' cells of `tempo_change` (the 'Playback speed (%)' row), `loop_toggle` (the 'Loop' row), and `metronome_toggle` and `count_in_toggle` (their volume rows, only when the volume crosses zero), so each of these events is sent with the same fields whichever control changed the value; `setting_change` stays as it is, so a speed set in Settings sends both `tempo_change` and `setting_change`.",
+          "confidence": 75,
+          "evidence": [
+            "2. **What they use** — their own file or the bundled beat, play, loop, tempo, the mixer.",
+            "| `tempo_change`     | the speed is set                                                                                  | `speed_percent`                                     | `PlayerHeader.tsx`                                   |",
+            "| `loop_toggle`      | Loop                                                                                              | `on`, `range`                                       | `TransportRow.tsx`                                   |",
+            "| `setting_change`   | a row in the Settings popover changes                                                             | `setting`                                           | `SettingsPopover.tsx`                                |"
+          ],
+          "raw_id": "product-lens#1",
+          "reviewer": "product-lens"
+        }
+      ]
+    },
+    {
+      "id": "F-18",
+      "area": "Area 1 - the events Google receives (section 5)",
+      "group": 1,
+      "kind": "finding",
+      "route": "proposed_fix",
+      "severity": "P2",
+      "confidence": 75,
+      "reviewers": ["feasibility"],
+      "title": "Tempo and number-field edits send an event per tick",
+      "synthesis_note": "Separate from F-17 (a different fix: settle bursts). Confirm in client/ that TempoControl calls onSpeedChange per auto-repeat tick / wheel notch / typed digit, and that SettingRow's number and color rows call onChange per keystroke / picker move. Spike the settle helper with fake timers if cheap.",
+      "constituents": [
+        {
+          "title": "Tempo and number-field edits send an event per tick",
+          "severity": "P2",
+          "section": "## 5. Events — the event table (`tempo_change`, `setting_change`) and its 'Sliders send their final value only' rule",
+          "why_it_matters": "Holding the header's tempo + button from 100 to 140 BPM records about forty `tempo_change` events, one per intermediate `speed_percent`, and typing a value into a Settings number field records one `setting_change` per keystroke, so both events count keystrokes instead of edits and skew the 'what they use' numbers the Goal asks for. The cause is in the controls: client/'s TempoControl (a Base UI NumberField) calls `onSpeedChange` on every auto-repeat tick (about every 60 ms), every wheel notch and every typed digit. SettingRow calls `onChange` on every keystroke in its 36 `number` rows and on every picker movement in its 6 `color` rows. Section 1 puts one `track()` at each of those call sites. The spec's only guard, 'Sliders send their final value only', covers sliders, which client/'s useSliderDraft already commits once per gesture. TempoControl's own edit-end signal (a 1-second settle) is internal and not exposed, and client/ is a non-goal, so the settling has to happen in web/lib/analytics/.",
+          "finding_type": "omission",
+          "autofix_class": "gated_auto",
+          "suggested_fix": "In section 5, extend the final-value rule to these two events. `tempo_change` and `setting_change` are sent through a settle helper in `web/lib/analytics/`. The helper keeps the latest fields for each control (the event name plus its `setting` key) and sends them once: 1 second after the last change, which is TempoControl's own edit-settle time, or immediately on `pagehide`. A held stepper, a wheel scrub, typed digits and a colour-picker drag then each send one event carrying the final value, and `client/` stays untouched. Add a section 9 unit case: a burst of changes to one control sends one event with the last value.",
+          "confidence": 75,
+          "evidence": [
+            "Sliders send their final value only; seeking and volume are not tracked.",
+            "The call sites in section 5, under `web/app/play/`: one `track()` each.",
+            "the speed is set",
+            "a row in the Settings popover changes",
+            "**Not `client/`.**"
+          ],
+          "raw_id": "feasibility#1",
+          "reviewer": "feasibility"
+        }
+      ]
+    },
+    {
+      "id": "F-19",
+      "area": "Area 1 - the events Google receives (section 5)",
+      "group": 1,
+      "kind": "finding",
+      "route": "proposed_fix",
+      "severity": "P3",
+      "confidence": 75,
+      "reviewers": ["coherence"],
+      "title": "The `sample` instruments value has no allowed maker",
+      "synthesis_note": "A defect introduced by round 1's F-13 text (branded strings that only instrumentsValue() and trackInstrument() can make). Check the Sentry plan's `sample` literal; spike with tsc whether a third exported constant typed as Instruments type-checks while a free string still fails.",
+      "constituents": [
+        {
+          "title": "The `sample` instruments value has no allowed maker",
+          "severity": "P3",
+          "section": "5. Events - Fields table row `instruments` (line 277) and the branded-string paragraph under the events.ts sketch (lines 313-316)",
+          "why_it_matters": "The `score_loaded` call for the bundled beat has to carry `instruments` = `sample`, but the paragraph under the sketch says only `instrumentsValue()` and its one-track twin `trackInstrument()` can make an `Instruments` value, and neither can: `instrumentsValue()` takes a list of tracks, and the Sentry plan on PR #191 sets `sample` as a separate literal when the player mounts. An implementer will either cast the string, which defeats the 'a free string never type-checks' guarantee on the field that keeps text out of Google, or invent a third maker the spec never mentions.",
+          "finding_type": "error",
+          "autofix_class": "gated_auto",
+          "suggested_fix": "In section 5's branded-string paragraph and in the `score-facts.ts` row of section 1, name a third maker: `score-facts.ts` also exports the bundled beat's `sample` value, typed as `Instruments`, and `score_loaded` for the beat uses it.",
+          "confidence": 75,
+          "evidence": [
+            "branded strings that only `instrumentsValue()` and its one-track twin `trackInstrument()` can make, so a free string never type-checks",
+            "`drums` first, then each General MIDI program in three digits, such as `drums,025,033`; or `sample`."
+          ],
+          "raw_id": "coherence#4",
+          "reviewer": "coherence"
+        }
+      ]
+    },
+    {
+      "id": "FYI-6",
+      "area": "Area 1 - the events Google receives (section 5)",
+      "group": 1,
+      "kind": "fyi",
+      "route": "fyi",
+      "severity": "P3",
+      "confidence": 50,
+      "reviewers": ["product-lens"],
+      "title": "Second destination would get no page views or visitor ID",
+      "synthesis_note": "Anchor 50: observation, no decision.",
+      "constituents": [
+        {
+          "title": "Second destination would get no page views or visitor ID",
+          "severity": "P3",
+          "section": "Why this exists (the 'ready for the database' goal) and Extending later — the 'A second destination' bullet",
+          "why_it_matters": "Whoever scopes NH-54's pipeline (the later AWS second destination) from this spec will expect a one-file change, yet that destination could not count visits or build the Home → Play funnel. Page views come from Google's enhanced measurement, not from `track()`, and the visitor ID, country and device are Google's own (section 4, and section 5's `page_view` row), so a sender added inside `track()` receives only the eleven typed events: nothing for goal 1 ('Who comes') and none of goal 3's page steps. Saying so now keeps NH-54 from being scoped as one file; section 4's fallback, which sends `page_view` from our own code, is the piece it would reuse.",
+          "finding_type": "omission",
+          "autofix_class": "gated_auto",
+          "suggested_fix": "In 'Why this exists', change the sentence to 'a new field, or sending the typed events to a second destination, must be a one-file change'; and add to the 'A second destination' bullet in 'Extending later': 'It receives the typed events only. Page views, the visitor ID, country and device come from Google, so NH-54 also needs `page_view` sent from our code (section 4's fallback) and a visitor ID of its own; the popup's Details and the privacy notice, which name where visit counts go, change with it.'",
+          "confidence": 50,
+          "evidence": [
+            "On the free tier only, and ready for the database: a new field or a second destination must be a",
+            "- **A second destination** (NH-54's pipeline): a second sender inside `track()`; no event changes.",
+            "- **Page views** come from Google's enhanced measurement: one on load, and one on each client-side",
+            "Google's own: page, referrer, country, device"
+          ],
+          "raw_id": "product-lens#2",
+          "reviewer": "product-lens"
+        }
+      ]
+    },
+    {
+      "id": "FYI-7",
+      "area": "Area 1 - the events Google receives (section 5)",
+      "group": 1,
+      "kind": "fyi",
+      "route": "fyi",
+      "severity": "P3",
+      "confidence": 50,
+      "reviewers": ["scope-guardian"],
+      "title": "Global gtag leaves a path around the typed track() funnel",
+      "synthesis_note": "Anchor 50: observation, no decision. Check the Next.js bundled docs' sendGAEvent/dataLayer wording and whether gtag.js needs window.gtag at all.",
+      "constituents": [
+        {
+          "title": "Global gtag leaves a path around the typed track() funnel",
+          "severity": "P3",
+          "section": "4. Google Analytics in code, the startAnalytics() loader sketch (line 211 at b0bde201)",
+          "why_it_matters": "Any file can call the global `window.gtag('event', …)` directly and send a file name or track name to Google, skipping `track()` (the typed wrapper whose fixed field lists carry the spec's privacy promise). The privacy test reads `window.dataLayer` only on the flows it drives, and a parameter that is not registered as a custom dimension in setup step 4 never shows as a dimension in Google Analytics' reports, so a stray call could stay unseen while the data sits at Google. The sketch assigns `window.gtag` although nothing needs it: gtag.js reads `window.dataLayer`, and the Next.js docs bundled in `web/` say `sendGAEvent` works 'using the `dataLayer` object'. Keeping the function out of the global closes that path with less code, where the layers already built around `track()` (branded strings, the typed event map, the runtime key list, the privacy e2e scan) all assume it is the only path.",
+          "finding_type": "omission",
+          "autofix_class": "gated_auto",
+          "suggested_fix": "In the section 4 sketch, define `gtag` as a plain function exported from `web/lib/analytics/start.ts` that pushes its `arguments` onto `window.dataLayer`, for `track.ts` to import, and do not assign it to `window.gtag`. Add one sentence to the `track()` bullet: no global `gtag` exists, so `track()` is the only way to send an event.",
+          "confidence": 50,
+          "evidence": [
+            "window.gtag = function gtag() {",
+            "Every field comes from a fixed list or is a number, so text from the file cannot reach Google."
+          ],
+          "raw_id": "scope-guardian#1",
+          "reviewer": "scope-guardian"
+        }
+      ]
+    },
+    {
+      "id": "R2",
+      "area": "Area 1 - the events Google receives (section 5)",
+      "group": 1,
+      "kind": "residual",
+      "route": "residual",
+      "severity": null,
+      "confidence": null,
+      "reviewers": ["scope-guardian"],
+      "title": "Section 9 and setup step 6 name no check for seven of the eleven typed events (`score_failed`, `loop_toggle`, `metronome",
+      "synthesis_note": "Residual concern: seven events have no check; TracksPopover re-applies mute/solo on playerReady. Confirm the re-apply in the code.",
+      "constituents": [
+        {
+          "raw_id": "scope-guardian#residual1",
+          "reviewer": "scope-guardian",
+          "text": "Section 9 and setup step 6 name no check for seven of the eleven typed events (`score_failed`, `loop_toggle`, `metronome_toggle`, `count_in_toggle`, `tempo_change`, `setting_change`, `export_score`), though the goal names loop and tempo; a call site wired to the wrong place would read in Google Analytics as 'nobody uses it'. The trap is real in the code: `TracksPopover.tsx` re-applies every row's mute and solo on each `playerReady`, so a `track()` placed inside `applyMute` or `applySolo` instead of the click handler would report changes nobody made."
+        }
+      ]
+    },
+    {
+      "id": "F-20",
+      "area": "Area 2 - who is asked, what a saved answer allows, and what a change of answer stops (sections 2, 4, 9 and Extending later)",
+      "group": 2,
+      "kind": "finding",
+      "route": "proposed_fix",
+      "severity": "P2",
+      "confidence": 75,
+      "reviewers": ["adversarial", "security-lens"],
+      "title": "A version change silently drops opt-outs outside Europe",
+      "synthesis_note": "Same fix from two reviewers (an answer saved under an older version keeps its refusals). Model allowed() with both variants if cheap. Not a fix-did-not-land case: round 1's F-1 made a saved answer win in every time zone; this is the version path around it.",
+      "constituents": [
+        {
+          "title": "A version change silently drops opt-outs outside Europe",
+          "severity": "P2",
+          "section": "2. The privacy choice - 'Kept in this browser' (the `version` field) and the visitor table",
+          "why_it_matters": "The first time the question changes - likely when NH-54 (the AWS analytics pipeline) adds a recipient that the popup's Details must name - every visitor outside Europe who chose 'No' or 'Report errors only' through NH-349's 'Privacy choices' link is tracked again, and never asked. 'version lets a later change to the question ask again' makes an older answer read as no answer; with no answer the time zone decides, and outside Europe that means everything on with no popup. An older answer should never allow more than it did, so only a saved 'all' may lapse, while Europe is still asked again.",
+          "finding_type": "error",
+          "autofix_class": "gated_auto",
+          "suggested_fix": "Add to 'Kept in this browser': 'An answer saved under another version never allows more than it did: until the visitor answers again, a saved \"errors\" or \"none\" still limits what starts in every time zone, while a visitor in Europe sees the popup again; only a saved \"all\" from another version counts as no answer.' Add an `allowed()` unit case: a version-1 \"none\" read by version-2 code allows nothing in `Australia/Sydney`.",
+          "confidence": 75,
+          "evidence": [
+            "`version` lets a later change to the question ask again.",
+            "An answer holds in every time zone once it is given; the time zone decides only while there is none.",
+            "Outside Europe, no answer given"
+          ],
+          "raw_id": "adversarial#2",
+          "reviewer": "adversarial"
+        },
+        {
+          "title": "A version bump turns saved refusals outside Europe into tracking",
+          "severity": "P2",
+          "section": "2. The privacy choice - 'Kept in this browser' (the saved answer's `version`)",
+          "why_it_matters": "The first time the question changes and `version` is bumped - foreseeable, since 'Extending later' plans a second destination (NH-54's pipeline) and a Google Analytics user ID 'only with consent' - every refusal in a browser outside Europe silently becomes full tracking. To ask again, the sketched `savedChoice()` (an answer or null) must return null for an outdated answer, and null outside Europe means everything runs with no popup to ask, so a 'No' or 'Report errors only' given through NH-349's 'Privacy choices' link is dropped; round 1's rule that an answer holds in every time zone is undone on this path. Keeping an outdated answer's refusals until a new answer arrives closes it, while Europe still sees the popup again.",
+          "finding_type": "omission",
+          "autofix_class": "gated_auto",
+          "suggested_fix": "In section 2's 'Kept in this browser' bullet, after the `version` sentence, add: \"An answer saved under an older `version` counts as no answer - in Europe the popup asks again - except that what it refused stays refused: an old `none` or `errors` keeps those purposes off, in every time zone, until the visitor answers again.\" In section 9, add an `allowed()` unit case: a saved `{\"choice\":\"none\",\"version\":0}` allows nothing in `Australia/Sydney`, and in `Europe/Berlin` allows nothing while the popup shows.",
+          "confidence": 75,
+          "evidence": [
+            "`version` lets a later change to the question ask again.",
+            "/** The saved answer; null when there is none, the value is corrupt, or storage is blocked. */",
+            "An answer holds in every time zone once it is given; the time zone decides only while there is none.",
+            "Outside Europe, no answer given",
+            "a Google Analytics user ID only with consent, never an email."
+          ],
+          "raw_id": "security-lens#2",
+          "reviewer": "security-lens"
+        }
+      ]
+    },
+    {
+      "id": "F-21",
+      "area": "Area 2 - who is asked, what a saved answer allows, and what a change of answer stops (sections 2, 4, 9 and Extending later)",
+      "group": 2,
+      "kind": "finding",
+      "route": "proposed_fix",
+      "severity": "P2",
+      "confidence": 100,
+      "reviewers": ["coherence", "security-lens"],
+      "title": "Switching to 'Report errors only' leaves Google Analytics running",
+      "synthesis_note": "Same fix from two reviewers; promoted 75 -> 100 on independent agreement over text that names only 'No'. Round 1's R1 wrote this bullet; this is a gap beside it, not a fix that failed to land.",
+      "constituents": [
+        {
+          "title": "Switching to 'Report errors only' leaves Google Analytics running",
+          "severity": "P2",
+          "section": "Extending later - the NH-349 bullet (what the 'Privacy choices' link must stop)",
+          "why_it_matters": "A visitor who changes from 'Yes' to 'Report errors only' through NH-349's 'Privacy choices' link keeps reporting to Google Analytics for the rest of the visit: a page view on each client-side page change, every `track()` event (it checks only that Google Analytics has started), and the hit sent when the page is left. The bullet stops Google only on a change to 'No', yet section 2's table turns Google Analytics off for 'Report errors only' too, and section 8 step 7 tells leocaseiro to make exactly this change on a phone where Google Analytics already runs by default. Handled with a consent update alone, the change sends the cookieless pings G3 (ask first in Europe; Google's 'advanced' consent mode rejected) ruled out, so the same stop must cover every answer that turns Google Analytics off.",
+          "finding_type": "omission",
+          "autofix_class": "gated_auto",
+          "suggested_fix": "In 'Extending later', replace the NH-349 bullet's sentence 'Changing to \"No\" must stop Google Analytics for the rest of the visit.' with 'Any change that turns Google Analytics off, to \"No\" or to \"Report errors only\", must stop it for the rest of the visit.', and make NH-349's test prove that no hit follows either answer. Keep the bullet's last sentence (close Sentry) for \"No\" only.",
+          "confidence": 75,
+          "evidence": [
+            "Changing to \"No\" must stop Google Analytics for the rest of the visit.",
+            "Answered \"Report errors only\"",
+            "On a phone, whose IP address changes, choose \"Report errors only\" through NH-349's \"Privacy choices\" link instead.",
+            "calls `gtag('event', name, …)` once started, and nothing before"
+          ],
+          "raw_id": "security-lens#1",
+          "reviewer": "security-lens"
+        },
+        {
+          "title": "NH-349 stop rule omits 'Report errors only'",
+          "severity": "P3",
+          "section": "Extending later - the NH-349 link bullet (lines 507-512), against the answers table in 2. The privacy choice (line 118)",
+          "why_it_matters": "NH-349 (the ticket for the 'Privacy choices' link) is told only that changing to 'No' must stop Google Analytics for the rest of the visit, and its test must prove no hit follows a 'No'. Switching from 'Yes' to 'Report errors only' through the same link withdraws the same Google Analytics consent, since section 2's table gives both answers no Google Analytics, and setup step 7 sends the owner to exactly that answer on a phone. As written, that switch could leave the loaded tag sending cookieless pings, the kind decision G3 (ask Europe first, reject Google's advanced consent mode) ruled out, and no test would catch it.",
+          "finding_type": "omission",
+          "autofix_class": "gated_auto",
+          "suggested_fix": "In 'Extending later', say that changing to 'Report errors only' or 'No' must stop Google Analytics for the rest of the visit, require NH-349's test to prove that no hit follows either answer, and keep 'close Sentry for the rest of the visit' for 'No' alone.",
+          "confidence": 75,
+          "evidence": [
+            "Changing to \"No\" must stop Google",
+            "NH-349's test must prove no hit follows a \"No\"",
+            "choose \"Report errors only\" through NH-349's \"Privacy choices\" link",
+            "Answered \"Report errors only\""
+          ],
+          "raw_id": "coherence#3",
+          "reviewer": "coherence"
+        }
+      ]
+    },
+    {
+      "id": "F-22",
+      "area": "Area 2 - who is asked, what a saved answer allows, and what a change of answer stops (sections 2, 4, 9 and Extending later)",
+      "group": 2,
+      "kind": "finding",
+      "route": "proposed_fix",
+      "severity": "P2",
+      "confidence": 75,
+      "reviewers": ["adversarial"],
+      "title": "IANA's canonical zones miss names browsers report for EEA places",
+      "synthesis_note": "Spike: what V8/ICU (Node 24 in this repo) and Chromium (Playwright timezoneId) report for Iceland, Reunion, Mayotte, Guadeloupe, Saint-Martin; what /usr/share/zoneinfo/zone.tab and zone1970.tab list for IS, RE, YT, GP, MF. Check what the spec's list text says today.",
+      "constituents": [
+        {
+          "title": "IANA's canonical zones miss names browsers report for EEA places",
+          "severity": "P2",
+          "section": "2. The privacy choice - 'Europe, by time zone' (the full list), with 'To verify at plan time'",
+          "why_it_matters": "Visitors in Iceland and in EU regions such as Reunion, Mayotte, Guadeloupe and Saint-Martin could be counted and reported without being asked, breaking G3 (Europe asked first) for them. Browsers report CLDR names - V8 returns `Atlantic/Reykjavik`, `Indian/Reunion`, `Indian/Mayotte` and `America/Guadeloupe` (checked in Node 24) - while IANA's current data makes these links to `Africa/Abidjan`, `Asia/Dubai`, `Africa/Nairobi` and `America/Puerto_Rico`, and IANA's zone.tab tells new programs to use zone1970.tab, which files those places under the canonical zones. A list 'from the IANA time-zone database' built that way misses the names browsers send, and asks West and East Africa, the Gulf and the Caribbean instead; zone.tab keeps the reported names, and two unit cases pin them.",
+          "finding_type": "error",
+          "autofix_class": "gated_auto",
+          "suggested_fix": "Replace the bullet's last sentence with: 'The plan fixes the full list from IANA's zone.tab rows for the EU and EEA country codes, which keep the names browsers report (Atlantic/Reykjavik, Indian/Reunion, America/Guadeloupe) - not from zone1970.tab, which files those places under Africa/Abidjan, Asia/Dubai and America/Puerto_Rico.' Add `Atlantic/Reykjavik` and `Indian/Reunion` to the `asksFirst()` unit case, and say zone.tab in 'To verify at plan time'.",
+          "confidence": 75,
+          "evidence": [
+            "The plan fixes the full list from the IANA time-zone database.",
+            "such as `Atlantic/Canary`, `Atlantic/Madeira`, `Atlantic/Azores`, `Atlantic/Reykjavik`, `Asia/Nicosia` and the French overseas regions",
+            "`asksFirst()`: `Europe/Berlin`, `Europe/London`, `Atlantic/Canary`, `Asia/Nicosia`, `UTC` and an empty value ask first"
+          ],
+          "raw_id": "adversarial#4",
+          "reviewer": "adversarial"
+        }
+      ]
+    },
+    {
+      "id": "F-23",
+      "area": "Area 2 - who is asked, what a saved answer allows, and what a change of answer stops (sections 2, 4, 9 and Extending later)",
+      "group": 2,
+      "kind": "finding",
+      "route": "proposed_fix",
+      "severity": "P2",
+      "confidence": 75,
+      "reviewers": ["adversarial"],
+      "title": "Berlin's 'nothing sent' checks can pass on a broken build",
+      "synthesis_note": "Not the same as round 1's F-6 (the Privacy case's wait); this is the Berlin case. Check what the spec's Privacy case says now and what NH-124's 'sentinel' rule is (Sentry spec/plan).",
+      "constituents": [
+        {
+          "title": "Berlin's 'nothing sent' checks can pass on a broken build",
+          "severity": "P2",
+          "section": "9. Testing - End to end, the Berlin case (before an answer, and 'No, send nothing')",
+          "why_it_matters": "A build that wrongly starts Google Analytics or Sentry in Europe can still pass the one automated proof of G5 (in Europe nothing loads until the visitor answers). The Berlin case asserts that no request arrived but names no moment by which a wrongly started tool would have sent one: Google's script is added only after the page's load event, and Sentry sends asynchronously. Round 1 fixed exactly this for the Privacy case, and NH-124's own rule needs a sentinel for every 'nothing sent' check, which a 'No' case cannot send. Anchoring each check to a later event, and checking our own synchronous state (`window.dataLayer` exists only once `startAnalytics()` has run), makes a broken build fail every time.",
+          "finding_type": "omission",
+          "autofix_class": "gated_auto",
+          "suggested_fix": "In section 9's Berlin case: while nothing is allowed, assert that `window.dataLayer` does not exist and no googletagmanager script was added; before an answer, force an uncaught error, see its `pageerror`, then press 'Yes' and wait for Sentry's session envelope - no recorded event may carry the forced error; after 'No', force an error, see its `pageerror`, reload, and check both recorders only after the second load.",
+          "confidence": 75,
+          "evidence": [
+            "**Berlin:** the popup shows, and **no** request reaches Google or Sentry before an answer. \"No, send nothing\": still none, also after a reload.",
+            "Without the wait, an empty queue would pass."
+          ],
+          "raw_id": "adversarial#3",
+          "reviewer": "adversarial"
+        }
+      ]
+    },
+    {
+      "id": "F-24",
+      "area": "Area 2 - who is asked, what a saved answer allows, and what a change of answer stops (sections 2, 4, 9 and Extending later)",
+      "group": 2,
+      "kind": "finding",
+      "route": "decision",
+      "severity": "P2",
+      "confidence": 75,
+      "reviewers": ["adversarial"],
+      "title": "Europe's late Yes loses landing page and campaign tags",
+      "synthesis_note": "Adds a mechanism after the answer; present as a decision: (1) send the landing page view after a late Yes, (2) accept it and record it in Known limits. Folded in, as restated: adversarial's residual (outside Europe, a click on Play before the load event may lose the landing page too, unverified). Spike in Chromium (Playwright, a local static page): after history.pushState, does performance.getEntriesByType('navigation')[0].name still hold the landing URL with its query?",
+      "constituents": [
+        {
+          "title": "Europe's late Yes loses landing page and campaign tags",
+          "severity": "P2",
+          "section": "3. The popup - 'Non-blocking' and 'Answering', with 4. Google Analytics in code - 'Addresses'",
+          "why_it_matters": "A visitor in Europe who clicks Play before answering - easy, since the card never blocks and stays across client-side page changes - is counted from /play on: `startAnalytics()` runs only at the answer, so the first page view carries `/play`, and the landing page with its campaign tags (the spec's own way of telling where a visitor came from) is never sent. Europe's sources then read as direct or referral, and the funnel loses its first step for them, a skew no section mentions. In Chromium the browser's navigation record still holds the landing address, with its `?` part, after a client-side page change (checked), so the loader can read it after the answer, keeping G5: nothing is kept or sent before consent.",
+          "finding_type": "omission",
+          "autofix_class": "gated_auto",
+          "suggested_fix": "In section 4, add: when the answer comes after a client-side page change, `startAnalytics()` first sends a page view for the landing address - read after the answer from the browser's navigation record (`performance.getEntriesByType('navigation')`), without its `#` part - then the one for the current page. Add a Berlin case (land on `/?utm_source=probe`, click Play, answer 'Yes': the queue holds a page view for `/` with `utm_source` before the one for `/play`), and a Known-limits line: events from before the answer are never sent.",
+          "confidence": 75,
+          "evidence": [
+            "The player works while the card waits, and nothing is sent meanwhile. It returns on every page load until answered.",
+            "the campaign tags on a link you share, which is how it reports where a visitor came from",
+            "**Answering** saves the choice, hides the card and starts what it allows at once — no reload."
+          ],
+          "raw_id": "adversarial#5",
+          "reviewer": "adversarial"
+        }
+      ]
+    },
+    {
+      "id": "FYI-8",
+      "area": "Area 2 - who is asked, what a saved answer allows, and what a change of answer stops (sections 2, 4, 9 and Extending later)",
+      "group": 2,
+      "kind": "fyi",
+      "route": "fyi",
+      "severity": "P3",
+      "confidence": 50,
+      "reviewers": ["security-lens"],
+      "title": "A 'No' stops Google Analytics only in its own tab",
+      "synthesis_note": "Anchor 50: observation, no decision.",
+      "constituents": [
+        {
+          "title": "A 'No' stops Google Analytics only in its own tab",
+          "severity": "P3",
+          "section": "Extending later - the NH-349 bullet (what the 'Privacy choices' link must stop)",
+          "why_it_matters": "A visitor with the site open in two tabs who withdraws in one keeps reporting to Google Analytics - and, after a 'No', to Sentry - from the other until it is closed or reloaded, although the bullet requires the stop 'for the rest of the visit'. The stop it prescribes, `window['ga-disable-<ID>']` and no more `track()` events, exists only in the tab where the answer changed, and the popup's Details already opens the privacy notice, the page that carries 'Change your answer at any time', in a new tab beside the player. Running the same stop in every open tab when the saved answer changes, through the browser's `storage` event on `notation-hero.privacy-choice`, lets a withdrawal reach the whole visit.",
+          "finding_type": "omission",
+          "autofix_class": "gated_auto",
+          "suggested_fix": "In 'Extending later', add to the NH-349 bullet: The stop also runs in every other open tab of the site: each tab listens for the `storage` event on `notation-hero.privacy-choice` and, when the saved answer turns a tool off, stops it there the same way. NH-349's test opens two tabs, answers \"No\" in one, and proves no hit follows from the other.",
+          "confidence": 50,
+          "evidence": [
+            "So the link also sets `window['ga-disable-<ID>'] = true` and sends no more events.",
+            "Changing to \"No\" must stop Google Analytics for the rest of the visit.",
+            "Both open in a new tab, so an open score is not lost,",
+            "Change your answer at any time: <the Privacy choices link (NH-349)>."
+          ],
+          "raw_id": "security-lens#3",
+          "reviewer": "security-lens"
+        }
+      ]
+    },
+    {
+      "id": "R3",
+      "area": "Area 2 - who is asked, what a saved answer allows, and what a change of answer stops (sections 2, 4, 9 and Extending later)",
+      "group": 2,
+      "kind": "residual",
+      "route": "residual",
+      "severity": null,
+      "confidence": null,
+      "reviewers": ["product-lens"],
+      "title": "The undercount this spec documents has no gauge: ad blockers, visitors in Europe who never answer, and Safari's seven-da",
+      "synthesis_note": "Residual concern: the undercount has no gauge.",
+      "constituents": [
+        {
+          "raw_id": "product-lens#residual1",
+          "reviewer": "product-lens",
+          "text": "The undercount this spec documents has no gauge: ad blockers, visitors in Europe who never answer, and Safari's seven-day reset each shrink the counts, and the Sentry spec says how many are missed 'is not measured' because this project counts no visits outside Sentry (its Known limits). Early numbers therefore cannot tell low interest from a large uncounted share, and the 2026-06-20 decision to revisit GA4 'when undercount bites' (docs/spikes/2026-06-20-clean-slate-infra-tooling-app-skeleton.md:295) has no signal to act on."
+        }
+      ]
+    },
+    {
+      "id": "F-25",
+      "area": "Area 3 - the popup, the copy and the screenshot gate (sections 3, 7 and 9)",
+      "group": 3,
+      "kind": "finding",
+      "route": "proposed_fix",
+      "severity": "P2",
+      "confidence": 100,
+      "reviewers": ["design-lens"],
+      "title": "Text links and Details button fail the 44 px gate",
+      "synthesis_note": "Restated and folded in: coherence's residual (the landing case's hit-area scan fails the two new inline links). Read web/e2e/a11y.e2e.ts expectHitAreas: its selector, exemptions, and which pages run it; and how Play on / is built.",
+      "constituents": [
+        {
+          "title": "Text links and Details button fail the 44 px gate",
+          "severity": "P2",
+          "section": "7. The copy — home-note links (line 355) and privacy-notice links (line 357); 3. The popup — Details (line 186); 9. Testing — accessibility scans (lines 486–489)",
+          "why_it_matters": "The existing landing accessibility case (`expectHitAreas` in `web/e2e/a11y.e2e.ts`) fails any `button` or `a[href]` under 44 × 44 px, and the home note gains two plain text links that render about 18 px tall (158 × 18 and 88 × 18 in a mock of the page), so that case goes red on the first CI run. The popup's Details button and the links inside it face the same gate in the new scans, which follow \"every other axe case in the lane\", yet the spec fixes 44 px only for the three answers. Settling it here keeps the approved words and builds the links the way Play on the same page is already built (a link `Button` with `min-h-11`), instead of leaving the implementer to redraw them at the last step or loosen a gate whose owner enforces it on purpose.",
+          "finding_type": "error",
+          "autofix_class": "gated_auto",
+          "suggested_fix": "In sections 3 and 7, make \"Details\", \"How Google uses data ↗\" and \"Privacy notice\" (home note, popup Details and /privacy) design-system `Button`s in the link variant, each with `min-h-11`, set in a row below the sentence they belong to; in section 9, say that the open-popup scan expands Details first (as the Settings case opens every group) and that the hit-area gate runs on `/`, on the open popup and on `/privacy`.",
+          "confidence": 100,
+          "evidence": [
+            "How Google uses data ↗ · Privacy notice",
+            "An axe scan with the popup open, in light only, like every other axe case in the lane",
+            "the design system's `Button`, one variant for all three, each at least 44 px tall"
+          ],
+          "raw_id": "design-lens#1",
+          "reviewer": "design-lens"
+        }
+      ]
+    },
+    {
+      "id": "F-26",
+      "area": "Area 3 - the popup, the copy and the screenshot gate (sections 3, 7 and 9)",
+      "group": 3,
+      "kind": "finding",
+      "route": "proposed_fix",
+      "severity": "P2",
+      "confidence": 75,
+      "reviewers": ["design-lens"],
+      "title": "No height limit lets the card push answers off-screen",
+      "synthesis_note": "Check WCAG 1.4.10's 320 x 256 reflow case and what the spec says about the card's size today.",
+      "constituents": [
+        {
+          "title": "No height limit lets the card push answers off-screen",
+          "severity": "P2",
+          "section": "3. The popup — Where (lines 169–171); 9. Testing — No overlap (line 467)",
+          "why_it_matters": "At 320 × 256 px (a 1280 × 1024 window at 400% zoom, the width WCAG's reflow rule 1.4.10 tests) the stacked card measures about 286 px in a mock built from the design system's own CSS, so most of its question sits above the window; with Details open (about 446 px) no answer is fully on screen either. A fixed card cannot be scrolled, so a low-vision visitor in Europe loses the question, then the answers, and the page behind the card is covered as well. The spec bounds the card's width (\"At most 560 px wide\") but never its height; capping it and letting the card scroll inside itself keeps every answer reachable at any window size.",
+          "finding_type": "omission",
+          "autofix_class": "gated_auto",
+          "suggested_fix": "In \"Where\", cap the card's height at the window's height less its bottom offset and a 16 px margin, and let it scroll inside itself beyond that (`max-height` with `overflow-y: auto`); add a 320 × 256 case on `/` in Berlin to section 9 that opens Details, scrolls inside the card and presses each answer.",
+          "confidence": 75,
+          "evidence": [
+            "At most 560 px wide; on a phone, the full width less the 16 px gutters, with the buttons stacked.",
+            "no backdrop and no focus trap"
+          ],
+          "raw_id": "design-lens#2",
+          "reviewer": "design-lens"
+        }
+      ]
+    },
+    {
+      "id": "F-27",
+      "area": "Area 3 - the popup, the copy and the screenshot gate (sections 3, 7 and 9)",
+      "group": 3,
+      "kind": "finding",
+      "route": "proposed_fix",
+      "severity": "P2",
+      "confidence": 75,
+      "reviewers": ["coherence"],
+      "title": "Notice says one cookie; the spike saw two",
+      "synthesis_note": "Copy change to approved words. Check Google's own cookie table for GA4 (_ga and _ga_<container-id>) and the spike table in the spec.",
+      "constituents": [
+        {
+          "title": "Notice says one cookie; the spike saw two",
+          "severity": "P2",
+          "section": "7. The copy - privacy notice text (line 360), with the popup's first line in 3. The popup (line 161), the home note (line 352) and the spike table (line 562)",
+          "why_it_matters": "The public privacy notice would tell visitors that Google Analytics 'sets a cookie (_ga)', yet this spec's own spike recorded two cookies, `_ga` and `_ga_<ID>`, so the one page meant to carry 'the cookie' for an informed 'Yes' under-states what is stored. The popup's '(with a cookie)' and the home note's '(it uses a cookie)' repeat the singular. Naming both cookies in the notice and using the plural in the two short lines makes the copy match evidence the spec already holds.",
+          "finding_type": "error",
+          "autofix_class": "gated_auto",
+          "suggested_fix": "In the privacy notice, replace 'sets a cookie (_ga)' with 'sets two cookies (_ga and _ga_ followed by the measurement ID)'; in the popup's first line and in the home note, change 'a cookie' to 'cookies'.",
+          "confidence": 75,
+          "evidence": [
+            "sets a cookie (_ga)",
+            "`_ga`, `_ga_<ID>`",
+            "(with a cookie)",
+            "(it uses a cookie)"
+          ],
+          "raw_id": "coherence#2",
+          "reviewer": "coherence"
+        }
+      ]
+    },
+    {
+      "id": "F-28",
+      "area": "Area 3 - the popup, the copy and the screenshot gate (sections 3, 7 and 9)",
+      "group": 3,
+      "kind": "finding",
+      "route": "proposed_fix",
+      "severity": "P3",
+      "confidence": 75,
+      "reviewers": ["design-lens"],
+      "title": "The card can cover the privacy notice it links to",
+      "synthesis_note": "Check what the spec says about /privacy's layout today and the other pages' skeleton (min-h-dvh, centred).",
+      "constituents": [
+        {
+          "title": "The card can cover the privacy notice it links to",
+          "severity": "P3",
+          "section": "7. The copy — Privacy notice page (line 357); 3. The popup — Where (line 169); 9. Testing — No overlap (line 467)",
+          "why_it_matters": "Visitors in Europe are sent to `/privacy` to read before they answer, yet the spec gives that page no layout and no rule for the card on it, and the card shows on every page. Built on the other pages' centred skeleton (`min-h-dvh`, one screen tall), the page loses its last 4 of 10 lines behind the card at 375 × 667 and 6 of 11 at 360 × 640 in a mock, including the \"change your answer\" sentence and the Google link, and it cannot scroll them clear. A top-aligned page with room at the bottom for the card shifts nothing when the card appears, because nothing on it is centred.",
+          "finding_type": "omission",
+          "autofix_class": "gated_auto",
+          "suggested_fix": "In section 7, specify `/privacy` as a top-aligned page that scrolls, not the centred layout of the other pages, with bottom padding that lets its last line scroll above the card; in section 9, run the no-overlap case on `/privacy` at 375 × 667 and check that the last line can be scrolled clear of the card.",
+          "confidence": 75,
+          "evidence": [
+            "Privacy notice (new page, /privacy, linked from the home note and the popup's Details):",
+            "renders `<PrivacyChoices />` first inside `<body>`, before the page",
+            "It returns on every page load until answered."
+          ],
+          "raw_id": "design-lens#4",
+          "reviewer": "design-lens"
+        }
+      ]
+    },
+    {
+      "id": "F-29",
+      "area": "Area 3 - the popup, the copy and the screenshot gate (sections 3, 7 and 9)",
+      "group": 3,
+      "kind": "finding",
+      "route": "proposed_fix",
+      "severity": "P3",
+      "confidence": 100,
+      "reviewers": ["feasibility"],
+      "title": "The popup shot trips the pinned ten-shot guard",
+      "synthesis_note": "An entailed correction: round 1 decided one new shot (F-9); the guard and the prose counts must follow. List every file that states the shot count.",
+      "constituents": [
+        {
+          "title": "The popup shot trips the pinned ten-shot guard",
+          "severity": "P3",
+          "section": "## 9. Testing — Screenshots and accessibility (the one new popup shot), with ## 1. Packages and files — Changed files",
+          "why_it_matters": "The required `quality` job fails as soon as the popup shot lands. `tooling/workflow-guards.test.mjs` pins `EXPECTED_SHOTS = 10` and asserts that `web/e2e` declares exactly that many `toHaveScreenshot` names. When it fails, it says 'bump this and the prose together', meaning the 'ten' that AGENTS.md, `web/README.md`, `client/README.md` and `docs/runbooks/vr-a11y-testing.md` state. Section 1's changed files and section 10's documents list neither the guard nor those files. A plan built from those lists will therefore leave a failing required check, and five stale shot counts, to be discovered at push time.",
+          "finding_type": "omission",
+          "autofix_class": "gated_auto",
+          "suggested_fix": "Add to section 1's changed files: `tooling/workflow-guards.test.mjs` (`EXPECTED_SHOTS` 10 → 11), plus the shot count ('ten' → 'eleven') in `AGENTS.md`, `web/README.md`, `client/README.md`, `docs/runbooks/vr-a11y-testing.md` and the L13 row of `docs/decisions/decision-registry.md`.",
+          "confidence": 100,
+          "evidence": [
+            "One new shot, in `Europe/Berlin`: `/play` with the popup, at the lane's 1280 × 900.",
+            "Screenshot baselines: `/` (the new note) and one new shot with the popup (section 9)."
+          ],
+          "raw_id": "feasibility#2",
+          "reviewer": "feasibility"
+        }
+      ]
+    },
+    {
+      "id": "FYI-9",
+      "area": "Area 3 - the popup, the copy and the screenshot gate (sections 3, 7 and 9)",
+      "group": 3,
+      "kind": "fyi",
+      "route": "fyi",
+      "severity": "P3",
+      "confidence": 50,
+      "reviewers": ["design-lens"],
+      "title": "An answer hides the card with no confirmation",
+      "synthesis_note": "Anchor 50: observation, no decision. New copy would be leocaseiro's to approve.",
+      "constituents": [
+        {
+          "title": "An answer hides the card with no confirmation",
+          "severity": "P3",
+          "section": "3. The popup — Answering (line 185) and Screen readers (line 190)",
+          "why_it_matters": "A screen-reader user who presses an answer is on a button that disappears with the card, and nothing says the choice was saved. The spec makes the card's arrival audible through a live region that exists first, but gives the card's departure no counterpart, and section 9 tests none. The same polite region can carry a one-line confirmation without a new component; the wording is new copy, so it is leocaseiro's to approve.",
+          "finding_type": "omission",
+          "autofix_class": "manual",
+          "suggested_fix": "In \"Answering\", add that the live region then receives a short confirmation that names the saved answer by its button label (for example \"Saved: Report errors only\"), and add that line to the `PrivacyChoices` unit test.",
+          "confidence": 50,
+          "evidence": [
+            "saves the choice, hides the card and starts what it allows at once — no reload",
+            "when the card appears, the region receives the question"
+          ],
+          "raw_id": "design-lens#3",
+          "reviewer": "design-lens"
+        }
+      ]
+    },
+    {
+      "id": "R4",
+      "area": "Area 3 - the popup, the copy and the screenshot gate (sections 3, 7 and 9)",
+      "group": 3,
+      "kind": "residual",
+      "route": "residual",
+      "severity": null,
+      "confidence": null,
+      "reviewers": ["design-lens"],
+      "title": "The card's stacking order against the popovers is unset, and the two meet on common windows: the Tracks popover (32 rem ",
+      "synthesis_note": "Residual concern: the card's stacking order against the Tracks popover (z-50).",
+      "constituents": [
+        {
+          "raw_id": "design-lens#residual1",
+          "reviewer": "design-lens",
+          "text": "The card's stacking order against the popovers is unset, and the two meet on common windows: the Tracks popover (32 rem wide, opens upward from the transport row's right end, `z-50`) and the 560 px centred card both sit just above the row and overlap on any window narrower than about 1,650 px (at 1280 px: card 360–920, popover 736–1248). A card given a z-index above 50 would cover part of the mixer's footer (Master volume and the layout switch) until the visitor answers, and the no-overlap case, which checks only ▶ and the row, would not see it."
+        }
+      ]
+    },
+    {
+      "id": "R5",
+      "area": "Area 3 - the popup, the copy and the screenshot gate (sections 3, 7 and 9)",
+      "group": 3,
+      "kind": "residual",
+      "route": "residual",
+      "severity": null,
+      "confidence": null,
+      "reviewers": ["design-lens"],
+      "title": "On `/` nothing tests the card against the page's own content. In a mock with NH-124's (the Sentry ticket's) note and the",
+      "synthesis_note": "Residual concern: on / the card covers the note and part of Play on small phones.",
+      "constituents": [
+        {
+          "raw_id": "design-lens#residual2",
+          "reviewer": "design-lens",
+          "text": "On `/` nothing tests the card against the page's own content. In a mock with NH-124's (the Sentry ticket's) note and the new links, the stacked phone card (about 266–286 px) hides the whole note at 375 × 667, covers 20 px of Play at 360 × 640 and 27–35 px of it on a phone held sideways. A visitor in Europe on a small phone must answer before reading the Google disclosure or pressing Play, which cuts against the \"Non-blocking\" promise behind G7 (the decision to use a floating card rather than a centred dialog that \"blocks the demo\")."
+        }
+      ]
+    }
+  ],
+  "restated_suppressed": [
+    {
+      "text": "The landing case of `web/e2e/a11y.e2e.ts` runs a hit-area scan over every `a[href]` on `/` and fails any under 44 px (only toast close buttons and mixer buttons are exempt). The two inline links the new home note adds ('How Google uses data' and 'Privacy notice') would fail it unless they are sized as 44 px targets or the gate changes; section 3 states the 44 px rule for the popup's buttons only.",
+      "source": "coherence (residual)",
+      "restates": "F-25"
+    },
+    {
+      "text": "Outside Europe, Google's script runs only after the page's load event (section 4), so a visitor who clicks Play before then may also be counted from /play without the landing page's campaign tags, if gtag.js reads the address when it processes the queued `config` rather than when the call was queued. Unverified: section 8's step 6 can check it by opening `/?utm_source=probe` and clicking Play at once. The landing-page fix proposed for Europe's late answer would cover this case too.",
+      "source": "adversarial (residual)",
+      "restates": "F-24"
+    }
+  ]
+}

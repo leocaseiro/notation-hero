@@ -542,6 +542,15 @@
     "fontconfig",
     "buildx",
     "imagetools",
+    "remarketing",
+    "CNIL",
+    "EDPB",
+    "OAIC",
+    "googletagmanager",
+    "fbclid",
+    "gclid",
+    "msclkid",
+    "cookieless",
     "katex",
     "micromark"
   ]

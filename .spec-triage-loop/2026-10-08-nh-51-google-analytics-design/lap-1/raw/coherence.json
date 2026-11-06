@@ -1,0 +1,71 @@
+{
+  "reviewer": "coherence",
+  "findings": [
+    {
+      "title": "Naming rule says every event starts with a verb",
+      "severity": "P3",
+      "section": "5. Events - intro paragraph (lines 219-221) against the event table (lines 225-236)",
+      "why_it_matters": "A contributor adding a thirteenth event, or a plan that turns this sentence into a naming check, is told every name starts with a verb, but only open_file, play and export_score do; the other nine, such as score_loaded, loop_toggle and tempo_change, start with a noun. The table's names are the ones the funnel, the tests and the approved twelve-event list use, so the sentence is the stale part, and renaming nine events instead would ripple through all three. Deleting the false clause keeps the one real constraint, which is avoiding Google's reserved names.",
+      "finding_type": "error",
+      "autofix_class": "safe_auto",
+      "suggested_fix": "Delete \"starts with a verb and\" so the sentence reads: \"Every name avoids Google's reserved names (`click`, `error`, `file_download`, …).\"",
+      "confidence": 100,
+      "evidence": [
+        "Every name starts with a verb and avoids Google's reserved names (`click`, `error`, `file_download`, …).",
+        "`score_loaded` | a score becomes the one on screen",
+        "`tempo_change` | the speed is set"
+      ]
+    },
+    {
+      "title": "Sketch drops the settings step the spike verified",
+      "severity": "P2",
+      "section": "4. Google Analytics in code - startAnalytics sketch (lines 172-196) and the \"order is verified\" bullet (lines 198-200); spike table (line 457)",
+      "why_it_matters": "The spec says the queue the spike verified is consent, a separate settings step, then js and config, but the sketch an implementer will copy queues consent, js, then config with the privacy settings folded into it. The unit test on \"the queue's order\" and the Sydney check for gcs=G101 and npa=1 therefore rest on an order nobody ran: the spike queued the settings with their own gtag('set', ...) call, which the sketch lacks. Restoring that call, and leaving only release in config, makes the \"verified\" label true and keeps the one unrun piece where \"To verify at plan time\" already tracks it.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "In the section 4 sketch, add `gtag('set', { allow_google_signals: false, allow_ad_personalization_signals: false });` between the consent call and `gtag('js', new Date());`, and remove those two keys from the `gtag('config', id, {...})` call so that only `release: APP_VERSION` remains there.",
+      "confidence": 75,
+      "evidence": [
+        "**The order is verified** by the 2026-10-05 spike: consent, settings, then `js` and `config`.",
+        "gtag('js', new Date());\n  gtag('config', id, {\n    allow_google_signals: false,\n    allow_ad_personalization_signals: false,\n    release: APP_VERSION,\n  });",
+        "Our settings ran first | consent → settings → `js` → `config`"
+      ]
+    },
+    {
+      "title": "mixer_change type contradicts its field table and brand rule",
+      "severity": "P2",
+      "section": "5. Events - events.ts sketch (lines 256-273) against the `instrument` field row (line 251) and the branded-string paragraph (lines 275-276)",
+      "why_it_matters": "Copying the sketch gives a mixer_change type that cannot express solo all, mute all or the layout switch, because instrument is required while the field table says it is absent for those three. The checked example also passes the literal '025', which the paragraph below says can never type-check because Instrument is a branded string, and the function that mints an Instrument (\"its one-track twin\") is never named, so the example has nothing legitimate to call. A type test written from this sketch would start with a positive case that fails to compile.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "Rewrite the mixer_change entry as a union on control: render, solo, mute, transpose_audio, transpose_full and staff carry `instrument: Instrument`; solo_all, mute_all and layout carry only `on`. Change the ✅ line so `instrument` comes from the one-track function, name that function `trackInstrument(track)`, and add it to the `web/lib/score-facts.ts` row of section 1 (Packages and files).",
+      "confidence": 75,
+      "evidence": [
+        "mixer_change: { control: MixerControl; on: boolean; instrument: Instrument };",
+        "`instrument` | `drums` or a three-digit program, for the one track a change applies to; absent for solo all, mute all and the layout switch",
+        "track('mixer_change', { control: 'solo', on: true, instrument: '025' }); // ✅",
+        "`Instruments` and `Instrument` are branded strings that only `instrumentsValue()` and its one-track twin can make, so a free string never type-checks."
+      ]
+    },
+    {
+      "title": "track() is sketched in events.ts but filed under track.ts",
+      "severity": "P3",
+      "section": "5. Events - events.ts sketch (lines 257 and 269) against 1. Packages and files - New files table (line 78)",
+      "why_it_matters": "A plan unit built from section 1 (Packages and files) and an implementer copying the section 5 (Events) sketch will disagree about where track() and its unit test live, because section 1 gives track() its own file, track.ts, while the block headed events.ts also declares it. Putting it in events.ts instead would move the gtag call and the not-started check into a file that section 1 describes only as the typed event list. Relabelling the sketch matches the file table, which is the more detailed of the two passages.",
+      "finding_type": "error",
+      "autofix_class": "safe_auto",
+      "suggested_fix": "Keep only the AnalyticsEvents interface under the `// web/lib/analytics/events.ts (sketch)` header, and put the `export function track<…>` signature and the two usage lines under their own `// web/lib/analytics/track.ts (sketch)` header.",
+      "confidence": 75,
+      "evidence": [
+        "// web/lib/analytics/events.ts (sketch)",
+        "export function track<E extends keyof AnalyticsEvents>(event: E, fields: AnalyticsEvents[E]): void;",
+        "`track()`: sends one event, or nothing until Google Analytics has started"
+      ]
+    }
+  ],
+  "residual_risks": [],
+  "deferred_questions": [
+    "What does the Google fixture in web/e2e/google-analytics.ts serve for the gtag.js script, and is it installed for every Playwright test? Section 1 (Packages and files) puts a fake Google Analytics ID in the whole lane's config and defaults every project to Sydney, so Google Analytics starts in every end-to-end test and in all ten existing screenshots; section 9 (Testing) says the fixture answers Google's hosts so no test reaches Google, yet the Sydney assertions on gcs=G101 and npa=1 need Google's own script, which the spike let load from googletagmanager.com while answering only the collect requests locally. The plan must either pin a copy of the script and install the routing for all tests, or narrow the claim to collect requests.",
+    "When a visitor's saved answer is 'Report errors only' or 'No, send nothing' and their time zone later reads as outside Europe, does the saved answer still govern? Section 2 (The privacy choice) gives 'Outside Europe' everything and has no row for a stored refusal, allowed() is specified as exactly that table, and the 15-cell unit test in section 9 would not cover the case either way, so the plan has to choose between honouring the stored refusal and following the time zone."
+  ]
+}

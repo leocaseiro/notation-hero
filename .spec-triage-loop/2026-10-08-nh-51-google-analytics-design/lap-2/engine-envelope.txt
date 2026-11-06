@@ -1,0 +1,115 @@
+Document review complete (non-interactive mode).
+
+Reviewed: docs/specs/2026-10-08-nh-51-google-analytics-design.md at b0bde201 (document type: plan —
+a design spec; the task-by-task plan comes after this review). Round 2: the reviewers were given
+round 1's 22 decisions (all applied, none rejected), so nothing was suppressed as previously
+rejected, and no round-1 fix failed to land. Three new findings sit beside text round 1 wrote.
+Coverage: coherence 5, feasibility 2, adversarial 5, scope-guardian 1, security-lens 3,
+design-lens 4, product-lens 2 — 22 raw findings, 18 after merging. Cross-model pass: not run (it
+would send the document to an outside AI provider; not authorized by the owner). Report-only
+invocation: nothing was applied.
+
+Entailed corrections (already entailed by the document; awaiting one grouped confirmation):
+
+2. The privacy choice
+  - The first time the question changes, every visitor outside Europe who refused is counted again
+    without being asked — an answer saved under an older version keeps what it refused until the
+    visitor answers again; in Europe the popup still asks again.
+
+5. Events
+  - The bundled beat's "sample" instrument value cannot be made by either function the spec says
+    is the only way to make one — name a third maker, a fixed value for the bundled beat.
+
+Extending later
+  - Changing from "Yes" to "Report errors only" through the later "Privacy choices" link leaves
+    Google Analytics running for the rest of the visit — stop it on any change that turns it off,
+    and test both answers; close Sentry on "No" only.
+
+3. The popup and 7. The copy
+  - The home note's two new text links, and the popup's Details button, fail the site's existing
+    44-pixel touch-target check on their first run — build them as the design system's link-style
+    buttons, at least 44 pixels tall, keeping the approved words.
+
+9. Testing and 1. Packages and files
+  - The one new popup screenshot fails a required check that pins the count at ten — list that
+    check and the five documents that say "ten" among the files and documents this ticket changes.
+
+Proposed fixes (nothing here has landed; awaiting the same grouped confirmation):
+
+Who is asked, and what proves nothing is sent
+
+[P2] Section: 2. The privacy choice, Europe by time zone — A list built from the current time-zone file misses the names browsers report for Iceland and the EU's overseas regions (adversarial, confidence 75)
+  Recommendation: Apply
+  Consequence if unchanged: visitors in Iceland, Réunion, Mayotte and Guadeloupe are counted and reported without being asked.
+  Change: build the list from the time-zone file that keeps the names browsers report, and pin two of those names in the unit test.
+  Basis: browsers report the older names, which the newer file files under zones in Africa, the Gulf and the Caribbean.
+
+[P2] Section: 9. Testing, the Berlin case — The checks that nothing is sent in Europe can pass on a build that wrongly starts both tools (adversarial, confidence 75)
+  Recommendation: Apply
+  Consequence if unchanged: the one automated proof that nothing loads in Europe before an answer could pass on a broken build.
+  Change: check our own state (no data queue, no Google script) and wait for a later event before checking that no request arrived.
+  Basis: Google's script loads after the page's load event and Sentry sends later, so an early check finds nothing either way.
+
+The popup on small screens, and its words
+
+[P2] Section: 3. The popup, where it sits — The card has a width limit but no height limit, so at high zoom its answers sit off-screen (design-lens, confidence 75)
+  Recommendation: Apply
+  Consequence if unchanged: a visitor in Europe zoomed to 400% cannot reach the answers, and the card cannot be scrolled.
+  Change: cap the card's height to the window and let it scroll inside itself; test it at 320 × 256 pixels.
+  Basis: the accessibility guidelines' reflow rule tests exactly that window size.
+
+[P2] Section: 7. The copy, the privacy notice — The notice says Google sets one cookie; the spike recorded two (coherence, confidence 75)
+  Recommendation: Apply
+  Consequence if unchanged: the page meant to inform a "Yes" understates what is stored.
+  Change: name both cookies in the notice, and say "cookies" in the popup and the home note.
+  Basis: the spec's own spike table lists both.
+
+[P3] Section: 7. The copy, the privacy notice page — The card can cover the last lines of the privacy notice it links to (design-lens, confidence 75)
+  Recommendation: Apply
+  Consequence if unchanged: on a phone, the notice's "change your answer" line sits under the card and cannot be scrolled clear.
+  Change: make the notice page top-aligned and scrollable, with room at the bottom for the card.
+  Basis: the other pages are centred one-screen layouts, which the card covers.
+
+The events Google receives
+
+[P2] Section: 5. Events, the speed and settings events — Holding the tempo button or typing a number sends one event per step (feasibility, confidence 75)
+  Recommendation: Apply
+  Consequence if unchanged: tempo and settings counts measure button repeats and keystrokes, not edits.
+  Change: send those two events once, a second after the last change or when the page is left.
+  Basis: the tempo control reports every repeat, wheel step and digit; the spec's "final value only" rule covers sliders only.
+
+Decisions (requires user judgment):
+
+[P1] Section: 5. Events, the file-size field — Google receives a file's size to the kilobyte, finer than Sentry is allowed (adversarial, coherence, confidence 75)
+  Recommendation: Decide (share Sentry's rounding)
+  Consequence if unchanged: an exact size, beside the file type and a lasting visitor ID, can point to which widely shared file a visitor opened.
+  Change: choose one — round the size the way the Sentry plan does, drop the size from Google's events, or keep whole kilobytes and record why.
+  Basis: the Sentry plan rounds sizes up to a power of two for exactly this reason; nothing in this spec needs the exact size.
+
+[P2] Section: 5. Events, the event table — A speed or Loop change made in Settings is counted differently from the same change made on the player (coherence, product-lens, confidence 75)
+  Recommendation: Decide
+  Consequence if unchanged: tempo and loop use splits across two events, and the volume rows would be tracked though the spec says volume is not.
+  Change: choose one — each action sends one event whichever control made it, or the Settings popover sends both its own event and the specific one.
+  Basis: the Settings popover's speed, Loop and volume rows reach the same writers as the header and transport controls.
+
+[P2] Section: 3. The popup and 4. Google Analytics in code — A visitor in Europe who presses Play before answering loses the landing page and its campaign tags (adversarial, confidence 75)
+  Recommendation: Decide
+  Consequence if unchanged: for visitors in Europe, where they came from reads as direct, and the funnel's first step is missing.
+  Change: choose one — after a late "Yes", send a page view for the landing address read from the browser's navigation record, or accept it and record it.
+  Basis: tracking starts only at the answer, and by then the address has changed; the browser still holds the landing address.
+
+FYI observations (anchor 50, no decision required): 4
+- A second destination added inside the sending function would receive the typed events only — no page views, visitor ID, country or device.
+- The loader sketch puts the sending function on the global window, so any file could send around the typed wrapper.
+- A "No" given in one tab does not stop Google Analytics in another open tab of the site.
+- After an answer the card disappears and nothing tells a screen-reader user the choice was saved.
+
+Residual concerns:
+- Seven of the eleven typed events have no check, and the mixer re-applies every row's mute and solo when the player is ready, so a call placed in the wrong spot would report changes nobody made (scope-guardian).
+- Nothing measures how many visitors go uncounted, so early numbers cannot tell low interest from a large uncounted share (product-lens).
+- The card's stacking order against the Tracks popover is unset, and the two overlap on windows narrower than about 1,650 pixels (design-lens).
+- On a small phone the card covers the home page's note and part of Play until the visitor answers (design-lens).
+
+Restated: 2 (residual/deferred items suppressed as duplicates of actionable findings)
+
+Review complete

@@ -1,0 +1,37 @@
+{
+  "reviewer": "design-lens",
+  "findings": [
+    {
+      "title": "Screen-reader announcement of the card will not happen",
+      "severity": "P2",
+      "section": "3. The popup — 'Screen readers' bullet (line 162)",
+      "why_it_matters": "European screen-reader users may never be told that a privacy question has appeared: the card is inserted after hydration, and a live region that arrives together with its text is not announced. `web/app/play/PlayerShell.tsx` records exactly this (\"the region has to be there first\") and keeps an always-mounted `aria-live` paragraph for it. A labelled region is a landmark, not a live region, so one element cannot be both \"a labelled region\" and \"announced politely when it appears\", and neither the unit tests nor the axe scan the spec lists would notice the silence. The repo's own pattern, a persistent polite region that receives text when the card mounts, closes the gap.",
+      "finding_type": "omission",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "In section 3, replace the Screen readers bullet with: 'The card is a labelled region (\"Privacy choice\") and carries no `aria-live` of its own. `PrivacyChoices` renders an empty polite live region from the first render and keeps it for the life of the page, the way `PlayerShell.tsx` keeps its `announcement` paragraph; when the card appears, the region receives the question text.' Add to the `PrivacyChoices` unit tests that the live region is in the document before the card appears and that its text changes when the card appears.",
+      "confidence": 75,
+      "evidence": [
+        "**Screen readers:** the card is a labelled region (\"Privacy choice\"), announced politely when it appears.",
+        "The popup, which appears after hydration, causes no layout shift (it is fixed-position)."
+      ]
+    },
+    {
+      "title": "'Both themes' axe scan is unreachable in light-only web/",
+      "severity": "P2",
+      "section": "9. Testing — Screenshots and accessibility, last bullet (line 398); 3. The popup — Themes bullet (line 164)",
+      "why_it_matters": "The test plan asks for a step the `web` lane cannot perform: `web/` can never show dark mode, because the variant is the class `.dark` (`client/src/styles.css:27`), nothing sets it, and `web/app/layout.tsx` renders a bare `<html lang=\"en\">`. A scan \"in both themes\" therefore means injecting the class from the test, which the visual-regression gate's 'Light only' section (`docs/specs/2026-09-21-web-visual-regression-gate.md`) rejects as \"a state no visitor can reach\"; the implementer either breaks that reasoning or silently drops half the clause. The changelog entry of 2026-09-21 defers dark mode behind NH-302 (the dark-mode work for the notation colours), so recording light-only now matches the repo's decision and still lets the card's token-only styling carry dark later.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "In section 9, change the last bullet to: 'An axe scan with the popup open, in light only: dark mode cannot be turned on in `web/` yet (deferred behind NH-302; see \"Light only\" in `docs/specs/2026-09-21-web-visual-regression-gate.md`).' In section 3, reword the Themes bullet to: 'Styled from design tokens only, so dark follows the day `web/` can show it; no new colour.'",
+      "confidence": 75,
+      "evidence": [
+        "An axe scan with the popup open, in both themes.",
+        "**Themes:** light and dark from the design tokens; no new colour."
+      ]
+    }
+  ],
+  "residual_risks": [],
+  "deferred_questions": [
+    "Where does `<PrivacyChoices />` sit in the DOM and the tab order? Section 1 says only that `layout.tsx` renders it. Rendered first, a keyboard user meets the question at once but passes four extra Tab stops (three answers and Details) on every page until answering; rendered last, as the Toaster is, it comes after a dozen or more page controls (the a11y lane's floor for `/play` is 12), which is why `Sonner.tsx` gave the Toaster an Alt+T hotkey. The plan must pick one and add an e2e assertion for the choice."
+  ]
+}
