@@ -59,6 +59,7 @@ only together with NH-349's link (NH-349 blocks NH-51). Sentry (NH-124) goes liv
 popup, so until this ticket ships it reports visitors in Europe without asking; leocaseiro accepted
 that on 2026-10-09 because the app has no visitors yet and is published only after this ticket is
 live.
+
 ### 2026-10-20 — Dependency CVE refresh, round 2: 13 advisories back to zero, inside PR #191 (NH-346)
 
 The `deps-cve` gate (osv-scanner) went red again on 2026-10-13: **13 new advisories across 7
